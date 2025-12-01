@@ -23,6 +23,7 @@ COPY scanner/rules/ /scanner/rules/
 COPY scanner/gitleaks.toml /scanner/gitleaks.toml
 
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
 
 EXPOSE 8080
 
