@@ -1,0 +1,168 @@
+rules:
+  - id: hardcoded-api-key-assignment
+    patterns:
+      - pattern-either:
+          - pattern: $KEY = "sk-..."
+          - pattern: $KEY = "pk_..."
+          - pattern: apiKey = "..."
+          - pattern: api_key = "..."
+          - pattern: API_KEY = "..."
+    message: "Hardcoded API key detected. Move to environment variable."
+    severity: ERROR
+    metadata:
+      category: secrets
+      cwe: "CWE-798"
+      fix_template: env_variable
+    languages: [javascript, typescript]
+
+  - id: sql-injection-template-string
+    patterns:
+      - pattern-either:
+          - pattern: $DB.query(`... ${$VAR} ...`)
+          - pattern: $DB.execute(`... ${$VAR} ...`)
+          - pattern: $DB.raw(`... ${$VAR} ...`)
+    message: "Potential SQL injection via template string. Use parameterized queries."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-89"
+      fix_template: parameterized_query
+    languages: [javascript, typescript]
+
+  - id: xss-innerhtml
+    patterns:
+      - pattern: $EL.innerHTML = $VAR
+    message: "XSS vulnerability via innerHTML. Use textContent or sanitize input."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-79"
+      fix_template: text_content
+    languages: [javascript, typescript]
+
+  - id: xss-dangerously-set-html
+    patterns:
+      - pattern: dangerouslySetInnerHTML={{__html: $VAR}}
+    message: "XSS vulnerability via dangerouslySetInnerHTML. Sanitize input with DOMPurify."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-79"
+      fix_template: sanitize_html
+    languages: [javascript, typescript, jsx, tsx]
+
+  - id: cors-allow-all
+    patterns:
+      - pattern-either:
+          - pattern: "cors({ origin: '*' })"
+          - pattern: "cors({ origin: true })"
+          - pattern: 'res.header("Access-Control-Allow-Origin", "*")'
+    message: "CORS allows all origins. Restrict to specific domains."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-942"
+      fix_template: cors_whitelist
+    languages: [javascript, typescript]
+
+  - id: weak-password-hashing
+    patterns:
+      - pattern-either:
+          - pattern: md5($PASSWORD)
+          - pattern: sha1($PASSWORD)
+          - pattern: crypto.createHash("md5")
+          - pattern: crypto.createHash("sha1")
+    message: "Weak password hashing algorithm. Use bcrypt or argon2."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-328"
+      fix_template: bcrypt_hash
+    languages: [javascript, typescript]
+
+  - id: jwt-no-expiry
+    patterns:
+      - pattern: jwt.sign($PAYLOAD, $SECRET)
+      - pattern-not: jwt.sign($PAYLOAD, $SECRET, {..., expiresIn: ...})
+    message: "JWT token without expiration. Add expiresIn option."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-613"
+      fix_template: jwt_with_expiry
+    languages: [javascript, typescript]
+
+  - id: eval-usage
+    patterns:
+      - pattern: eval($CODE)
+    message: "Dangerous use of eval(). Avoid executing dynamic code."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-95"
+    languages: [javascript, typescript]
+
+  - id: disabled-ssl-verification
+    patterns:
+      - pattern-either:
+          - pattern: rejectUnauthorized = false
+          - pattern: rejectUnauthorized:false
+          - pattern: NODE_TLS_REJECT_UNAUTHORIZED = "0"
+    message: "SSL certificate verification disabled. This allows MITM attacks."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-295"
+    languages: [javascript, typescript]
+
+  - id: hardcoded-password
+    patterns:
+      - pattern-either:
+          - pattern: password = "..."
+          - pattern: PASSWORD = "..."
+          - pattern: pwd = "..."
+    message: "Hardcoded password detected. Use environment variables."
+    severity: ERROR
+    metadata:
+      category: secrets
+      cwe: "CWE-798"
+    languages: [javascript, typescript, python]
+
+  - id: insecure-random
+    patterns:
+      - pattern: Math.random()
+    message: "Math.random() is not cryptographically secure. Use crypto.randomBytes() for security."
+    severity: INFO
+    metadata:
+      category: code
+      cwe: "CWE-338"
+    languages: [javascript, typescript]
+
+  - id: nextjs-exposed-server-action
+    patterns:
+      - pattern: |
+          'use server'
+          ...
+          export async function $FUNC($PARAMS) {
+            ...
+          }
+      - pattern-not: |
+          const session = await $AUTH()
+    message: "Next.js server action may be missing authentication."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-306"
+    languages: [javascript, typescript]
+
+  - id: supabase-service-role-client
+    patterns:
+      - pattern: createClient($URL, $KEY)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: '.*service.*role.*|.*SERVICE.*ROLE.*'
+    message: "Supabase service role key may be exposed in client-side code."
+    severity: ERROR
+    metadata:
+      category: secrets
+    languages: [javascript, typescript]

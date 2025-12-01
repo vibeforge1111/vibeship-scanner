@@ -1,0 +1,14 @@
+# Fly.io configuration for Vibeship Scanner VM
+app = "vibeship-scanner"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PYTHONUNBUFFERED = "1"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

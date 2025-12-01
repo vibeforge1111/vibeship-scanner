@@ -1,0 +1,118 @@
+title = "Vibeship Gitleaks Config"
+
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{48}'''
+keywords = ["openai", "sk-"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API Key"
+regex = '''sk-ant-[a-zA-Z0-9-]{95}'''
+keywords = ["anthropic", "claude", "sk-ant"]
+
+[[rules]]
+id = "stripe-secret-key"
+description = "Stripe Secret Key"
+regex = '''sk_live_[a-zA-Z0-9]{24,}'''
+keywords = ["stripe", "sk_live"]
+
+[[rules]]
+id = "stripe-test-key"
+description = "Stripe Test Key"
+regex = '''sk_test_[a-zA-Z0-9]{24,}'''
+keywords = ["stripe", "sk_test"]
+
+[[rules]]
+id = "supabase-service-role"
+description = "Supabase Service Role Key"
+regex = '''eyJ[a-zA-Z0-9_-]{20,}\.eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}'''
+keywords = ["supabase", "service_role"]
+
+[[rules]]
+id = "firebase-api-key"
+description = "Firebase API Key"
+regex = '''AIza[0-9A-Za-z-_]{35}'''
+keywords = ["firebase", "apiKey"]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+
+[[rules]]
+id = "aws-secret-key"
+description = "AWS Secret Access Key"
+regex = '''(?i)aws_secret_access_key\s*=\s*['\"][a-zA-Z0-9/+=]{40}['\"]'''
+
+[[rules]]
+id = "github-token"
+description = "GitHub Token"
+regex = '''gh[pousr]_[A-Za-z0-9_]{36,}'''
+
+[[rules]]
+id = "github-pat"
+description = "GitHub Personal Access Token"
+regex = '''github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}'''
+
+[[rules]]
+id = "vercel-token"
+description = "Vercel Token"
+regex = '''(?i)vercel[_-]?token\s*[:=]\s*['\"]?[a-zA-Z0-9]{24}['\"]?'''
+
+[[rules]]
+id = "database-url"
+description = "Database Connection URL"
+regex = '''(postgres|mysql|mongodb|redis)://[^:]+:[^@]+@[^\s]+'''
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'''
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret"
+regex = '''(?i)(jwt[_-]?secret|token[_-]?secret)\s*[:=]\s*['\"][a-zA-Z0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?]{16,}['\"]'''
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(api[_-]?key|apikey)\s*[:=]\s*['\"][a-zA-Z0-9]{20,}['\"]'''
+
+[[rules]]
+id = "sendgrid-api-key"
+description = "SendGrid API Key"
+regex = '''SG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]{43}'''
+
+[[rules]]
+id = "twilio-api-key"
+description = "Twilio API Key"
+regex = '''SK[a-f0-9]{32}'''
+
+[[rules]]
+id = "slack-token"
+description = "Slack Token"
+regex = '''xox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*'''
+
+[[rules]]
+id = "discord-token"
+description = "Discord Bot Token"
+regex = '''[MN][A-Za-z\d]{23,}\.[\w-]{6}\.[\w-]{27}'''
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+  '''\.test\.(js|ts|tsx|jsx)$''',
+  '''\.spec\.(js|ts|tsx|jsx)$''',
+  '''__tests__''',
+  '''__mocks__''',
+  '''\.example$''',
+  '''\.sample$''',
+  '''node_modules''',
+  '''\.md$''',
+  '''package-lock\.json$''',
+  '''yarn\.lock$''',
+  '''pnpm-lock\.yaml$'''
+]
