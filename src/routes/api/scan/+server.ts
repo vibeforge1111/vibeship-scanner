@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { hashUrl, parseRepoUrl } from '$lib/server/scan';
 import { supabase } from '$lib/supabase';
-import { runScan } from '$lib/server/scanner';
+import { SCANNER_API_URL } from '$env/static/private';
 
 async function checkRateLimit(identifier: string): Promise<{ allowed: boolean; remaining: number }> {
 	const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -80,7 +80,17 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			return json({ error: 'database_error', message: 'Failed to create scan' }, { status: 500 });
 		}
 
-		runScan(scanId, url, 'main').catch(err => console.error('Scan error:', err));
+		if (SCANNER_API_URL) {
+			fetch(`${SCANNER_API_URL}/scan`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					scanId,
+					repoUrl: url,
+					branch: 'main'
+				})
+			}).catch(err => console.error('Scanner trigger error:', err));
+		}
 
 		return json({
 			scanId,
