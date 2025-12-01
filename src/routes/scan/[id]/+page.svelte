@@ -1,88 +1,145 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { supabase } from '$lib/supabase';
+	import type { RealtimeChannel } from '@supabase/supabase-js';
 
 	let scanId = $derived($page.params.id);
-	let status = $state<'scanning' | 'complete' | 'error'>('scanning');
+	let status = $state<'queued' | 'scanning' | 'complete' | 'failed'>('queued');
 	let progress = $state({
-		step: 'Initializing',
+		step: 'init',
 		stepNumber: 0,
 		totalSteps: 5,
-		message: 'Starting scan...'
+		message: 'Starting scan...',
+		percent: 0
 	});
 	let results = $state<any>(null);
+	let error = $state<string | null>(null);
+	let channel: RealtimeChannel | null = null;
 
 	const steps = [
+		{ id: 'init', label: 'Initializing', icon: '⚡' },
 		{ id: 'clone', label: 'Cloning repository', icon: '📥' },
-		{ id: 'detect', label: 'Detecting stack', icon: '🔍' },
 		{ id: 'sast', label: 'Scanning code', icon: '🛡️' },
 		{ id: 'deps', label: 'Checking dependencies', icon: '📦' },
+		{ id: 'secrets', label: 'Scanning for secrets', icon: '🔐' },
 		{ id: 'score', label: 'Calculating score', icon: '📊' }
 	];
 
-	onMount(() => {
-		let step = 0;
-		const interval = setInterval(() => {
-			if (step < steps.length) {
-				progress = {
-					step: steps[step].id,
-					stepNumber: step,
-					totalSteps: steps.length,
-					message: steps[step].label
-				};
-				step++;
-			} else {
-				clearInterval(interval);
-				status = 'complete';
-				results = {
-					score: 73,
-					grade: 'C',
-					shipStatus: 'review',
-					summary: { critical: 1, high: 2, medium: 4, low: 3, info: 2 },
-					stack: { languages: ['TypeScript', 'JavaScript'], frameworks: ['Next.js', 'React'] },
-					findings: [
-						{
-							id: '1',
-							severity: 'critical',
-							category: 'secrets',
-							title: 'Hardcoded API Key Detected',
-							description: 'OpenAI API key found in source code',
-							location: { file: 'src/lib/ai.ts', line: 12 },
-							fix: { available: true, template: 'Move to environment variable: process.env.OPENAI_API_KEY' }
-						},
-						{
-							id: '2',
-							severity: 'high',
-							category: 'code',
-							title: 'SQL Injection Vulnerability',
-							description: 'User input directly concatenated into SQL query',
-							location: { file: 'src/api/users.ts', line: 45 },
-							fix: { available: true, template: 'Use parameterized query: db.query("SELECT * FROM users WHERE id = $1", [userId])' }
-						},
-						{
-							id: '3',
-							severity: 'high',
-							category: 'dependencies',
-							title: 'CVE-2024-1234 in lodash',
-							description: 'Prototype pollution vulnerability in lodash < 4.17.21',
-							location: { file: 'package.json', line: 15 },
-							fix: { available: true, template: 'npm update lodash@^4.17.21' }
-						},
-						{
-							id: '4',
-							severity: 'medium',
-							category: 'code',
-							title: 'Missing Authentication Check',
-							description: 'API route lacks authentication middleware',
-							location: { file: 'src/api/admin.ts', line: 8 },
-							fix: { available: true, template: 'Add authentication middleware before route handler' }
-						}
-					]
-				};
-			}
-		}, 1500);
+	function getStepIndex(stepId: string): number {
+		const index = steps.findIndex(s => s.id === stepId);
+		return index >= 0 ? index : 0;
+	}
 
-		return () => clearInterval(interval);
+	async function fetchScan() {
+		const { data, error: fetchError } = await supabase
+			.from('scans')
+			.select('*')
+			.eq('id', scanId)
+			.single();
+
+		if (fetchError) {
+			error = 'Scan not found';
+			return;
+		}
+
+		if (data) {
+			status = data.status;
+			if (data.status === 'complete') {
+				results = {
+					score: data.score,
+					grade: data.grade,
+					shipStatus: data.ship_status,
+					summary: data.summary,
+					stack: data.stack,
+					findings: data.findings || []
+				};
+			} else if (data.status === 'failed') {
+				error = data.error || 'Scan failed';
+			}
+		}
+	}
+
+	async function fetchProgress() {
+		const { data } = await supabase
+			.from('scan_progress')
+			.select('*')
+			.eq('scan_id', scanId)
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.single();
+
+		if (data) {
+			progress = {
+				step: data.step,
+				stepNumber: getStepIndex(data.step),
+				totalSteps: steps.length,
+				message: data.message,
+				percent: data.percent || 0
+			};
+		}
+	}
+
+	onMount(async () => {
+		await fetchScan();
+		await fetchProgress();
+
+		channel = supabase
+			.channel(`scan-${scanId}`)
+			.on(
+				'postgres_changes',
+				{
+					event: 'UPDATE',
+					schema: 'public',
+					table: 'scans',
+					filter: `id=eq.${scanId}`
+				},
+				(payload) => {
+					const data = payload.new;
+					status = data.status;
+
+					if (data.status === 'complete') {
+						results = {
+							score: data.score,
+							grade: data.grade,
+							shipStatus: data.ship_status,
+							summary: data.summary,
+							stack: data.stack,
+							findings: data.findings || []
+						};
+					} else if (data.status === 'failed') {
+						error = data.error || 'Scan failed';
+					}
+				}
+			)
+			.on(
+				'postgres_changes',
+				{
+					event: '*',
+					schema: 'public',
+					table: 'scan_progress',
+					filter: `scan_id=eq.${scanId}`
+				},
+				(payload) => {
+					const data = payload.new as any;
+					if (data) {
+						progress = {
+							step: data.step,
+							stepNumber: getStepIndex(data.step),
+							totalSteps: steps.length,
+							message: data.message,
+							percent: data.percent || 0
+						};
+					}
+				}
+			)
+			.subscribe();
+	});
+
+	onDestroy(() => {
+		if (channel) {
+			supabase.removeChannel(channel);
+		}
 	});
 
 	function getSeverityClass(severity: string): string {
@@ -116,10 +173,21 @@
 		};
 		return messages[status] || '';
 	}
+
+	function copyFix(template: string) {
+		navigator.clipboard.writeText(template);
+	}
 </script>
 
 <div class="scan-page">
-	{#if status === 'scanning'}
+	{#if error}
+		<div class="error-container">
+			<h1>Scan Error</h1>
+			<p>{error}</p>
+			<a href="/" class="btn">Try Again</a>
+		</div>
+
+	{:else if status === 'queued' || status === 'scanning'}
 		<div class="progress-container">
 			<h1>Scanning your repository...</h1>
 			<p class="progress-subtitle">This usually takes about 30 seconds</p>
@@ -131,14 +199,18 @@
 						<span class="step-label">{step.label}</span>
 						{#if i < progress.stepNumber}
 							<span class="step-check">✓</span>
+						{:else if i === progress.stepNumber}
+							<span class="step-spinner"></span>
 						{/if}
 					</div>
 				{/each}
 			</div>
 
 			<div class="progress-bar">
-				<div class="progress-fill" style="width: {((progress.stepNumber + 1) / progress.totalSteps) * 100}%"></div>
+				<div class="progress-fill" style="width: {progress.percent}%"></div>
 			</div>
+
+			<p class="progress-message">{progress.message}</p>
 		</div>
 
 	{:else if status === 'complete' && results}
@@ -158,65 +230,92 @@
 				<div class="summary-section">
 					<h2>Security Summary</h2>
 					<div class="summary-counts">
-						{#if results.summary.critical > 0}
+						{#if results.summary?.critical > 0}
 							<span class="count severity-critical">{results.summary.critical} Critical</span>
 						{/if}
-						{#if results.summary.high > 0}
+						{#if results.summary?.high > 0}
 							<span class="count severity-high">{results.summary.high} High</span>
 						{/if}
-						{#if results.summary.medium > 0}
+						{#if results.summary?.medium > 0}
 							<span class="count severity-medium">{results.summary.medium} Medium</span>
 						{/if}
-						{#if results.summary.low > 0}
+						{#if results.summary?.low > 0}
 							<span class="count severity-low">{results.summary.low} Low</span>
 						{/if}
+						{#if !results.summary?.critical && !results.summary?.high && !results.summary?.medium && !results.summary?.low}
+							<span class="count severity-info">No issues found</span>
+						{/if}
 					</div>
-					<div class="stack-info">
-						<span class="stack-label">Stack detected:</span>
-						<span class="stack-value">{results.stack.frameworks.join(', ')}</span>
-					</div>
+					{#if results.stack?.frameworks?.length > 0}
+						<div class="stack-info">
+							<span class="stack-label">Stack detected:</span>
+							<span class="stack-value">{results.stack.frameworks.join(', ')}</span>
+						</div>
+					{/if}
+					{#if results.stack?.languages?.length > 0}
+						<div class="stack-info">
+							<span class="stack-label">Languages:</span>
+							<span class="stack-value">{results.stack.languages.join(', ')}</span>
+						</div>
+					{/if}
 				</div>
 			</div>
 
-			<div class="findings-section">
-				<h2>Findings</h2>
-				<div class="findings-list">
-					{#each results.findings as finding}
-						<div class="finding-card">
-							<div class="finding-header">
-								<span class="severity-badge {getSeverityClass(finding.severity)}">
-									{finding.severity.toUpperCase()}
-								</span>
-								<span class="finding-category">{finding.category}</span>
-							</div>
-							<h3 class="finding-title">{finding.title}</h3>
-							<p class="finding-desc">{finding.description}</p>
-							<p class="finding-location">
-								<code>{finding.location.file}:{finding.location.line}</code>
-							</p>
-							{#if finding.fix?.available}
-								<div class="finding-fix">
-									<span class="fix-label">Fix:</span>
-									<code class="fix-code">{finding.fix.template}</code>
-									<button class="btn-copy" onclick={() => navigator.clipboard.writeText(finding.fix.template)}>
-										Copy
-									</button>
+			{#if results.findings?.length > 0}
+				<div class="findings-section">
+					<h2>Findings ({results.findings.length})</h2>
+					<div class="findings-list">
+						{#each results.findings as finding}
+							<div class="finding-card">
+								<div class="finding-header">
+									<span class="severity-badge {getSeverityClass(finding.severity)}">
+										{finding.severity.toUpperCase()}
+									</span>
+									<span class="finding-category">{finding.category}</span>
 								</div>
-							{/if}
-							<div class="finding-actions">
-								<a href="https://vibeship.com" class="btn btn-green btn-sm">
-									Get Vibeship to fix this →
-								</a>
+								<h3 class="finding-title">{finding.title}</h3>
+								<p class="finding-desc">{finding.description}</p>
+								{#if finding.location?.file}
+									<p class="finding-location">
+										<code>{finding.location.file}{finding.location.line ? `:${finding.location.line}` : ''}</code>
+									</p>
+								{/if}
+								{#if finding.fix?.available && finding.fix?.template}
+									<div class="finding-fix">
+										<span class="fix-label">Fix:</span>
+										<code class="fix-code">{finding.fix.template}</code>
+										<button class="btn-copy" onclick={() => copyFix(finding.fix.template)}>
+											Copy
+										</button>
+									</div>
+								{/if}
+								<div class="finding-actions">
+									<a href="https://vibeship.com" class="btn btn-green btn-sm">
+										Get Vibeship to fix this →
+									</a>
+								</div>
 							</div>
-						</div>
-					{/each}
+						{/each}
+					</div>
 				</div>
-			</div>
+			{:else}
+				<div class="no-findings">
+					<h2>No Security Issues Found</h2>
+					<p>Your code looks clean! Consider running deeper analysis with Vibeship Pro.</p>
+				</div>
+			{/if}
 
 			<div class="results-footer">
 				<a href="/" class="btn">Scan Another Repo</a>
 				<a href="https://vibeship.com" class="btn btn-glow">Get Expert Help</a>
 			</div>
+		</div>
+
+	{:else if status === 'failed'}
+		<div class="error-container">
+			<h1>Scan Failed</h1>
+			<p>{error || 'Something went wrong during the scan.'}</p>
+			<a href="/" class="btn">Try Again</a>
 		</div>
 	{/if}
 </div>
@@ -226,6 +325,23 @@
 		padding: 6rem 2rem 4rem;
 		max-width: 1000px;
 		margin: 0 auto;
+	}
+
+	.error-container {
+		text-align: center;
+		padding: 4rem 0;
+	}
+
+	.error-container h1 {
+		font-family: 'Instrument Serif', serif;
+		font-size: 2rem;
+		margin-bottom: 1rem;
+		color: var(--red);
+	}
+
+	.error-container p {
+		color: var(--text-secondary);
+		margin-bottom: 2rem;
 	}
 
 	.progress-container {
@@ -287,9 +403,22 @@
 		color: var(--green);
 	}
 
+	.step-spinner {
+		width: 16px;
+		height: 16px;
+		border: 2px solid var(--border);
+		border-top-color: var(--green-dim);
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+
 	.progress-bar {
 		max-width: 400px;
-		margin: 0 auto;
+		margin: 0 auto 1rem;
 		height: 4px;
 		background: var(--border);
 	}
@@ -298,6 +427,11 @@
 		height: 100%;
 		background: var(--green-dim);
 		transition: width 0.5s ease;
+	}
+
+	.progress-message {
+		font-size: 0.9rem;
+		color: var(--text-secondary);
 	}
 
 	.results-container {
@@ -396,6 +530,7 @@
 
 	.stack-info {
 		font-size: 0.85rem;
+		margin-bottom: 0.5rem;
 	}
 
 	.stack-label {
@@ -406,10 +541,22 @@
 		color: var(--text-primary);
 	}
 
-	.findings-section h2 {
+	.findings-section h2,
+	.no-findings h2 {
 		font-family: 'Instrument Serif', serif;
 		font-size: 1.5rem;
 		margin-bottom: 1.5rem;
+	}
+
+	.no-findings {
+		text-align: center;
+		padding: 3rem;
+		border: 1px solid var(--border);
+		background: var(--bg-secondary);
+	}
+
+	.no-findings p {
+		color: var(--text-secondary);
 	}
 
 	.findings-list {

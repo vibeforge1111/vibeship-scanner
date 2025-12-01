@@ -1,10 +1,33 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createScanRecord, hashUrl, parseRepoUrl } from '$lib/server/scan';
+import { hashUrl, parseRepoUrl } from '$lib/server/scan';
 import { supabase } from '$lib/supabase';
+import { tasks } from "@trigger.dev/sdk/v3";
+import type { scanRepository } from '../../../trigger/scan';
+import { checkRateLimit } from '$lib/server/ratelimit';
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	try {
+		const clientIp = getClientAddress();
+		const rateLimit = await checkRateLimit(clientIp, 'scan');
+
+		if (!rateLimit.success) {
+			return json(
+				{
+					error: 'rate_limited',
+					message: 'Too many scans. Please try again later.',
+					retryAfter: Math.ceil((rateLimit.reset - Date.now()) / 1000)
+				},
+				{
+					status: 429,
+					headers: {
+						'Retry-After': String(Math.ceil((rateLimit.reset - Date.now()) / 1000)),
+						'X-RateLimit-Remaining': String(rateLimit.remaining)
+					}
+				}
+			);
+		}
+
 		const { url } = await request.json();
 
 		if (!url) {
@@ -43,6 +66,16 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
 		if (dbError) {
 			console.error('Database error:', dbError);
+		}
+
+		try {
+			await tasks.trigger<typeof scanRepository>("scan-repository", {
+				scanId,
+				repoUrl: url,
+				branch: 'main'
+			});
+		} catch (triggerError) {
+			console.error('Trigger error:', triggerError);
 		}
 
 		return json({

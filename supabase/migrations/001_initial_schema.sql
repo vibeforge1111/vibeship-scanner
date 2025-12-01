@@ -54,8 +54,9 @@ CREATE TABLE scan_progress (
   scan_id UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
 
   step TEXT NOT NULL,
-  step_number INTEGER NOT NULL,
-  total_steps INTEGER DEFAULT 5,
+  step_number INTEGER DEFAULT 0,
+  total_steps INTEGER DEFAULT 6,
+  percent INTEGER DEFAULT 0,
   message TEXT,
 
   created_at TIMESTAMPTZ DEFAULT now()
@@ -63,8 +64,9 @@ CREATE TABLE scan_progress (
 
 CREATE INDEX idx_progress_scan ON scan_progress(scan_id);
 
--- Enable realtime for scan_progress
+-- Enable realtime for scan_progress and scans
 ALTER PUBLICATION supabase_realtime ADD TABLE scan_progress;
+ALTER PUBLICATION supabase_realtime ADD TABLE scans;
 
 -- Rules table with shadow mode support
 CREATE TABLE rules (
