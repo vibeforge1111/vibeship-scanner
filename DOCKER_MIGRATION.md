@@ -1,8 +1,10 @@
-# Docker Migration Summary
+# Railway Monorepo Configuration Summary
 
 ## What Changed
 
-✅ **Both services now use Dockerfiles** - This makes Railway handle them consistently!
+✅ **Frontend uses Nixpacks** (simpler, better for SvelteKit)
+✅ **Scanner uses Dockerfile** (needed for Python + security tools)
+✅ **Fixed Railway configuration** - Proper root directory setup
 
 ### Before
 - Frontend: Nixpacks (Railway auto-detection)

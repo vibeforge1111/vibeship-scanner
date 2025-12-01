@@ -1,4 +1,4 @@
-# Fly.io configuration for Vibeship Scanner VM
+# Fly.io configuration for Vibeship Scanner
 app = "vibeship-scanner"
 primary_region = "iad"
 
@@ -7,8 +7,20 @@ primary_region = "iad"
 
 [env]
   PYTHONUNBUFFERED = "1"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
 
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
   memory_mb = 512
+
+[processes]
+  app = "gunicorn --bind 0.0.0.0:8080 --workers 2 --threads 4 server:app"
