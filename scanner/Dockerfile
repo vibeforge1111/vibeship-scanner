@@ -14,10 +14,16 @@ RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/
 
 RUN wget -qO- https://github.com/gitleaks/gitleaks/releases/download/v8.18.1/gitleaks_8.18.1_linux_x64.tar.gz | tar xz -C /usr/local/bin
 
+COPY requirements.txt /scanner/requirements.txt
+RUN pip install -r requirements.txt
+
 COPY scan.py /scanner/scan.py
+COPY server.py /scanner/server.py
 COPY rules/ /scanner/rules/
 COPY gitleaks.toml /scanner/gitleaks.toml
 
 ENV PYTHONUNBUFFERED=1
 
-ENTRYPOINT ["python", "/scanner/scan.py"]
+EXPOSE 8080
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "4", "server:app"]

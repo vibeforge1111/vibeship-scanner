@@ -2,29 +2,39 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { hashUrl, parseRepoUrl } from '$lib/server/scan';
 import { supabase } from '$lib/supabase';
-import { tasks } from "@trigger.dev/sdk/v3";
-import type { scanRepository } from '../../../trigger/scan';
-import { checkRateLimit } from '$lib/server/ratelimit';
+import { SCANNER_API_URL } from '$env/static/private';
+
+async function checkRateLimit(identifier: string): Promise<{ allowed: boolean; remaining: number }> {
+	const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+	const { count } = await supabase
+		.from('scans')
+		.select('*', { count: 'exact', head: true })
+		.eq('session_id', identifier)
+		.gte('created_at', hourAgo);
+
+	const used = count || 0;
+	const limit = 5;
+
+	return {
+		allowed: used < limit,
+		remaining: Math.max(0, limit - used)
+	};
+}
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	try {
 		const clientIp = getClientAddress();
-		const rateLimit = await checkRateLimit(clientIp, 'scan');
+		const rateLimit = await checkRateLimit(clientIp);
 
-		if (!rateLimit.success) {
+		if (!rateLimit.allowed) {
 			return json(
 				{
 					error: 'rate_limited',
 					message: 'Too many scans. Please try again later.',
-					retryAfter: Math.ceil((rateLimit.reset - Date.now()) / 1000)
+					remaining: rateLimit.remaining
 				},
-				{
-					status: 429,
-					headers: {
-						'Retry-After': String(Math.ceil((rateLimit.reset - Date.now()) / 1000)),
-						'X-RateLimit-Remaining': String(rateLimit.remaining)
-					}
-				}
+				{ status: 429 }
 			);
 		}
 
@@ -57,7 +67,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			target_branch: 'main',
 			is_private: false,
 			status: 'queued' as const,
-			is_public: true
+			is_public: true,
+			session_id: clientIp
 		};
 
 		const { error: dbError } = await supabase
@@ -66,16 +77,19 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
 		if (dbError) {
 			console.error('Database error:', dbError);
+			return json({ error: 'database_error', message: 'Failed to create scan' }, { status: 500 });
 		}
 
-		try {
-			await tasks.trigger<typeof scanRepository>("scan-repository", {
-				scanId,
-				repoUrl: url,
-				branch: 'main'
-			});
-		} catch (triggerError) {
-			console.error('Trigger error:', triggerError);
+		if (SCANNER_API_URL) {
+			fetch(`${SCANNER_API_URL}/scan`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					scanId,
+					repoUrl: url,
+					branch: 'main'
+				})
+			}).catch(err => console.error('Scanner trigger error:', err));
 		}
 
 		return json({

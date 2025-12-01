@@ -21,10 +21,6 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "@trigger.dev/build": "^3.3.17",
-    "@trigger.dev/sdk": "^3.3.17",
-    "@upstash/ratelimit": "^2.0.7",
-    "@upstash/redis": "^1.35.7"
+    "@supabase/supabase-js": "^2.39.0"
   }
 }
