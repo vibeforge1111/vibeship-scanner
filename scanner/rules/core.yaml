@@ -1277,17 +1277,120 @@ rules:
   # Additional Java Security Rules
   # ============================================
 
-  - id: java-hardcoded-password
-    pattern: '"password"'
-    message: Potential hardcoded password in Java code
+  # Removed overly broad "password" pattern - was causing false positives
+  # Now using more specific patterns that detect actual hardcoded credentials
+
+  - id: java-hardcoded-password-assignment
+    patterns:
+      - pattern: String $VAR = "..."
+        metavariable-regex:
+          metavariable: $VAR
+          regex: (?i).*(password|passwd|pwd|secret|apikey|api_key|token|credential).*
+    message: Hardcoded password/secret in variable assignment
+    languages: [java]
+    severity: ERROR
+
+  - id: java-password-in-connection
+    pattern: DriverManager.getConnection($URL, $USER, "...")
+    message: Hardcoded password in database connection
+    languages: [java]
+    severity: ERROR
+
+  - id: java-password-in-properties
+    pattern: $PROPS.setProperty("password", "...")
+    message: Hardcoded password in Properties
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # JNDI Injection Rules (Log4Shell style)
+  # ============================================
+
+  - id: java-jndi-injection
+    pattern: $CTX.lookup($INPUT)
+    message: JNDI lookup - potential JNDI injection (Log4Shell style attack)
+    languages: [java]
+    severity: ERROR
+
+  - id: java-jndi-initial-context
+    pattern: new InitialContext()
+    message: JNDI InitialContext - ensure lookup inputs are validated
     languages: [java]
     severity: WARNING
 
-  - id: java-hardcoded-secret
-    pattern: 'String $VAR = "..."'
-    message: Hardcoded string - check if this contains secrets
+  - id: java-jndi-ldap-url
+    pattern: '"ldap://..."'
+    message: LDAP URL in code - potential JNDI injection vector
+    languages: [java]
+    severity: ERROR
+
+  - id: java-jndi-rmi-url
+    pattern: '"rmi://..."'
+    message: RMI URL in code - potential JNDI injection vector
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # Spring Security Misconfiguration Rules
+  # ============================================
+
+  - id: spring-permit-all
+    pattern: .permitAll()
+    message: Spring Security permitAll() - ensure this endpoint should be public
     languages: [java]
     severity: INFO
+
+  - id: spring-disable-csrf
+    pattern: .csrf().disable()
+    message: Spring Security CSRF protection disabled
+    languages: [java]
+    severity: ERROR
+
+  - id: spring-disable-csrf-lambda
+    pattern: csrf(csrf -> csrf.disable())
+    message: Spring Security CSRF protection disabled
+    languages: [java]
+    severity: ERROR
+
+  - id: spring-anonymous-access
+    pattern: .anonymous()
+    message: Spring Security anonymous access configured - verify this is intentional
+    languages: [java]
+    severity: WARNING
+
+  - id: spring-headers-disabled
+    pattern: .headers().disable()
+    message: Spring Security headers disabled - removes XSS and clickjacking protection
+    languages: [java]
+    severity: ERROR
+
+  - id: spring-frame-options-disabled
+    pattern: .frameOptions().disable()
+    message: Spring Security frame options disabled - clickjacking vulnerability
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Enhanced XXE Detection
+  # ============================================
+
+  - id: java-xxe-feature-disabled
+    pattern: $FACTORY.setFeature("http://apache.org/xml/features/disallow-doctype-decl", false)
+    message: XXE protection explicitly disabled
+    languages: [java]
+    severity: ERROR
+
+  - id: java-xxe-external-entities-enabled
+    pattern: $FACTORY.setFeature("http://xml.org/sax/features/external-general-entities", true)
+    message: External entities enabled - XXE vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-xxe-schemavalidation
+    pattern: $FACTORY.setValidating(false)
+    message: XML validation disabled - may allow XXE attacks
+    languages: [java]
+    severity: WARNING
 
   - id: java-insecure-random
     pattern: new Random()
