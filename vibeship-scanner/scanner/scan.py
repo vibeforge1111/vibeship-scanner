@@ -152,11 +152,24 @@ def run_semgrep(repo_dir: str) -> List[Dict[str, Any]]:
                 results = data.get('results', [])
                 print(f"Semgrep raw results: {len(results)}", file=sys.stderr)
 
+                # Debug: print first result structure
+                if results:
+                    print(f"First result keys: {list(results[0].keys())}", file=sys.stderr)
+                    print(f"First result extra keys: {list(results[0].get('extra', {}).keys())}", file=sys.stderr)
+                    first_lines = results[0].get('extra', {}).get('lines', 'NO_LINES_KEY')
+                    print(f"First result lines value: {first_lines[:100] if isinstance(first_lines, str) else first_lines}", file=sys.stderr)
+
                 for item in results:
                     severity = SEVERITY_MAP.get(
                         item.get('extra', {}).get('severity', 'INFO').upper(),
                         'info'
                     )
+                    # Get the matched code - try multiple possible keys
+                    matched_code = item.get('extra', {}).get('lines', '')
+                    if not matched_code:
+                        # Fallback: try to get from 'matched' or construct from start/end
+                        matched_code = item.get('extra', {}).get('matched', '')
+
                     findings.append({
                         'id': hashlib.md5(json.dumps(item, sort_keys=True).encode()).hexdigest()[:12],
                         'ruleId': item.get('check_id', 'unknown'),
@@ -170,7 +183,7 @@ def run_semgrep(repo_dir: str) -> List[Dict[str, Any]]:
                             'column': item.get('start', {}).get('col', 0)
                         },
                         'snippet': {
-                            'code': item.get('extra', {}).get('lines', ''),
+                            'code': matched_code,
                             'highlightLines': [item.get('start', {}).get('line', 0)]
                         },
                         'fix': {
