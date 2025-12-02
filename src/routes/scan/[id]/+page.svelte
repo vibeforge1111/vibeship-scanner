@@ -4,6 +4,7 @@
 	import { supabase } from '$lib/supabase';
 	import { explanationMode, type ExplanationMode } from '$lib/stores/preferences';
 	import { getFixTemplate, type FixTemplate } from '$lib/fixTemplates';
+	import { getCWEFromRuleId, getCVSSColor, getCVSSLabel, type CWEInfo } from '$lib/cweDatabase';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 
 	let scanId = $derived($page.params.id);
@@ -531,6 +532,7 @@
 						{#each results.findings as finding, i}
 							{@const findingId = finding.id || `finding-${i}`}
 							{@const isExpanded = expandedFindings.has(findingId)}
+							{@const cweInfo = getCWEFromRuleId(finding.ruleId || finding.title || '')}
 							<div class="finding-card" class:expanded={isExpanded}>
 								<button class="finding-toggle" onclick={() => toggleFinding(findingId)}>
 									<div class="finding-header">
@@ -538,6 +540,9 @@
 											{finding.severity.toUpperCase()}
 										</span>
 										<span class="finding-category">{finding.category}</span>
+										{#if cweInfo}
+											<span class="finding-cwe">{cweInfo.id}</span>
+										{/if}
 										<span class="finding-chevron" class:rotated={isExpanded}>▼</span>
 									</div>
 									<h3 class="finding-title">{finding.title}</h3>
@@ -545,24 +550,54 @@
 
 								{#if isExpanded}
 									<div class="finding-details">
-										<div class="explanation-box" class:founder={mode === 'founder'} class:developer={mode === 'developer'}>
-											<div class="explanation-header">
-												{#if mode === 'founder'}
-													<span class="explanation-icon">💡</span>
-													<span class="explanation-label">Why this matters</span>
-												{:else}
-													<span class="explanation-icon">🔧</span>
-													<span class="explanation-label">Technical details</span>
-												{/if}
+										{#if cweInfo}
+											<div class="cwe-info-box">
+												<div class="cwe-header">
+													<div class="cwe-title">
+														<a href={cweInfo.references[0]} target="_blank" rel="noopener noreferrer" class="cwe-link">
+															{cweInfo.id}
+														</a>
+														<span class="cwe-name">{cweInfo.name}</span>
+													</div>
+													{#if cweInfo.cvssBase}
+														<div class="cvss-badge" style="background: {getCVSSColor(cweInfo.cvssBase)}">
+															<span class="cvss-score">{cweInfo.cvssBase}</span>
+															<span class="cvss-label">{getCVSSLabel(cweInfo.cvssBase)}</span>
+														</div>
+													{/if}
+												</div>
+												<div class="cwe-details">
+													<div class="cwe-detail">
+														<span class="cwe-detail-label">Category</span>
+														<span class="cwe-detail-value">{cweInfo.category}</span>
+													</div>
+													<div class="cwe-detail">
+														<span class="cwe-detail-label">Exploitability</span>
+														<span class="cwe-detail-value exploit-{cweInfo.exploitability}">{cweInfo.exploitability}</span>
+													</div>
+												</div>
+												<p class="cwe-impact"><strong>Impact:</strong> {cweInfo.impact}</p>
 											</div>
-											<p class="explanation-text">
-												{#if mode === 'founder'}
-													{getFounderExplanation(finding)}
-												{:else}
-													{getDeveloperExplanation(finding)}
-												{/if}
-											</p>
-										</div>
+										{/if}
+
+											<div class="explanation-box" class:founder={mode === 'founder'} class:developer={mode === 'developer'}>
+												<div class="explanation-header">
+													{#if mode === 'founder'}
+														<span class="explanation-icon">💡</span>
+														<span class="explanation-label">Why this matters</span>
+													{:else}
+														<span class="explanation-icon">🔧</span>
+														<span class="explanation-label">Technical details</span>
+													{/if}
+												</div>
+												<p class="explanation-text">
+													{#if mode === 'founder'}
+														{getFounderExplanation(finding)}
+													{:else}
+														{getDeveloperExplanation(finding)}
+													{/if}
+												</p>
+											</div>
 
 										{#if finding.location?.file}
 											<div class="finding-location">
@@ -1194,6 +1229,125 @@
 
 	.btn-copy:hover {
 		border-color: var(--text-primary);
+	}
+
+	.finding-cwe {
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.7rem;
+		padding: 0.2rem 0.5rem;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		color: var(--text-secondary);
+	}
+
+	.cwe-info-box {
+		margin: 1rem 0;
+		padding: 1rem;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-left: 3px solid var(--blue);
+	}
+
+	.cwe-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: 1rem;
+		margin-bottom: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.cwe-title {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.cwe-link {
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: var(--blue);
+		text-decoration: none;
+	}
+
+	.cwe-link:hover {
+		text-decoration: underline;
+	}
+
+	.cwe-name {
+		font-weight: 600;
+		color: var(--text-primary);
+	}
+
+	.cvss-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.3rem 0.6rem;
+		border-radius: 2px;
+		color: white;
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+
+	.cvss-score {
+		font-family: 'JetBrains Mono', monospace;
+	}
+
+	.cvss-label {
+		text-transform: uppercase;
+		font-size: 0.65rem;
+		letter-spacing: 0.05em;
+	}
+
+	.cwe-details {
+		display: flex;
+		gap: 2rem;
+		margin-bottom: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.cwe-detail {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.cwe-detail-label {
+		font-size: 0.65rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--text-tertiary);
+	}
+
+	.cwe-detail-value {
+		font-size: 0.85rem;
+		color: var(--text-primary);
+	}
+
+	.cwe-detail-value.exploit-easy {
+		color: var(--red);
+	}
+
+	.cwe-detail-value.exploit-moderate {
+		color: var(--orange);
+	}
+
+	.cwe-detail-value.exploit-difficult {
+		color: var(--green);
+	}
+
+	.cwe-impact {
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+		margin: 0;
+		line-height: 1.5;
+	}
+
+	.cwe-impact strong {
+		color: var(--text-primary);
 	}
 
 	.fix-template {
