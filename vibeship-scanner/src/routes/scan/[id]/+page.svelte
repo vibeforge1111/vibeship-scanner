@@ -71,6 +71,22 @@
 		return `<a href="${getScanUrl()}"><img src="https://img.shields.io/badge/vibeship-${grade}-${getGradeColor(grade)}" alt="Vibeship Security Score"></a>`;
 	}
 
+	function isUnhelpfulSnippet(code: string): boolean {
+		const trimmed = code.trim().toLowerCase();
+		const unhelpfulPatterns = [
+			'requires login',
+			'login required',
+			'authentication required',
+			'please login',
+			'please sign in',
+			'sign in required',
+			'access denied',
+			'unauthorized',
+			'forbidden'
+		];
+		return unhelpfulPatterns.some(pattern => trimmed === pattern || trimmed === pattern + '.');
+	}
+
 	function generateReportText(): string {
 		if (!results) return '';
 
@@ -877,7 +893,7 @@
 											</div>
 										{/if}
 
-										{#if finding.snippet?.code && finding.snippet.code.trim() && finding.snippet.code.length > 0}
+										{#if finding.snippet?.code && finding.snippet.code.trim() && finding.snippet.code.length > 10 && !isUnhelpfulSnippet(finding.snippet.code)}
 											<div class="code-snippet">
 												<div class="snippet-header">
 													<span>Vulnerable Code</span>
