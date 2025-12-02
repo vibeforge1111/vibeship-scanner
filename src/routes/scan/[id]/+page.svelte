@@ -1,4 +1,5 @@
 <script lang="ts">
+	// Force rebuild: v2.1 - Fixed snippet display and unified explanations
 	import { page } from '$app/stores';
 	import { onMount, onDestroy } from 'svelte';
 	import { supabase } from '$lib/supabase';
