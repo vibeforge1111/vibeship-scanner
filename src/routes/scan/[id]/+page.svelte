@@ -30,6 +30,9 @@
 	let copied = $state<string | null>(null);
 	let showBadgeEmbed = $state(false);
 	let generatingPdf = $state(false);
+	let scanStartTime = $state<Date | null>(null);
+	let timeoutCheckInterval: ReturnType<typeof setInterval> | null = null;
+	const SCAN_TIMEOUT_MS = 15 * 60 * 1000;
 
 	explanationMode.subscribe(value => {
 		mode = value;
@@ -271,9 +274,43 @@
 		}
 	}
 
+	async function cancelScan() {
+		try {
+			await supabase
+				.from('scans')
+				.update({ status: 'failed', error_message: 'Scan cancelled by user' })
+				.eq('id', scanId);
+			status = 'failed';
+			error = 'Scan cancelled';
+		} catch (e) {
+			console.error('Failed to cancel scan:', e);
+		}
+	}
+
+	function checkScanTimeout() {
+		if (scanStartTime && (status === 'queued' || status === 'scanning')) {
+			const elapsed = Date.now() - scanStartTime.getTime();
+			if (elapsed > SCAN_TIMEOUT_MS) {
+				supabase
+					.from('scans')
+					.update({ status: 'failed', error_message: 'Scan timed out after 15 minutes' })
+					.eq('id', scanId)
+					.then(() => {
+						status = 'failed';
+						error = 'Scan timed out after 15 minutes';
+					});
+			}
+		}
+	}
+
 	onMount(async () => {
 		await fetchScan();
 		await fetchProgress();
+
+		if (status === 'queued' || status === 'scanning') {
+			scanStartTime = new Date();
+			timeoutCheckInterval = setInterval(checkScanTimeout, 30000);
+		}
 
 		channel = supabase
 			.channel(`scan-${scanId}`)
@@ -330,6 +367,9 @@
 	onDestroy(() => {
 		if (channel) {
 			supabase.removeChannel(channel);
+		}
+		if (timeoutCheckInterval) {
+			clearInterval(timeoutCheckInterval);
 		}
 	});
 
@@ -518,6 +558,10 @@
 			</div>
 
 			<p class="progress-message">{progress.message}</p>
+
+			<button class="btn btn-cancel" onclick={cancelScan}>
+				Cancel Scan
+			</button>
 		</div>
 
 	{:else if status === 'complete' && results}
@@ -974,6 +1018,22 @@
 	.progress-message {
 		font-size: 0.9rem;
 		color: var(--text-secondary);
+	}
+
+	.btn-cancel {
+		margin-top: 2rem;
+		background: transparent;
+		border: 1px solid var(--red);
+		color: var(--red);
+		padding: 0.5rem 1.5rem;
+		font-size: 0.8rem;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.btn-cancel:hover {
+		background: var(--red);
+		color: white;
 	}
 
 	.results-container {
