@@ -2129,3 +2129,334 @@ rules:
     message: Dynamic regex - potential ReDoS
     languages: [javascript, typescript]
     severity: WARNING
+
+  # =====================================================
+  # JWT Security Vulnerabilities
+  # =====================================================
+
+  - id: jwt-verify-no-algorithm
+    pattern: 'jwt.verify($TOKEN, $SECRET)'
+    message: JWT verification without algorithm specification - vulnerable to algorithm confusion attacks (CWE-327)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: jwt-decode-without-verify
+    pattern: 'jwt.decode($TOKEN)'
+    message: JWT decoded without verification - tokens must be verified before trusting claims (CWE-345)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: jwt-algorithm-none
+    pattern: 'algorithm: "none"'
+    message: JWT using "none" algorithm - completely insecure, allows token forgery (CWE-327)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: jwt-weak-secret-hardcoded
+    pattern: 'jwt.sign($PAYLOAD, "...")'
+    message: JWT signed with hardcoded secret - use environment variables (CWE-798)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: jwt-hs256-public-key
+    patterns:
+      - pattern: |
+          jwt.verify($TOKEN, $KEY, { algorithms: ["HS256"] })
+    message: JWT using HS256 with potentially public key - vulnerable to key confusion attack (CWE-327)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: jwt-insecure-expiry
+    pattern: 'expiresIn: "..d"'
+    message: JWT with long expiration - consider shorter token lifetime for security
+    languages: [javascript, typescript]
+    severity: INFO
+
+  - id: jsonwebtoken-sign-no-options
+    pattern: 'jsonwebtoken.sign($PAYLOAD, $SECRET)'
+    message: JWT sign without options - specify algorithm and expiration explicitly
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # =====================================================
+  # Prototype Pollution
+  # =====================================================
+
+  - id: prototype-pollution-merge
+    pattern: 'merge($TARGET, $SOURCE)'
+    message: Deep merge without prototype pollution protection - validate __proto__ and constructor (CWE-1321)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: prototype-pollution-extend
+    pattern: 'extend($TARGET, $SOURCE)'
+    message: Object extend without prototype pollution protection (CWE-1321)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: prototype-pollution-assign
+    pattern: 'Object.assign($TARGET, JSON.parse($INPUT))'
+    message: Object.assign with parsed user input - potential prototype pollution (CWE-1321)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: prototype-pollution-bracket-notation
+    pattern: '$OBJ[$KEY] = $VALUE'
+    message: Dynamic property assignment - ensure key is not __proto__ or constructor (CWE-1321)
+    languages: [javascript, typescript]
+    severity: INFO
+
+  - id: prototype-pollution-lodash-set
+    pattern: '_.set($OBJ, $PATH, $VALUE)'
+    message: Lodash set with dynamic path - validate path does not contain __proto__ (CWE-1321)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: prototype-pollution-lodash-merge
+    pattern: '_.merge($TARGET, $SOURCE)'
+    message: Lodash merge can cause prototype pollution with untrusted data (CWE-1321)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: prototype-pollution-defaultsdeep
+    pattern: '_.defaultsDeep($TARGET, $SOURCE)'
+    message: Lodash defaultsDeep vulnerable to prototype pollution (CWE-1321)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: prototype-check-proto
+    pattern: '$OBJ.__proto__'
+    message: Direct __proto__ access detected - potential prototype pollution vector (CWE-1321)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: prototype-check-constructor
+    pattern: '$OBJ.constructor.prototype'
+    message: Constructor prototype access - potential prototype pollution (CWE-1321)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # =====================================================
+  # Path Traversal / Directory Traversal
+  # =====================================================
+
+  - id: path-traversal-join-req
+    pattern: 'path.join(..., req.$X.$Y, ...)'
+    message: Path.join with user input - vulnerable to path traversal attacks (CWE-22)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: path-traversal-resolve-req
+    pattern: 'path.resolve(..., req.$X.$Y, ...)'
+    message: Path.resolve with user input - validate and sanitize paths (CWE-22)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: path-traversal-concat
+    pattern: '$BASE + req.$X.$Y'
+    message: String concatenation for file paths with user input - use path.join and validate (CWE-22)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: path-traversal-template
+    pattern: '`${...}${req.$X.$Y}${...}`'
+    message: Template literal with user input in path - vulnerable to traversal (CWE-22)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: path-traversal-sendfile
+    pattern: 'res.sendFile(req.$X.$Y)'
+    message: sendFile with user input - validate path does not contain .. sequences (CWE-22)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: path-traversal-download
+    pattern: 'res.download(req.$X.$Y)'
+    message: res.download with user input - vulnerable to arbitrary file download (CWE-22)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: path-traversal-static
+    pattern: 'express.static(req.$X.$Y)'
+    message: Static file serving with user-controlled path (CWE-22)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: path-traversal-createReadStream
+    pattern: 'fs.createReadStream(req.$X.$Y)'
+    message: createReadStream with user input - validate path before reading (CWE-22)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: path-traversal-createWriteStream
+    pattern: 'fs.createWriteStream(req.$X.$Y)'
+    message: createWriteStream with user input - arbitrary file write vulnerability (CWE-22)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: path-normalize-bypass
+    pattern: 'path.normalize($USER_INPUT)'
+    message: path.normalize alone does not prevent traversal - use realpath and validate (CWE-22)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # =====================================================
+  # Server-Side Request Forgery (SSRF)
+  # =====================================================
+
+  - id: ssrf-fetch-user-url
+    pattern: 'fetch(req.$X.$Y)'
+    message: Fetch with user-controlled URL - SSRF vulnerability (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: ssrf-axios-user-url
+    pattern: 'axios.get(req.$X.$Y)'
+    message: Axios GET with user-controlled URL - SSRF vulnerability (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: ssrf-axios-post-user-url
+    pattern: 'axios.post(req.$X.$Y, ...)'
+    message: Axios POST with user-controlled URL - SSRF vulnerability (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: ssrf-axios-request-user-url
+    pattern: 'axios({ url: req.$X.$Y, ... })'
+    message: Axios request with user-controlled URL - SSRF vulnerability (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: ssrf-request-user-url
+    pattern: 'request(req.$X.$Y)'
+    message: Request module with user-controlled URL - SSRF vulnerability (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: ssrf-got-user-url
+    pattern: 'got(req.$X.$Y)'
+    message: Got with user-controlled URL - SSRF vulnerability (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: ssrf-http-get-user-url
+    pattern: 'http.get(req.$X.$Y)'
+    message: HTTP GET with user-controlled URL - SSRF vulnerability (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: ssrf-https-get-user-url
+    pattern: 'https.get(req.$X.$Y)'
+    message: HTTPS GET with user-controlled URL - SSRF vulnerability (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: ssrf-url-variable
+    pattern: |
+      $URL = req.$X.$Y
+      ...
+      fetch($URL)
+    message: URL from user input passed to fetch - SSRF vulnerability (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: ssrf-image-proxy
+    pattern: 'fetch($URL).then(...pipe(res)...)'
+    message: Potential image/file proxy - ensure URL is validated against SSRF (CWE-918)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # =====================================================
+  # Broken Access Control / IDOR
+  # =====================================================
+
+  - id: idor-direct-object-ref
+    pattern: 'findById(req.params.id)'
+    message: Direct object reference from URL params - verify user owns resource (CWE-639)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: idor-findone-params
+    pattern: 'findOne({ _id: req.params.$X })'
+    message: Database lookup with URL param - implement authorization check (CWE-639)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: idor-update-params
+    pattern: 'updateOne({ _id: req.params.$X }, ...)'
+    message: Database update with URL param - verify user has permission (CWE-639)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: idor-delete-params
+    pattern: 'deleteOne({ _id: req.params.$X })'
+    message: Database delete with URL param - implement ownership verification (CWE-639)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: idor-findbyid-body
+    pattern: 'findById(req.body.$X)'
+    message: Object lookup from request body - verify authorization (CWE-639)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: idor-where-userid
+    pattern: 'where({ userId: req.params.$X })'
+    message: User-controlled userId in query - users can access other users data (CWE-639)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: idor-prisma-findunique
+    pattern: 'prisma.$MODEL.findUnique({ where: { id: req.params.$X } })'
+    message: Prisma lookup with URL param - add authorization check (CWE-639)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: idor-sequelize-findone
+    pattern: 'Model.findOne({ where: { id: req.params.$X } })'
+    message: Sequelize lookup with URL param - verify user authorization (CWE-639)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: broken-access-role-header
+    pattern: 'req.headers.$ROLE'
+    message: Role/permission from request headers - headers can be spoofed by users (CWE-639)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: broken-access-admin-cookie
+    pattern: 'req.cookies.isAdmin'
+    message: Admin check from cookie - cookies can be manipulated by users (CWE-639)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: broken-access-client-role
+    pattern: 'req.body.role'
+    message: Role from request body - users can escalate their own privileges (CWE-639)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: broken-access-user-provided-id
+    pattern: 'req.body.userId'
+    message: UserId from request body - users can impersonate other users (CWE-639)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: mass-assignment-vulnerability
+    pattern: 'Model.create(req.body)'
+    message: Mass assignment - create/update directly from request body allows field injection (CWE-915)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: mass-assignment-update
+    pattern: 'Model.update(req.body)'
+    message: Mass assignment in update - whitelist allowed fields (CWE-915)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: mass-assignment-spread
+    pattern: 'new Model({ ...req.body })'
+    message: Spreading request body to model - potential mass assignment (CWE-915)
+    languages: [javascript, typescript]
+    severity: WARNING
