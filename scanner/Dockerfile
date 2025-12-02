@@ -12,6 +12,9 @@ RUN pip install semgrep
 
 RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.48.0
 
+# Pre-download Trivy vulnerability database during build
+RUN trivy image --download-db-only
+
 RUN wget -qO- https://github.com/gitleaks/gitleaks/releases/download/v8.18.1/gitleaks_8.18.1_linux_x64.tar.gz | tar xz -C /usr/local/bin
 
 COPY requirements.txt /scanner/requirements.txt

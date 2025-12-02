@@ -268,10 +268,10 @@ def run_trivy(repo_dir: str) -> List[Dict[str, Any]]:
 
     try:
         result = subprocess.run(
-            ['trivy', 'fs', '--format', 'json', '--scanners', 'vuln', repo_dir],
+            ['trivy', 'fs', '--format', 'json', '--scanners', 'vuln', '--skip-db-update', '--offline-scan', repo_dir],
             capture_output=True,
             text=True,
-            timeout=120
+            timeout=60
         )
 
         if result.stdout:
