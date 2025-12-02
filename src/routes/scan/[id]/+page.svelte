@@ -612,6 +612,22 @@
 			{/if}
 
 			<div class="results-header">
+				<div class="top-actions" class:revealed={revealStage >= 1}>
+					<button class="action-btn" onclick={() => copyToClipboard(getScanUrl(), 'link')}>
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+							<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+						</svg>
+						{copied === 'link' ? 'Copied!' : 'Copy Link'}
+					</button>
+					<button class="action-btn" onclick={shareTwitter}>
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+						</svg>
+						Share on X
+					</button>
+				</div>
+
 				<div class="score-section" class:revealed={showResults}>
 					<div class="score-circle {getGradeClass(results.grade)}">
 						<span class="score-number">{displayScore}</span>
@@ -683,60 +699,6 @@
 						</button>
 					</div>
 				</div>
-			</div>
-
-			<div class="share-section" class:revealed={revealStage >= 3}>
-				<div class="share-actions">
-					<button class="share-btn" onclick={() => copyToClipboard(getScanUrl(), 'link')}>
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-							<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-						</svg>
-						{copied === 'link' ? 'Copied!' : 'Copy Link'}
-					</button>
-					<button class="share-btn" onclick={shareTwitter}>
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-							<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-						</svg>
-						Share on X
-					</button>
-					<button class="share-btn" onclick={() => showBadgeEmbed = !showBadgeEmbed}>
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-							<line x1="9" y1="9" x2="15" y2="9"/>
-							<line x1="9" y1="15" x2="15" y2="15"/>
-						</svg>
-						Get Badge
-					</button>
-				</div>
-
-				{#if showBadgeEmbed}
-					<div class="badge-embed">
-						<div class="badge-preview">
-							<img src="https://img.shields.io/badge/vibeship-{results.grade}-{getGradeColor(results.grade)}" alt="Vibeship Badge">
-						</div>
-						<div class="badge-codes">
-							<div class="badge-code-block">
-								<div class="badge-code-header">
-									<span>Markdown</span>
-									<button class="btn-copy-sm" onclick={() => copyToClipboard(getBadgeMarkdown(), 'md')}>
-										{copied === 'md' ? 'Copied!' : 'Copy'}
-									</button>
-								</div>
-								<code>{getBadgeMarkdown()}</code>
-							</div>
-							<div class="badge-code-block">
-								<div class="badge-code-header">
-									<span>HTML</span>
-									<button class="btn-copy-sm" onclick={() => copyToClipboard(getBadgeHtml(), 'html')}>
-										{copied === 'html' ? 'Copied!' : 'Copy'}
-									</button>
-								</div>
-								<code>{getBadgeHtml()}</code>
-							</div>
-						</div>
-					</div>
-				{/if}
 			</div>
 
 			{#if results.findings?.length > 0}
@@ -1080,12 +1042,64 @@
 	}
 
 	.results-header {
+		position: relative;
 		display: grid;
 		grid-template-columns: auto 1fr;
 		gap: 4rem;
 		margin-bottom: 4rem;
 		padding-bottom: 2rem;
 		border-bottom: 1px solid var(--border);
+	}
+
+	.top-actions {
+		position: absolute;
+		top: 0;
+		right: 0;
+		display: flex;
+		gap: 0.5rem;
+		opacity: 0;
+		transform: translateY(-10px);
+		transition: opacity 0.3s ease, transform 0.3s ease;
+	}
+
+	.top-actions.revealed {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	.action-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
+		background: transparent;
+		border: 1px solid var(--border);
+		border-radius: 0;
+		color: var(--text-primary);
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.action-btn:hover {
+		background: var(--bg-secondary);
+		border-color: var(--text-primary);
+	}
+
+	.action-btn svg {
+		flex-shrink: 0;
+	}
+
+	.top-badge-embed {
+		position: absolute;
+		top: 50px;
+		right: 0;
+		z-index: 10;
+		width: 400px;
+		max-width: calc(100vw - 2rem);
 	}
 
 	.score-section {
@@ -2107,6 +2121,29 @@
 		.results-header {
 			grid-template-columns: 1fr;
 			gap: 2rem;
+			padding-top: 3rem;
+		}
+
+		.top-actions {
+			position: relative;
+			top: auto;
+			right: auto;
+			justify-content: center;
+			flex-wrap: wrap;
+			margin-bottom: 1rem;
+		}
+
+		.action-btn {
+			font-size: 0.8rem;
+			padding: 0.4rem 0.75rem;
+		}
+
+		.top-badge-embed {
+			position: relative;
+			top: auto;
+			right: auto;
+			width: 100%;
+			margin-bottom: 1rem;
 		}
 
 		.score-section {
