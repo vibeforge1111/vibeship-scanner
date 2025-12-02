@@ -1,26 +1,22 @@
-# Fly.io configuration for Vibeship Scanner
-app = "vibeship-scanner"
-primary_region = "iad"
+# fly.toml app configuration file generated for scanner-empty-field-5676 on 2025-12-02T03:46:31+04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'scanner-empty-field-5676'
+primary_region = 'syd'
 
 [build]
-  dockerfile = "Dockerfile"
-
-[env]
-  PYTHONUNBUFFERED = "1"
-  PORT = "8080"
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ["app"]
+  processes = ['app']
 
 [[vm]]
-  cpu_kind = "shared"
+  memory = '1gb'
+  cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 512
-
-[processes]
-  app = "gunicorn --bind 0.0.0.0:8080 --workers 2 --threads 4 server:app"
