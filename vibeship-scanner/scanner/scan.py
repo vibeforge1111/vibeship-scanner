@@ -349,13 +349,58 @@ def run_gitleaks(repo_dir: str) -> List[Dict[str, Any]]:
     return findings
 
 
+def get_issue_category(title: str) -> str:
+    """
+    Categorize findings into broad issue types for deduplication.
+    Multiple rules detecting the same category at the same line = duplicate.
+    """
+    title_lower = title.lower()
+
+    # Hardcoded credentials (API key, password, secret, token, etc.)
+    if any(word in title_lower for word in ['hardcoded', 'hard-coded', 'hard coded']):
+        return 'hardcoded_credential'
+    if any(word in title_lower for word in ['api key', 'apikey', 'secret key', 'private key']):
+        return 'hardcoded_credential'
+
+    # SQL injection variants
+    if 'sql' in title_lower and any(word in title_lower for word in ['injection', 'query', 'concatenat', 'parameterized']):
+        return 'sql_injection'
+
+    # XSS variants
+    if any(word in title_lower for word in ['xss', 'cross-site', 'cross site', 'script injection']):
+        return 'xss'
+
+    # Password handling
+    if 'password' in title_lower and any(word in title_lower for word in ['verify', 'hash', 'plain', 'md5', 'sha1', 'comparison']):
+        return 'password_handling'
+
+    # Command injection
+    if any(word in title_lower for word in ['command injection', 'shell', 'exec', 'system(']):
+        return 'command_injection'
+
+    # File inclusion
+    if any(word in title_lower for word in ['file inclusion', 'path traversal', 'directory traversal', 'lfi', 'rfi']):
+        return 'file_inclusion'
+
+    # SSRF
+    if 'ssrf' in title_lower or 'server-side request' in title_lower:
+        return 'ssrf'
+
+    return None  # No category - don't dedupe with others
+
+
 def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Remove duplicate findings that report the same issue at the same location.
     Keeps the finding with the highest severity when duplicates are found.
+
+    Deduplication rules:
+    1. Exact same title at same file:line -> keep highest severity
+    2. Same issue category at same file:line -> keep highest severity
+       (e.g., "Hardcoded API key" and "Hardcoded password" at same line = 1 finding)
     """
-    # Group findings by file + line + normalized title
     seen = {}
+    seen_by_category = {}  # {file:line:category -> key}
 
     severity_rank = {'critical': 4, 'high': 3, 'medium': 2, 'low': 1, 'info': 0}
 
@@ -363,56 +408,46 @@ def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         file_path = finding.get('location', {}).get('file', '')
         line = finding.get('location', {}).get('line', 0)
         title = finding.get('title', '')
+        severity = finding.get('severity', 'info')
 
-        # Normalize title for comparison (lowercase, remove extra spaces)
         normalized_title = ' '.join(title.lower().split())
-
-        # Create a unique key based on file, line, and normalized title
         key = f"{file_path}:{line}:{normalized_title}"
+        location_key = f"{file_path}:{line}"
 
-        # Also create a broader key for same file+line with similar issue types
-        # This catches cases like "Hardcoded API key" vs "Hardcoded password" at same line
-        title_words = set(normalized_title.split())
-        issue_type_key = f"{file_path}:{line}"
+        # Get the issue category for this finding
+        category = get_issue_category(title)
+        category_key = f"{location_key}:{category}" if category else None
 
-        # Check if we already have a finding at this exact location with same title
+        new_severity = severity_rank.get(severity, 0)
+
+        # Check 1: Exact duplicate (same title at same location)
         if key in seen:
-            existing = seen[key]
-            existing_severity = severity_rank.get(existing.get('severity', 'info'), 0)
-            new_severity = severity_rank.get(finding.get('severity', 'info'), 0)
-            # Keep the one with higher severity
+            existing_severity = severity_rank.get(seen[key].get('severity', 'info'), 0)
             if new_severity > existing_severity:
                 seen[key] = finding
-        else:
-            # Check for similar findings at same location (same file+line)
-            # Look for findings that are essentially the same issue reported by different rules
-            found_similar = False
-            for existing_key, existing in list(seen.items()):
-                if existing_key.startswith(issue_type_key + ":"):
-                    existing_title = existing.get('title', '').lower()
-                    # Check if titles are very similar (share many words or same category)
-                    existing_words = set(existing_title.split())
-                    common_words = title_words & existing_words
+            continue
 
-                    # If >50% words overlap or same key phrases, consider duplicate
-                    key_phrases = ['hardcoded', 'sql injection', 'xss', 'password', 'secret',
-                                   'api key', 'credential', 'parameterized']
-                    has_same_phrase = any(
-                        phrase in normalized_title and phrase in existing_title
-                        for phrase in key_phrases
-                    )
+        # Check 2: Same category at same location
+        if category_key and category_key in seen_by_category:
+            existing_key = seen_by_category[category_key]
+            existing = seen.get(existing_key)
+            if existing:
+                existing_severity = severity_rank.get(existing.get('severity', 'info'), 0)
+                if new_severity > existing_severity:
+                    # Replace with higher severity finding
+                    del seen[existing_key]
+                    seen[key] = finding
+                    seen_by_category[category_key] = key
+                continue  # Skip adding this finding
+            # Existing key no longer in seen, add this one
+            seen[key] = finding
+            seen_by_category[category_key] = key
+            continue
 
-                    if has_same_phrase or (len(common_words) >= 3 and len(common_words) / max(len(title_words), len(existing_words)) > 0.5):
-                        found_similar = True
-                        existing_severity = severity_rank.get(existing.get('severity', 'info'), 0)
-                        new_severity = severity_rank.get(finding.get('severity', 'info'), 0)
-                        if new_severity > existing_severity:
-                            del seen[existing_key]
-                            seen[key] = finding
-                        break
-
-            if not found_similar:
-                seen[key] = finding
+        # New finding - add it
+        seen[key] = finding
+        if category_key:
+            seen_by_category[category_key] = key
 
     return list(seen.values())
 
