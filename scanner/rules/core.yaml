@@ -130,3 +130,189 @@ rules:
     message: React dangerouslySetInnerHTML - XSS risk
     languages: [javascript, typescript]
     severity: ERROR
+
+  - id: php-shell-exec
+    pattern: shell_exec(...)
+    message: PHP shell_exec() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-exec
+    pattern: exec(...)
+    message: PHP exec() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-system
+    pattern: system(...)
+    message: PHP system() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-passthru
+    pattern: passthru(...)
+    message: PHP passthru() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-popen
+    pattern: popen(...)
+    message: PHP popen() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-proc-open
+    pattern: proc_open(...)
+    message: PHP proc_open() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-backtick
+    pattern: '`$CMD`'
+    message: PHP backtick execution - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-eval
+    pattern: eval(...)
+    message: PHP eval() - code injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-assert
+    pattern: assert(...)
+    message: PHP assert() with string - code injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-create-function
+    pattern: create_function(...)
+    message: PHP create_function() - code injection risk (deprecated)
+    languages: [php]
+    severity: ERROR
+
+  - id: php-preg-replace-e
+    pattern: 'preg_replace("/.*/e", ...)'
+    message: PHP preg_replace with /e modifier - code injection
+    languages: [php]
+    severity: ERROR
+
+  - id: php-include-var
+    pattern: include($X)
+    message: PHP include with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-include-once-var
+    pattern: include_once($X)
+    message: PHP include_once with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-require-var
+    pattern: require($X)
+    message: PHP require with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-require-once-var
+    pattern: require_once($X)
+    message: PHP require_once with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mysqli-query-concat
+    pattern: mysqli_query($CONN, $Q . $V)
+    message: PHP SQL injection via string concatenation
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mysql-query
+    pattern: mysql_query(...)
+    message: PHP mysql_query() - deprecated and SQL injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-get
+    pattern: echo $_GET[$X]
+    message: PHP XSS - echoing GET parameter without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-post
+    pattern: echo $_POST[$X]
+    message: PHP XSS - echoing POST parameter without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-request
+    pattern: echo $_REQUEST[$X]
+    message: PHP XSS - echoing REQUEST parameter without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-print-get
+    pattern: print $_GET[$X]
+    message: PHP XSS - printing GET parameter without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-print-post
+    pattern: print $_POST[$X]
+    message: PHP XSS - printing POST parameter without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-unserialize
+    pattern: unserialize(...)
+    message: PHP unserialize() - insecure deserialization risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-md5-password
+    pattern: md5($PASSWORD)
+    message: PHP MD5 for password - use password_hash() instead
+    languages: [php]
+    severity: WARNING
+
+  - id: php-sha1-password
+    pattern: sha1($PASSWORD)
+    message: PHP SHA1 for password - use password_hash() instead
+    languages: [php]
+    severity: WARNING
+
+  - id: php-file-get-contents-url
+    pattern: file_get_contents($URL)
+    message: PHP file_get_contents with URL - potential SSRF
+    languages: [php]
+    severity: WARNING
+
+  - id: php-curl-ssl-verify-off
+    pattern: 'curl_setopt($CH, CURLOPT_SSL_VERIFYPEER, false)'
+    message: PHP cURL SSL verification disabled
+    languages: [php]
+    severity: ERROR
+
+  - id: php-extract
+    pattern: extract(...)
+    message: PHP extract() - variable injection risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-parse-str
+    pattern: parse_str($X)
+    message: PHP parse_str() without second param - variable injection
+    languages: [php]
+    severity: WARNING
+
+  - id: php-move-uploaded-file
+    pattern: move_uploaded_file(...)
+    message: PHP file upload - ensure proper validation
+    languages: [php]
+    severity: WARNING
+
+  - id: php-header-redirect
+    pattern: 'header("Location: " . $X)'
+    message: PHP open redirect risk
+    languages: [php]
+    severity: WARNING
