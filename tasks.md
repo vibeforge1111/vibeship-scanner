@@ -24,6 +24,15 @@
 - [x] CWE/CVSS metadata for all findings (28 CWE entries)
 - [x] Category-based deduplication (hardcoded_credential, sql_injection, xss, etc.)
 - [x] Add 50+ JS/TS security rules (SQL/NoSQL injection, XXE, deserialization, open redirect, prototype pollution, SSRF, ReDoS)
+- [x] Fix [object Object] display bug in Vulnerable Code section
+- [x] Remove technical/non-technical mode toggle - unified explanations
+- [x] Remove "What's the risk" header - show explanations directly
+- [x] Add 35+ Java security rules (XXE, Path Traversal, Deserialization, JWT, SSRF, LDAP)
+- [x] Fix hardcoded password false positives (was matching any "password" string)
+- [x] Add JNDI injection rules (Log4Shell style attacks)
+- [x] Add Spring Security misconfiguration rules
+- [x] Add enhanced XXE detection patterns
+- [x] Upgrade Node.js to 20 (Railway deprecation warning)
 
 ## Environment Variables
 
@@ -101,16 +110,19 @@
 
 | Category | Status |
 |----------|--------|
-| Semgrep Rules | 90+ custom rules |
+| Semgrep Rules | 130+ custom rules |
 | Gitleaks Rules | 70+ patterns |
 | Context Scoring | ✅ Implemented |
 | Deduplication | ✅ Category-based |
 | Fix Templates | 18 detailed templates |
 | CWE Database | 28 entries with CVSS |
+| Java Security | ✅ XXE, Path Traversal, Deserialization, JWT, SSRF, JNDI |
+| Spring Security | ✅ CSRF, Headers, Frame Options |
 
 ---
 
 ## URLs
+- **Frontend**: https://vibeship-scanner-production.up.railway.app
 - Local dev: http://localhost:5173
 - Scanner API: https://scanner-empty-field-5676.fly.dev
 - Scanner health: https://scanner-empty-field-5676.fly.dev/health
