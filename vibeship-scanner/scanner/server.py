@@ -14,7 +14,7 @@ from supabase import create_client, Client
 
 from scan import (
     clone_repo, detect_stack, run_semgrep, run_trivy, run_gitleaks,
-    calculate_score, calculate_grade, calculate_ship_status
+    calculate_score, calculate_grade, calculate_ship_status, deduplicate_findings
 )
 
 app = Flask(__name__)
@@ -83,6 +83,11 @@ def run_scan(scan_id: str, repo_url: str, branch: str):
             gitleaks_findings = run_gitleaks(repo_dir)
 
             all_findings = semgrep_findings + trivy_findings + gitleaks_findings
+            print(f"Total findings before dedup: {len(all_findings)}")
+
+            # Remove duplicate findings (same issue at same location)
+            all_findings = deduplicate_findings(all_findings)
+            print(f"Total findings after dedup: {len(all_findings)}")
 
             update_progress(supabase, scan_id, 'score', 'Calculating score...', 95)
             score = calculate_score(all_findings)
