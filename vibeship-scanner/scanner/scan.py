@@ -349,6 +349,74 @@ def run_gitleaks(repo_dir: str) -> List[Dict[str, Any]]:
     return findings
 
 
+def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Remove duplicate findings that report the same issue at the same location.
+    Keeps the finding with the highest severity when duplicates are found.
+    """
+    # Group findings by file + line + normalized title
+    seen = {}
+
+    severity_rank = {'critical': 4, 'high': 3, 'medium': 2, 'low': 1, 'info': 0}
+
+    for finding in findings:
+        file_path = finding.get('location', {}).get('file', '')
+        line = finding.get('location', {}).get('line', 0)
+        title = finding.get('title', '')
+
+        # Normalize title for comparison (lowercase, remove extra spaces)
+        normalized_title = ' '.join(title.lower().split())
+
+        # Create a unique key based on file, line, and normalized title
+        key = f"{file_path}:{line}:{normalized_title}"
+
+        # Also create a broader key for same file+line with similar issue types
+        # This catches cases like "Hardcoded API key" vs "Hardcoded password" at same line
+        title_words = set(normalized_title.split())
+        issue_type_key = f"{file_path}:{line}"
+
+        # Check if we already have a finding at this exact location with same title
+        if key in seen:
+            existing = seen[key]
+            existing_severity = severity_rank.get(existing.get('severity', 'info'), 0)
+            new_severity = severity_rank.get(finding.get('severity', 'info'), 0)
+            # Keep the one with higher severity
+            if new_severity > existing_severity:
+                seen[key] = finding
+        else:
+            # Check for similar findings at same location (same file+line)
+            # Look for findings that are essentially the same issue reported by different rules
+            found_similar = False
+            for existing_key, existing in list(seen.items()):
+                if existing_key.startswith(issue_type_key + ":"):
+                    existing_title = existing.get('title', '').lower()
+                    # Check if titles are very similar (share many words or same category)
+                    existing_words = set(existing_title.split())
+                    common_words = title_words & existing_words
+
+                    # If >50% words overlap or same key phrases, consider duplicate
+                    key_phrases = ['hardcoded', 'sql injection', 'xss', 'password', 'secret',
+                                   'api key', 'credential', 'parameterized']
+                    has_same_phrase = any(
+                        phrase in normalized_title and phrase in existing_title
+                        for phrase in key_phrases
+                    )
+
+                    if has_same_phrase or (len(common_words) >= 3 and len(common_words) / max(len(title_words), len(existing_words)) > 0.5):
+                        found_similar = True
+                        existing_severity = severity_rank.get(existing.get('severity', 'info'), 0)
+                        new_severity = severity_rank.get(finding.get('severity', 'info'), 0)
+                        if new_severity > existing_severity:
+                            del seen[existing_key]
+                            seen[key] = finding
+                        break
+
+            if not found_similar:
+                seen[key] = finding
+
+    return list(seen.values())
+
+
 def calculate_score(findings: List[Dict[str, Any]]) -> int:
     """Calculate security score from findings"""
     score = 100
@@ -431,7 +499,11 @@ def main():
         gitleaks_findings = run_gitleaks(repo_dir)
 
         all_findings = semgrep_findings + trivy_findings + gitleaks_findings
-        print(f"Total findings: {len(all_findings)}", file=sys.stderr)
+        print(f"Total findings before dedup: {len(all_findings)}", file=sys.stderr)
+
+        # Remove duplicate findings (same issue at same location)
+        all_findings = deduplicate_findings(all_findings)
+        print(f"Total findings after dedup: {len(all_findings)}", file=sys.stderr)
 
         print(json.dumps({'step': 'score', 'message': 'Calculating score...'}), flush=True)
         score = calculate_score(all_findings)
