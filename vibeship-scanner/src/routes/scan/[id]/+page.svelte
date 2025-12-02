@@ -227,16 +227,11 @@
 
 	const securityFacts = [
 		{ fact: 'Average cost of a data breach: $4.88 million in 2024, up 10% from last year', source: 'IBM Cost of Data Breach Report 2024' },
-		{ fact: 'Healthcare breaches cost $9.77 million on average — highest of any industry', source: 'IBM Cost of Data Breach Report 2024' },
 		{ fact: 'Average breach lifecycle hit a 7-year low: 258 days to detect and contain', source: 'IBM Cost of Data Breach Report 2024' },
-		{ fact: 'Organizations using AI security saved $2.2 million in breach costs', source: 'IBM Cost of Data Breach Report 2024' },
 		{ fact: '70% of breached organizations reported significant business disruption', source: 'IBM Cost of Data Breach Report 2024' },
 		{ fact: 'Stolen credentials are the #1 initial attack vector at 16% of breaches', source: 'IBM Cost of Data Breach Report 2024' },
 		{ fact: 'The human element was involved in 68% of all data breaches', source: 'Verizon DBIR 2024' },
 		{ fact: 'Vulnerability exploitation as initial access tripled compared to last year', source: 'Verizon DBIR 2024' },
-		{ fact: 'Ransomware affects 92% of industries and accounts for 23% of all breaches', source: 'Verizon DBIR 2024' },
-		{ fact: 'Supply chain attacks made up 15% of all breaches — a 68% increase YoY', source: 'Verizon DBIR 2024' },
-		{ fact: 'Users typically fall for phishing emails in under 60 seconds', source: 'Verizon DBIR 2024' },
 		{ fact: 'It takes 55 days to patch 50% of vulnerabilities after patches are released', source: 'Verizon DBIR 2024' },
 		{ fact: '23.8 million secrets were leaked on public GitHub repos in 2024 (+25% YoY)', source: 'GitGuardian State of Secrets Sprawl 2025' },
 		{ fact: '70% of secrets leaked in 2022 are still active today', source: 'GitGuardian State of Secrets Sprawl 2025' },

@@ -231,7 +231,35 @@ def run_trivy(repo_dir: str) -> List[Dict[str, Any]]:
                     # Vulnerabilities
                     for vuln in target.get('Vulnerabilities', []) or []:
                         severity = SEVERITY_MAP.get(vuln.get('Severity', 'UNKNOWN').upper(), 'info')
-                        findings.append({
+
+                        # Extract CVSS score from various sources (NVD, GHSA, etc.)
+                        cvss_data = vuln.get('CVSS', {})
+                        cvss_score = None
+                        cvss_vector = None
+                        cvss_source = None
+
+                        # Prefer NVD, then other sources
+                        for source in ['nvd', 'ghsa', 'redhat', 'amazon']:
+                            if source in cvss_data:
+                                source_data = cvss_data[source]
+                                # Try V3 first, then V2
+                                if 'V3Score' in source_data:
+                                    cvss_score = source_data['V3Score']
+                                    cvss_vector = source_data.get('V3Vector', '')
+                                    cvss_source = f"{source.upper()} (CVSS v3)"
+                                    break
+                                elif 'V2Score' in source_data:
+                                    cvss_score = source_data['V2Score']
+                                    cvss_vector = source_data.get('V2Vector', '')
+                                    cvss_source = f"{source.upper()} (CVSS v2)"
+                                    break
+
+                        # Check for exploit availability
+                        exploit_available = False
+                        if vuln.get('PublishedDate') and vuln.get('LastModifiedDate'):
+                            exploit_available = 'exploit' in str(vuln.get('References', [])).lower()
+
+                        finding = {
                             'id': vuln.get('VulnerabilityID', hashlib.md5(str(vuln).encode()).hexdigest()[:12]),
                             'ruleId': f"trivy-{vuln.get('VulnerabilityID', 'unknown')}",
                             'severity': severity,
@@ -246,8 +274,25 @@ def run_trivy(repo_dir: str) -> List[Dict[str, Any]]:
                                 'available': bool(vuln.get('FixedVersion')),
                                 'template': f"Update {vuln.get('PkgName')} to {vuln.get('FixedVersion')}" if vuln.get('FixedVersion') else None
                             },
-                            'references': vuln.get('References', [])[:3]
-                        })
+                            'references': vuln.get('References', [])[:3],
+                            'cwe': vuln.get('CweIDs', []),
+                            'installedVersion': vuln.get('InstalledVersion'),
+                            'fixedVersion': vuln.get('FixedVersion')
+                        }
+
+                        # Add CVSS data if available
+                        if cvss_score is not None:
+                            finding['cvss'] = {
+                                'score': cvss_score,
+                                'vector': cvss_vector,
+                                'source': cvss_source
+                            }
+
+                        # Add exploit flag if detected
+                        if exploit_available:
+                            finding['exploitAvailable'] = True
+
+                        findings.append(finding)
 
                     # Secrets
                     for secret in target.get('Secrets', []) or []:

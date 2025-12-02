@@ -22,6 +22,8 @@
 - [x] Finding deduplication across tools
 - [x] Structured fix templates with before/after code examples
 - [x] CWE/CVSS metadata for all findings (28 CWE entries)
+- [x] Category-based deduplication (hardcoded_credential, sql_injection, xss, etc.)
+- [x] Add 50+ JS/TS security rules (SQL/NoSQL injection, XXE, deserialization, open redirect, prototype pollution, SSRF, ReDoS)
 
 ## Environment Variables
 
@@ -46,16 +48,16 @@
 - [ ] Show top issues by stack
 
 ### More Gitleaks Rules
-- [ ] Replicate API keys
-- [ ] Pinecone API keys
-- [ ] Clerk/Auth0 secrets
-- [ ] Vercel Edge Config tokens
-- [ ] Resend API keys
-- [ ] Upstash tokens
+- [x] Replicate API keys
+- [x] Pinecone API keys
+- [x] Clerk/Auth0 secrets
+- [x] Vercel Edge Config tokens
+- [x] Resend API keys
+- [x] Upstash tokens
 
 ### Enhanced Finding Metadata
-- [ ] Extract CVSS score from Trivy CVEs
-- [ ] Add exploit availability flag
+- [x] Extract CVSS score from Trivy CVEs
+- [x] Add exploit availability flag
 - [ ] Add attack demonstration (Pro feature)
 
 ---
@@ -99,10 +101,10 @@
 
 | Category | Status |
 |----------|--------|
-| Semgrep Rules | 43 custom rules |
-| Gitleaks Rules | 20+ patterns |
+| Semgrep Rules | 90+ custom rules |
+| Gitleaks Rules | 70+ patterns |
 | Context Scoring | ✅ Implemented |
-| Deduplication | ✅ Implemented |
+| Deduplication | ✅ Category-based |
 | Fix Templates | 18 detailed templates |
 | CWE Database | 28 entries with CVSS |
 
