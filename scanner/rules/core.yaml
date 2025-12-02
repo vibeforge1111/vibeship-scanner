@@ -920,12 +920,6 @@ rules:
   # PHP - Session/Auth Weaknesses
   # =====================================================
 
-  - id: php-session-regenerate-missing
-    pattern: session_start()
-    message: PHP session - consider session_regenerate_id() after auth
-    languages: [php]
-    severity: INFO
-
   - id: php-setcookie-no-httponly
     pattern: setcookie($NAME, $VALUE)
     message: PHP cookie - missing httponly/secure flags
@@ -976,30 +970,6 @@ rules:
   - id: php-assert-user-input-post
     pattern: assert($_POST[$X])
     message: PHP code injection via assert() with user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-create-function
-    pattern: create_function(...)
-    message: PHP create_function() is deprecated and dangerous
-    languages: [php]
-    severity: ERROR
-
-  - id: php-preg-replace-e
-    pattern: 'preg_replace($PATTERN, $REPLACE, $SUBJECT)'
-    message: PHP preg_replace - check for /e modifier (code execution)
-    languages: [php]
-    severity: WARNING
-
-  - id: php-usort-callback
-    pattern: usort($ARRAY, $_GET[$X])
-    message: PHP code injection via usort callback
-    languages: [php]
-    severity: ERROR
-
-  - id: php-array-map-callback
-    pattern: array_map($_GET[$X], ...)
-    message: PHP code injection via array_map callback
     languages: [php]
     severity: ERROR
 
@@ -1068,18 +1038,6 @@ rules:
   # =====================================================
   # PHP - Crypto Weaknesses
   # =====================================================
-
-  - id: php-rand-crypto
-    pattern: rand()
-    message: PHP rand() is not cryptographically secure - use random_int()
-    languages: [php]
-    severity: WARNING
-
-  - id: php-mt-rand-crypto
-    pattern: mt_rand()
-    message: PHP mt_rand() is not cryptographically secure - use random_int()
-    languages: [php]
-    severity: WARNING
 
   - id: php-uniqid-token
     pattern: uniqid()
