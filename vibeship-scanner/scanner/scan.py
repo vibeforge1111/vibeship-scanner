@@ -404,6 +404,14 @@ def get_issue_category(title: str) -> str:
     if any(word in title_lower for word in ['information disclosure', 'error detail', 'stack trace', 'debug']):
         return 'info_disclosure'
 
+    # Logging issues (console.log, sensitive data logged, etc.)
+    if any(word in title_lower for word in ['console.log', 'console log', 'sensitive data logged', 'data logged']):
+        return 'logging_issue'
+
+    # eval() and code injection
+    if 'eval(' in title_lower or ('eval' in title_lower and 'code injection' in title_lower):
+        return 'code_injection'
+
     return None  # No category - don't dedupe with others
 
 
