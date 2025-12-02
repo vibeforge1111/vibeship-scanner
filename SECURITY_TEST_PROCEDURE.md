@@ -224,7 +224,40 @@ For each scan, check detection of:
 
 ## DVWA Detailed Results
 
-### Scan Date: 2025-12-02
+### Scan #2: 2025-12-02 (After PHP Rules Added)
+
+**Results**: Score 20/100, Grade F, 102 High + 49 Medium = 151 findings
+
+| Category | Count | Rule IDs |
+|----------|-------|----------|
+| PHP File Inclusion | 50+ | php-require-var, php-include-var |
+| PHP Command Injection | 14 | php-shell-exec, php-exec |
+| PHP Weak Crypto (MD5) | 22 | php-md5-password |
+| PHP SSRF | 25 | php-file-get-contents-url |
+| PHP Eval | 4 | php-eval |
+| PHP File Upload | 3 | php-move-uploaded-file |
+| PHP SQL Injection | 1 | php-mysqli-query-concat |
+| JavaScript XSS | 12 | innerhtml-assignment, xss-innerhtml |
+| JavaScript Eval | 6 | eval-user-input |
+
+### Improvements Made (v2)
+- Added 35+ PHP security rules
+- Detection improved from 18 to 151 findings
+- Now detecting: shell_exec, exec, eval, include/require, MD5, file_get_contents, move_uploaded_file
+
+### Known False Positives
+- `require_once(DVWA_WEB_PAGE_TO_ROOT...)` - uses constant, not user input
+- Could be improved with taint tracking
+
+### Still Not Detected (Requires DAST)
+- CSRF vulnerabilities
+- Weak session management
+- CSP bypass issues
+- Brute force susceptibility
+
+---
+
+### Scan #1: 2025-12-02 (Initial Baseline)
 
 **Results**: Score 45/100, Grade F, 18 High findings
 
@@ -245,10 +278,6 @@ For each scan, check detection of:
 | CSP Bypass | CSP | ❌ No | - | Config issue |
 | JavaScript | Client issues | Partial | eval-injection | eval() found |
 
-### Improvements Made
-- Added PHP-specific rules for command injection
-- Enhanced SQL injection patterns for mysqli
-
 ---
 
 ## Test Schedule
@@ -267,7 +296,8 @@ For each scan, check detection of:
 
 | Date | Scanner Version | Repos Tested | Notes |
 |------|-----------------|--------------|-------|
-| 2025-12-02 | 67a8c5f | DVWA, crAPI | Initial baseline |
+| 2025-12-02 | 310bd3d | DVWA | Added 35+ PHP rules, 151 findings |
+| 2025-12-02 | 67a8c5f | DVWA, crAPI | Initial baseline, 18 findings |
 
 ---
 
