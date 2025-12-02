@@ -877,12 +877,12 @@
 											</div>
 										{/if}
 
-										{#if finding.snippet}
+										{#if finding.snippet?.code}
 											<div class="code-snippet">
 												<div class="snippet-header">
 													<span>Vulnerable Code</span>
 												</div>
-												<pre><code>{finding.snippet}</code></pre>
+												<pre><code>{finding.snippet.code}</code></pre>
 											</div>
 										{/if}
 
