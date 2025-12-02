@@ -1,9 +1,19 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { supabase } from '$lib/supabase';
 
 	let repoUrl = $state('');
 	let loading = $state(false);
 	let error = $state('');
+	let recentScans = $state<Array<{
+		id: string;
+		target_url: string;
+		score: number | null;
+		grade: string | null;
+		status: string;
+		created_at: string;
+	}>>([]);
 
 	const tools = ['Claude Code', 'Cursor', 'Windsurf', 'Replit', 'GPT', 'Gemini'];
 	let currentToolIndex = $state(0);
@@ -14,6 +24,56 @@
 		}, 2000);
 		return () => clearInterval(interval);
 	});
+
+	onMount(async () => {
+		const storedIds = localStorage.getItem('vibeship-recent-scans');
+		if (storedIds) {
+			const ids = JSON.parse(storedIds) as string[];
+			if (ids.length > 0) {
+				const { data } = await supabase
+					.from('scans')
+					.select('id, target_url, score, grade, status, created_at')
+					.in('id', ids)
+					.order('created_at', { ascending: false })
+					.limit(5);
+				if (data) {
+					recentScans = data;
+				}
+			}
+		}
+	});
+
+	function saveToRecent(scanId: string) {
+		const stored = localStorage.getItem('vibeship-recent-scans');
+		let ids: string[] = stored ? JSON.parse(stored) : [];
+		ids = [scanId, ...ids.filter(id => id !== scanId)].slice(0, 10);
+		localStorage.setItem('vibeship-recent-scans', JSON.stringify(ids));
+	}
+
+	function getRepoName(url: string): string {
+		const match = url.match(/github\.com\/([\/\w.-]+)/);
+		return match ? match[1] : url;
+	}
+
+	function getGradeClass(grade: string | null): string {
+		if (!grade) return '';
+		return `grade-${grade.toLowerCase()}`;
+	}
+
+	function formatDate(dateStr: string): string {
+		const date = new Date(dateStr);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMins = Math.floor(diffMs / 60000);
+		const diffHours = Math.floor(diffMs / 3600000);
+		const diffDays = Math.floor(diffMs / 86400000);
+
+		if (diffMins < 1) return 'Just now';
+		if (diffMins < 60) return `${diffMins}m ago`;
+		if (diffHours < 24) return `${diffHours}h ago`;
+		if (diffDays < 7) return `${diffDays}d ago`;
+		return date.toLocaleDateString();
+	}
 
 	function validateUrl(url: string): boolean {
 		const githubPattern = /^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$/;
@@ -50,6 +110,7 @@
 				throw new Error(data.message || 'Failed to start scan');
 			}
 
+			saveToRecent(data.scanId);
 			goto(`/scan/${data.scanId}`);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Something went wrong';
@@ -100,6 +161,35 @@
 		</form>
 
 		<p class="hero-note">Public repos only • No signup required • Results in ~30 seconds</p>
+
+		{#if recentScans.length > 0}
+			<div class="recent-scans">
+				<p class="recent-label">Recent scans</p>
+				<div class="recent-list">
+					{#each recentScans as scan}
+						<a href="/scan/{scan.id}" class="recent-item">
+							<div class="recent-repo">
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+								</svg>
+								<span class="recent-name">{getRepoName(scan.target_url)}</span>
+							</div>
+							<div class="recent-meta">
+								{#if scan.status === 'complete' && scan.grade}
+									<span class="recent-grade {getGradeClass(scan.grade)}">{scan.grade}</span>
+									<span class="recent-score">{scan.score}</span>
+								{:else if scan.status === 'scanning' || scan.status === 'queued'}
+									<span class="recent-status">Scanning...</span>
+								{:else}
+									<span class="recent-status">{scan.status}</span>
+								{/if}
+								<span class="recent-time">{formatDate(scan.created_at)}</span>
+							</div>
+						</a>
+					{/each}
+				</div>
+			</div>
+		{/if}
 	</section>
 </div>
 
@@ -443,6 +533,99 @@
 	.btn-lg {
 		padding: 1rem 2.5rem;
 		font-size: 0.9rem;
+	}
+
+	.recent-scans {
+		margin-top: 3rem;
+		animation: fadeUp 0.8s ease 0.5s forwards;
+		opacity: 0;
+	}
+
+	.recent-label {
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--text-tertiary);
+		margin-bottom: 1rem;
+		text-align: center;
+	}
+
+	.recent-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		max-width: 500px;
+		margin: 0 auto;
+	}
+
+	.recent-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.75rem 1rem;
+		border: 1px solid var(--border);
+		background: var(--bg-primary);
+		text-decoration: none;
+		color: var(--text-primary);
+		transition: all 0.15s;
+	}
+
+	.recent-item:hover {
+		border-color: var(--green-dim);
+		background: var(--bg-secondary);
+	}
+
+	.recent-repo {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.recent-repo svg {
+		color: var(--text-tertiary);
+	}
+
+	.recent-name {
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.8rem;
+	}
+
+	.recent-meta {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.recent-grade {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+
+	.recent-grade.grade-a { background: var(--green); color: white; }
+	.recent-grade.grade-b { background: #84cc16; color: white; }
+	.recent-grade.grade-c { background: var(--orange); color: var(--bg-inverse); }
+	.recent-grade.grade-d { background: #f97316; color: white; }
+	.recent-grade.grade-f { background: var(--red); color: white; }
+
+	.recent-score {
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.8rem;
+		color: var(--text-secondary);
+	}
+
+	.recent-status {
+		font-size: 0.75rem;
+		color: var(--text-tertiary);
+	}
+
+	.recent-time {
+		font-size: 0.7rem;
+		color: var(--text-tertiary);
 	}
 
 	@media (max-width: 1024px) {
