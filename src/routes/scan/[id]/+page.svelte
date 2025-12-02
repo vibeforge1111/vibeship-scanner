@@ -908,10 +908,6 @@
 										{/if}
 
 											<div class="explanation-box">
-												<div class="explanation-header">
-													<span class="explanation-icon">💡</span>
-													<span class="explanation-label">What's the risk</span>
-												</div>
 												<p class="explanation-text">
 													{getExplanation(finding)}
 												</p>
