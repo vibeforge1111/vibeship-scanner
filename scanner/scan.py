@@ -220,13 +220,18 @@ def run_semgrep(repo_dir: str) -> List[Dict[str, Any]]:
         cmd.extend(['--config', str(vibeship_rules)])
 
     cmd.extend(['--config', 'auto'])
+    cmd.extend(['--config', 'p/javascript'])
+    cmd.extend(['--config', 'p/nodejs'])
+    cmd.extend(['--config', 'p/express'])
+    cmd.extend(['--config', 'p/security-audit'])
+    cmd.extend(['--config', 'p/owasp-top-ten'])
 
     try:
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=120
+            timeout=180
         )
 
         if result.stdout:

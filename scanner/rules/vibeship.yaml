@@ -94,8 +94,12 @@ rules:
 
   - id: eval-usage
     patterns:
-      - pattern: eval($CODE)
-    message: "Dangerous use of eval(). Avoid executing dynamic code."
+      - pattern-either:
+          - pattern: eval($CODE)
+          - pattern: eval(req.body.$FIELD)
+          - pattern: eval(req.query.$FIELD)
+          - pattern: eval(req.params.$FIELD)
+    message: "Dangerous use of eval() with potential user input. This allows arbitrary code execution."
     severity: ERROR
     metadata:
       category: code
@@ -521,8 +525,13 @@ rules:
       - pattern-either:
           - pattern: $COLLECTION.find({ $WHERE: $INPUT })
           - pattern: $COLLECTION.findOne({ $WHERE: $INPUT })
+          - pattern: $COLLECTION.findOne({ userName: $VAR })
+          - pattern: $COLLECTION.findOne({ email: $VAR })
+          - pattern: $COLLECTION.find({ ..., $where: $INPUT })
           - pattern: "{ $where: $INPUT }"
-    message: "Potential NoSQL injection. Sanitize query input."
+          - pattern: $DB.collection($NAME).findOne({ $FIELD: $VAR })
+          - pattern: $DB.collection($NAME).find({ $FIELD: $VAR })
+    message: "Potential NoSQL injection. Sanitize and validate query input."
     severity: ERROR
     metadata:
       category: code
@@ -561,4 +570,173 @@ rules:
     severity: INFO
     metadata:
       category: code
+    languages: [javascript, typescript]
+
+  - id: mongodb-direct-user-input
+    patterns:
+      - pattern-either:
+          - pattern: $COLLECTION.findOne({ $FIELD: req.body.$VAR })
+          - pattern: $COLLECTION.findOne({ $FIELD: req.query.$VAR })
+          - pattern: $COLLECTION.findOne({ $FIELD: req.params.$VAR })
+          - pattern: $COLLECTION.find({ $FIELD: req.body.$VAR })
+          - pattern: $COLLECTION.updateOne({ $FIELD: req.body.$VAR }, ...)
+          - pattern: $COLLECTION.deleteOne({ $FIELD: req.body.$VAR })
+    message: "MongoDB query with unsanitized user input. Validate and sanitize before querying."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-943"
+    languages: [javascript, typescript]
+
+  - id: weak-password-regex
+    patterns:
+      - pattern-either:
+          - pattern: /^.{1,$N}$/
+          - pattern: /^.{0,$N}$/
+          - pattern: /^[a-zA-Z0-9]+$/
+    message: "Weak password validation regex. Enforce minimum length, complexity requirements."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-521"
+    languages: [javascript, typescript]
+
+  - id: session-no-regenerate
+    patterns:
+      - pattern: req.session.userId = $VAR
+      - pattern-not-inside: |
+          req.session.regenerate(...)
+          ...
+    message: "Session ID not regenerated after authentication. Risk of session fixation."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-384"
+    languages: [javascript, typescript]
+
+  - id: log-injection
+    patterns:
+      - pattern-either:
+          - pattern: console.log(..., req.body.$VAR, ...)
+          - pattern: console.log(..., req.query.$VAR, ...)
+          - pattern: console.log(..., userName, ...)
+          - pattern: console.log(..., email, ...)
+    message: "Potential log injection. Sanitize user input before logging."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-117"
+    languages: [javascript, typescript]
+
+  - id: user-enumeration
+    patterns:
+      - pattern-either:
+          - pattern: '"Invalid username"'
+          - pattern: '"User not found"'
+          - pattern: '"Username does not exist"'
+          - pattern: '"No user with that email"'
+    message: "User enumeration vulnerability. Use generic error messages."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-204"
+    languages: [javascript, typescript]
+
+  - id: express-session-insecure
+    patterns:
+      - pattern-either:
+          - pattern: "session({ ..., cookie: { ..., secure: false, ... } })"
+          - pattern: "session({ ..., resave: true, ... })"
+          - pattern: session({ secret: "..." })
+    message: "Insecure Express session configuration. Use secure cookies and strong secret."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-614"
+    languages: [javascript, typescript]
+
+  - id: idor-vulnerability
+    patterns:
+      - pattern-either:
+          - pattern: $COLLECTION.findOne({ _id: req.params.$ID })
+          - pattern: $COLLECTION.findOne({ userId: req.params.$ID })
+          - pattern: $COLLECTION.updateOne({ _id: req.params.$ID }, ...)
+          - pattern: $COLLECTION.deleteOne({ _id: req.params.$ID })
+    message: "Potential IDOR vulnerability. Verify user owns the requested resource."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-639"
+    languages: [javascript, typescript]
+
+  - id: redos-vulnerable-regex
+    patterns:
+      - pattern-either:
+          - pattern: /(...)+/
+          - pattern: /(.*)+/
+          - pattern: /(.+)+/
+          - pattern: /([a-zA-Z]+)*$/
+    message: "ReDoS vulnerable regex pattern. Simplify or use safe-regex."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-1333"
+    languages: [javascript, typescript]
+
+  - id: plaintext-password-storage
+    patterns:
+      - pattern-either:
+          - pattern: password === $VAR
+          - pattern: $VAR === password
+          - pattern: user.password === $INPUT
+          - pattern: $INPUT === user.password
+    message: "Plaintext password comparison. Use bcrypt.compare() for secure password verification."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-256"
+    languages: [javascript, typescript]
+
+  - id: missing-input-validation
+    patterns:
+      - pattern-inside: |
+          $FUNC(req, res) {
+            ...
+          }
+      - pattern-either:
+          - pattern: req.body.$FIELD
+          - pattern: req.query.$FIELD
+          - pattern: req.params.$FIELD
+      - pattern-not-inside: |
+          if (!$VAR || ...) { ... }
+    message: "User input used without validation. Always validate and sanitize input."
+    severity: INFO
+    metadata:
+      category: code
+      cwe: "CWE-20"
+    languages: [javascript, typescript]
+
+  - id: ssti-template-injection
+    patterns:
+      - pattern-either:
+          - pattern: res.render($TEMPLATE, { ..., $KEY: req.body.$VAR, ... })
+          - pattern: res.render($TEMPLATE, { ..., $KEY: req.query.$VAR, ... })
+    message: "Potential SSTI. User input passed directly to template engine."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-1336"
+    languages: [javascript, typescript]
+
+  - id: hpp-vulnerability
+    patterns:
+      - pattern: app.use(bodyParser.urlencoded(...))
+      - pattern-not-inside: |
+          app.use(hpp())
+          ...
+    message: "HTTP Parameter Pollution risk. Consider using hpp middleware."
+    severity: INFO
+    metadata:
+      category: code
+      cwe: "CWE-235"
     languages: [javascript, typescript]
