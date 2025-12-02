@@ -760,13 +760,13 @@ rules:
   # =====================================================
 
   - id: php-sql-string-var-interpolation
-    pattern: '"SELECT $...FROM $...WHERE $... = \'$VAR\'"'
+    pattern: '"SELECT ... FROM ... WHERE ... = $VAR"'
     message: PHP SQL injection - variable interpolated in query string
     languages: [php]
     severity: ERROR
 
   - id: php-sql-double-quote-var
-    pattern: '"$...WHERE $... = \'$ID\'"'
+    pattern: '"... WHERE ... = $ID"'
     message: PHP SQL injection - variable in WHERE clause
     languages: [php]
     severity: ERROR
@@ -904,8 +904,7 @@ rules:
   # =====================================================
 
   - id: php-upload-no-type-check
-    pattern: |
-      move_uploaded_file($_FILES[$X]['tmp_name'], $DEST)
+    pattern: move_uploaded_file($_FILES[$X]['tmp_name'], $DEST)
     message: PHP file upload - verify file type validation exists
     languages: [php]
     severity: WARNING
@@ -933,15 +932,13 @@ rules:
     severity: WARNING
 
   - id: php-password-plain-compare
-    pattern: |
-      if ($PASSWORD == $...)
+    pattern: if ($PASSWORD == $X)
     message: PHP password - use password_verify() instead of direct comparison
     languages: [php]
     severity: ERROR
 
   - id: php-password-plain-compare-2
-    pattern: |
-      if ($... == $PASSWORD)
+    pattern: if ($X == $PASSWORD)
     message: PHP password - use password_verify() instead of direct comparison
     languages: [php]
     severity: ERROR
@@ -951,8 +948,7 @@ rules:
   # =====================================================
 
   - id: php-form-no-token-check
-    pattern: |
-      if(isset($_POST[$X])) { ... }
+    pattern: 'if(isset($_POST[$X])) { ... }'
     message: PHP form handler - verify CSRF token validation exists
     languages: [php]
     severity: INFO
