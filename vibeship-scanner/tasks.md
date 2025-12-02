@@ -1,0 +1,115 @@
+# Vibeship Scanner - Tasks
+
+## Completed
+- [x] Set up SvelteKit frontend with Supabase integration
+- [x] Create scanner service with Semgrep, Trivy, and Gitleaks
+- [x] Deploy web app to Railway (Nixpacks)
+- [x] Deploy scanner service to Fly.io (Docker)
+- [x] Configure Supabase database with scans table
+- [x] Fix RLS policies for anonymous access
+- [x] Fix supabase/gotrue package compatibility (pinned to v1.0.4)
+- [x] Connect web app to scanner API
+- [x] End-to-end scan working: clone -> analyze -> results
+- [x] Score reveal animation with count-up and confetti
+- [x] Founder/Developer mode toggle for findings
+- [x] Expandable finding cards with better styling
+- [x] Share section (copy link, Twitter share, badge embed)
+- [x] Scan history on homepage (localStorage + Supabase)
+- [x] Real-time scan progress with Supabase Realtime
+- [x] Fix custom rules loading (vibeship.yaml + gitleaks.toml)
+- [x] Context-aware scoring (test/example file detection, client bundle secrets)
+- [x] Expand Semgrep rules (14 → 43 rules)
+- [x] Finding deduplication across tools
+- [x] Structured fix templates with before/after code examples
+- [x] CWE/CVSS metadata for all findings (28 CWE entries)
+
+## Environment Variables
+
+### Railway (Web App)
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `SCANNER_API_URL=https://scanner-empty-field-5676.fly.dev`
+
+### Fly.io (Scanner)
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+---
+
+## P1: High Priority (Next Up)
+
+### Community Benchmarks
+- [ ] Store stack_signature in scans table
+- [ ] Create stack_benchmarks table
+- [ ] Weekly aggregation job
+- [ ] Display "Better than X% of similar apps"
+- [ ] Show top issues by stack
+
+### More Gitleaks Rules
+- [ ] Replicate API keys
+- [ ] Pinecone API keys
+- [ ] Clerk/Auth0 secrets
+- [ ] Vercel Edge Config tokens
+- [ ] Resend API keys
+- [ ] Upstash tokens
+
+### Enhanced Finding Metadata
+- [ ] Extract CVSS score from Trivy CVEs
+- [ ] Add exploit availability flag
+- [ ] Add attack demonstration (Pro feature)
+
+---
+
+## P2: Medium Priority (Better UX)
+
+### UI Improvements
+- [ ] Dark/light theme toggle
+- [ ] Mobile responsive improvements
+- [ ] Keyboard navigation for findings
+- [ ] Print-friendly view
+
+### Reporting
+- [ ] PDF report generation
+- [ ] Email report delivery
+- [ ] Scheduled re-scans
+
+---
+
+## P3: Future Features
+
+### GitHub OAuth & Private Repos
+- [ ] Add GitHub OAuth for authenticated scans
+- [ ] Add support for private repositories
+- [ ] Verify repository ownership
+
+### Pro Features
+- [ ] Tier 2 AI analysis with Claude
+- [ ] AI-generated personalized fixes
+- [ ] Historical trend charts
+- [ ] Auto-PR fix integration
+
+### Integrations
+- [ ] GitHub App for PR comments
+- [ ] CI/CD integration (GitHub Actions)
+- [ ] Slack notifications
+
+---
+
+## Current Stats
+
+| Category | Status |
+|----------|--------|
+| Semgrep Rules | 43 custom rules |
+| Gitleaks Rules | 20+ patterns |
+| Context Scoring | ✅ Implemented |
+| Deduplication | ✅ Implemented |
+| Fix Templates | 18 detailed templates |
+| CWE Database | 28 entries with CVSS |
+
+---
+
+## URLs
+- Local dev: http://localhost:5173
+- Scanner API: https://scanner-empty-field-5676.fly.dev
+- Scanner health: https://scanner-empty-field-5676.fly.dev/health
+- GitHub: https://github.com/vibeforge1111/vibeship-scanner

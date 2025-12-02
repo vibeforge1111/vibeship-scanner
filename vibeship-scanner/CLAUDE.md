@@ -1,0 +1,157 @@
+# CLAUDE.md - Vibeship Scanner Development Guide
+
+This file provides guidance to Claude Code when working with this repository.
+
+## Project Overview
+
+Vibeship Scanner is a security scanning tool that analyzes GitHub repositories for vulnerabilities using:
+- **Semgrep** - Static Application Security Testing (SAST)
+- **Trivy** - Dependency vulnerability scanning
+- **Gitleaks** - Secret detection
+
+## Architecture
+
+```
+vibeship-scanner/
+├── src/                    # SvelteKit frontend
+│   ├── routes/             # Pages and API routes
+│   ├── lib/                # Shared utilities
+│   └── app.html            # HTML template
+├── scanner/                # Python scanner service (Fly.io)
+│   ├── scan.py             # Main scanning orchestrator
+│   ├── server.py           # Flask API server
+│   ├── rules/              # Semgrep rule files
+│   │   ├── core.yaml       # Core security rules
+│   │   └── vibeship.yaml   # Extended rules
+│   └── Dockerfile          # Scanner container
+└── docs/                   # Documentation
+```
+
+## Development Commands
+
+```bash
+# Start frontend dev server
+npm run dev
+
+# Build for production
+npm run build
+
+# Deploy scanner to Fly.io
+cd scanner && fly deploy --remote-only
+
+# Validate Semgrep rules
+semgrep --validate --config scanner/rules/
+```
+
+## Key Files
+
+- `scanner/rules/core.yaml` - Core Semgrep security rules
+- `scanner/rules/vibeship.yaml` - Extended Semgrep rules
+- `scanner/scan.py` - Main scanning logic
+- `src/routes/api/scan/+server.ts` - Scan API endpoint
+- `src/routes/scan/[id]/+page.svelte` - Scan results page
+
+## Security Knowledge Base
+
+### IMPORTANT: Maintaining SECURITY_COMMONS.md
+
+The `SECURITY_COMMONS.md` file is our **living security vulnerability database**. It must be continuously updated with:
+
+1. **New vulnerability patterns** discovered during:
+   - Research on vulnerable applications (DVWA, Juice Shop, etc.)
+   - Analysis of GitHub security advisories
+   - Review of scan results from real repositories
+   - CVE database monitoring
+
+2. **For each vulnerability, document**:
+   - CWE ID and name
+   - Risk level (Critical/High/Medium/Low)
+   - Vulnerable code examples
+   - Secure code examples
+   - Key prevention points
+
+3. **Use this database to**:
+   - Improve Semgrep rules in `scanner/rules/`
+   - Enhance scanner explanations
+   - Provide accurate fix recommendations
+   - Train and validate scanner accuracy
+
+4. **After finding new vulnerabilities**:
+   - Add to SECURITY_COMMONS.md with examples
+   - Consider adding new Semgrep rules if detectable
+   - Update SECURITY_TEST_PROCEDURE.md if needed
+
+### Testing Against Vulnerable Apps
+
+**IMPORTANT**: Follow `SECURITY_TEST_PROCEDURE.md` for systematic scanner improvement.
+
+The test procedure contains **30 vulnerable repositories** organized by priority:
+- **Tier 1 (Critical)**: DVWA, Juice Shop, crAPI, NodeGoat, WebGoat, DVNA
+- **Tier 2 (Language-Specific)**: RailsGoat, Django.nV, Flask, DSVW, PHP, Java apps
+- **Tier 3 (Specialized)**: API security, SSRF, XXE, GraphQL, CI/CD, secrets
+- **Tier 4 (Additional)**: Mobile, .NET, Kubernetes, CTF tools
+
+**Workflow for each repository**:
+1. Scan the repo
+2. Document findings in SECURITY_TEST_PROCEDURE.md
+3. Identify gaps (vulnerabilities not detected)
+4. Add new Semgrep rules for detectable gaps
+5. Update SECURITY_COMMONS.md with new patterns
+6. Re-scan to verify improvements
+7. Commit and deploy
+
+**Current Progress** (track in SECURITY_TEST_PROCEDURE.md):
+- ✅ digininja/DVWA - 18 high findings
+- ✅ OWASP/crAPI - 137 findings
+- ⏳ 28 more repos pending
+
+## Semgrep Rule Guidelines
+
+When adding rules to `scanner/rules/`:
+
+1. **YAML syntax**: Quote patterns containing colons
+   ```yaml
+   # GOOD
+   pattern: 'subprocess.call($CMD, shell=True)'
+
+   # BAD - will fail validation
+   pattern: subprocess.call($CMD, shell=True)
+   ```
+
+2. **Always validate** before deploying:
+   ```bash
+   semgrep --validate --config scanner/rules/core.yaml
+   ```
+
+3. **Include**:
+   - Unique rule ID
+   - Clear message
+   - Severity (ERROR/WARNING/INFO)
+   - Target languages
+
+## Environment Variables
+
+Frontend (.env):
+- `PUBLIC_SUPABASE_URL`
+- `PUBLIC_SUPABASE_ANON_KEY`
+- `SCANNER_API_URL`
+
+Scanner (Fly.io secrets):
+- Set via `fly secrets set KEY=value`
+
+## Deployment
+
+**Frontend**: Auto-deploys via Vercel on push to main
+
+**Scanner**: Manual deploy to Fly.io
+```bash
+cd scanner
+fly deploy --remote-only --no-cache
+```
+
+## Code Style
+
+- TypeScript for frontend
+- Python for scanner
+- No comments unless explaining complex logic
+- Use existing patterns and utilities
