@@ -219,20 +219,21 @@ def run_semgrep(repo_dir: str) -> List[Dict[str, Any]]:
     if vibeship_rules.exists():
         cmd.extend(['--config', str(vibeship_rules)])
 
-    cmd.extend(['--config', 'auto'])
-    cmd.extend(['--config', 'p/javascript'])
-    cmd.extend(['--config', 'p/nodejs'])
-    cmd.extend(['--config', 'p/express'])
+    cmd.extend(['--config', 'p/default'])
     cmd.extend(['--config', 'p/security-audit'])
-    cmd.extend(['--config', 'p/owasp-top-ten'])
+    cmd.extend(['--config', 'p/secrets'])
 
     try:
+        print(f"Running Semgrep with command: {' '.join(cmd)}", file=sys.stderr)
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=180
         )
+
+        if result.stderr:
+            print(f"Semgrep stderr: {result.stderr[:500]}", file=sys.stderr)
 
         if result.stdout:
             data = json.loads(result.stdout)
@@ -265,6 +266,7 @@ def run_semgrep(repo_dir: str) -> List[Dict[str, Any]]:
     except Exception as e:
         print(f"Semgrep error: {e}", file=sys.stderr)
 
+    print(f"Semgrep found {len(findings)} findings", file=sys.stderr)
     return findings
 
 def run_trivy(repo_dir: str) -> List[Dict[str, Any]]:
@@ -307,6 +309,7 @@ def run_trivy(repo_dir: str) -> List[Dict[str, Any]]:
     except Exception as e:
         print(f"Trivy error: {e}", file=sys.stderr)
 
+    print(f"Trivy found {len(findings)} findings", file=sys.stderr)
     return findings
 
 def run_gitleaks(repo_dir: str) -> List[Dict[str, Any]]:
@@ -357,6 +360,7 @@ def run_gitleaks(repo_dir: str) -> List[Dict[str, Any]]:
     except Exception as e:
         print(f"Gitleaks error: {e}", file=sys.stderr)
 
+    print(f"Gitleaks found {len(findings)} findings", file=sys.stderr)
     return findings
 
 def calculate_score(findings: List[Dict[str, Any]]) -> int:
