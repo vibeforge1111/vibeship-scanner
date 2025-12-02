@@ -83,16 +83,27 @@ The `SECURITY_COMMONS.md` file is our **living security vulnerability database**
 
 ### Testing Against Vulnerable Apps
 
-Follow `SECURITY_TEST_PROCEDURE.md` when:
-- Validating scanner accuracy
-- Adding new detection rules
-- Benchmarking against known vulnerable repos
+**IMPORTANT**: Follow `SECURITY_TEST_PROCEDURE.md` for systematic scanner improvement.
 
-**Tier 1 Test Repos** (must detect vulnerabilities):
-- digininja/DVWA
-- juice-shop/juice-shop
-- OWASP/crAPI
-- OWASP/NodeGoat
+The test procedure contains **30 vulnerable repositories** organized by priority:
+- **Tier 1 (Critical)**: DVWA, Juice Shop, crAPI, NodeGoat, WebGoat, DVNA
+- **Tier 2 (Language-Specific)**: RailsGoat, Django.nV, Flask, DSVW, PHP, Java apps
+- **Tier 3 (Specialized)**: API security, SSRF, XXE, GraphQL, CI/CD, secrets
+- **Tier 4 (Additional)**: Mobile, .NET, Kubernetes, CTF tools
+
+**Workflow for each repository**:
+1. Scan the repo
+2. Document findings in SECURITY_TEST_PROCEDURE.md
+3. Identify gaps (vulnerabilities not detected)
+4. Add new Semgrep rules for detectable gaps
+5. Update SECURITY_COMMONS.md with new patterns
+6. Re-scan to verify improvements
+7. Commit and deploy
+
+**Current Progress** (track in SECURITY_TEST_PROCEDURE.md):
+- ✅ digininja/DVWA - 18 high findings
+- ✅ OWASP/crAPI - 137 findings
+- ⏳ 28 more repos pending
 
 ## Semgrep Rule Guidelines
 
