@@ -374,17 +374,35 @@ def get_issue_category(title: str) -> str:
     if 'password' in title_lower and any(word in title_lower for word in ['verify', 'hash', 'plain', 'md5', 'sha1', 'comparison']):
         return 'password_handling'
 
-    # Command injection
-    if any(word in title_lower for word in ['command injection', 'shell', 'exec', 'system(']):
+    # Command injection (shell_exec, exec, system, passthru, etc.)
+    if any(word in title_lower for word in ['command injection', 'shell_exec', 'shell exec', 'passthru', 'proc_open']):
+        return 'command_injection'
+    if ('exec' in title_lower or 'system(' in title_lower) and 'injection' in title_lower:
+        return 'command_injection'
+    if any(word in title_lower for word in ['shell_exec()', 'exec()', 'system()', 'passthru()']):
         return 'command_injection'
 
-    # File inclusion
+    # File inclusion / path traversal
     if any(word in title_lower for word in ['file inclusion', 'path traversal', 'directory traversal', 'lfi', 'rfi']):
+        return 'file_inclusion'
+    if 'require' in title_lower and 'variable' in title_lower:
+        return 'file_inclusion'
+    if 'include' in title_lower and ('variable' in title_lower or 'user' in title_lower):
         return 'file_inclusion'
 
     # SSRF
     if 'ssrf' in title_lower or 'server-side request' in title_lower:
         return 'ssrf'
+
+    # Open redirect
+    if 'open redirect' in title_lower or 'redirect' in title_lower and 'user' in title_lower:
+        return 'open_redirect'
+    if 'header' in title_lower and ('injection' in title_lower or 'location' in title_lower):
+        return 'open_redirect'
+
+    # Information disclosure / error exposure
+    if any(word in title_lower for word in ['information disclosure', 'error detail', 'stack trace', 'debug']):
+        return 'info_disclosure'
 
     return None  # No category - don't dedupe with others
 
