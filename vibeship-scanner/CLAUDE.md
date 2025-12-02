@@ -141,7 +141,8 @@ Scanner (Fly.io secrets):
 
 ## Deployment
 
-**Frontend**: Auto-deploys via Vercel on push to main
+**Frontend**: Auto-deploys via Railway on push to main
+- URL: https://vibeship-scanner-production.up.railway.app
 
 **Scanner**: Manual deploy to Fly.io
 ```bash

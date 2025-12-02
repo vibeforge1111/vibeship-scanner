@@ -1059,1404 +1059,365 @@ rules:
     languages: [php]
     severity: ERROR
 
-  # =====================================================
-  # Hardcoded Credentials Detection (DVWA-specific patterns)
-  # =====================================================
+  # ============================================
+  # Java XXE (XML External Entity) Rules
+  # ============================================
 
-  - id: php-hardcoded-password-check
-    pattern: if ($PASSWORD == "...")
-    message: Hardcoded password in authentication check (CWE-798)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-hardcoded-password-check-2
-    pattern: if ("..." == $PASSWORD)
-    message: Hardcoded password in authentication check (CWE-798)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-hardcoded-username-password
-    pattern: if ($USERNAME == "..." && $PASSWORD == "...")
-    message: Hardcoded credentials in authentication (CWE-798)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-hardcoded-password-var
-    pattern: $PASSWORD = "..."
-    message: Hardcoded password assignment (CWE-798)
-    languages: [php]
+  - id: java-xxe-documentbuilder
+    pattern: DocumentBuilderFactory.newInstance()
+    message: Java XML parser may be vulnerable to XXE - disable external entities
+    languages: [java]
     severity: WARNING
 
-  - id: php-hardcoded-secret-var
-    pattern: $SECRET = "..."
-    message: Hardcoded secret assignment (CWE-798)
-    languages: [php]
+  - id: java-xxe-saxparser
+    pattern: SAXParserFactory.newInstance()
+    message: Java SAX parser may be vulnerable to XXE - disable external entities
+    languages: [java]
     severity: WARNING
 
-  - id: php-hardcoded-api-key
-    pattern: $API_KEY = "..."
-    message: Hardcoded API key (CWE-798)
-    languages: [php]
-    severity: ERROR
-
-  # DVWA-specific: Hardcoded username/password comparison
-  - id: php-hardcoded-creds-username-password
-    pattern: 'if ($username == "..." && $password == "...")'
-    message: Hardcoded credentials - username and password comparison (CWE-798)
-    languages: [php]
-    severity: ERROR
-
-  # DVWA-specific: OAuth client credentials
-  - id: php-hardcoded-client-secret
-    pattern: 'if ($client_id == "..." && $client_secret == "...")'
-    message: Hardcoded OAuth client credentials (CWE-798)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-client-secret-comparison
-    pattern: '$client_secret == "..."'
-    message: Hardcoded client secret comparison (CWE-798)
-    languages: [php]
-    severity: ERROR
-
-  # PHP Class Constants with secrets
-  - id: php-const-token-secret
-    pattern: 'private const ACCESS_TOKEN_SECRET = "..."'
-    message: Hardcoded access token secret in class constant (CWE-798)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-const-refresh-token-secret
-    pattern: 'private const REFRESH_TOKEN_SECRET = "..."'
-    message: Hardcoded refresh token secret in class constant (CWE-798)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-const-encryption-key
-    pattern: 'private const ENCRYPTION_KEY = "..."'
-    message: Hardcoded encryption key in class constant (CWE-321)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-const-secret-generic
-    pattern: 'const $NAME = "..."'
-    message: Constant with string value - verify not a secret (CWE-798)
-    languages: [php]
-    severity: INFO
-
-  - id: php-const-private-secret
-    pattern: 'private const $SECRET = "..."'
-    message: Private constant with string value - verify not a secret (CWE-798)
-    languages: [php]
+  - id: java-xxe-xmlinputfactory
+    pattern: XMLInputFactory.newInstance()
+    message: Java StAX parser may be vulnerable to XXE - disable external entities
+    languages: [java]
     severity: WARNING
 
-  - id: js-hardcoded-password-const
-    pattern: 'const password = "..."'
-    message: Hardcoded password constant (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-hardcoded-secret-const
-    pattern: 'const secret = "..."'
-    message: Hardcoded secret constant (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-hardcoded-apikey-const
-    pattern: 'const apiKey = "..."'
-    message: Hardcoded API key constant (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-hardcoded-api-key-const
-    pattern: 'const api_key = "..."'
-    message: Hardcoded API key constant (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-hardcoded-token-const
-    pattern: 'const token = "..."'
-    message: Hardcoded token constant (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-password-comparison-literal
-    pattern: password === "..."
-    message: Hardcoded password comparison (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-password-comparison-literal-2
-    pattern: '"..." === password'
-    message: Hardcoded password comparison (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: python-hardcoded-password
-    pattern: PASSWORD = "..."
-    message: Hardcoded password (CWE-798)
-    languages: [python]
-    severity: ERROR
-
-  - id: python-hardcoded-secret
-    pattern: SECRET = "..."
-    message: Hardcoded secret (CWE-798)
-    languages: [python]
-    severity: ERROR
-
-  - id: python-hardcoded-api-key
-    pattern: API_KEY = "..."
-    message: Hardcoded API key (CWE-798)
-    languages: [python]
-    severity: ERROR
-
-  # =====================================================
-  # Weak Token/Secret Detection
-  # =====================================================
-
-  - id: js-access-token-secret-hardcoded
-    pattern: 'ACCESS_TOKEN_SECRET = "..."'
-    message: Hardcoded access token secret - use environment variables (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-refresh-token-secret-hardcoded
-    pattern: 'REFRESH_TOKEN_SECRET = "..."'
-    message: Hardcoded refresh token secret - use environment variables (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-token-secret-hardcoded
-    pattern: 'TOKEN_SECRET = "..."'
-    message: Hardcoded token secret - use environment variables (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-jwt-secret-hardcoded
-    pattern: 'JWT_SECRET = "..."'
-    message: Hardcoded JWT secret - use environment variables (CWE-798)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: php-weak-encryption-key
-    pattern: 'ENCRYPTION_KEY = "..."'
-    message: Hardcoded encryption key - use secure key management (CWE-321)
-    languages: [php]
-    severity: ERROR
-
-  - id: js-weak-encryption-key
-    pattern: 'ENCRYPTION_KEY = "..."'
-    message: Hardcoded encryption key - use secure key management (CWE-321)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: python-weak-secret-key
-    pattern: 'SECRET_KEY = "..."'
-    message: Hardcoded secret key - use environment variables (CWE-798)
-    languages: [python]
-    severity: ERROR
-
-  # =====================================================
-  # IDOR (Insecure Direct Object Reference) Detection
-  # =====================================================
-
-  - id: php-idor-direct-id-query
-    pattern: '$RESULT = $DB->query("SELECT ... WHERE $FIELD = " . $_GET[$ID])'
-    message: Potential IDOR - direct object reference without authorization check (CWE-639)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-idor-user-id-param
-    pattern: '$USER_ID = $_GET["id"]'
-    message: Potential IDOR - user ID from request parameter needs authorization check (CWE-639)
-    languages: [php]
+  - id: java-xxe-transformerfactory
+    pattern: TransformerFactory.newInstance()
+    message: Java Transformer may be vulnerable to XXE - disable external entities
+    languages: [java]
     severity: WARNING
 
-  - id: php-idor-user-id-param-2
-    pattern: '$USER_ID = $_GET["user_id"]'
-    message: Potential IDOR - user ID from request parameter needs authorization check (CWE-639)
-    languages: [php]
+  - id: java-xxe-xmlreader
+    pattern: XMLReaderFactory.createXMLReader()
+    message: Java XMLReader may be vulnerable to XXE - disable external entities
+    languages: [java]
     severity: WARNING
 
-  - id: js-idor-params-id
-    pattern: 'req.params.id'
-    message: Direct object reference from URL params - verify authorization check exists (CWE-639)
-    languages: [javascript, typescript]
-    severity: INFO
+  # ============================================
+  # Java Path Traversal Rules
+  # ============================================
 
-  - id: js-idor-query-userid
-    pattern: 'req.query.userId'
-    message: User ID from query params - verify authorization check exists (CWE-639)
-    languages: [javascript, typescript]
+  - id: java-path-traversal-file-new
+    pattern: new File($REQUEST)
+    message: Java File creation with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  - id: java-path-traversal-paths-get
+    pattern: Paths.get($REQUEST)
+    message: Java Paths.get() with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  - id: java-path-traversal-fileinputstream
+    pattern: new FileInputStream($REQUEST)
+    message: Java FileInputStream with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  - id: java-path-traversal-fileoutputstream
+    pattern: new FileOutputStream($REQUEST)
+    message: Java FileOutputStream with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  - id: java-path-traversal-filereader
+    pattern: new FileReader($REQUEST)
+    message: Java FileReader with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  - id: java-path-traversal-filewriter
+    pattern: new FileWriter($REQUEST)
+    message: Java FileWriter with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # Java Insecure Deserialization Rules
+  # ============================================
+
+  - id: java-insecure-deserialization-ois
+    pattern: new ObjectInputStream(...)
+    message: Java ObjectInputStream - insecure deserialization vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-insecure-deserialization-readobject
+    pattern: $X.readObject()
+    message: Java readObject() - insecure deserialization vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-insecure-deserialization-xmldecoder
+    pattern: new XMLDecoder(...)
+    message: Java XMLDecoder - insecure deserialization vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-insecure-deserialization-xstream
+    pattern: new XStream()
+    message: Java XStream without security configuration - insecure deserialization
+    languages: [java]
+    severity: ERROR
+
+  - id: java-insecure-deserialization-yaml
+    pattern: new Yaml()
+    message: Java SnakeYAML without safe constructor - insecure deserialization
+    languages: [java]
     severity: WARNING
 
-  - id: python-idor-request-args
-    pattern: 'request.args.get("id")'
-    message: Direct object reference from request args - verify authorization (CWE-639)
-    languages: [python]
-    severity: WARNING
+  # ============================================
+  # JWT Security Rules
+  # ============================================
 
-  # =====================================================
-  # Mass Assignment Detection
-  # =====================================================
-
-  - id: js-mass-assignment-body
-    pattern: 'Object.assign($OBJ, req.body)'
-    message: Mass assignment vulnerability - user input directly assigned to object (CWE-915)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-mass-assignment-spread
-    pattern: '{ ...$OBJ, ...req.body }'
-    message: Mass assignment via spread operator - validate allowed fields (CWE-915)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-mass-assignment-update
-    pattern: '$MODEL.update(req.body)'
-    message: Mass assignment in update - whitelist allowed fields (CWE-915)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-mass-assignment-create
-    pattern: '$MODEL.create(req.body)'
-    message: Mass assignment in create - whitelist allowed fields (CWE-915)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: python-mass-assignment-dict
-    pattern: '$OBJ.__dict__.update(request.json)'
-    message: Mass assignment via __dict__.update - whitelist fields (CWE-915)
-    languages: [python]
-    severity: ERROR
-
-  - id: ruby-mass-assignment-params
-    pattern: '$MODEL.new(params[$X])'
-    message: Mass assignment - use strong parameters (CWE-915)
-    languages: [ruby]
-    severity: WARNING
-
-  - id: ruby-mass-assignment-update
-    pattern: '$MODEL.update(params[$X])'
-    message: Mass assignment in update - use strong parameters (CWE-915)
-    languages: [ruby]
-    severity: WARNING
-
-  - id: php-mass-assignment-post
-    pattern: '$OBJ = $_POST'
-    message: Mass assignment from POST data - validate and whitelist fields (CWE-915)
-    languages: [php]
-    severity: ERROR
-
-  # DVWA-specific: API mass assignment patterns
-  - id: php-raw-input-json
-    pattern: 'json_decode(file_get_contents("php://input"), ...)'
-    message: Raw JSON input from request body - validate and whitelist fields (CWE-915)
-    languages: [php]
-    severity: WARNING
-
-  - id: php-input-to-array
-    pattern: '$INPUT = (array) json_decode(file_get_contents(...), TRUE)'
-    message: User input decoded to array - validate fields before use (CWE-915)
-    languages: [php]
-    severity: WARNING
-
-  - id: php-direct-property-from-input
-    pattern: '$OBJ->$PROP = $INPUT[$KEY]'
-    message: Direct property assignment from user input - potential mass assignment (CWE-915)
-    languages: [php]
-    severity: WARNING
-
-  - id: php-level-from-input
-    pattern: '$DATA->level = $INPUT[$X]'
-    message: User level/privilege set from input - privilege escalation risk (CWE-269)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-role-from-input
-    pattern: '$DATA->role = $INPUT[$X]'
-    message: User role set from input - privilege escalation risk (CWE-269)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-admin-from-input
-    pattern: '$DATA->admin = $INPUT[$X]'
-    message: Admin flag set from input - privilege escalation risk (CWE-269)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-is-admin-from-input
-    pattern: '$DATA->is_admin = $INPUT[$X]'
-    message: Admin flag set from input - privilege escalation risk (CWE-269)
-    languages: [php]
-    severity: ERROR
-
-  # Array key assignment from input
-  - id: php-array-level-from-input
-    pattern: '$DATA[$ID]->level = intval ($INPUT[$X])'
-    message: User level set from input array - privilege escalation (CWE-269)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-array-level-from-input-2
-    pattern: '$DATA[$ID]->level = $INPUT[$X]'
-    message: User level set from input - privilege escalation (CWE-269)
-    languages: [php]
-    severity: ERROR
-
-  # =====================================================
-  # HTTP Response Splitting / Header Injection
-  # =====================================================
-
-  - id: php-header-crlf-injection
-    pattern: 'header("Location: " . $_GET[$X])'
-    message: HTTP Response Splitting - user input in header without CRLF sanitization (CWE-113)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-header-crlf-injection-2
-    pattern: 'header($_GET[$X])'
-    message: HTTP Response Splitting - raw user input as header (CWE-113)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-header-crlf-injection-3
-    pattern: 'header("$HEADER: " . $_GET[$X])'
-    message: HTTP Response Splitting - user input in header value (CWE-113)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-header-post-injection
-    pattern: 'header("Location: " . $_POST[$X])'
-    message: HTTP Response Splitting - POST input in header (CWE-113)
-    languages: [php]
-    severity: ERROR
-
-  # DVWA-specific: Exact pattern from open_redirect/source/low.php
-  - id: php-open-redirect-location
-    pattern: 'header ("location: " . $_GET[$X])'
-    message: Open redirect - user controls Location header (CWE-601)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-open-redirect-location-2
-    pattern: 'header("location: " . $_GET[$X])'
-    message: Open redirect - user controls Location header (CWE-601)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-open-redirect-location-3
-    pattern: 'header ("Location: " . $_GET[$X])'
-    message: Open redirect - user controls Location header (CWE-601)
-    languages: [php]
-    severity: ERROR
-
-  - id: js-setHeader-user-input
-    pattern: 'res.setHeader($NAME, req.query.$X)'
-    message: HTTP Response Splitting - user input in response header (CWE-113)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-setHeader-user-input-2
-    pattern: 'res.setHeader($NAME, req.body.$X)'
-    message: HTTP Response Splitting - user input in response header (CWE-113)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: python-header-injection
-    pattern: 'response.headers[$NAME] = request.args.get($X)'
-    message: HTTP Response Splitting - user input in response header (CWE-113)
-    languages: [python]
-    severity: ERROR
-
-  # =====================================================
-  # Information Disclosure
-  # =====================================================
-
-  - id: php-die-error-message
-    pattern: 'die($ERROR)'
-    message: Information disclosure - error details exposed to user (CWE-209)
-    languages: [php]
-    severity: WARNING
-
-  - id: php-die-mysqli-error
-    pattern: 'die(mysqli_error($CONN))'
-    message: Information disclosure - database error exposed to user (CWE-209)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-echo-exception
-    pattern: 'echo $EXCEPTION->getMessage()'
-    message: Information disclosure - exception message exposed (CWE-209)
-    languages: [php]
-    severity: WARNING
-
-  - id: php-echo-mysql-error
-    pattern: 'echo mysql_error()'
-    message: Information disclosure - MySQL error exposed to user (CWE-209)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-echo-pdo-error
-    pattern: 'echo $PDO->errorInfo()'
-    message: Information disclosure - PDO error exposed to user (CWE-209)
-    languages: [php]
-    severity: ERROR
-
-  - id: js-error-message-response
-    pattern: 'res.send($ERR.message)'
-    message: Information disclosure - error message in response (CWE-209)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-error-stack-response
-    pattern: 'res.send($ERR.stack)'
-    message: Information disclosure - stack trace in response (CWE-209)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-console-error-sensitive
-    pattern: 'console.log($PASSWORD)'
-    message: Sensitive data logged - may expose credentials (CWE-532)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: python-traceback-print
-    pattern: 'traceback.print_exc()'
-    message: Information disclosure - traceback printed (CWE-209)
-    languages: [python]
-    severity: WARNING
-
-  - id: python-exception-response
-    pattern: 'return str($EXCEPTION)'
-    message: Information disclosure - exception details in response (CWE-209)
-    languages: [python]
-    severity: WARNING
-
-  # =====================================================
-  # Predictable Session/Token IDs
-  # =====================================================
-
-  - id: php-predictable-session-id
-    pattern: '$_SESSION[$X] = $_SESSION[$X] + 1'
-    message: Predictable session value - sequential IDs are guessable (CWE-330)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-predictable-session-increment
-    pattern: '$_SESSION[$X]++'
-    message: Predictable session value - sequential increment (CWE-330)
-    languages: [php]
-    severity: ERROR
-
-  # DVWA-specific: Exact pattern from weak_id/source/low.php
-  - id: php-predictable-session-last-id
-    pattern: "$_SESSION['last_session_id']++"
-    message: Predictable session ID - sequential increment pattern (CWE-330)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-session-to-cookie
-    pattern: '$COOKIE = $_SESSION[$X]'
-    message: Session value used as cookie - verify not predictable (CWE-330)
-    languages: [php]
-    severity: WARNING
-
-  - id: php-setcookie-session-value
-    pattern: 'setcookie($NAME, $_SESSION[$X])'
-    message: Cookie set from session value - verify not predictable (CWE-330)
-    languages: [php]
-    severity: WARNING
-
-  - id: php-session-id-time
-    pattern: 'session_id(time())'
-    message: Predictable session ID based on time (CWE-330)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-session-id-md5-time
-    pattern: 'session_id(md5(time()))'
-    message: Predictable session ID - time-based MD5 is guessable (CWE-330)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-weak-session-id
-    pattern: 'session_id(md5($USERNAME))'
-    message: Weak session ID - predictable from username (CWE-330)
-    languages: [php]
-    severity: ERROR
-
-  - id: js-predictable-token-date
-    pattern: 'Date.now().toString()'
-    message: Predictable token based on timestamp (CWE-330)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-uuid-v1-predictable
-    pattern: 'uuid.v1()'
-    message: UUID v1 is time-based and partially predictable - use v4 (CWE-330)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  # =====================================================
-  # Missing Security Headers
-  # =====================================================
-
-  - id: php-xss-protection-disabled
-    pattern: 'header("X-XSS-Protection: 0")'
-    message: XSS protection header disabled (CWE-693)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-content-type-options-missing
-    pattern: 'header("X-Content-Type-Options: nosniff")'
-    message: Good - X-Content-Type-Options header set
-    languages: [php]
-    severity: INFO
-
-  - id: js-helmet-disabled
-    pattern: 'app.use(helmet({ $OPTIONS }))'
-    message: Review Helmet configuration - ensure security headers enabled
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: js-xss-protection-disabled
-    pattern: 'res.setHeader("X-XSS-Protection", "0")'
-    message: XSS protection header disabled (CWE-693)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-cors-wildcard
-    pattern: 'cors({ origin: "*" })'
-    message: CORS allows all origins - restrict to trusted domains (CWE-942)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-cors-credentials-wildcard
-    pattern: 'cors({ origin: "*", credentials: true })'
-    message: CORS with credentials and wildcard origin is dangerous (CWE-942)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  # =====================================================
-  # API Security Issues
-  # =====================================================
-
-  - id: js-api-no-auth-check
-    pattern: 'app.get("/api/$PATH", ($REQ, $RES) => { ... })'
-    message: API endpoint - verify authentication middleware exists
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: js-graphql-introspection
-    pattern: 'introspection: true'
-    message: GraphQL introspection enabled - disable in production (CWE-200)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-rate-limit-missing
-    pattern: 'app.use("/api", $ROUTER)'
-    message: API router - verify rate limiting is applied
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: python-flask-debug
-    pattern: 'app.run(debug=True)'
-    message: Flask debug mode enabled - disable in production (CWE-489)
-    languages: [python]
-    severity: ERROR
-
-  - id: python-django-debug
-    pattern: 'DEBUG = True'
-    message: Django debug mode enabled - disable in production (CWE-489)
-    languages: [python]
-    severity: ERROR
-
-  - id: js-express-error-handler
-    pattern: 'app.use(($ERR, $REQ, $RES, $NEXT) => { $RES.send($ERR) })'
-    message: Error handler exposes error details - sanitize before sending (CWE-209)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  # =====================================================
-  # Privilege Escalation Indicators
-  # =====================================================
-
-  - id: php-role-from-input
-    pattern: '$ROLE = $_GET[$X]'
-    message: User role from input - verify authorization (CWE-269)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-role-from-post
-    pattern: '$ROLE = $_POST[$X]'
-    message: User role from POST - verify authorization (CWE-269)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-admin-check-bypass
-    pattern: 'if ($_GET[$X] == "admin")'
-    message: Admin check via GET parameter - insecure authorization (CWE-639)
-    languages: [php]
-    severity: ERROR
-
-  - id: js-role-from-body
-    pattern: '$USER.role = req.body.role'
-    message: User role from request body - mass assignment privilege escalation (CWE-269)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-isAdmin-from-body
-    pattern: '$USER.isAdmin = req.body.isAdmin'
-    message: Admin flag from request - privilege escalation vulnerability (CWE-269)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-level-from-body
-    pattern: '$USER.level = req.body.level'
-    message: User level from request body - privilege escalation risk (CWE-269)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  # =====================================================
-  # Unsafe Redirects
-  # =====================================================
-
-  - id: php-unsafe-redirect-header
-    pattern: 'header("Location: " . $URL)'
-    message: Redirect with variable URL - validate against whitelist (CWE-601)
-    languages: [php]
-    severity: WARNING
-
-  - id: php-unsafe-redirect-get
-    pattern: 'header("Location: " . $_REQUEST[$X])'
-    message: Open redirect - user controls redirect destination (CWE-601)
-    languages: [php]
-    severity: ERROR
-
-  - id: js-unsafe-redirect-query
-    pattern: 'res.redirect(req.query.url)'
-    message: Open redirect via query parameter (CWE-601)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-unsafe-redirect-body
-    pattern: 'res.redirect(req.body.url)'
-    message: Open redirect via body parameter (CWE-601)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-unsafe-redirect-next
-    pattern: 'res.redirect(req.query.next)'
-    message: Open redirect via next parameter (CWE-601)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: python-unsafe-redirect
-    pattern: 'redirect(request.args.get($URL))'
-    message: Open redirect via request argument (CWE-601)
-    languages: [python]
-    severity: ERROR
-
-  # =====================================================
-  # Path Traversal Extended
-  # =====================================================
-
-  - id: php-path-traversal-realpath
-    pattern: 'realpath($_GET[$X])'
-    message: Path traversal - realpath with user input (CWE-22)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-path-traversal-basename
-    pattern: 'basename($_GET[$X])'
-    message: Potential path manipulation - verify proper sanitization (CWE-22)
-    languages: [php]
-    severity: WARNING
-
-  - id: php-path-traversal-dirname
-    pattern: 'dirname($_GET[$X])'
-    message: Path traversal attempt detection - user controls path (CWE-22)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-path-traversal-glob
-    pattern: 'glob($_GET[$X])'
-    message: Path traversal via glob - user controls pattern (CWE-22)
-    languages: [php]
-    severity: ERROR
-
-  - id: js-path-traversal-join
-    pattern: 'path.join($BASE, req.query.$X)'
-    message: Path traversal - validate user input doesn't contain ../ (CWE-22)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-path-traversal-resolve
-    pattern: 'path.resolve(req.query.$X)'
-    message: Path traversal - user input in path.resolve (CWE-22)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  # =====================================================
-  # Insecure Randomness Extended
-  # =====================================================
-
-  - id: php-time-based-seed
-    pattern: 'srand(time())'
-    message: Predictable random seed based on time (CWE-330)
-    languages: [php]
-    severity: ERROR
-
-  - id: php-mt-srand-time
-    pattern: 'mt_srand(time())'
-    message: Predictable Mersenne Twister seed (CWE-330)
-    languages: [php]
-    severity: ERROR
-
-  - id: js-math-random-token
-    pattern: 'Math.random().toString(36)'
-    message: Math.random for token - use crypto.randomBytes (CWE-330)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: python-random-token
-    pattern: 'random.choice($CHARS)'
-    message: random module for security - use secrets module (CWE-330)
-    languages: [python]
-    severity: WARNING
-
-  - id: python-random-randint-token
-    pattern: 'random.randint($MIN, $MAX)'
-    message: random.randint for security - use secrets.randbelow (CWE-330)
-    languages: [python]
-    severity: WARNING
-
-  # =====================================================
-  # JavaScript/TypeScript - SQL Injection (Juice Shop gaps)
-  # =====================================================
-
-  - id: js-sql-string-concat
-    pattern: '$DB.query($Q + $INPUT)'
-    message: SQL injection - string concatenation in query (CWE-89)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-sql-template-literal
-    pattern: '$DB.query(`... ${$INPUT} ...`)'
-    message: SQL injection - template literal with user input (CWE-89)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-sequelize-raw-query
-    pattern: 'sequelize.query($Q + $INPUT)'
-    message: Sequelize SQL injection - use parameterized queries (CWE-89)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-knex-raw-input
-    pattern: 'knex.raw($Q + $INPUT)'
-    message: Knex SQL injection - use parameterized queries (CWE-89)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-mysql-query-concat
-    pattern: 'connection.query($Q + $INPUT)'
-    message: MySQL SQL injection - use parameterized queries (CWE-89)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-pg-query-concat
-    pattern: 'client.query($Q + $INPUT)'
-    message: PostgreSQL SQL injection - use parameterized queries (CWE-89)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  # =====================================================
-  # JavaScript/TypeScript - NoSQL Injection (MongoDB)
-  # =====================================================
-
-  - id: js-mongodb-find-injection
-    pattern: '$COLLECTION.find({ $FIELD: req.body.$INPUT })'
-    message: NoSQL injection - unsanitized input in MongoDB query (CWE-943)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-mongodb-findone-injection
-    pattern: '$COLLECTION.findOne({ $FIELD: req.body.$INPUT })'
-    message: NoSQL injection - unsanitized input in MongoDB findOne (CWE-943)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-mongodb-where-injection
-    pattern: '$COLLECTION.find({ $where: $INPUT })'
-    message: NoSQL injection - $where with user input allows code execution (CWE-943)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-mongodb-regex-injection
-    pattern: '$COLLECTION.find({ $FIELD: { $regex: req.$X.$Y } })'
-    message: NoSQL ReDoS - user input in regex (CWE-1333)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-mongoose-find-body
-    pattern: '$MODEL.find(req.body)'
-    message: NoSQL injection - raw body passed to Mongoose find (CWE-943)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-mongoose-findone-body
-    pattern: '$MODEL.findOne(req.body)'
-    message: NoSQL injection - raw body passed to Mongoose findOne (CWE-943)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  # =====================================================
-  # JavaScript/TypeScript - XXE (XML External Entity)
-  # =====================================================
-
-  - id: js-xml2js-xxe
-    pattern: 'xml2js.parseString($INPUT, ...)'
-    message: XXE risk - xml2js may process external entities (CWE-611)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-libxmljs-parse
-    pattern: 'libxmljs.parseXml($INPUT)'
-    message: XXE risk - disable external entity processing (CWE-611)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-domparser-xml
-    pattern: 'new DOMParser().parseFromString($INPUT, "text/xml")'
-    message: XXE risk - parsing XML from user input (CWE-611)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-fast-xml-parser
-    pattern: 'new XMLParser().parse($INPUT)'
-    message: XXE risk - verify external entities are disabled (CWE-611)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  # =====================================================
-  # JavaScript/TypeScript - Insecure Deserialization
-  # =====================================================
-
-  - id: js-node-serialize
-    pattern: 'serialize.unserialize($INPUT)'
-    message: Insecure deserialization - node-serialize is vulnerable to RCE (CWE-502)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-funcster-deserialize
-    pattern: 'funcster.deepDeserialize($INPUT)'
-    message: Insecure deserialization - funcster allows code execution (CWE-502)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-js-yaml-load
-    pattern: 'yaml.load($INPUT)'
-    message: Insecure deserialization - yaml.load can execute code, use safeLoad (CWE-502)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-json-parse-reviver
-    pattern: 'JSON.parse($INPUT, $REVIVER)'
-    message: JSON.parse with reviver - verify reviver is safe (CWE-502)
-    languages: [javascript, typescript]
-    severity: INFO
-
-  # =====================================================
-  # JavaScript/TypeScript - Open Redirect Extended
-  # =====================================================
-
-  - id: js-redirect-header
-    pattern: 'res.set("Location", req.$X.$Y)'
-    message: Open redirect via Location header (CWE-601)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-redirect-writeHead
-    pattern: 'res.writeHead($CODE, { Location: req.$X.$Y })'
-    message: Open redirect via writeHead (CWE-601)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-window-location-assign
-    pattern: 'window.location.assign($INPUT)'
-    message: Open redirect - validate URL before redirect (CWE-601)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-window-location-href
-    pattern: 'window.location.href = $INPUT'
-    message: Open redirect - validate URL before redirect (CWE-601)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-window-location-replace
-    pattern: 'window.location.replace($INPUT)'
-    message: Open redirect - validate URL before redirect (CWE-601)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  # =====================================================
-  # JavaScript/TypeScript - Prototype Pollution
-  # =====================================================
-
-  - id: js-prototype-pollution-merge
-    pattern: 'Object.assign({}, $INPUT)'
-    message: Potential prototype pollution if input is untrusted (CWE-1321)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-prototype-pollution-lodash-merge
-    pattern: '_.merge($TARGET, $INPUT)'
-    message: Prototype pollution via lodash merge (CWE-1321)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-prototype-pollution-deepmerge
-    pattern: 'deepmerge($TARGET, $INPUT)'
-    message: Potential prototype pollution via deepmerge (CWE-1321)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-bracket-notation-input
-    pattern: '$OBJ[req.$X.$Y] = $VALUE'
-    message: Prototype pollution - bracket notation with user input (CWE-1321)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  # =====================================================
-  # JavaScript/TypeScript - Server-Side Request Forgery
-  # =====================================================
-
-  - id: js-ssrf-fetch
-    pattern: 'fetch(req.$X.$Y)'
-    message: SSRF - user input in fetch URL (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-ssrf-axios
-    pattern: 'axios.get(req.$X.$Y)'
-    message: SSRF - user input in axios URL (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-ssrf-axios-post
-    pattern: 'axios.post(req.$X.$Y, ...)'
-    message: SSRF - user input in axios URL (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-ssrf-request
-    pattern: 'request(req.$X.$Y)'
-    message: SSRF - user input in request URL (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-ssrf-got
-    pattern: 'got(req.$X.$Y)'
-    message: SSRF - user input in got URL (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-ssrf-http-get
-    pattern: 'http.get(req.$X.$Y, ...)'
-    message: SSRF - user input in http.get URL (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  # =====================================================
-  # JavaScript/TypeScript - Logging Sensitive Data
-  # =====================================================
-
-  - id: js-console-log-password
-    pattern: 'console.log(..., password, ...)'
-    message: Sensitive data logged - password in console.log (CWE-532)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-console-log-token
-    pattern: 'console.log(..., token, ...)'
-    message: Sensitive data logged - token in console.log (CWE-532)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-console-log-secret
-    pattern: 'console.log(..., secret, ...)'
-    message: Sensitive data logged - secret in console.log (CWE-532)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-console-log-apikey
-    pattern: 'console.log(..., apiKey, ...)'
-    message: Sensitive data logged - API key in console.log (CWE-532)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-console-log-generic
-    pattern: 'console.log(...)'
-    message: Console.log statement found
-    languages: [javascript, typescript]
-    severity: INFO
-
-  # =====================================================
-  # JavaScript/TypeScript - Math.random() security
-  # =====================================================
-
-  - id: js-math-random-crypto
-    pattern: 'Math.random()'
-    message: Math.random() not cryptographically secure
-    languages: [javascript, typescript]
-    severity: INFO
-
-  # =====================================================
-  # JavaScript/TypeScript - Regex DoS (ReDoS)
-  # =====================================================
-
-  - id: js-regex-user-input
-    pattern: 'new RegExp(req.$X.$Y)'
-    message: Dynamic regex - potential ReDoS
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-regex-from-variable
-    pattern: 'new RegExp($PATTERN)'
-    message: Dynamic regex - potential ReDoS
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  # =====================================================
-  # JWT Security Vulnerabilities
-  # =====================================================
-
-  - id: jwt-verify-no-algorithm
-    pattern: 'jwt.verify($TOKEN, $SECRET)'
-    message: JWT verification without algorithm specification - vulnerable to algorithm confusion attacks (CWE-327)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: jwt-decode-without-verify
-    pattern: 'jwt.decode($TOKEN)'
-    message: JWT decoded without verification - tokens must be verified before trusting claims (CWE-345)
-    languages: [javascript, typescript]
+  - id: jwt-none-algorithm
+    pattern: '"alg":"none"'
+    message: JWT none algorithm - authentication bypass vulnerability
+    languages: [javascript, typescript, java, python]
     severity: ERROR
 
-  - id: jwt-algorithm-none
+  - id: jwt-none-algorithm-alt
     pattern: 'algorithm: "none"'
-    message: JWT using "none" algorithm - completely insecure, allows token forgery (CWE-327)
+    message: JWT none algorithm - authentication bypass vulnerability
     languages: [javascript, typescript]
     severity: ERROR
 
-  - id: jwt-weak-secret-hardcoded
-    pattern: 'jwt.sign($PAYLOAD, "...")'
-    message: JWT signed with hardcoded secret - use environment variables (CWE-798)
+  - id: jwt-weak-secret
+    pattern: jwt.sign($PAYLOAD, "secret", ...)
+    message: JWT signed with weak/hardcoded secret
     languages: [javascript, typescript]
     severity: ERROR
 
-  - id: jwt-hs256-public-key
+  - id: jwt-weak-secret-short
+    pattern: jwt.sign($PAYLOAD, $SECRET)
+    message: JWT signing - ensure secret is strong and from environment
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: jwt-verify-disabled
+    pattern: 'verify: false'
+    message: JWT verification disabled - tokens will not be validated
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: jwt-no-expiry
+    pattern: jwt.sign($PAYLOAD, $SECRET)
+    message: JWT without expiration - consider adding expiresIn option
+    languages: [javascript, typescript]
+    severity: INFO
+
+  - id: java-jwt-none-algorithm
+    pattern: Algorithm.none()
+    message: Java JWT none algorithm - authentication bypass vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-jwt-weak-hmac
+    pattern: Algorithm.HMAC256($SECRET)
+    message: Java JWT - ensure HMAC secret is strong (256+ bits)
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Java SSRF Rules
+  # ============================================
+
+  - id: java-ssrf-url
+    pattern: new URL($USER_INPUT)
+    message: Java URL with user input - potential SSRF vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-ssrf-httpurlconnection
+    pattern: $URL.openConnection()
+    message: Java HTTP connection - verify URL is validated against SSRF
+    languages: [java]
+    severity: WARNING
+
+  - id: java-ssrf-httpclient
+    pattern: HttpClients.createDefault()
+    message: Java HttpClient - ensure URLs are validated against SSRF
+    languages: [java]
+    severity: INFO
+
+  # ============================================
+  # Java LDAP Injection Rules
+  # ============================================
+
+  - id: java-ldap-injection
+    pattern: $CTX.search($BASE, $FILTER, ...)
+    message: Java LDAP search - potential LDAP injection if filter contains user input
+    languages: [java]
+    severity: WARNING
+
+  - id: java-ldap-injection-lookup
+    pattern: $CTX.lookup($USER_INPUT)
+    message: Java LDAP lookup with user input - potential LDAP injection
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # Java CSRF Protection Rules
+  # ============================================
+
+  - id: java-missing-csrf-spring
+    pattern: http.csrf().disable()
+    message: Spring Security CSRF protection disabled
+    languages: [java]
+    severity: ERROR
+
+  - id: java-missing-csrf-spring-lambda
+    pattern: csrf(csrf -> csrf.disable())
+    message: Spring Security CSRF protection disabled
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # Additional Java Security Rules
+  # ============================================
+
+  # Removed overly broad "password" pattern - was causing false positives
+  # Now using more specific patterns that detect actual hardcoded credentials
+
+  - id: java-hardcoded-password-assignment
     patterns:
-      - pattern: |
-          jwt.verify($TOKEN, $KEY, { algorithms: ["HS256"] })
-    message: JWT using HS256 with potentially public key - vulnerable to key confusion attack (CWE-327)
-    languages: [javascript, typescript]
+      - pattern: String $VAR = "..."
+        metavariable-regex:
+          metavariable: $VAR
+          regex: (?i).*(password|passwd|pwd|secret|apikey|api_key|token|credential).*
+    message: Hardcoded password/secret in variable assignment
+    languages: [java]
+    severity: ERROR
+
+  - id: java-password-in-connection
+    pattern: DriverManager.getConnection($URL, $USER, "...")
+    message: Hardcoded password in database connection
+    languages: [java]
+    severity: ERROR
+
+  - id: java-password-in-properties
+    pattern: $PROPS.setProperty("password", "...")
+    message: Hardcoded password in Properties
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # JNDI Injection Rules (Log4Shell style)
+  # ============================================
+
+  - id: java-jndi-injection
+    pattern: $CTX.lookup($INPUT)
+    message: JNDI lookup - potential JNDI injection (Log4Shell style attack)
+    languages: [java]
+    severity: ERROR
+
+  - id: java-jndi-initial-context
+    pattern: new InitialContext()
+    message: JNDI InitialContext - ensure lookup inputs are validated
+    languages: [java]
     severity: WARNING
 
-  - id: jwt-insecure-expiry
-    pattern: 'expiresIn: "..d"'
-    message: JWT with long expiration - consider shorter token lifetime for security
-    languages: [javascript, typescript]
+  - id: java-jndi-ldap-url
+    pattern: '"ldap://..."'
+    message: LDAP URL in code - potential JNDI injection vector
+    languages: [java]
+    severity: ERROR
+
+  - id: java-jndi-rmi-url
+    pattern: '"rmi://..."'
+    message: RMI URL in code - potential JNDI injection vector
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # Spring Security Misconfiguration Rules
+  # ============================================
+
+  - id: spring-permit-all
+    pattern: .permitAll()
+    message: Spring Security permitAll() - ensure this endpoint should be public
+    languages: [java]
     severity: INFO
 
-  - id: jsonwebtoken-sign-no-options
-    pattern: 'jsonwebtoken.sign($PAYLOAD, $SECRET)'
-    message: JWT sign without options - specify algorithm and expiration explicitly
-    languages: [javascript, typescript]
+  - id: spring-disable-csrf
+    pattern: .csrf().disable()
+    message: Spring Security CSRF protection disabled
+    languages: [java]
+    severity: ERROR
+
+  - id: spring-disable-csrf-lambda
+    pattern: csrf(csrf -> csrf.disable())
+    message: Spring Security CSRF protection disabled
+    languages: [java]
+    severity: ERROR
+
+  - id: spring-anonymous-access
+    pattern: .anonymous()
+    message: Spring Security anonymous access configured - verify this is intentional
+    languages: [java]
     severity: WARNING
 
-  # =====================================================
-  # Prototype Pollution
-  # =====================================================
+  - id: spring-headers-disabled
+    pattern: .headers().disable()
+    message: Spring Security headers disabled - removes XSS and clickjacking protection
+    languages: [java]
+    severity: ERROR
 
-  - id: prototype-pollution-merge
-    pattern: 'merge($TARGET, $SOURCE)'
-    message: Deep merge without prototype pollution protection - validate __proto__ and constructor (CWE-1321)
-    languages: [javascript, typescript]
+  - id: spring-frame-options-disabled
+    pattern: .frameOptions().disable()
+    message: Spring Security frame options disabled - clickjacking vulnerability
+    languages: [java]
     severity: WARNING
 
-  - id: prototype-pollution-extend
-    pattern: 'extend($TARGET, $SOURCE)'
-    message: Object extend without prototype pollution protection (CWE-1321)
-    languages: [javascript, typescript]
+  # ============================================
+  # Enhanced XXE Detection
+  # ============================================
+
+  - id: java-xxe-feature-disabled
+    pattern: $FACTORY.setFeature("http://apache.org/xml/features/disallow-doctype-decl", false)
+    message: XXE protection explicitly disabled
+    languages: [java]
+    severity: ERROR
+
+  - id: java-xxe-external-entities-enabled
+    pattern: $FACTORY.setFeature("http://xml.org/sax/features/external-general-entities", true)
+    message: External entities enabled - XXE vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-xxe-schemavalidation
+    pattern: $FACTORY.setValidating(false)
+    message: XML validation disabled - may allow XXE attacks
+    languages: [java]
     severity: WARNING
 
-  - id: prototype-pollution-assign
-    pattern: 'Object.assign($TARGET, JSON.parse($INPUT))'
-    message: Object.assign with parsed user input - potential prototype pollution (CWE-1321)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: prototype-pollution-bracket-notation
-    pattern: '$OBJ[$KEY] = $VALUE'
-    message: Dynamic property assignment - ensure key is not __proto__ or constructor (CWE-1321)
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: prototype-pollution-lodash-set
-    pattern: '_.set($OBJ, $PATH, $VALUE)'
-    message: Lodash set with dynamic path - validate path does not contain __proto__ (CWE-1321)
-    languages: [javascript, typescript]
+  - id: java-insecure-random
+    pattern: new Random()
+    message: Java Random is not cryptographically secure - use SecureRandom
+    languages: [java]
     severity: WARNING
 
-  - id: prototype-pollution-lodash-merge
-    pattern: '_.merge($TARGET, $SOURCE)'
-    message: Lodash merge can cause prototype pollution with untrusted data (CWE-1321)
-    languages: [javascript, typescript]
+  - id: java-weak-ssl-context
+    pattern: 'SSLContext.getInstance("SSL")'
+    message: Java SSL context uses outdated protocol - use TLSv1.2 or higher
+    languages: [java]
+    severity: ERROR
+
+  - id: java-weak-tls-context
+    pattern: 'SSLContext.getInstance("TLS")'
+    message: Java TLS context - ensure TLSv1.2 or higher is used
+    languages: [java]
     severity: WARNING
 
-  - id: prototype-pollution-defaultsdeep
-    pattern: '_.defaultsDeep($TARGET, $SOURCE)'
-    message: Lodash defaultsDeep vulnerable to prototype pollution (CWE-1321)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: prototype-check-proto
-    pattern: '$OBJ.__proto__'
-    message: Direct __proto__ access detected - potential prototype pollution vector (CWE-1321)
-    languages: [javascript, typescript]
+  - id: java-trust-all-certs
+    pattern: X509TrustManager
+    message: Java X509TrustManager - ensure certificates are properly validated
+    languages: [java]
     severity: WARNING
 
-  - id: prototype-check-constructor
-    pattern: '$OBJ.constructor.prototype'
-    message: Constructor prototype access - potential prototype pollution (CWE-1321)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  # =====================================================
-  # Path Traversal / Directory Traversal
-  # =====================================================
-
-  - id: path-traversal-join-req
-    pattern: 'path.join(..., req.$X.$Y, ...)'
-    message: Path.join with user input - vulnerable to path traversal attacks (CWE-22)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: path-traversal-resolve-req
-    pattern: 'path.resolve(..., req.$X.$Y, ...)'
-    message: Path.resolve with user input - validate and sanitize paths (CWE-22)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: path-traversal-concat
-    pattern: '$BASE + req.$X.$Y'
-    message: String concatenation for file paths with user input - use path.join and validate (CWE-22)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: path-traversal-template
-    pattern: '`${...}${req.$X.$Y}${...}`'
-    message: Template literal with user input in path - vulnerable to traversal (CWE-22)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: path-traversal-sendfile
-    pattern: 'res.sendFile(req.$X.$Y)'
-    message: sendFile with user input - validate path does not contain .. sequences (CWE-22)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: path-traversal-download
-    pattern: 'res.download(req.$X.$Y)'
-    message: res.download with user input - vulnerable to arbitrary file download (CWE-22)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: path-traversal-static
-    pattern: 'express.static(req.$X.$Y)'
-    message: Static file serving with user-controlled path (CWE-22)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: path-traversal-createReadStream
-    pattern: 'fs.createReadStream(req.$X.$Y)'
-    message: createReadStream with user input - validate path before reading (CWE-22)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: path-traversal-createWriteStream
-    pattern: 'fs.createWriteStream(req.$X.$Y)'
-    message: createWriteStream with user input - arbitrary file write vulnerability (CWE-22)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: path-normalize-bypass
-    pattern: 'path.normalize($USER_INPUT)'
-    message: path.normalize alone does not prevent traversal - use realpath and validate (CWE-22)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  # =====================================================
-  # Server-Side Request Forgery (SSRF)
-  # =====================================================
-
-  - id: ssrf-fetch-user-url
-    pattern: 'fetch(req.$X.$Y)'
-    message: Fetch with user-controlled URL - SSRF vulnerability (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: ssrf-axios-user-url
-    pattern: 'axios.get(req.$X.$Y)'
-    message: Axios GET with user-controlled URL - SSRF vulnerability (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: ssrf-axios-post-user-url
-    pattern: 'axios.post(req.$X.$Y, ...)'
-    message: Axios POST with user-controlled URL - SSRF vulnerability (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: ssrf-axios-request-user-url
-    pattern: 'axios({ url: req.$X.$Y, ... })'
-    message: Axios request with user-controlled URL - SSRF vulnerability (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: ssrf-request-user-url
-    pattern: 'request(req.$X.$Y)'
-    message: Request module with user-controlled URL - SSRF vulnerability (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: ssrf-got-user-url
-    pattern: 'got(req.$X.$Y)'
-    message: Got with user-controlled URL - SSRF vulnerability (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: ssrf-http-get-user-url
-    pattern: 'http.get(req.$X.$Y)'
-    message: HTTP GET with user-controlled URL - SSRF vulnerability (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: ssrf-https-get-user-url
-    pattern: 'https.get(req.$X.$Y)'
-    message: HTTPS GET with user-controlled URL - SSRF vulnerability (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: ssrf-url-variable
-    pattern: |
-      $URL = req.$X.$Y
-      ...
-      fetch($URL)
-    message: URL from user input passed to fetch - SSRF vulnerability (CWE-918)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: ssrf-image-proxy
-    pattern: 'fetch($URL).then(...pipe(res)...)'
-    message: Potential image/file proxy - ensure URL is validated against SSRF (CWE-918)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  # =====================================================
-  # Broken Access Control / IDOR
-  # =====================================================
-
-  - id: idor-direct-object-ref
-    pattern: 'findById(req.params.id)'
-    message: Direct object reference from URL params - verify user owns resource (CWE-639)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: idor-findone-params
-    pattern: 'findOne({ _id: req.params.$X })'
-    message: Database lookup with URL param - implement authorization check (CWE-639)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: idor-update-params
-    pattern: 'updateOne({ _id: req.params.$X }, ...)'
-    message: Database update with URL param - verify user has permission (CWE-639)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: idor-delete-params
-    pattern: 'deleteOne({ _id: req.params.$X })'
-    message: Database delete with URL param - implement ownership verification (CWE-639)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: idor-findbyid-body
-    pattern: 'findById(req.body.$X)'
-    message: Object lookup from request body - verify authorization (CWE-639)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: idor-where-userid
-    pattern: 'where({ userId: req.params.$X })'
-    message: User-controlled userId in query - users can access other users data (CWE-639)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: idor-prisma-findunique
-    pattern: 'prisma.$MODEL.findUnique({ where: { id: req.params.$X } })'
-    message: Prisma lookup with URL param - add authorization check (CWE-639)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: idor-sequelize-findone
-    pattern: 'Model.findOne({ where: { id: req.params.$X } })'
-    message: Sequelize lookup with URL param - verify user authorization (CWE-639)
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: broken-access-role-header
-    pattern: 'req.headers.$ROLE'
-    message: Role/permission from request headers - headers can be spoofed by users (CWE-639)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: broken-access-admin-cookie
-    pattern: 'req.cookies.isAdmin'
-    message: Admin check from cookie - cookies can be manipulated by users (CWE-639)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: broken-access-client-role
-    pattern: 'req.body.role'
-    message: Role from request body - users can escalate their own privileges (CWE-639)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: broken-access-user-provided-id
-    pattern: 'req.body.userId'
-    message: UserId from request body - users can impersonate other users (CWE-639)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: mass-assignment-vulnerability
-    pattern: 'Model.create(req.body)'
-    message: Mass assignment - create/update directly from request body allows field injection (CWE-915)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: mass-assignment-update
-    pattern: 'Model.update(req.body)'
-    message: Mass assignment in update - whitelist allowed fields (CWE-915)
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: mass-assignment-spread
-    pattern: 'new Model({ ...req.body })'
-    message: Spreading request body to model - potential mass assignment (CWE-915)
-    languages: [javascript, typescript]
+  - id: java-hostname-verifier-disabled
+    pattern: HostnameVerifier
+    message: Java HostnameVerifier - ensure hostname verification is not disabled
+    languages: [java]
     severity: WARNING

@@ -1,4 +1,5 @@
 <script lang="ts">
+	// Force rebuild: v2.1 - Fixed snippet display and unified explanations
 	import { page } from '$app/stores';
 	import { onMount, onDestroy } from 'svelte';
 	import { supabase } from '$lib/supabase';
@@ -853,22 +854,6 @@
 				<div class="findings-section" class:revealed={revealStage >= 4}>
 					<div class="findings-header">
 						<h2>Findings ({results.findings.length})</h2>
-						<div class="mode-toggle">
-							<button
-								class="mode-btn"
-								class:active={mode === 'founder'}
-								onclick={() => explanationMode.setMode('founder')}
-							>
-								Non-technical
-							</button>
-							<button
-								class="mode-btn"
-								class:active={mode === 'developer'}
-								onclick={() => explanationMode.setMode('developer')}
-							>
-								Technical
-							</button>
-						</div>
 					</div>
 					<div class="findings-list">
 						{#each results.findings as finding, i}
@@ -923,10 +908,6 @@
 										{/if}
 
 											<div class="explanation-box">
-												<div class="explanation-header">
-													<span class="explanation-icon">💡</span>
-													<span class="explanation-label">What's the risk</span>
-												</div>
 												<p class="explanation-text">
 													{getExplanation(finding)}
 												</p>

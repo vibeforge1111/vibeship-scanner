@@ -233,36 +233,6 @@ rules:
     languages: [php]
     severity: ERROR
 
-  - id: php-echo-get
-    pattern: echo $_GET[$X]
-    message: PHP XSS - echoing GET parameter without escaping
-    languages: [php]
-    severity: ERROR
-
-  - id: php-echo-post
-    pattern: echo $_POST[$X]
-    message: PHP XSS - echoing POST parameter without escaping
-    languages: [php]
-    severity: ERROR
-
-  - id: php-echo-request
-    pattern: echo $_REQUEST[$X]
-    message: PHP XSS - echoing REQUEST parameter without escaping
-    languages: [php]
-    severity: ERROR
-
-  - id: php-print-get
-    pattern: print $_GET[$X]
-    message: PHP XSS - printing GET parameter without escaping
-    languages: [php]
-    severity: ERROR
-
-  - id: php-print-post
-    pattern: print $_POST[$X]
-    message: PHP XSS - printing POST parameter without escaping
-    languages: [php]
-    severity: ERROR
-
   - id: php-unserialize
     pattern: unserialize(...)
     message: PHP unserialize() - insecure deserialization risk
@@ -317,150 +287,6 @@ rules:
     languages: [php]
     severity: WARNING
 
-  - id: php-query-get-concat
-    pattern: $QUERY . $_GET[$X]
-    message: PHP SQL injection - concatenating GET parameter into query
-    languages: [php]
-    severity: ERROR
-
-  - id: php-query-post-concat
-    pattern: $QUERY . $_POST[$X]
-    message: PHP SQL injection - concatenating POST parameter into query
-    languages: [php]
-    severity: ERROR
-
-  - id: php-query-request-concat
-    pattern: $QUERY . $_REQUEST[$X]
-    message: PHP SQL injection - concatenating REQUEST parameter into query
-    languages: [php]
-    severity: ERROR
-
-  - id: php-query-interpolation
-    pattern: '"SELECT $EXPR FROM $TABLE WHERE $FIELD = $_GET[$X]"'
-    message: PHP SQL injection via string interpolation
-    languages: [php]
-    severity: ERROR
-
-  - id: php-preg-replace-callback
-    pattern: preg_replace_callback($PATTERN, $CALLBACK, $_GET[$X])
-    message: PHP ReDoS risk - user input in regex
-    languages: [php]
-    severity: WARNING
-
-  - id: php-preg-match-input
-    pattern: preg_match($_GET[$X], ...)
-    message: PHP ReDoS risk - user-controlled regex pattern
-    languages: [php]
-    severity: ERROR
-
-  - id: php-header-injection
-    pattern: 'header($X . $_GET[$Y])'
-    message: PHP header injection - user input in header
-    languages: [php]
-    severity: ERROR
-
-  - id: php-mail-injection
-    pattern: mail($_GET[$X], ...)
-    message: PHP mail header injection risk
-    languages: [php]
-    severity: ERROR
-
-  - id: php-mail-body-injection
-    pattern: mail($TO, $SUBJECT, $_GET[$X])
-    message: PHP mail content injection risk
-    languages: [php]
-    severity: WARNING
-
-  - id: php-fopen-input
-    pattern: fopen($_GET[$X], ...)
-    message: PHP path traversal - user input in file path
-    languages: [php]
-    severity: ERROR
-
-  - id: php-file-input
-    pattern: file($_GET[$X])
-    message: PHP path traversal - user input in file path
-    languages: [php]
-    severity: ERROR
-
-  - id: php-readfile-input
-    pattern: readfile($_GET[$X])
-    message: PHP path traversal - user input in readfile
-    languages: [php]
-    severity: ERROR
-
-  - id: php-file-put-contents-input
-    pattern: file_put_contents($_GET[$X], ...)
-    message: PHP arbitrary file write via user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-copy-input
-    pattern: copy($_GET[$X], ...)
-    message: PHP arbitrary file copy via user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-rename-input
-    pattern: rename($_GET[$X], ...)
-    message: PHP arbitrary file rename via user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-unlink-input
-    pattern: unlink($_GET[$X])
-    message: PHP arbitrary file delete via user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-mkdir-input
-    pattern: mkdir($_GET[$X])
-    message: PHP arbitrary directory creation via user input
-    languages: [php]
-    severity: WARNING
-
-  - id: php-rmdir-input
-    pattern: rmdir($_GET[$X])
-    message: PHP arbitrary directory deletion via user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-chmod-input
-    pattern: chmod($_GET[$X], ...)
-    message: PHP arbitrary permission change via user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-ldap-search-input
-    pattern: ldap_search($CONN, $BASE, $_GET[$X])
-    message: PHP LDAP injection - user input in search filter
-    languages: [php]
-    severity: ERROR
-
-  - id: php-xpath-input
-    pattern: $XML->xpath($_GET[$X])
-    message: PHP XPath injection - user input in XPath query
-    languages: [php]
-    severity: ERROR
-
-  - id: php-simplexml-load
-    pattern: simplexml_load_string($_GET[$X])
-    message: PHP XXE risk - loading XML from user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-dom-loadxml
-    pattern: $DOC->loadXML($_GET[$X])
-    message: PHP XXE risk - loading XML from user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-json-decode-depth
-    pattern: json_decode($_GET[$X])
-    message: PHP JSON parsing user input - ensure depth limits
-    languages: [php]
-    severity: WARNING
-
   - id: php-base64-decode-exec
     pattern: eval(base64_decode($X))
     message: PHP code injection via base64 decode
@@ -470,42 +296,6 @@ rules:
   - id: php-preg-replace-e-flag
     pattern: 'preg_replace($PATTERN, $REPLACEMENT, $SUBJECT, $LIMIT)'
     message: PHP preg_replace - check for dangerous /e modifier
-    languages: [php]
-    severity: WARNING
-
-  - id: php-usort-callback
-    pattern: usort($ARRAY, $_GET[$X])
-    message: PHP code injection via callback
-    languages: [php]
-    severity: ERROR
-
-  - id: php-array-map-callback
-    pattern: array_map($_GET[$X], ...)
-    message: PHP code injection via callback
-    languages: [php]
-    severity: ERROR
-
-  - id: php-call-user-func
-    pattern: call_user_func($_GET[$X], ...)
-    message: PHP code injection via call_user_func
-    languages: [php]
-    severity: ERROR
-
-  - id: php-call-user-func-array
-    pattern: call_user_func_array($_GET[$X], ...)
-    message: PHP code injection via call_user_func_array
-    languages: [php]
-    severity: ERROR
-
-  - id: php-var-var
-    pattern: $$_GET[$X]
-    message: PHP variable variable injection
-    languages: [php]
-    severity: ERROR
-
-  - id: php-compact-input
-    pattern: compact($_GET[$X])
-    message: PHP variable injection via compact
     languages: [php]
     severity: WARNING
 
@@ -538,18 +328,6 @@ rules:
     message: PHP weak token generation - use random_bytes()
     languages: [php]
     severity: WARNING
-
-  - id: php-strcmp-bypass
-    pattern: strcmp($_GET[$X], $SECRET)
-    message: PHP strcmp type juggling bypass risk
-    languages: [php]
-    severity: WARNING
-
-  - id: php-loose-comparison
-    pattern: $X == $_GET[$Y]
-    message: PHP loose comparison - consider strict === for security
-    languages: [php]
-    severity: INFO
 
   - id: ruby-system-call
     pattern: system($CMD)
@@ -608,12 +386,6 @@ rules:
   - id: ruby-render-inline
     pattern: 'render inline: params[$X]'
     message: Ruby Rails inline render - template injection
-    languages: [ruby]
-    severity: ERROR
-
-  - id: ruby-sql-interpolation
-    pattern: where("$FIELD = #{params[$X]}")
-    message: Ruby SQL injection via string interpolation
     languages: [ruby]
     severity: ERROR
 
@@ -680,12 +452,6 @@ rules:
   - id: java-xpath-compile
     pattern: XPathFactory.newInstance().newXPath().compile($EXPR)
     message: Java XPath injection risk
-    languages: [java]
-    severity: WARNING
-
-  - id: java-xxe-documentbuilder
-    pattern: DocumentBuilderFactory.newInstance()
-    message: Java XXE risk - disable external entities
     languages: [java]
     severity: WARNING
 
@@ -790,64 +556,6 @@ rules:
     severity: WARNING
 
   # =====================================================
-  # PHP - Enhanced XSS Detection (DVWA patterns)
-  # =====================================================
-
-  - id: php-echo-concat-get
-    pattern: echo $X . $_GET[$Y]
-    message: PHP XSS - echoing concatenated GET parameter
-    languages: [php]
-    severity: ERROR
-
-  - id: php-echo-concat-get-2
-    pattern: echo $_GET[$X] . $Y
-    message: PHP XSS - echoing concatenated GET parameter
-    languages: [php]
-    severity: ERROR
-
-  - id: php-echo-concat-post
-    pattern: echo $X . $_POST[$Y]
-    message: PHP XSS - echoing concatenated POST parameter
-    languages: [php]
-    severity: ERROR
-
-  - id: php-echo-concat-post-2
-    pattern: echo $_POST[$X] . $Y
-    message: PHP XSS - echoing concatenated POST parameter
-    languages: [php]
-    severity: ERROR
-
-  - id: php-string-concat-get
-    pattern: $HTML .= $X . $_GET[$Y]
-    message: PHP XSS - user input concatenated into output variable
-    languages: [php]
-    severity: ERROR
-
-  - id: php-string-concat-get-2
-    pattern: $HTML .= $_GET[$X]
-    message: PHP XSS - GET parameter appended to output
-    languages: [php]
-    severity: ERROR
-
-  - id: php-string-concat-post
-    pattern: $HTML .= $_POST[$X]
-    message: PHP XSS - POST parameter appended to output
-    languages: [php]
-    severity: ERROR
-
-  - id: php-printf-get
-    pattern: printf($FMT, $_GET[$X])
-    message: PHP XSS - printing GET parameter via printf
-    languages: [php]
-    severity: ERROR
-
-  - id: php-sprintf-get
-    pattern: sprintf($FMT, $_GET[$X])
-    message: PHP XSS - GET parameter in sprintf (check output escaping)
-    languages: [php]
-    severity: WARNING
-
-  # =====================================================
   # PHP - Enhanced Command Injection (DVWA patterns)
   # =====================================================
 
@@ -940,38 +648,6 @@ rules:
   - id: php-password-plain-compare-2
     pattern: if ($X == $PASSWORD)
     message: PHP password - use password_verify() instead of direct comparison
-    languages: [php]
-    severity: ERROR
-
-  # =====================================================
-  # PHP - CSRF Token Missing Indicators
-  # =====================================================
-
-  - id: php-form-no-token-check
-    pattern: 'if(isset($_POST[$X])) { ... }'
-    message: PHP form handler - verify CSRF token validation exists
-    languages: [php]
-    severity: INFO
-
-  # =====================================================
-  # PHP - Dangerous Functions Expanded
-  # =====================================================
-
-  - id: php-assert-user-input
-    pattern: assert($_GET[$X])
-    message: PHP code injection via assert() with user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-assert-user-input-post
-    pattern: assert($_POST[$X])
-    message: PHP code injection via assert() with user input
-    languages: [php]
-    severity: ERROR
-
-  - id: php-array-filter-callback
-    pattern: array_filter($ARRAY, $_GET[$X])
-    message: PHP code injection via array_filter callback
     languages: [php]
     severity: ERROR
 
@@ -1277,19 +953,6 @@ rules:
   # Additional Java Security Rules
   # ============================================
 
-  # Removed overly broad "password" pattern - was causing false positives
-  # Now using more specific patterns that detect actual hardcoded credentials
-
-  - id: java-hardcoded-password-assignment
-    patterns:
-      - pattern: String $VAR = "..."
-        metavariable-regex:
-          metavariable: $VAR
-          regex: (?i).*(password|passwd|pwd|secret|apikey|api_key|token|credential).*
-    message: Hardcoded password/secret in variable assignment
-    languages: [java]
-    severity: ERROR
-
   - id: java-password-in-connection
     pattern: DriverManager.getConnection($URL, $USER, "...")
     message: Hardcoded password in database connection
@@ -1335,13 +998,13 @@ rules:
   # ============================================
 
   - id: spring-permit-all
-    pattern: .permitAll()
+    pattern: $X.permitAll()
     message: Spring Security permitAll() - ensure this endpoint should be public
     languages: [java]
     severity: INFO
 
   - id: spring-disable-csrf
-    pattern: .csrf().disable()
+    pattern: $X.csrf().disable()
     message: Spring Security CSRF protection disabled
     languages: [java]
     severity: ERROR
@@ -1353,19 +1016,19 @@ rules:
     severity: ERROR
 
   - id: spring-anonymous-access
-    pattern: .anonymous()
+    pattern: $X.anonymous()
     message: Spring Security anonymous access configured - verify this is intentional
     languages: [java]
     severity: WARNING
 
   - id: spring-headers-disabled
-    pattern: .headers().disable()
+    pattern: $X.headers().disable()
     message: Spring Security headers disabled - removes XSS and clickjacking protection
     languages: [java]
     severity: ERROR
 
   - id: spring-frame-options-disabled
-    pattern: .frameOptions().disable()
+    pattern: $X.frameOptions().disable()
     message: Spring Security frame options disabled - clickjacking vulnerability
     languages: [java]
     severity: WARNING
