@@ -1084,3 +1084,346 @@ rules:
     message: Java HostnameVerifier - ensure hostname verification is not disabled
     languages: [java]
     severity: WARNING
+
+  # ============================================
+  # PHP XSS Detection (non-taint patterns)
+  # Note: PHP echo/print are language constructs that don't work with taint mode
+  # Using pattern-based detection instead
+  # ============================================
+
+  - id: php-xss-printf
+    mode: taint
+    message: PHP XSS vulnerability - user input in printf without sanitization
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+      - pattern: $_COOKIE
+    pattern-sinks:
+      - pattern: printf(...)
+      - pattern: vprintf(...)
+      - pattern: sprintf(...)
+    pattern-sanitizers:
+      - pattern: htmlspecialchars(...)
+      - pattern: htmlentities(...)
+
+  - id: php-xss-die-exit
+    mode: taint
+    message: PHP XSS vulnerability - user input in die/exit without sanitization
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: die(...)
+      - pattern: exit(...)
+    pattern-sanitizers:
+      - pattern: htmlspecialchars(...)
+      - pattern: htmlentities(...)
+
+  # ============================================
+  # PHP Taint Mode Rules - SQL Injection
+  # ============================================
+
+  - id: php-taint-sqli-query
+    mode: taint
+    message: PHP SQL injection - user input in database query without parameterization
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+      - pattern: $_COOKIE
+    pattern-sinks:
+      - pattern: mysqli_query($CONN, $SINK)
+      - pattern: $PDO->query($SINK)
+      - pattern: $PDO->exec($SINK)
+      - pattern: $MYSQLI->query($SINK)
+      - pattern: mysql_query($SINK)
+      - pattern: pg_query($CONN, $SINK)
+      - pattern: pg_query($SINK)
+    pattern-sanitizers:
+      - pattern: mysqli_real_escape_string(...)
+      - pattern: $MYSQLI->real_escape_string(...)
+      - pattern: $PDO->quote(...)
+      - pattern: pg_escape_string(...)
+      - pattern: intval(...)
+      - pattern: (int)$X
+
+  - id: php-taint-sqli-sprintf
+    mode: taint
+    message: PHP SQL injection - user input in sprintf query string
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: sprintf($QUERY, ..., $SINK, ...)
+    pattern-sanitizers:
+      - pattern: mysqli_real_escape_string(...)
+      - pattern: intval(...)
+      - pattern: (int)$X
+
+  # ============================================
+  # PHP Taint Mode Rules - File Operations (SSRF/LFI)
+  # ============================================
+
+  - id: php-taint-file-read
+    mode: taint
+    message: PHP file read with user input - potential path traversal or SSRF
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: file_get_contents($SINK)
+      - pattern: file($SINK)
+      - pattern: fopen($SINK, ...)
+      - pattern: readfile($SINK)
+      - pattern: file_exists($SINK)
+      - pattern: is_file($SINK)
+      - pattern: is_readable($SINK)
+      - pattern: is_writable($SINK)
+      - pattern: filemtime($SINK)
+      - pattern: filesize($SINK)
+    pattern-sanitizers:
+      - pattern: basename(...)
+      - pattern: realpath(...)
+
+  - id: php-taint-file-write
+    mode: taint
+    message: PHP file write with user input - potential arbitrary file write
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: file_put_contents($SINK, ...)
+      - pattern: fwrite($SINK, ...)
+      - pattern: fputs($SINK, ...)
+      - pattern: copy($SINK, ...)
+      - pattern: rename($SINK, ...)
+      - pattern: unlink($SINK)
+      - pattern: mkdir($SINK)
+      - pattern: rmdir($SINK)
+    pattern-sanitizers:
+      - pattern: basename(...)
+      - pattern: realpath(...)
+
+  - id: php-taint-include
+    mode: taint
+    message: PHP file inclusion with user input - potential LFI/RFI vulnerability
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: include($SINK)
+      - pattern: include_once($SINK)
+      - pattern: require($SINK)
+      - pattern: require_once($SINK)
+    pattern-sanitizers:
+      - pattern: basename(...)
+
+  # ============================================
+  # PHP Taint Mode Rules - Command Injection
+  # ============================================
+
+  - id: php-taint-command-injection
+    mode: taint
+    message: PHP command injection - user input in shell command
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: shell_exec($SINK)
+      - pattern: exec($SINK)
+      - pattern: exec($SINK, ...)
+      - pattern: system($SINK)
+      - pattern: passthru($SINK)
+      - pattern: popen($SINK, ...)
+      - pattern: proc_open($SINK, ...)
+    pattern-sanitizers:
+      - pattern: escapeshellarg(...)
+      - pattern: escapeshellcmd(...)
+
+  # ============================================
+  # PHP Taint Mode Rules - Open Redirect
+  # ============================================
+
+  - id: php-taint-open-redirect
+    mode: taint
+    message: PHP open redirect - user input in redirect location
+    languages: [php]
+    severity: WARNING
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: header($SINK)
+      - pattern: 'header("Location: " . $SINK)'
+
+  # ============================================
+  # PHP Taint Mode Rules - Code Injection
+  # ============================================
+
+  - id: php-taint-code-injection
+    mode: taint
+    message: PHP code injection - user input in eval/assert
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: eval($SINK)
+      - pattern: assert($SINK)
+      - pattern: create_function($ARGS, $SINK)
+      - pattern: preg_replace($PATTERN, $SINK, ...)
+
+  # ============================================
+  # PHP Taint Mode Rules - Mail Injection
+  # ============================================
+
+  - id: php-taint-mail-injection
+    mode: taint
+    message: PHP mail header injection - user input in mail headers
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: mail($SINK, ...)
+      - pattern: mail($TO, $SINK, ...)
+      - pattern: mail($TO, $SUBJECT, $BODY, $SINK)
+
+  # ============================================
+  # PHP Taint Mode Rules - LDAP Injection
+  # ============================================
+
+  - id: php-taint-ldap-injection
+    mode: taint
+    message: PHP LDAP injection - user input in LDAP query
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: ldap_search($CONN, $BASE, $SINK)
+      - pattern: ldap_search($CONN, $BASE, $SINK, ...)
+
+  # ============================================
+  # PHP Taint Mode Rules - XML/XPath Injection
+  # ============================================
+
+  - id: php-taint-xpath-injection
+    mode: taint
+    message: PHP XPath injection - user input in XPath query
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: $XPATH->query($SINK)
+      - pattern: $XPATH->evaluate($SINK)
+      - pattern: $DOM->query($SINK)
+
+  - id: php-taint-xxe
+    mode: taint
+    message: PHP XXE vulnerability - user input in XML parsing
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+      - pattern: file_get_contents("php://input")
+    pattern-sinks:
+      - pattern: simplexml_load_string($SINK)
+      - pattern: new SimpleXMLElement($SINK)
+      - pattern: $DOM->loadXML($SINK)
+      - pattern: DOMDocument::loadXML($SINK)
+
+  # ============================================
+  # Ruby Taint Mode Rules
+  # ============================================
+
+  - id: ruby-taint-sql-injection
+    mode: taint
+    message: Ruby SQL injection - user input in SQL query without parameterization
+    languages: [ruby]
+    severity: ERROR
+    pattern-sources:
+      - pattern: params
+      - pattern: request.params
+    pattern-sinks:
+      - pattern: $MODEL.where($SINK)
+      - pattern: $MODEL.find_by_sql($SINK)
+      - pattern: $CONN.execute($SINK)
+      - pattern: ActiveRecord::Base.connection.execute($SINK)
+
+  - id: ruby-taint-command-injection
+    mode: taint
+    message: Ruby command injection - user input in shell command
+    languages: [ruby]
+    severity: ERROR
+    pattern-sources:
+      - pattern: params
+      - pattern: request.params
+    pattern-sinks:
+      - pattern: system($SINK)
+      - pattern: exec($SINK)
+      - pattern: Kernel.system($SINK)
+      - pattern: IO.popen($SINK)
+      - pattern: Open3.capture2($SINK)
+      - pattern: Open3.capture3($SINK)
+
+  - id: ruby-taint-open-redirect
+    mode: taint
+    message: Ruby open redirect - user input in redirect
+    languages: [ruby]
+    severity: WARNING
+    pattern-sources:
+      - pattern: params
+    pattern-sinks:
+      - pattern: redirect_to($SINK)
+
+  # ============================================
+  # Java Hardcoded Credential Detection
+  # ============================================
+
+  - id: java-hardcoded-password-connection
+    pattern: DriverManager.getConnection($URL, $USER, $PASS)
+    message: Java database connection - ensure credentials are from environment variables
+    languages: [java]
+    severity: WARNING
+
+  - id: java-setproperty-password
+    pattern: $X.setProperty("password", ...)
+    message: Potential hardcoded password in setProperty call
+    languages: [java]
+    severity: WARNING
