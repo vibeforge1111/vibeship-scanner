@@ -226,16 +226,56 @@
 	];
 
 	const securityFacts = [
-		{ icon: '💡', fact: 'SQL injection has been the #1 web vulnerability for over 20 years' },
-		{ icon: '🔑', fact: '80% of data breaches involve compromised credentials' },
-		{ icon: '📦', fact: 'The average app has 49 open source dependencies' },
-		{ icon: '⏱️', fact: 'Average time to detect a breach: 197 days' },
-		{ icon: '💰', fact: 'Average cost of a data breach: $4.45 million' },
-		{ icon: '🛡️', fact: 'SAST catches 70% of vulnerabilities before deployment' },
-		{ icon: '🔐', fact: '90% of leaked secrets are found in git history' },
-		{ icon: '⚠️', fact: 'XSS is present in 2 out of 3 web applications' },
-		{ icon: '🐛', fact: 'Finding bugs in dev is 100x cheaper than in prod' },
-		{ icon: '📊', fact: 'Security issues grow 2x for every 1000 lines of code' }
+		{ fact: 'Average cost of a data breach: $4.88 million in 2024, up 10% from last year', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: 'Healthcare breaches cost $9.77 million on average — highest of any industry', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: 'Average breach lifecycle hit a 7-year low: 258 days to detect and contain', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: 'Organizations using AI security saved $2.2 million in breach costs', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: '70% of breached organizations reported significant business disruption', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: 'Stolen credentials are the #1 initial attack vector at 16% of breaches', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: 'The human element was involved in 68% of all data breaches', source: 'Verizon DBIR 2024' },
+		{ fact: 'Vulnerability exploitation as initial access tripled compared to last year', source: 'Verizon DBIR 2024' },
+		{ fact: 'Ransomware affects 92% of industries and accounts for 23% of all breaches', source: 'Verizon DBIR 2024' },
+		{ fact: 'Supply chain attacks made up 15% of all breaches — a 68% increase YoY', source: 'Verizon DBIR 2024' },
+		{ fact: 'Users typically fall for phishing emails in under 60 seconds', source: 'Verizon DBIR 2024' },
+		{ fact: 'It takes 55 days to patch 50% of vulnerabilities after patches are released', source: 'Verizon DBIR 2024' },
+		{ fact: '23.8 million secrets were leaked on public GitHub repos in 2024 (+25% YoY)', source: 'GitGuardian State of Secrets Sprawl 2025' },
+		{ fact: '70% of secrets leaked in 2022 are still active today', source: 'GitGuardian State of Secrets Sprawl 2025' },
+		{ fact: '35% of private repositories contain plaintext secrets', source: 'GitGuardian State of Secrets Sprawl 2025' },
+		{ fact: '96% of leaked GitHub tokens had write access to repositories', source: 'GitGuardian State of Secrets Sprawl 2025' },
+		{ fact: 'Copilot users have a 6.4% secret leakage rate in public repos', source: 'GitGuardian State of Secrets Sprawl 2025' },
+		{ fact: '74% of commercial codebases contain high-risk open source vulnerabilities', source: 'Synopsys OSSRA 2024' },
+		{ fact: '91% of codebases contain components 10+ versions out of date', source: 'Synopsys OSSRA 2024' },
+		{ fact: '49% of codebases use components with no development activity in 2+ years', source: 'Synopsys OSSRA 2024' },
+		{ fact: '77% of all code scanned traces back to open source projects', source: 'Synopsys OSSRA 2024' },
+		{ fact: 'Average eCrime breakout time: just 62 minutes from initial compromise', source: 'CrowdStrike Global Threat Report 2024' },
+		{ fact: 'Fastest recorded breakout time: only 2 minutes and 7 seconds', source: 'CrowdStrike Global Threat Report 2024' },
+		{ fact: '75% of attacks are now malware-free, using stolen credentials instead', source: 'CrowdStrike Global Threat Report 2024' },
+		{ fact: 'Cloud-related security breaches surged 75% year-over-year', source: 'CrowdStrike Global Threat Report 2024' },
+		{ fact: 'Kerberoasting attacks increased 583% in 2023', source: 'CrowdStrike Global Threat Report 2024' },
+		{ fact: 'Over 24,000 new vulnerabilities were discovered in 2024 alone', source: 'Snyk State of Open Source Security 2024' },
+		{ fact: '80% believe AI generates more secure code — research shows otherwise', source: 'Snyk State of Open Source Security 2024' },
+		{ fact: 'Security tool adoption dropped 11.3% despite increasing threats', source: 'Snyk State of Open Source Security 2024' },
+		{ fact: 'SQL injection still affects 6.7% of open source and 10% of closed source projects', source: 'Aikido Security Research 2024' },
+		{ fact: 'Over 20% of projects are vulnerable to SQL injection when first scanned', source: 'Aikido Security Research 2024' },
+		{ fact: 'Injection is tested in 100% of applications — the most-tested category', source: 'OWASP Top 10 2025 RC1' },
+		{ fact: 'Cross-site scripting has over 30,000 CVEs — highest of any vulnerability type', source: 'OWASP Top 10 2025 RC1' },
+		{ fact: 'Security misconfiguration is the most common vulnerability across applications', source: 'OWASP Top 10 2025 RC1' },
+		{ fact: 'Recommended time to fix critical vulnerabilities: 30 days or less', source: 'NIST SP 800-40 / CISA' },
+		{ fact: 'Average time to remediate a vulnerability: 60-150 days', source: 'Infosec Institute' },
+		{ fact: 'Malicious insider attacks cost $4.99 million on average — most expensive vector', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: 'Ransomware victims saved $1 million on average by involving law enforcement', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: '63% of ransomware victims who involved law enforcement avoided paying ransom', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: 'U.S. entities face $9.36 million average breach costs — highest globally', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: 'Multi-environment breaches (cloud + on-prem) cost over $5 million on average', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: 'Security staffing shortages increase breach costs by $1.76 million', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: '42% of breaches are now detected internally vs 33% the year before', source: 'IBM Cost of Data Breach Report 2024' },
+		{ fact: 'Median ransom demand: 1.34% of company revenue', source: 'Verizon DBIR 2024' },
+		{ fact: '61% of hands-on attacks target North American organizations', source: 'CrowdStrike Global Threat Report 2024' },
+		{ fact: 'Finding bugs in development is 100x cheaper than in production', source: 'IBM Systems Sciences Institute' },
+		{ fact: 'XZ Utils backdoor nearly compromised millions of Linux systems in 2024', source: 'Snyk / Linux Foundation' },
+		{ fact: '8 of top 10 vulnerabilities stem from improper input neutralization (CWE-707)', source: 'Synopsys OSSRA 2024' },
+		{ fact: '53% of codebases have open source license conflicts', source: 'Synopsys OSSRA 2024' },
+		{ fact: '34 new threat actor groups were identified in 2023 alone', source: 'CrowdStrike Global Threat Report 2024' }
 	];
 
 	let currentFactIndex = $state(0);
@@ -246,7 +286,7 @@
 			if (!factInterval) {
 				factInterval = setInterval(() => {
 					currentFactIndex = (currentFactIndex + 1) % securityFacts.length;
-				}, 4000);
+				}, 6000);
 			}
 		} else if (factInterval) {
 			clearInterval(factInterval);
@@ -619,8 +659,8 @@
 			</div>
 
 			<div class="security-fact">
-				<span class="fact-icon">{securityFacts[currentFactIndex].icon}</span>
 				<span class="fact-text">{securityFacts[currentFactIndex].fact}</span>
+				<span class="fact-source">Source: {securityFacts[currentFactIndex].source}</span>
 			</div>
 
 			<div class="progress-bar">
@@ -1077,24 +1117,29 @@
 
 	.security-fact {
 		margin: 2rem auto;
-		max-width: 400px;
-		padding: 1rem;
+		max-width: 500px;
+		padding: 1.25rem 1.5rem;
 		background: var(--bg-secondary);
 		border: 1px solid var(--border);
 		display: flex;
-		align-items: center;
-		gap: 0.75rem;
+		flex-direction: column;
+		gap: 0.5rem;
 		animation: factFade 0.5s ease;
-	}
-
-	.fact-icon {
-		font-size: 1.25rem;
+		text-align: center;
 	}
 
 	.fact-text {
-		font-size: 0.85rem;
-		color: var(--text-secondary);
-		line-height: 1.4;
+		font-size: 0.95rem;
+		color: var(--text-primary);
+		line-height: 1.5;
+		font-weight: 500;
+	}
+
+	.fact-source {
+		font-size: 0.75rem;
+		color: var(--text-muted, #666);
+		opacity: 0.7;
+		font-style: italic;
 	}
 
 	@keyframes factFade {
