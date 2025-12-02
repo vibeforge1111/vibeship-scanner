@@ -3,6 +3,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { supabase } from '$lib/supabase';
 	import { explanationMode, type ExplanationMode } from '$lib/stores/preferences';
+	import { getFixTemplate, type FixTemplate } from '$lib/fixTemplates';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 
 	let scanId = $derived($page.params.id);
@@ -234,6 +235,17 @@
 
 	function copyFix(template: string) {
 		navigator.clipboard.writeText(template);
+		copied = 'fix';
+		setTimeout(() => copied = null, 2000);
+	}
+
+	function getDifficultyColor(difficulty: string): string {
+		const colors: Record<string, string> = {
+			easy: 'var(--green)',
+			medium: 'var(--orange)',
+			hard: 'var(--red)'
+		};
+		return colors[difficulty] || 'var(--text-secondary)';
 	}
 
 	function toggleFinding(id: string) {
@@ -568,12 +580,60 @@
 											</div>
 										{/if}
 
-										{#if finding.fix?.available && finding.fix?.template}
+										{@const fixTemplate = getFixTemplate(finding)}
+										{#if fixTemplate}
+											<div class="fix-template">
+												<div class="fix-template-header">
+													<div class="fix-template-title">
+														<span class="fix-icon">🔧</span>
+														<span>{fixTemplate.title}</span>
+													</div>
+													<div class="fix-meta">
+														<span class="fix-time">⏱ {fixTemplate.estimatedTime}</span>
+														<span class="fix-difficulty" style="color: {getDifficultyColor(fixTemplate.difficulty)}">
+															{fixTemplate.difficulty.toUpperCase()}
+														</span>
+													</div>
+												</div>
+												<p class="fix-description">{fixTemplate.description}</p>
+
+												<div class="code-comparison">
+													<div class="code-block before">
+														<div class="code-block-header">
+															<span class="code-label-bad">Before (Vulnerable)</span>
+														</div>
+														<pre><code>{fixTemplate.before}</code></pre>
+													</div>
+													<div class="code-block after">
+														<div class="code-block-header">
+															<span class="code-label-good">After (Safe)</span>
+															<button class="btn-copy" onclick={() => copyFix(fixTemplate.after)}>
+																{copied === 'fix' ? 'Copied!' : 'Copy'}
+															</button>
+														</div>
+														<pre><code>{fixTemplate.after}</code></pre>
+													</div>
+												</div>
+
+												<p class="fix-explanation">{fixTemplate.explanation}</p>
+
+												{#if fixTemplate.references?.length}
+													<div class="fix-references">
+														<span class="ref-label">Learn more:</span>
+														{#each fixTemplate.references as ref}
+															<a href={ref} target="_blank" rel="noopener noreferrer">
+																{new URL(ref).hostname.replace('www.', '')}
+															</a>
+														{/each}
+													</div>
+												{/if}
+											</div>
+										{:else if finding.fix?.available && finding.fix?.template}
 											<div class="finding-fix">
 												<div class="fix-header">
 													<span class="fix-label">Suggested Fix</span>
 													<button class="btn-copy" onclick={() => copyFix(finding.fix.template)}>
-														Copy
+														{copied === 'fix' ? 'Copied!' : 'Copy'}
 													</button>
 												</div>
 												<pre class="fix-code"><code>{finding.fix.template}</code></pre>
@@ -1134,6 +1194,159 @@
 
 	.btn-copy:hover {
 		border-color: var(--text-primary);
+	}
+
+	.fix-template {
+		margin-top: 1.5rem;
+		border: 1px solid var(--green-dim);
+		background: var(--bg-secondary);
+	}
+
+	.fix-template-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem;
+		border-bottom: 1px solid var(--border);
+		background: var(--bg-tertiary);
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.fix-template-title {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-weight: 600;
+		color: var(--green-dim);
+	}
+
+	.fix-icon {
+		font-size: 1rem;
+	}
+
+	.fix-meta {
+		display: flex;
+		gap: 1rem;
+		font-size: 0.75rem;
+		font-family: 'JetBrains Mono', monospace;
+	}
+
+	.fix-time {
+		color: var(--text-secondary);
+	}
+
+	.fix-difficulty {
+		font-weight: 600;
+		text-transform: uppercase;
+	}
+
+	.fix-description {
+		padding: 1rem;
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--text-secondary);
+		border-bottom: 1px solid var(--border);
+	}
+
+	.code-comparison {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1px;
+		background: var(--border);
+	}
+
+	@media (max-width: 900px) {
+		.code-comparison {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.code-block {
+		background: var(--bg-primary);
+		overflow: hidden;
+	}
+
+	.code-block-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.5rem 0.75rem;
+		background: var(--bg-tertiary);
+		border-bottom: 1px solid var(--border);
+	}
+
+	.code-label-bad {
+		font-size: 0.7rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--red);
+	}
+
+	.code-label-good {
+		font-size: 0.7rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--green);
+	}
+
+	.code-block pre {
+		margin: 0;
+		padding: 1rem;
+		background: var(--bg-inverse);
+		color: var(--text-inverse);
+		overflow-x: auto;
+		font-size: 0.75rem;
+		line-height: 1.5;
+		max-height: 250px;
+	}
+
+	.code-block pre code {
+		background: transparent;
+		padding: 0;
+	}
+
+	.code-block.before {
+		border-left: 3px solid var(--red);
+	}
+
+	.code-block.after {
+		border-left: 3px solid var(--green);
+	}
+
+	.fix-explanation {
+		padding: 1rem;
+		margin: 0;
+		font-size: 0.85rem;
+		line-height: 1.6;
+		color: var(--text-primary);
+		background: var(--bg-primary);
+		border-top: 1px solid var(--border);
+	}
+
+	.fix-references {
+		padding: 0.75rem 1rem;
+		background: var(--bg-tertiary);
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+		font-size: 0.75rem;
+	}
+
+	.ref-label {
+		color: var(--text-secondary);
+	}
+
+	.fix-references a {
+		color: var(--blue);
+		text-decoration: none;
+	}
+
+	.fix-references a:hover {
+		text-decoration: underline;
 	}
 
 	.finding-actions {
