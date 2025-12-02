@@ -16,6 +16,12 @@
 - [x] Share section (copy link, Twitter share, badge embed)
 - [x] Scan history on homepage (localStorage + Supabase)
 - [x] Real-time scan progress with Supabase Realtime
+- [x] Fix custom rules loading (vibeship.yaml + gitleaks.toml)
+- [x] Context-aware scoring (test/example file detection, client bundle secrets)
+- [x] Expand Semgrep rules (14 → 43 rules)
+- [x] Finding deduplication across tools
+- [x] Structured fix templates with before/after code examples
+- [x] CWE/CVSS metadata for all findings (28 CWE entries)
 
 ## Environment Variables
 
@@ -30,99 +36,7 @@
 
 ---
 
-## P0: Critical (Scanner Not Working Correctly)
-
-### Fix Custom Rules Loading
-- [ ] **scan.py uses `--config auto` but ignores our custom rules!**
-- [ ] Update Semgrep to use `--config rules/vibeship.yaml --config auto`
-- [ ] Update Gitleaks to use `--config gitleaks.toml`
-
-### Context-Aware Scoring (PRD Requirement)
-- [ ] Detect test files (`*.test.ts`, `*.spec.ts`, `__tests__/`)
-- [ ] Detect example files (`example/`, `sample/`, `demo/`)
-- [ ] Downgrade severity by 1 level for test/example files
-- [ ] Detect main bundle (client-side code)
-- [ ] Upgrade secrets in client bundle to CRITICAL
-- [ ] Add `contextNote` field to findings
-
----
-
-## P1: High Priority (Missing Core Features)
-
-### More Semgrep Rules (Current: 14, Target: 50+)
-
-**SQL Injection:**
-- [ ] String concatenation: `"SELECT * FROM " + id`
-- [ ] Prisma $queryRaw with user input
-- [ ] Drizzle sql`` with user input
-- [ ] Sequelize literal()
-
-**XSS:**
-- [ ] document.write()
-- [ ] Svelte {@html} without sanitization
-- [ ] Vue v-html
-- [ ] jQuery .html()
-
-**Injection:**
-- [ ] new Function() with user input
-- [ ] child_process.exec with user input
-- [ ] fs path traversal (user input in file paths)
-- [ ] SSRF (fetch/axios to user-controlled URL)
-
-**Auth Issues:**
-- [ ] Missing auth middleware on API routes
-- [ ] Broken access control (IDOR patterns)
-- [ ] Insecure password reset flows
-- [ ] Session fixation
-
-**SvelteKit-Specific:**
-- [ ] Unvalidated load function params
-- [ ] {@html} without sanitization
-- [ ] +server.ts without auth check
-- [ ] Form actions without CSRF protection
-
-**Supabase-Specific:**
-- [ ] RLS bypass patterns
-- [ ] Anon key + no RLS warning
-- [ ] Direct table access patterns
-
-**Config Issues:**
-- [ ] Debug mode in production
-- [ ] Source maps in production
-- [ ] .env file committed
-- [ ] Verbose error responses
-- [ ] Missing security headers
-
-### Finding Deduplication
-- [ ] Merge overlapping findings from different tools
-- [ ] Prefer more specific finding (Semgrep > Gitleaks for secrets)
-- [ ] Keep highest severity when merging
-
-### Gitleaks Additional Rules
-- [ ] Replicate API keys
-- [ ] Pinecone API keys
-- [ ] Clerk/Auth0 secrets
-- [ ] Vercel Edge Config tokens
-- [ ] Resend API keys
-- [ ] Upstash tokens
-
----
-
-## P2: Medium Priority (Better UX)
-
-### Structured Fix Templates
-- [ ] Create FixTemplate interface with code examples
-- [ ] Add before/after code blocks
-- [ ] Add estimated fix time
-- [ ] Add stack-specific variations
-- [ ] Implement template lookup by finding type
-
-### Enhanced Finding Metadata
-- [ ] Add CWE reference to all code findings
-- [ ] Extract CVSS score from Trivy CVEs
-- [ ] Add exploit availability flag
-- [ ] Add business impact description (Founder mode)
-- [ ] Add attack demonstration (Pro feature)
+## P1: High Priority (Next Up)
 
 ### Community Benchmarks
 - [ ] Store stack_signature in scans table
@@ -130,6 +44,34 @@
 - [ ] Weekly aggregation job
 - [ ] Display "Better than X% of similar apps"
 - [ ] Show top issues by stack
+
+### More Gitleaks Rules
+- [ ] Replicate API keys
+- [ ] Pinecone API keys
+- [ ] Clerk/Auth0 secrets
+- [ ] Vercel Edge Config tokens
+- [ ] Resend API keys
+- [ ] Upstash tokens
+
+### Enhanced Finding Metadata
+- [ ] Extract CVSS score from Trivy CVEs
+- [ ] Add exploit availability flag
+- [ ] Add attack demonstration (Pro feature)
+
+---
+
+## P2: Medium Priority (Better UX)
+
+### UI Improvements
+- [ ] Dark/light theme toggle
+- [ ] Mobile responsive improvements
+- [ ] Keyboard navigation for findings
+- [ ] Print-friendly view
+
+### Reporting
+- [ ] PDF report generation
+- [ ] Email report delivery
+- [ ] Scheduled re-scans
 
 ---
 
@@ -143,7 +85,6 @@
 ### Pro Features
 - [ ] Tier 2 AI analysis with Claude
 - [ ] AI-generated personalized fixes
-- [ ] PDF report generation
 - [ ] Historical trend charts
 - [ ] Auto-PR fix integration
 
@@ -154,16 +95,16 @@
 
 ---
 
-## Gap Analysis Summary
+## Current Stats
 
-| Category | Current | Target | Gap |
-|----------|---------|--------|-----|
-| Semgrep Rules | 14 | 50+ | Missing SQL variants, auth, framework-specific |
-| Gitleaks Rules | 20 | 30+ | Missing newer AI/cloud service keys |
-| Context Scoring | 0% | 100% | Not implemented at all |
-| Deduplication | No | Yes | Multiple tools find same issue |
-| Fix Templates | Generic text | Code examples | No structured templates |
-| Benchmarks | None | Stack comparison | Not implemented |
+| Category | Status |
+|----------|--------|
+| Semgrep Rules | 43 custom rules |
+| Gitleaks Rules | 20+ patterns |
+| Context Scoring | ✅ Implemented |
+| Deduplication | ✅ Implemented |
+| Fix Templates | 18 detailed templates |
+| CWE Database | 28 entries with CVSS |
 
 ---
 
@@ -171,3 +112,4 @@
 - Local dev: http://localhost:5173
 - Scanner API: https://scanner-empty-field-5676.fly.dev
 - Scanner health: https://scanner-empty-field-5676.fly.dev/health
+- GitHub: https://github.com/vibeforge1111/vibeship-scanner
