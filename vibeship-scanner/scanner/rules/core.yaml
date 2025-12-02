@@ -1831,3 +1831,301 @@ rules:
     message: random.randint for security - use secrets.randbelow (CWE-330)
     languages: [python]
     severity: WARNING
+
+  # =====================================================
+  # JavaScript/TypeScript - SQL Injection (Juice Shop gaps)
+  # =====================================================
+
+  - id: js-sql-string-concat
+    pattern: '$DB.query($Q + $INPUT)'
+    message: SQL injection - string concatenation in query (CWE-89)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-sql-template-literal
+    pattern: '$DB.query(`... ${$INPUT} ...`)'
+    message: SQL injection - template literal with user input (CWE-89)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-sequelize-raw-query
+    pattern: 'sequelize.query($Q + $INPUT)'
+    message: Sequelize SQL injection - use parameterized queries (CWE-89)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-knex-raw-input
+    pattern: 'knex.raw($Q + $INPUT)'
+    message: Knex SQL injection - use parameterized queries (CWE-89)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-mysql-query-concat
+    pattern: 'connection.query($Q + $INPUT)'
+    message: MySQL SQL injection - use parameterized queries (CWE-89)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-pg-query-concat
+    pattern: 'client.query($Q + $INPUT)'
+    message: PostgreSQL SQL injection - use parameterized queries (CWE-89)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # =====================================================
+  # JavaScript/TypeScript - NoSQL Injection (MongoDB)
+  # =====================================================
+
+  - id: js-mongodb-find-injection
+    pattern: '$COLLECTION.find({ $FIELD: req.body.$INPUT })'
+    message: NoSQL injection - unsanitized input in MongoDB query (CWE-943)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-mongodb-findone-injection
+    pattern: '$COLLECTION.findOne({ $FIELD: req.body.$INPUT })'
+    message: NoSQL injection - unsanitized input in MongoDB findOne (CWE-943)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-mongodb-where-injection
+    pattern: '$COLLECTION.find({ $where: $INPUT })'
+    message: NoSQL injection - $where with user input allows code execution (CWE-943)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-mongodb-regex-injection
+    pattern: '$COLLECTION.find({ $FIELD: { $regex: req.$X.$Y } })'
+    message: NoSQL ReDoS - user input in regex (CWE-1333)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-mongoose-find-body
+    pattern: '$MODEL.find(req.body)'
+    message: NoSQL injection - raw body passed to Mongoose find (CWE-943)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-mongoose-findone-body
+    pattern: '$MODEL.findOne(req.body)'
+    message: NoSQL injection - raw body passed to Mongoose findOne (CWE-943)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # =====================================================
+  # JavaScript/TypeScript - XXE (XML External Entity)
+  # =====================================================
+
+  - id: js-xml2js-xxe
+    pattern: 'xml2js.parseString($INPUT, ...)'
+    message: XXE risk - xml2js may process external entities (CWE-611)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-libxmljs-parse
+    pattern: 'libxmljs.parseXml($INPUT)'
+    message: XXE risk - disable external entity processing (CWE-611)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-domparser-xml
+    pattern: 'new DOMParser().parseFromString($INPUT, "text/xml")'
+    message: XXE risk - parsing XML from user input (CWE-611)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-fast-xml-parser
+    pattern: 'new XMLParser().parse($INPUT)'
+    message: XXE risk - verify external entities are disabled (CWE-611)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # =====================================================
+  # JavaScript/TypeScript - Insecure Deserialization
+  # =====================================================
+
+  - id: js-node-serialize
+    pattern: 'serialize.unserialize($INPUT)'
+    message: Insecure deserialization - node-serialize is vulnerable to RCE (CWE-502)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-funcster-deserialize
+    pattern: 'funcster.deepDeserialize($INPUT)'
+    message: Insecure deserialization - funcster allows code execution (CWE-502)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-js-yaml-load
+    pattern: 'yaml.load($INPUT)'
+    message: Insecure deserialization - yaml.load can execute code, use safeLoad (CWE-502)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-json-parse-reviver
+    pattern: 'JSON.parse($INPUT, $REVIVER)'
+    message: JSON.parse with reviver - verify reviver is safe (CWE-502)
+    languages: [javascript, typescript]
+    severity: INFO
+
+  # =====================================================
+  # JavaScript/TypeScript - Open Redirect Extended
+  # =====================================================
+
+  - id: js-redirect-header
+    pattern: 'res.set("Location", req.$X.$Y)'
+    message: Open redirect via Location header (CWE-601)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-redirect-writeHead
+    pattern: 'res.writeHead($CODE, { Location: req.$X.$Y })'
+    message: Open redirect via writeHead (CWE-601)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-window-location-assign
+    pattern: 'window.location.assign($INPUT)'
+    message: Open redirect - validate URL before redirect (CWE-601)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-window-location-href
+    pattern: 'window.location.href = $INPUT'
+    message: Open redirect - validate URL before redirect (CWE-601)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-window-location-replace
+    pattern: 'window.location.replace($INPUT)'
+    message: Open redirect - validate URL before redirect (CWE-601)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # =====================================================
+  # JavaScript/TypeScript - Prototype Pollution
+  # =====================================================
+
+  - id: js-prototype-pollution-merge
+    pattern: 'Object.assign({}, $INPUT)'
+    message: Potential prototype pollution if input is untrusted (CWE-1321)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-prototype-pollution-lodash-merge
+    pattern: '_.merge($TARGET, $INPUT)'
+    message: Prototype pollution via lodash merge (CWE-1321)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-prototype-pollution-deepmerge
+    pattern: 'deepmerge($TARGET, $INPUT)'
+    message: Potential prototype pollution via deepmerge (CWE-1321)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-bracket-notation-input
+    pattern: '$OBJ[req.$X.$Y] = $VALUE'
+    message: Prototype pollution - bracket notation with user input (CWE-1321)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # =====================================================
+  # JavaScript/TypeScript - Server-Side Request Forgery
+  # =====================================================
+
+  - id: js-ssrf-fetch
+    pattern: 'fetch(req.$X.$Y)'
+    message: SSRF - user input in fetch URL (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-ssrf-axios
+    pattern: 'axios.get(req.$X.$Y)'
+    message: SSRF - user input in axios URL (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-ssrf-axios-post
+    pattern: 'axios.post(req.$X.$Y, ...)'
+    message: SSRF - user input in axios URL (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-ssrf-request
+    pattern: 'request(req.$X.$Y)'
+    message: SSRF - user input in request URL (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-ssrf-got
+    pattern: 'got(req.$X.$Y)'
+    message: SSRF - user input in got URL (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-ssrf-http-get
+    pattern: 'http.get(req.$X.$Y, ...)'
+    message: SSRF - user input in http.get URL (CWE-918)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # =====================================================
+  # JavaScript/TypeScript - Logging Sensitive Data
+  # =====================================================
+
+  - id: js-console-log-password
+    pattern: 'console.log(..., password, ...)'
+    message: Sensitive data logged - password in console.log (CWE-532)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-console-log-token
+    pattern: 'console.log(..., token, ...)'
+    message: Sensitive data logged - token in console.log (CWE-532)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-console-log-secret
+    pattern: 'console.log(..., secret, ...)'
+    message: Sensitive data logged - secret in console.log (CWE-532)
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-console-log-apikey
+    pattern: 'console.log(..., apiKey, ...)'
+    message: Sensitive data logged - API key in console.log (CWE-532)
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-console-log-generic
+    pattern: 'console.log(...)'
+    message: Console.log statement found
+    languages: [javascript, typescript]
+    severity: INFO
+
+  # =====================================================
+  # JavaScript/TypeScript - Math.random() security
+  # =====================================================
+
+  - id: js-math-random-crypto
+    pattern: 'Math.random()'
+    message: Math.random() not cryptographically secure
+    languages: [javascript, typescript]
+    severity: INFO
+
+  # =====================================================
+  # JavaScript/TypeScript - Regex DoS (ReDoS)
+  # =====================================================
+
+  - id: js-regex-user-input
+    pattern: 'new RegExp(req.$X.$Y)'
+    message: Dynamic regex - potential ReDoS
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-regex-from-variable
+    pattern: 'new RegExp($PATTERN)'
+    message: Dynamic regex - potential ReDoS
+    languages: [javascript, typescript]
+    severity: WARNING
