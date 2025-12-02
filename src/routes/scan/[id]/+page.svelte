@@ -71,6 +71,22 @@
 		return `<a href="${getScanUrl()}"><img src="https://img.shields.io/badge/vibeship-${grade}-${getGradeColor(grade)}" alt="Vibeship Security Score"></a>`;
 	}
 
+	function isUnhelpfulSnippet(code: string): boolean {
+		const trimmed = code.trim().toLowerCase();
+		const unhelpfulPatterns = [
+			'requires login',
+			'login required',
+			'authentication required',
+			'please login',
+			'please sign in',
+			'sign in required',
+			'access denied',
+			'unauthorized',
+			'forbidden'
+		];
+		return unhelpfulPatterns.some(pattern => trimmed === pattern || trimmed === pattern + '.');
+	}
+
 	function generateReportText(): string {
 		if (!results) return '';
 
@@ -140,11 +156,8 @@
 					lines.push(`Location: ${finding.location.file}${finding.location.line ? `:${finding.location.line}` : ''}`);
 				}
 				lines.push('');
-				lines.push('Why this matters:');
-				lines.push(getFounderExplanation(finding));
-				lines.push('');
-				lines.push('Technical details:');
-				lines.push(getDeveloperExplanation(finding));
+				lines.push('Risk & Fix:');
+				lines.push(getExplanation(finding));
 
 				if (finding.fix?.available && finding.fix?.template) {
 					lines.push('');
@@ -227,16 +240,11 @@
 
 	const securityFacts = [
 		{ fact: 'Average cost of a data breach: $4.88 million in 2024, up 10% from last year', source: 'IBM Cost of Data Breach Report 2024' },
-		{ fact: 'Healthcare breaches cost $9.77 million on average — highest of any industry', source: 'IBM Cost of Data Breach Report 2024' },
 		{ fact: 'Average breach lifecycle hit a 7-year low: 258 days to detect and contain', source: 'IBM Cost of Data Breach Report 2024' },
-		{ fact: 'Organizations using AI security saved $2.2 million in breach costs', source: 'IBM Cost of Data Breach Report 2024' },
 		{ fact: '70% of breached organizations reported significant business disruption', source: 'IBM Cost of Data Breach Report 2024' },
 		{ fact: 'Stolen credentials are the #1 initial attack vector at 16% of breaches', source: 'IBM Cost of Data Breach Report 2024' },
 		{ fact: 'The human element was involved in 68% of all data breaches', source: 'Verizon DBIR 2024' },
 		{ fact: 'Vulnerability exploitation as initial access tripled compared to last year', source: 'Verizon DBIR 2024' },
-		{ fact: 'Ransomware affects 92% of industries and accounts for 23% of all breaches', source: 'Verizon DBIR 2024' },
-		{ fact: 'Supply chain attacks made up 15% of all breaches — a 68% increase YoY', source: 'Verizon DBIR 2024' },
-		{ fact: 'Users typically fall for phishing emails in under 60 seconds', source: 'Verizon DBIR 2024' },
 		{ fact: 'It takes 55 days to patch 50% of vulnerabilities after patches are released', source: 'Verizon DBIR 2024' },
 		{ fact: '23.8 million secrets were leaked on public GitHub repos in 2024 (+25% YoY)', source: 'GitGuardian State of Secrets Sprawl 2025' },
 		{ fact: '70% of secrets leaked in 2022 are still active today', source: 'GitGuardian State of Secrets Sprawl 2025' },
@@ -530,36 +538,94 @@
 		}
 	}
 
-	function getFounderExplanation(finding: any): string {
+	function getExplanation(finding: any): string {
 		const explanations: Record<string, string> = {
-			'sql-injection': `Think of this like leaving your store's back door unlocked. Anyone can type special commands that let them see, change, or delete ALL your customer data. This could mean stolen data, legal liability, and reputation damage.`,
-			'xss': `This is like letting strangers put up their own signs in your store. Attackers can inject malicious scripts that steal user sessions, redirect to phishing sites, or deface your app.`,
-			'hardcoded-secret': `You've left a key under the doormat where anyone can find it. If this code is public (or gets leaked), attackers have direct access to your services and data.`,
-			'insecure-dependency': `One of your building blocks has known weaknesses. Attackers actively scan for apps using vulnerable packages - it's like having a published list of houses with broken locks.`,
-			'missing-auth': `Some doors in your app don't check if visitors should be allowed in. Anyone who finds these paths can access data or features they shouldn't.`,
-			default: `This security issue could expose your app or users to risk. Even if it seems minor, attackers chain small vulnerabilities together for bigger attacks.`
+			'sql-injection': `Attackers can manipulate database queries to steal, modify, or delete data. This is one of the most dangerous vulnerabilities - a single exploit can expose your entire database. Fix: Use parameterized queries instead of string concatenation.`,
+			'sql_injection': `Attackers can manipulate database queries to steal, modify, or delete data. This is one of the most dangerous vulnerabilities - a single exploit can expose your entire database. Fix: Use parameterized queries instead of string concatenation.`,
+			'nosql-injection': `Similar to SQL injection, but for NoSQL databases like MongoDB. Attackers can bypass authentication or access unauthorized data. Fix: Sanitize inputs and use query builders.`,
+			'nosql_injection': `Similar to SQL injection, but for NoSQL databases like MongoDB. Attackers can bypass authentication or access unauthorized data. Fix: Sanitize inputs and use query builders.`,
+			'xss': `Attackers can inject malicious scripts that run in your users' browsers, stealing sessions, credentials, or personal data. Fix: Sanitize all user input before rendering, use textContent instead of innerHTML.`,
+			'cross-site': `Attackers can inject scripts that steal user data or hijack sessions. This affects all users who view the compromised content. Fix: Use output encoding and content security policies.`,
+			'innerhtml': `Using innerHTML with user input allows attackers to inject malicious scripts. This can lead to account takeover and data theft. Fix: Use textContent for plain text, or sanitize with DOMPurify.`,
+			'dangerously': `React's dangerouslySetInnerHTML can execute malicious scripts if given unsanitized user input. Fix: Always sanitize HTML content with DOMPurify before rendering.`,
+			'hardcoded-secret': `Secrets in source code can be found by anyone with access to your repository or compiled app. Once exposed, attackers have direct access to your services. Fix: Move secrets to environment variables and rotate exposed keys immediately.`,
+			'hardcoded_secret': `API keys and passwords in code are easily discovered and exploited. This is a common cause of data breaches. Fix: Use environment variables or a secrets manager like Vault.`,
+			'hardcoded_credential': `Credentials in source code persist in git history forever. Even if deleted, they can be recovered. Fix: Use environment variables and rotate any exposed credentials.`,
+			'api_key': `API keys in code can be extracted and misused, potentially costing you money or exposing user data. Fix: Move to environment variables, never commit keys to git.`,
+			'secret': `Sensitive values in source code can be discovered through code leaks, decompilation, or git history. Fix: Store secrets in environment variables or a secrets manager.`,
+			'password': `Passwords in code are a severe security risk. Anyone with code access can authenticate as that user/service. Fix: Remove immediately, use environment variables, rotate the password.`,
+			'insecure-dependency': `This package has known security vulnerabilities that attackers actively exploit. Fix: Update to the latest patched version using npm update or pip install --upgrade.`,
+			'vulnerable_dependency': `Known vulnerability in this dependency. Attackers scan for apps using vulnerable packages. Fix: Update to the patched version or find an alternative package.`,
+			'missing-auth': `This endpoint can be accessed without authentication, potentially exposing sensitive data or actions to anyone. Fix: Add authentication middleware to verify user identity.`,
+			'missing_auth': `Unprotected endpoints allow unauthorized access to your app's functionality. Fix: Implement session or token-based authentication checks.`,
+			'path-traversal': `Attackers can use ../ sequences to access files outside the intended directory, potentially reading config files or source code. Fix: Use path.basename() and validate paths stay within allowed directories.`,
+			'path_traversal': `File path manipulation can expose sensitive files like /etc/passwd or config files. Fix: Sanitize file paths and validate they stay within allowed directories.`,
+			'directory_traversal': `User input in file paths can escape to parent directories. This can expose sensitive system files. Fix: Use path.resolve() and verify the final path is within allowed bounds.`,
+			'open-redirect': `Attackers use your domain's reputation for phishing by redirecting users to malicious sites. Fix: Validate redirect URLs against a whitelist of allowed domains.`,
+			'open_redirect': `Your trusted domain can be weaponized to redirect users to phishing sites that steal credentials. Fix: Only allow redirects to relative paths or whitelisted domains.`,
+			'redirect': `Unvalidated redirects enable phishing attacks that abuse your domain's trust. Fix: Check the redirect destination against allowed domains before redirecting.`,
+			'command-injection': `Attackers can execute arbitrary system commands on your server, potentially taking complete control. Fix: Avoid shell commands with user input, use execFile() with argument arrays.`,
+			'command_injection': `User input in shell commands allows full system compromise. This is as dangerous as giving attackers SSH access. Fix: Use safe alternatives to exec() or sanitize input strictly.`,
+			'exec': `The exec() function runs commands through a shell, allowing injection. An attacker could run any command on your server. Fix: Use execFile() or spawn() with separate arguments.`,
+			'ssrf': `Server-Side Request Forgery allows attackers to make your server fetch internal resources, potentially accessing private APIs or cloud metadata. Fix: Validate URLs and block private IP ranges.`,
+			'server_side_request': `SSRF can expose internal services, cloud credentials (via metadata endpoints), or scan your internal network. Fix: Whitelist allowed hosts and block private IP ranges.`,
+			'prototype-pollution': `Attackers can modify JavaScript object prototypes, potentially leading to code execution or bypassing security checks. Fix: Validate object keys and avoid using user input as property names.`,
+			'prototype_pollution': `Polluting Object.prototype can affect all objects in your application, leading to unexpected behavior or security bypasses. Fix: Use Object.create(null) or Map for user-controlled keys.`,
+			'eval': `eval() executes arbitrary code, giving attackers complete control if they can influence the input. Fix: Use JSON.parse() for data, avoid eval entirely.`,
+			'code_injection': `User input executed as code allows complete application takeover. Fix: Never use eval(), Function(), or setTimeout() with user-controlled strings.`,
+			'deserialization': `Deserializing untrusted data can execute arbitrary code. Many major breaches started with insecure deserialization. Fix: Use JSON instead of native serialization, validate all input.`,
+			'unsafe_deserialize': `Unsafe deserialization has caused major security incidents. Attackers craft payloads that execute code when deserialized. Fix: Use JSON.parse() for untrusted data.`,
+			'xxe': `XML External Entity attacks can read local files, make server requests, or cause denial of service. Fix: Disable DTD and external entity processing in your XML parser.`,
+			'xml': `XML parsers with external entity processing enabled can be exploited to read files or access internal services. Fix: Disable external entities in parser configuration.`,
+			'cors': `Permissive CORS (Access-Control-Allow-Origin: *) lets any website make authenticated requests to your API. Fix: Specify exact allowed origins instead of using wildcards.`,
+			'cross-origin': `Misconfigured CORS can allow malicious websites to access your users' data. Fix: Whitelist specific trusted origins, avoid using * with credentials.`,
+			'jwt': `JWT issues can allow attackers to forge tokens or maintain access indefinitely. Fix: Use strong secrets, set expiration, validate tokens properly.`,
+			'weak_hash': `MD5 and SHA1 are broken for security purposes - attackers can find collisions or crack passwords quickly. Fix: Use bcrypt, Argon2, or scrypt for passwords.`,
+			'weak_crypto': `Weak cryptographic algorithms can be broken with modern computing power. Fix: Use AES-256, RSA-2048+, or modern alternatives like ChaCha20.`,
+			'md5': `MD5 has known vulnerabilities and can be cracked quickly. Never use for passwords or security-critical hashing. Fix: Use SHA-256 for hashing, bcrypt for passwords.`,
+			'sha1': `SHA1 has demonstrated collision attacks. It's no longer considered secure. Fix: Use SHA-256 or SHA-3 for cryptographic purposes.`,
+			'cookie': `Cookies without proper security flags can be stolen via XSS or sent over insecure connections. Fix: Enable httpOnly, secure, and sameSite attributes.`,
+			'session': `Insecure session handling can lead to session hijacking or fixation attacks. Fix: Use secure cookies, regenerate session IDs on login.`,
+			'ssl': `Disabling SSL verification allows man-in-the-middle attacks where attackers can intercept all traffic. Fix: Enable certificate verification, fix certificate issues properly.`,
+			'certificate': `Bypassing certificate validation lets attackers intercept HTTPS traffic. Fix: Never disable verification in production, add trusted CAs if needed.`,
+			'idor': `Insecure Direct Object References let users access other users' data by changing IDs in URLs or requests. Fix: Always verify the user has permission to access the requested resource.`,
+			'authorization': `Missing authorization checks let users perform actions they shouldn't be allowed to. Fix: Verify permissions before every sensitive operation.`,
+			'access_control': `Broken access control is consistently in OWASP Top 10. Users can access unauthorized functions or data. Fix: Implement proper permission checks.`,
+			'regex': `Complex regular expressions can cause catastrophic backtracking, freezing your application (ReDoS). Fix: Simplify patterns, avoid nested quantifiers, add timeouts.`,
+			'redos': `Regular Expression Denial of Service can freeze your app with crafted input. Fix: Test regex with pathological inputs, limit input length.`,
+			'file_upload': `Unrestricted file uploads can lead to code execution if attackers upload malicious files. Fix: Validate file types by content (not just extension), store outside webroot.`,
+			'upload': `File uploads are a common attack vector. Attackers upload web shells or malicious files. Fix: Check MIME types, limit file sizes, use random filenames.`,
+			'csrf': `Cross-Site Request Forgery tricks authenticated users into performing unwanted actions. Fix: Implement CSRF tokens for all state-changing operations.`,
+			'clickjacking': `Attackers can embed your site in an iframe and trick users into clicking hidden elements. Fix: Add X-Frame-Options header or frame-ancestors CSP directive.`,
+			'log_injection': `Attackers can inject fake log entries to cover their tracks or exploit log viewers. Fix: Sanitize user input before logging, use structured logging.`,
+			'information_disclosure': `Exposing internal details helps attackers understand your system and find vulnerabilities. Fix: Remove stack traces and debug info from production responses.`,
+			'error_handling': `Detailed error messages reveal system information useful for attacks. Fix: Show generic errors to users, log details server-side only.`,
+			'race_condition': `Race conditions can lead to duplicate transactions, bypassed limits, or corrupted data. Fix: Use transactions, locks, or atomic operations.`,
+			'timing_attack': `Timing differences can reveal information about secrets or bypass authentication. Fix: Use constant-time comparison for sensitive values.`,
+			'mass_assignment': `Attackers can modify unintended fields by adding extra parameters. Fix: Explicitly whitelist allowed fields, never bind all input to models.`,
+			'buffer': `Buffer overflows can crash applications or enable code execution. Fix: Validate input lengths, use safe memory functions.`,
+			'memory': `Memory safety issues can lead to crashes, data corruption, or code execution. Fix: Validate array bounds, use safe memory operations.`,
+			'integer_overflow': `Integer overflow can bypass size checks or cause unexpected behavior. Fix: Validate numeric ranges, check for overflow before operations.`,
+			'template_injection': `Server-side template injection can lead to remote code execution. Fix: Never pass user input directly to template engines.`,
+			'ssti': `Template injection is as dangerous as code injection - attackers can execute arbitrary code. Fix: Escape or sanitize all user input in templates.`,
+			'ldap_injection': `LDAP injection can bypass authentication or expose directory data. Fix: Use parameterized LDAP queries, escape special characters.`,
+			'xpath_injection': `XPath injection can extract unauthorized data from XML documents. Fix: Use parameterized queries or strictly validate input.`,
+			'header_injection': `HTTP header injection can lead to response splitting, XSS, or cache poisoning. Fix: Validate and sanitize values used in headers.`,
+			'crlf': `CRLF injection can split HTTP responses, enabling XSS or cache poisoning. Fix: Strip carriage return and line feed characters from user input.`,
+			'insecure_random': `Predictable random values can be guessed by attackers for session tokens, passwords, etc. Fix: Use crypto.randomBytes() for security-sensitive values.`,
+			'weak_random': `Math.random() is not cryptographically secure and can be predicted. Fix: Use the crypto module for generating tokens, secrets, or IDs.`
 		};
-		const key = finding.ruleId?.toLowerCase() || finding.category?.toLowerCase() || 'default';
+		const key = finding.ruleId?.toLowerCase() || finding.category?.toLowerCase() || '';
+		const title = finding.title?.toLowerCase() || '';
+		const searchKeys = [key, title].join(' ');
 		for (const [k, v] of Object.entries(explanations)) {
-			if (key.includes(k)) return v;
+			if (searchKeys.includes(k.replace(/_/g, '-')) || searchKeys.includes(k.replace(/-/g, '_')) || searchKeys.includes(k)) return v;
 		}
-		return explanations.default;
-	}
-
-	function getDeveloperExplanation(finding: any): string {
-		const explanations: Record<string, string> = {
-			'sql-injection': `CWE-89: User input concatenated directly into SQL query without parameterization. Use prepared statements or ORM methods with bound parameters.`,
-			'xss': `CWE-79: Unsanitized user input rendered in DOM. Implement output encoding, use framework auto-escaping, or sanitize with DOMPurify.`,
-			'hardcoded-secret': `CWE-798: Credentials embedded in source code. Move to environment variables, secrets manager (Vault, AWS Secrets Manager), or .env files excluded from VCS.`,
-			'insecure-dependency': `Known CVE in dependency. Check npm audit / pip-audit for details. Update to patched version or apply workaround if update not available.`,
-			'missing-auth': `CWE-306: Missing authentication on sensitive endpoint. Implement middleware/guard to verify session/JWT before processing request.`,
-			default: `Security vulnerability detected. Review the code context, understand the attack vector, and apply the recommended fix pattern.`
-		};
-		const key = finding.ruleId?.toLowerCase() || finding.category?.toLowerCase() || 'default';
-		for (const [k, v] of Object.entries(explanations)) {
-			if (key.includes(k)) return v;
+		const cweInfo = getCWEFromRuleId(finding.ruleId || '');
+		if (cweInfo) {
+			return `${cweInfo.name}: ${cweInfo.impact}. Review the code at this location and apply the recommended fix pattern.`;
 		}
-		return explanations.default;
+		return `This pattern was flagged as a potential security issue. Review the code context and apply the recommended fix to prevent exploitation.`;
 	}
 
 	function animateScore(targetScore: number) {
@@ -856,22 +922,13 @@
 											</div>
 										{/if}
 
-											<div class="explanation-box" class:founder={mode === 'founder'} class:developer={mode === 'developer'}>
+											<div class="explanation-box">
 												<div class="explanation-header">
-													{#if mode === 'founder'}
-														<span class="explanation-icon">💡</span>
-														<span class="explanation-label">Why this matters</span>
-													{:else}
-														<span class="explanation-icon">🔧</span>
-														<span class="explanation-label">Technical details</span>
-													{/if}
+													<span class="explanation-icon">💡</span>
+													<span class="explanation-label">What's the risk</span>
 												</div>
 												<p class="explanation-text">
-													{#if mode === 'founder'}
-														{getFounderExplanation(finding)}
-													{:else}
-														{getDeveloperExplanation(finding)}
-													{/if}
+													{getExplanation(finding)}
 												</p>
 											</div>
 
@@ -882,12 +939,12 @@
 											</div>
 										{/if}
 
-										{#if finding.snippet}
+										{#if finding.snippet?.code && finding.snippet.code.trim() && finding.snippet.code.length > 10 && !isUnhelpfulSnippet(finding.snippet.code)}
 											<div class="code-snippet">
 												<div class="snippet-header">
 													<span>Vulnerable Code</span>
 												</div>
-												<pre><code>{finding.snippet}</code></pre>
+												<pre><code>{finding.snippet.code}</code></pre>
 											</div>
 										{/if}
 
