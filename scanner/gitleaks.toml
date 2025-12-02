@@ -1,0 +1,268 @@
+title = "Vibeship Gitleaks Config"
+
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{48}'''
+keywords = ["openai", "sk-"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API Key"
+regex = '''sk-ant-[a-zA-Z0-9-]{95}'''
+keywords = ["anthropic", "claude", "sk-ant"]
+
+[[rules]]
+id = "stripe-secret-key"
+description = "Stripe Secret Key"
+regex = '''sk_live_[a-zA-Z0-9]{24,}'''
+keywords = ["stripe", "sk_live"]
+
+[[rules]]
+id = "stripe-test-key"
+description = "Stripe Test Key"
+regex = '''sk_test_[a-zA-Z0-9]{24,}'''
+keywords = ["stripe", "sk_test"]
+
+[[rules]]
+id = "supabase-service-role"
+description = "Supabase Service Role Key"
+regex = '''eyJ[a-zA-Z0-9_-]{20,}\.eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}'''
+keywords = ["supabase", "service_role"]
+
+[[rules]]
+id = "firebase-api-key"
+description = "Firebase API Key"
+regex = '''AIza[0-9A-Za-z-_]{35}'''
+keywords = ["firebase", "apiKey"]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+
+[[rules]]
+id = "aws-secret-key"
+description = "AWS Secret Access Key"
+regex = '''(?i)aws_secret_access_key\s*=\s*['\"][a-zA-Z0-9/+=]{40}['\"]'''
+
+[[rules]]
+id = "github-token"
+description = "GitHub Token"
+regex = '''gh[pousr]_[A-Za-z0-9_]{36,}'''
+
+[[rules]]
+id = "github-pat"
+description = "GitHub Personal Access Token"
+regex = '''github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}'''
+
+[[rules]]
+id = "vercel-token"
+description = "Vercel Token"
+regex = '''(?i)vercel[_-]?token\s*[:=]\s*['\"]?[a-zA-Z0-9]{24}['\"]?'''
+
+[[rules]]
+id = "database-url"
+description = "Database Connection URL"
+regex = '''(postgres|mysql|mongodb|redis)://[^:]+:[^@]+@[^\s]+'''
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'''
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret"
+regex = '''(?i)(jwt[_-]?secret|token[_-]?secret)\s*[:=]\s*['\"][a-zA-Z0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?]{16,}['\"]'''
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(api[_-]?key|apikey)\s*[:=]\s*['\"][a-zA-Z0-9]{20,}['\"]'''
+
+[[rules]]
+id = "sendgrid-api-key"
+description = "SendGrid API Key"
+regex = '''SG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]{43}'''
+
+[[rules]]
+id = "twilio-api-key"
+description = "Twilio API Key"
+regex = '''SK[a-f0-9]{32}'''
+
+[[rules]]
+id = "slack-token"
+description = "Slack Token"
+regex = '''xox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*'''
+
+[[rules]]
+id = "discord-token"
+description = "Discord Bot Token"
+regex = '''[MN][A-Za-z\d]{23,}\.[\w-]{6}\.[\w-]{27}'''
+
+[[rules]]
+id = "replicate-api-key"
+description = "Replicate API Token"
+regex = '''r8_[a-zA-Z0-9]{40}'''
+keywords = ["replicate", "r8_"]
+
+[[rules]]
+id = "pinecone-api-key"
+description = "Pinecone API Key"
+regex = '''(?i)pinecone[_-]?api[_-]?key\s*[:=]\s*['\"]?[a-f0-9-]{36}['\"]?'''
+keywords = ["pinecone"]
+
+[[rules]]
+id = "clerk-secret-key"
+description = "Clerk Secret Key"
+regex = '''sk_live_[a-zA-Z0-9]{40,}'''
+keywords = ["clerk"]
+
+[[rules]]
+id = "clerk-publishable-key"
+description = "Clerk Publishable Key (check if in server code)"
+regex = '''pk_live_[a-zA-Z0-9]{40,}'''
+keywords = ["clerk"]
+
+[[rules]]
+id = "auth0-client-secret"
+description = "Auth0 Client Secret"
+regex = '''(?i)auth0[_-]?client[_-]?secret\s*[:=]\s*['\"]?[a-zA-Z0-9_-]{32,}['\"]?'''
+keywords = ["auth0"]
+
+[[rules]]
+id = "resend-api-key"
+description = "Resend API Key"
+regex = '''re_[a-zA-Z0-9]{32,}'''
+keywords = ["resend", "re_"]
+
+[[rules]]
+id = "upstash-redis-token"
+description = "Upstash Redis REST Token"
+regex = '''(?i)upstash[_-]?redis[_-]?(rest[_-]?)?token\s*[:=]\s*['\"]?[a-zA-Z0-9=]{40,}['\"]?'''
+keywords = ["upstash"]
+
+[[rules]]
+id = "upstash-kafka-password"
+description = "Upstash Kafka Password"
+regex = '''(?i)upstash[_-]?kafka[_-]?password\s*[:=]\s*['\"]?[a-zA-Z0-9]{20,}['\"]?'''
+keywords = ["upstash", "kafka"]
+
+[[rules]]
+id = "vercel-edge-config"
+description = "Vercel Edge Config Token"
+regex = '''ecfg_[a-zA-Z0-9]{32,}'''
+keywords = ["vercel", "edge", "ecfg_"]
+
+[[rules]]
+id = "planetscale-password"
+description = "PlanetScale Database Password"
+regex = '''pscale_pw_[a-zA-Z0-9]{40,}'''
+keywords = ["planetscale", "pscale"]
+
+[[rules]]
+id = "neon-api-key"
+description = "Neon Database API Key"
+regex = '''(?i)neon[_-]?api[_-]?key\s*[:=]\s*['\"]?[a-zA-Z0-9]{32,}['\"]?'''
+keywords = ["neon"]
+
+[[rules]]
+id = "turso-auth-token"
+description = "Turso Database Auth Token"
+regex = '''(?i)turso[_-]?(auth[_-]?)?token\s*[:=]\s*['\"]?[a-zA-Z0-9._-]{100,}['\"]?'''
+keywords = ["turso", "libsql"]
+
+[[rules]]
+id = "cloudflare-api-token"
+description = "Cloudflare API Token"
+regex = '''(?i)cloudflare[_-]?api[_-]?token\s*[:=]\s*['\"]?[a-zA-Z0-9_-]{40}['\"]?'''
+keywords = ["cloudflare"]
+
+[[rules]]
+id = "groq-api-key"
+description = "Groq API Key"
+regex = '''gsk_[a-zA-Z0-9]{52}'''
+keywords = ["groq", "gsk_"]
+
+[[rules]]
+id = "together-api-key"
+description = "Together AI API Key"
+regex = '''(?i)together[_-]?api[_-]?key\s*[:=]\s*['\"]?[a-f0-9]{64}['\"]?'''
+keywords = ["together"]
+
+[[rules]]
+id = "huggingface-token"
+description = "HuggingFace Access Token"
+regex = '''hf_[a-zA-Z0-9]{34,}'''
+keywords = ["huggingface", "hf_"]
+
+[[rules]]
+id = "cohere-api-key"
+description = "Cohere API Key"
+regex = '''(?i)cohere[_-]?api[_-]?key\s*[:=]\s*['\"]?[a-zA-Z0-9]{40}['\"]?'''
+keywords = ["cohere"]
+
+[[rules]]
+id = "mistral-api-key"
+description = "Mistral AI API Key"
+regex = '''(?i)mistral[_-]?api[_-]?key\s*[:=]\s*['\"]?[a-zA-Z0-9]{32}['\"]?'''
+keywords = ["mistral"]
+
+[[rules]]
+id = "perplexity-api-key"
+description = "Perplexity API Key"
+regex = '''pplx-[a-f0-9]{48}'''
+keywords = ["perplexity", "pplx-"]
+
+[[rules]]
+id = "linear-api-key"
+description = "Linear API Key"
+regex = '''lin_api_[a-zA-Z0-9]{40}'''
+keywords = ["linear", "lin_api"]
+
+[[rules]]
+id = "posthog-api-key"
+description = "PostHog API Key"
+regex = '''phc_[a-zA-Z0-9]{40,}'''
+keywords = ["posthog", "phc_"]
+
+[[rules]]
+id = "segment-write-key"
+description = "Segment Write Key"
+regex = '''(?i)segment[_-]?write[_-]?key\s*[:=]\s*['\"]?[a-zA-Z0-9]{32}['\"]?'''
+keywords = ["segment"]
+
+[[rules]]
+id = "sentry-dsn"
+description = "Sentry DSN"
+regex = '''https://[a-f0-9]{32}@[a-z0-9]+\.ingest\.sentry\.io/[0-9]+'''
+keywords = ["sentry"]
+
+[[rules]]
+id = "algolia-admin-key"
+description = "Algolia Admin API Key"
+regex = '''(?i)algolia[_-]?admin[_-]?key\s*[:=]\s*['\"]?[a-f0-9]{32}['\"]?'''
+keywords = ["algolia"]
+
+[[rules]]
+id = "openrouter-api-key"
+description = "OpenRouter API Key"
+regex = '''sk-or-v1-[a-f0-9]{64}'''
+keywords = ["openrouter", "sk-or"]
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+  '''\.test\.(js|ts|tsx|jsx)$''',
+  '''\.spec\.(js|ts|tsx|jsx)$''',
+  '''__tests__''',
+  '''__mocks__''',
+  '''\.example$''',
+  '''\.sample$''',
+  '''node_modules''',
+  '''\.md$''',
+  '''package-lock\.json$''',
+  '''yarn\.lock$''',
+  '''pnpm-lock\.yaml$'''
+]

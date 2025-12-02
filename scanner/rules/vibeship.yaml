@@ -1,0 +1,216 @@
+rules:
+  - id: eval-injection
+    pattern: eval($X)
+    message: Dangerous eval() call - potential code injection
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: innerhtml-xss
+    pattern: $EL.innerHTML = $VAR
+    message: XSS vulnerability via innerHTML
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: document-write-xss
+    pattern: document.write($VAR)
+    message: XSS via document.write
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: exec-command
+    pattern: exec($CMD)
+    message: Command execution - potential injection
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: execsync-command
+    pattern: execSync($CMD)
+    message: Synchronous command execution - potential injection
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: child-process-exec-call
+    pattern: child_process.exec($CMD)
+    message: child_process.exec - command injection risk
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: require-child-process
+    pattern: 'require("child_process").exec($X)'
+    message: child_process.exec - command injection risk
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: fs-readfile-query-input
+    pattern: fs.readFile(req.query.$X, ...)
+    message: Path traversal - reading file from user input
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: fs-readfilesync-query-input
+    pattern: fs.readFileSync(req.query.$X)
+    message: Path traversal - reading file from user input
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: redirect-open
+    pattern: res.redirect(req.query.$X)
+    message: Open redirect vulnerability
+    severity: WARNING
+    languages: [javascript, typescript]
+
+  - id: md5-weak-hash
+    pattern: 'crypto.createHash("md5")'
+    message: MD5 is a weak hash function
+    severity: WARNING
+    languages: [javascript, typescript]
+
+  - id: sha1-weak-hash
+    pattern: 'crypto.createHash("sha1")'
+    message: SHA1 is a weak hash function
+    severity: WARNING
+    languages: [javascript, typescript]
+
+  - id: tls-disabled
+    pattern: rejectUnauthorized = false
+    message: TLS verification disabled
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: jwt-sign-string
+    pattern: 'jwt.sign($PAYLOAD, "...")'
+    message: Hardcoded JWT secret
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: jwt-verify-string
+    pattern: 'jwt.verify($TOKEN, "...")'
+    message: Hardcoded JWT secret
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: new-function-call
+    pattern: new Function($CODE)
+    message: new Function() - code injection risk
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: os-system-call
+    pattern: os.system($CMD)
+    message: os.system - command injection risk
+    severity: ERROR
+    languages: [python]
+
+  - id: subprocess-shell-call
+    pattern: 'subprocess.call($CMD, shell=True)'
+    message: subprocess with shell=True - command injection risk
+    severity: ERROR
+    languages: [python]
+
+  - id: subprocess-popen-shell-call
+    pattern: 'subprocess.Popen($CMD, shell=True)'
+    message: Popen with shell=True - command injection risk
+    severity: ERROR
+    languages: [python]
+
+  - id: subprocess-run-shell
+    pattern: 'subprocess.run($CMD, shell=True)'
+    message: subprocess.run with shell=True - command injection risk
+    severity: ERROR
+    languages: [python]
+
+  - id: pickle-loads-call
+    pattern: pickle.loads($DATA)
+    message: pickle.loads - insecure deserialization
+    severity: ERROR
+    languages: [python]
+
+  - id: yaml-load-unsafe-call
+    pattern: yaml.load($DATA)
+    message: yaml.load without Loader - insecure
+    severity: ERROR
+    languages: [python]
+
+  - id: mongodb-findone-body
+    pattern: '$DB.findOne({$FIELD: req.body.$X})'
+    message: MongoDB query with user input - NoSQL injection
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: mongodb-findone-query
+    pattern: '$DB.findOne({$FIELD: req.query.$X})'
+    message: MongoDB query with user input - NoSQL injection
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: prisma-queryraw-unsafe
+    pattern: prisma.$queryRawUnsafe($QUERY)
+    message: Prisma unsafe raw query
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: prisma-executeraw-unsafe
+    pattern: prisma.$executeRawUnsafe($QUERY)
+    message: Prisma unsafe raw execute
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: sequelize-query-raw
+    pattern: sequelize.query($Q, ...)
+    message: Raw SQL query - potential injection
+    severity: WARNING
+    languages: [javascript, typescript]
+
+  - id: math-random-usage
+    pattern: Math.random()
+    message: Math.random() not cryptographically secure
+    severity: INFO
+    languages: [javascript, typescript]
+
+  - id: dynamic-regex-redos
+    pattern: new RegExp($PATTERN)
+    message: Dynamic regex - potential ReDoS
+    severity: WARNING
+    languages: [javascript, typescript]
+
+  - id: password-comparison
+    pattern: password === $VAR
+    message: Plaintext password comparison - use bcrypt.compare
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: sql-cursor-format
+    pattern: cursor.execute($QUERY % $VAR)
+    message: SQL injection via string formatting
+    severity: ERROR
+    languages: [python]
+
+  - id: sql-cursor-concat
+    pattern: cursor.execute($QUERY + $VAR)
+    message: SQL injection via concatenation
+    severity: ERROR
+    languages: [python]
+
+  - id: python-exec-call
+    pattern: exec($CODE)
+    message: Python exec() - code injection risk
+    severity: ERROR
+    languages: [python]
+
+  - id: console-log
+    pattern: console.log(...)
+    message: Console.log statement found
+    severity: INFO
+    languages: [javascript, typescript]
+
+  - id: settimeout-string
+    pattern: 'setTimeout("...", ...)'
+    message: setTimeout with string - code injection risk
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: setinterval-string
+    pattern: 'setInterval("...", ...)'
+    message: setInterval with string - code injection risk
+    severity: ERROR
+    languages: [javascript, typescript]

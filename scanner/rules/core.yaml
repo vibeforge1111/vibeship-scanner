@@ -1,0 +1,1060 @@
+rules:
+  - id: eval-user-input
+    pattern: eval(...)
+    message: Dangerous eval() call detected - potential code injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: innerhtml-assignment
+    pattern: $X.innerHTML = $Y
+    message: innerHTML assignment - potential XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: document-write
+    pattern: document.write(...)
+    message: document.write() usage - potential XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: exec-call
+    pattern: exec(...)
+    message: Command execution detected - potential command injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: execsync-call
+    pattern: execSync(...)
+    message: Synchronous command execution - potential command injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: child-process-exec
+    pattern: child_process.exec(...)
+    message: child_process.exec() - potential command injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: fs-readfile-query
+    pattern: fs.readFile(req.query.$X, ...)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: fs-readfilesync-query
+    pattern: fs.readFileSync(req.query.$X)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: fs-readfile-body
+    pattern: fs.readFile(req.body.$X, ...)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: fs-readfilesync-body
+    pattern: fs.readFileSync(req.body.$X)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: redirect-query
+    pattern: res.redirect(req.query.$X)
+    message: Redirect using user input - potential open redirect
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: redirect-body
+    pattern: res.redirect(req.body.$X)
+    message: Redirect using user input - potential open redirect
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: weak-hash-md5
+    pattern: 'crypto.createHash("md5")'
+    message: MD5 is a weak hash function
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: weak-hash-sha1
+    pattern: 'crypto.createHash("sha1")'
+    message: SHA1 is a weak hash function
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: tls-reject-unauthorized
+    pattern: rejectUnauthorized = false
+    message: TLS certificate verification disabled
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: python-os-system
+    pattern: os.system(...)
+    message: os.system() call - potential command injection
+    languages: [python]
+    severity: ERROR
+
+  - id: python-pickle-loads
+    pattern: pickle.loads(...)
+    message: pickle.loads() - insecure deserialization
+    languages: [python]
+    severity: ERROR
+
+  - id: python-yaml-unsafe
+    pattern: yaml.load($DATA)
+    message: yaml.load() without Loader - insecure deserialization
+    languages: [python]
+    severity: ERROR
+
+  - id: python-sql-format
+    pattern: cursor.execute($Q % $V)
+    message: SQL query with string formatting - SQL injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: python-sql-concat
+    pattern: cursor.execute($Q + $V)
+    message: SQL query with string concatenation - SQL injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: new-function
+    pattern: new Function(...)
+    message: new Function() - potential code injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: dangerously-set-inner-html
+    pattern: dangerouslySetInnerHTML={...}
+    message: React dangerouslySetInnerHTML - XSS risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: php-shell-exec
+    pattern: shell_exec(...)
+    message: PHP shell_exec() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-exec
+    pattern: exec(...)
+    message: PHP exec() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-system
+    pattern: system(...)
+    message: PHP system() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-passthru
+    pattern: passthru(...)
+    message: PHP passthru() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-popen
+    pattern: popen(...)
+    message: PHP popen() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-proc-open
+    pattern: proc_open(...)
+    message: PHP proc_open() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-backtick
+    pattern: '`$CMD`'
+    message: PHP backtick execution - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-eval
+    pattern: eval(...)
+    message: PHP eval() - code injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-assert
+    pattern: assert(...)
+    message: PHP assert() with string - code injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-create-function
+    pattern: create_function(...)
+    message: PHP create_function() - code injection risk (deprecated)
+    languages: [php]
+    severity: ERROR
+
+  - id: php-preg-replace-e
+    pattern: 'preg_replace("/.*/e", ...)'
+    message: PHP preg_replace with /e modifier - code injection
+    languages: [php]
+    severity: ERROR
+
+  - id: php-include-var
+    pattern: include($X)
+    message: PHP include with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-include-once-var
+    pattern: include_once($X)
+    message: PHP include_once with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-require-var
+    pattern: require($X)
+    message: PHP require with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-require-once-var
+    pattern: require_once($X)
+    message: PHP require_once with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mysqli-query-concat
+    pattern: mysqli_query($CONN, $Q . $V)
+    message: PHP SQL injection via string concatenation
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mysql-query
+    pattern: mysql_query(...)
+    message: PHP mysql_query() - deprecated and SQL injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-get
+    pattern: echo $_GET[$X]
+    message: PHP XSS - echoing GET parameter without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-post
+    pattern: echo $_POST[$X]
+    message: PHP XSS - echoing POST parameter without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-request
+    pattern: echo $_REQUEST[$X]
+    message: PHP XSS - echoing REQUEST parameter without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-print-get
+    pattern: print $_GET[$X]
+    message: PHP XSS - printing GET parameter without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-print-post
+    pattern: print $_POST[$X]
+    message: PHP XSS - printing POST parameter without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-unserialize
+    pattern: unserialize(...)
+    message: PHP unserialize() - insecure deserialization risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-md5-password
+    pattern: md5($PASSWORD)
+    message: PHP MD5 for password - use password_hash() instead
+    languages: [php]
+    severity: WARNING
+
+  - id: php-sha1-password
+    pattern: sha1($PASSWORD)
+    message: PHP SHA1 for password - use password_hash() instead
+    languages: [php]
+    severity: WARNING
+
+  - id: php-file-get-contents-url
+    pattern: file_get_contents($URL)
+    message: PHP file_get_contents with URL - potential SSRF
+    languages: [php]
+    severity: WARNING
+
+  - id: php-curl-ssl-verify-off
+    pattern: 'curl_setopt($CH, CURLOPT_SSL_VERIFYPEER, false)'
+    message: PHP cURL SSL verification disabled
+    languages: [php]
+    severity: ERROR
+
+  - id: php-extract
+    pattern: extract(...)
+    message: PHP extract() - variable injection risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-parse-str
+    pattern: parse_str($X)
+    message: PHP parse_str() without second param - variable injection
+    languages: [php]
+    severity: WARNING
+
+  - id: php-move-uploaded-file
+    pattern: move_uploaded_file(...)
+    message: PHP file upload - ensure proper validation
+    languages: [php]
+    severity: WARNING
+
+  - id: php-header-redirect
+    pattern: 'header("Location: " . $X)'
+    message: PHP open redirect risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-query-get-concat
+    pattern: $QUERY . $_GET[$X]
+    message: PHP SQL injection - concatenating GET parameter into query
+    languages: [php]
+    severity: ERROR
+
+  - id: php-query-post-concat
+    pattern: $QUERY . $_POST[$X]
+    message: PHP SQL injection - concatenating POST parameter into query
+    languages: [php]
+    severity: ERROR
+
+  - id: php-query-request-concat
+    pattern: $QUERY . $_REQUEST[$X]
+    message: PHP SQL injection - concatenating REQUEST parameter into query
+    languages: [php]
+    severity: ERROR
+
+  - id: php-query-interpolation
+    pattern: '"SELECT $EXPR FROM $TABLE WHERE $FIELD = $_GET[$X]"'
+    message: PHP SQL injection via string interpolation
+    languages: [php]
+    severity: ERROR
+
+  - id: php-preg-replace-callback
+    pattern: preg_replace_callback($PATTERN, $CALLBACK, $_GET[$X])
+    message: PHP ReDoS risk - user input in regex
+    languages: [php]
+    severity: WARNING
+
+  - id: php-preg-match-input
+    pattern: preg_match($_GET[$X], ...)
+    message: PHP ReDoS risk - user-controlled regex pattern
+    languages: [php]
+    severity: ERROR
+
+  - id: php-header-injection
+    pattern: 'header($X . $_GET[$Y])'
+    message: PHP header injection - user input in header
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mail-injection
+    pattern: mail($_GET[$X], ...)
+    message: PHP mail header injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mail-body-injection
+    pattern: mail($TO, $SUBJECT, $_GET[$X])
+    message: PHP mail content injection risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-fopen-input
+    pattern: fopen($_GET[$X], ...)
+    message: PHP path traversal - user input in file path
+    languages: [php]
+    severity: ERROR
+
+  - id: php-file-input
+    pattern: file($_GET[$X])
+    message: PHP path traversal - user input in file path
+    languages: [php]
+    severity: ERROR
+
+  - id: php-readfile-input
+    pattern: readfile($_GET[$X])
+    message: PHP path traversal - user input in readfile
+    languages: [php]
+    severity: ERROR
+
+  - id: php-file-put-contents-input
+    pattern: file_put_contents($_GET[$X], ...)
+    message: PHP arbitrary file write via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-copy-input
+    pattern: copy($_GET[$X], ...)
+    message: PHP arbitrary file copy via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-rename-input
+    pattern: rename($_GET[$X], ...)
+    message: PHP arbitrary file rename via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-unlink-input
+    pattern: unlink($_GET[$X])
+    message: PHP arbitrary file delete via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mkdir-input
+    pattern: mkdir($_GET[$X])
+    message: PHP arbitrary directory creation via user input
+    languages: [php]
+    severity: WARNING
+
+  - id: php-rmdir-input
+    pattern: rmdir($_GET[$X])
+    message: PHP arbitrary directory deletion via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-chmod-input
+    pattern: chmod($_GET[$X], ...)
+    message: PHP arbitrary permission change via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-ldap-search-input
+    pattern: ldap_search($CONN, $BASE, $_GET[$X])
+    message: PHP LDAP injection - user input in search filter
+    languages: [php]
+    severity: ERROR
+
+  - id: php-xpath-input
+    pattern: $XML->xpath($_GET[$X])
+    message: PHP XPath injection - user input in XPath query
+    languages: [php]
+    severity: ERROR
+
+  - id: php-simplexml-load
+    pattern: simplexml_load_string($_GET[$X])
+    message: PHP XXE risk - loading XML from user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-dom-loadxml
+    pattern: $DOC->loadXML($_GET[$X])
+    message: PHP XXE risk - loading XML from user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-json-decode-depth
+    pattern: json_decode($_GET[$X])
+    message: PHP JSON parsing user input - ensure depth limits
+    languages: [php]
+    severity: WARNING
+
+  - id: php-base64-decode-exec
+    pattern: eval(base64_decode($X))
+    message: PHP code injection via base64 decode
+    languages: [php]
+    severity: ERROR
+
+  - id: php-preg-replace-e-flag
+    pattern: 'preg_replace($PATTERN, $REPLACEMENT, $SUBJECT, $LIMIT)'
+    message: PHP preg_replace - check for dangerous /e modifier
+    languages: [php]
+    severity: WARNING
+
+  - id: php-usort-callback
+    pattern: usort($ARRAY, $_GET[$X])
+    message: PHP code injection via callback
+    languages: [php]
+    severity: ERROR
+
+  - id: php-array-map-callback
+    pattern: array_map($_GET[$X], ...)
+    message: PHP code injection via callback
+    languages: [php]
+    severity: ERROR
+
+  - id: php-call-user-func
+    pattern: call_user_func($_GET[$X], ...)
+    message: PHP code injection via call_user_func
+    languages: [php]
+    severity: ERROR
+
+  - id: php-call-user-func-array
+    pattern: call_user_func_array($_GET[$X], ...)
+    message: PHP code injection via call_user_func_array
+    languages: [php]
+    severity: ERROR
+
+  - id: php-var-var
+    pattern: $$_GET[$X]
+    message: PHP variable variable injection
+    languages: [php]
+    severity: ERROR
+
+  - id: php-compact-input
+    pattern: compact($_GET[$X])
+    message: PHP variable injection via compact
+    languages: [php]
+    severity: WARNING
+
+  - id: php-setcookie-httponly-false
+    pattern: 'setcookie($NAME, $VALUE, $EXPIRE, $PATH, $DOMAIN, $SECURE, false)'
+    message: PHP cookie without HttpOnly flag
+    languages: [php]
+    severity: WARNING
+
+  - id: php-session-regenerate-missing
+    pattern: session_start()
+    message: PHP session - ensure session_regenerate_id() after login
+    languages: [php]
+    severity: INFO
+
+  - id: php-rand-crypto
+    pattern: rand()
+    message: PHP rand() not cryptographically secure - use random_int()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-mt-rand-crypto
+    pattern: mt_rand()
+    message: PHP mt_rand() not cryptographically secure - use random_int()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-substr-token
+    pattern: substr(md5($X), ...)
+    message: PHP weak token generation - use random_bytes()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-strcmp-bypass
+    pattern: strcmp($_GET[$X], $SECRET)
+    message: PHP strcmp type juggling bypass risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-loose-comparison
+    pattern: $X == $_GET[$Y]
+    message: PHP loose comparison - consider strict === for security
+    languages: [php]
+    severity: INFO
+
+  - id: ruby-system-call
+    pattern: system($CMD)
+    message: Ruby system() - command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-exec-call
+    pattern: exec($CMD)
+    message: Ruby exec() - command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-backtick
+    pattern: '`$CMD`'
+    message: Ruby backtick execution - command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-eval
+    pattern: eval($CODE)
+    message: Ruby eval() - code injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-send-dynamic
+    pattern: $OBJ.send(params[$X], ...)
+    message: Ruby dynamic send - code injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-constantize
+    pattern: params[$X].constantize
+    message: Ruby constantize - arbitrary class instantiation
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-yaml-load
+    pattern: YAML.load($DATA)
+    message: Ruby YAML.load - insecure deserialization (use safe_load)
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-marshal-load
+    pattern: Marshal.load($DATA)
+    message: Ruby Marshal.load - insecure deserialization
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-erb-render
+    pattern: ERB.new(params[$X]).result
+    message: Ruby ERB template injection
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-render-inline
+    pattern: 'render inline: params[$X]'
+    message: Ruby Rails inline render - template injection
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-sql-interpolation
+    pattern: where("$FIELD = #{params[$X]}")
+    message: Ruby SQL injection via string interpolation
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-open-uri
+    pattern: open(params[$X])
+    message: Ruby open() with user input - SSRF/command injection
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-redirect-to-params
+    pattern: redirect_to params[$X]
+    message: Ruby open redirect risk
+    languages: [ruby]
+    severity: WARNING
+
+  - id: go-sql-query-concat
+    pattern: db.Query($Q + $INPUT)
+    message: Go SQL injection via concatenation
+    languages: [go]
+    severity: ERROR
+
+  - id: go-exec-command
+    pattern: exec.Command($CMD, ...)
+    message: Go command execution - ensure input validation
+    languages: [go]
+    severity: WARNING
+
+  - id: go-template-html
+    pattern: template.HTML($INPUT)
+    message: Go template.HTML bypasses escaping - XSS risk
+    languages: [go]
+    severity: ERROR
+
+  - id: go-tls-insecure
+    pattern: 'InsecureSkipVerify: true'
+    message: Go TLS verification disabled
+    languages: [go]
+    severity: ERROR
+
+  - id: go-yaml-unmarshal
+    pattern: yaml.Unmarshal($DATA, ...)
+    message: Go YAML unmarshal - check for safe parsing
+    languages: [go]
+    severity: WARNING
+
+  - id: java-runtime-exec
+    pattern: Runtime.getRuntime().exec($CMD)
+    message: Java command execution - injection risk
+    languages: [java]
+    severity: ERROR
+
+  - id: java-processbuilder
+    pattern: new ProcessBuilder($CMD)
+    message: Java ProcessBuilder - command injection risk
+    languages: [java]
+    severity: WARNING
+
+  - id: java-statement-execute
+    pattern: $STMT.execute($QUERY)
+    message: Java SQL - use PreparedStatement instead
+    languages: [java]
+    severity: WARNING
+
+  - id: java-xpath-compile
+    pattern: XPathFactory.newInstance().newXPath().compile($EXPR)
+    message: Java XPath injection risk
+    languages: [java]
+    severity: WARNING
+
+  - id: java-xxe-documentbuilder
+    pattern: DocumentBuilderFactory.newInstance()
+    message: Java XXE risk - disable external entities
+    languages: [java]
+    severity: WARNING
+
+  - id: java-deserialization
+    pattern: new ObjectInputStream($STREAM).readObject()
+    message: Java insecure deserialization
+    languages: [java]
+    severity: ERROR
+
+  - id: java-crypto-ecb
+    pattern: 'Cipher.getInstance("AES/ECB/$PADDING")'
+    message: Java ECB mode is insecure - use GCM or CBC
+    languages: [java]
+    severity: ERROR
+
+  - id: java-crypto-des
+    pattern: 'Cipher.getInstance("DES")'
+    message: Java DES is weak - use AES
+    languages: [java]
+    severity: ERROR
+
+  - id: java-random-security
+    pattern: new Random()
+    message: Java Random not secure - use SecureRandom
+    languages: [java]
+    severity: WARNING
+
+  - id: java-md5-hash
+    pattern: 'MessageDigest.getInstance("MD5")'
+    message: Java MD5 is weak for security purposes
+    languages: [java]
+    severity: WARNING
+
+  - id: java-sha1-hash
+    pattern: 'MessageDigest.getInstance("SHA-1")'
+    message: Java SHA-1 is deprecated for security
+    languages: [java]
+    severity: WARNING
+
+  - id: csharp-sql-concat
+    pattern: $CMD.CommandText = $Q + $INPUT
+    message: C# SQL injection via concatenation
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-process-start
+    pattern: Process.Start($CMD)
+    message: C# command execution - injection risk
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-deserialization
+    pattern: BinaryFormatter().Deserialize($STREAM)
+    message: C# BinaryFormatter deserialization is insecure
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-xxe-xmlreader
+    pattern: XmlReader.Create($INPUT)
+    message: C# XXE risk - configure XmlReaderSettings
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-regex-timeout
+    pattern: new Regex($PATTERN)
+    message: C# Regex without timeout - ReDoS risk
+    languages: [csharp]
+    severity: WARNING
+
+  # =====================================================
+  # PHP - Enhanced SQL Injection Detection (DVWA patterns)
+  # =====================================================
+
+  - id: php-sql-string-var-interpolation
+    pattern: '"SELECT ... FROM ... WHERE ... = $VAR"'
+    message: PHP SQL injection - variable interpolated in query string
+    languages: [php]
+    severity: ERROR
+
+  - id: php-sql-double-quote-var
+    pattern: '"... WHERE ... = $ID"'
+    message: PHP SQL injection - variable in WHERE clause
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mysqli-query-var
+    pattern: mysqli_query($CONN, $QUERY)
+    message: PHP SQL query - ensure parameterized queries are used
+    languages: [php]
+    severity: WARNING
+
+  - id: php-pdo-query-var
+    pattern: $PDO->query($QUERY)
+    message: PHP PDO query() - use prepare() with bound parameters instead
+    languages: [php]
+    severity: WARNING
+
+  - id: php-pdo-exec-var
+    pattern: $PDO->exec($QUERY)
+    message: PHP PDO exec() - use prepare() with bound parameters instead
+    languages: [php]
+    severity: WARNING
+
+  # =====================================================
+  # PHP - Enhanced XSS Detection (DVWA patterns)
+  # =====================================================
+
+  - id: php-echo-concat-get
+    pattern: echo $X . $_GET[$Y]
+    message: PHP XSS - echoing concatenated GET parameter
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-concat-get-2
+    pattern: echo $_GET[$X] . $Y
+    message: PHP XSS - echoing concatenated GET parameter
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-concat-post
+    pattern: echo $X . $_POST[$Y]
+    message: PHP XSS - echoing concatenated POST parameter
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-concat-post-2
+    pattern: echo $_POST[$X] . $Y
+    message: PHP XSS - echoing concatenated POST parameter
+    languages: [php]
+    severity: ERROR
+
+  - id: php-string-concat-get
+    pattern: $HTML .= $X . $_GET[$Y]
+    message: PHP XSS - user input concatenated into output variable
+    languages: [php]
+    severity: ERROR
+
+  - id: php-string-concat-get-2
+    pattern: $HTML .= $_GET[$X]
+    message: PHP XSS - GET parameter appended to output
+    languages: [php]
+    severity: ERROR
+
+  - id: php-string-concat-post
+    pattern: $HTML .= $_POST[$X]
+    message: PHP XSS - POST parameter appended to output
+    languages: [php]
+    severity: ERROR
+
+  - id: php-printf-get
+    pattern: printf($FMT, $_GET[$X])
+    message: PHP XSS - printing GET parameter via printf
+    languages: [php]
+    severity: ERROR
+
+  - id: php-sprintf-get
+    pattern: sprintf($FMT, $_GET[$X])
+    message: PHP XSS - GET parameter in sprintf (check output escaping)
+    languages: [php]
+    severity: WARNING
+
+  # =====================================================
+  # PHP - Enhanced Command Injection (DVWA patterns)
+  # =====================================================
+
+  - id: php-shell-exec-concat
+    pattern: shell_exec($CMD . $VAR)
+    message: PHP command injection - variable concatenated to shell command
+    languages: [php]
+    severity: ERROR
+
+  - id: php-shell-exec-concat-2
+    pattern: shell_exec($X . $Y . $Z)
+    message: PHP command injection - string concatenation in shell command
+    languages: [php]
+    severity: ERROR
+
+  - id: php-exec-concat
+    pattern: exec($CMD . $VAR)
+    message: PHP command injection - variable concatenated to exec
+    languages: [php]
+    severity: ERROR
+
+  - id: php-system-concat
+    pattern: system($CMD . $VAR)
+    message: PHP command injection - variable concatenated to system
+    languages: [php]
+    severity: ERROR
+
+  - id: php-passthru-concat
+    pattern: passthru($CMD . $VAR)
+    message: PHP command injection - variable concatenated to passthru
+    languages: [php]
+    severity: ERROR
+
+  - id: php-popen-concat
+    pattern: popen($CMD . $VAR, $MODE)
+    message: PHP command injection - variable concatenated to popen
+    languages: [php]
+    severity: ERROR
+
+  - id: php-proc-open-concat
+    pattern: proc_open($CMD . $VAR, ...)
+    message: PHP command injection - variable concatenated to proc_open
+    languages: [php]
+    severity: ERROR
+
+  - id: php-backtick-var
+    pattern: '`$CMD $VAR`'
+    message: PHP command injection - variable in backtick execution
+    languages: [php]
+    severity: ERROR
+
+  # =====================================================
+  # PHP - File Upload Vulnerabilities (DVWA patterns)
+  # =====================================================
+
+  - id: php-upload-no-type-check
+    pattern: move_uploaded_file($_FILES[$X]['tmp_name'], $DEST)
+    message: PHP file upload - verify file type validation exists
+    languages: [php]
+    severity: WARNING
+
+  - id: php-upload-user-filename
+    pattern: $_FILES[$X]['name']
+    message: PHP file upload - user-controlled filename (sanitize before use)
+    languages: [php]
+    severity: WARNING
+
+  # =====================================================
+  # PHP - Session/Auth Weaknesses
+  # =====================================================
+
+  - id: php-setcookie-no-httponly
+    pattern: setcookie($NAME, $VALUE)
+    message: PHP cookie - missing httponly/secure flags
+    languages: [php]
+    severity: WARNING
+
+  - id: php-setcookie-no-secure
+    pattern: setcookie($NAME, $VALUE, $EXPIRE)
+    message: PHP cookie - missing httponly/secure flags
+    languages: [php]
+    severity: WARNING
+
+  - id: php-password-plain-compare
+    pattern: if ($PASSWORD == $X)
+    message: PHP password - use password_verify() instead of direct comparison
+    languages: [php]
+    severity: ERROR
+
+  - id: php-password-plain-compare-2
+    pattern: if ($X == $PASSWORD)
+    message: PHP password - use password_verify() instead of direct comparison
+    languages: [php]
+    severity: ERROR
+
+  # =====================================================
+  # PHP - CSRF Token Missing Indicators
+  # =====================================================
+
+  - id: php-form-no-token-check
+    pattern: 'if(isset($_POST[$X])) { ... }'
+    message: PHP form handler - verify CSRF token validation exists
+    languages: [php]
+    severity: INFO
+
+  # =====================================================
+  # PHP - Dangerous Functions Expanded
+  # =====================================================
+
+  - id: php-assert-user-input
+    pattern: assert($_GET[$X])
+    message: PHP code injection via assert() with user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-assert-user-input-post
+    pattern: assert($_POST[$X])
+    message: PHP code injection via assert() with user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-array-filter-callback
+    pattern: array_filter($ARRAY, $_GET[$X])
+    message: PHP code injection via array_filter callback
+    languages: [php]
+    severity: ERROR
+
+  # =====================================================
+  # PHP - Information Disclosure
+  # =====================================================
+
+  - id: php-phpinfo
+    pattern: phpinfo()
+    message: PHP phpinfo() exposes sensitive server configuration
+    languages: [php]
+    severity: WARNING
+
+  - id: php-error-reporting-all
+    pattern: error_reporting(E_ALL)
+    message: PHP verbose error reporting - disable in production
+    languages: [php]
+    severity: INFO
+
+  - id: php-display-errors-on
+    pattern: 'ini_set("display_errors", "1")'
+    message: PHP display_errors enabled - disable in production
+    languages: [php]
+    severity: WARNING
+
+  - id: php-var-dump-output
+    pattern: var_dump($X)
+    message: PHP var_dump() - remove debug output in production
+    languages: [php]
+    severity: INFO
+
+  - id: php-print-r-output
+    pattern: print_r($X)
+    message: PHP print_r() - remove debug output in production
+    languages: [php]
+    severity: INFO
+
+  # =====================================================
+  # PHP - Database Specific
+  # =====================================================
+
+  - id: php-mysql-real-escape-only
+    pattern: mysql_real_escape_string($X)
+    message: PHP mysql_real_escape_string is deprecated - use prepared statements
+    languages: [php]
+    severity: WARNING
+
+  - id: php-mysqli-real-escape-only
+    pattern: mysqli_real_escape_string($CONN, $X)
+    message: PHP escaping alone is insufficient - use prepared statements
+    languages: [php]
+    severity: WARNING
+
+  - id: php-addslashes-sql
+    pattern: addslashes($X)
+    message: PHP addslashes() is not safe for SQL - use prepared statements
+    languages: [php]
+    severity: WARNING
+
+  # =====================================================
+  # PHP - Crypto Weaknesses
+  # =====================================================
+
+  - id: php-uniqid-token
+    pattern: uniqid()
+    message: PHP uniqid() is predictable - use random_bytes() for tokens
+    languages: [php]
+    severity: WARNING
+
+  - id: php-mcrypt-deprecated
+    pattern: mcrypt_encrypt(...)
+    message: PHP mcrypt is deprecated - use openssl_encrypt()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-des-encryption
+    pattern: MCRYPT_DES
+    message: PHP DES encryption is weak - use AES-256
+    languages: [php]
+    severity: ERROR
+
+  - id: php-ecb-mode
+    pattern: MCRYPT_MODE_ECB
+    message: PHP ECB mode is insecure - use CBC or GCM
+    languages: [php]
+    severity: ERROR

@@ -1,0 +1,168 @@
+/* ============================================
+   vibeship Theme System
+   Dark/Light mode with CSS custom properties
+   ============================================ */
+
+/* Light Theme (Default) - Terminal Style */
+:root,
+[data-theme="light"] {
+    /* Backgrounds - Pure monochrome */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f8f8;
+    --bg-tertiary: #f0f0f0;
+    --bg-inverse: #000000;
+
+    /* Text - High contrast monochrome */
+    --text-primary: #000000;
+    --text-secondary: #4a4a4a;
+    --text-tertiary: #6b6b6b;
+    --text-inverse: #ffffff;
+    --text-inverse-secondary: #b0b0b0;
+
+    /* Borders */
+    --border: #e0e0e0;
+    --border-strong: #c0c0c0;
+
+    /* Accent Colors - Vibeship Palette */
+    --green: #2ECC71;       /* Terminal Green - success/fixed */
+    --green-dim: #00C49A;   /* Vibe Teal - primary accent */
+    --orange: #FFB020;      /* Compile Amber - warning/running */
+    --orange-dim: #d97706;
+    --red: #FF4D4D;         /* Debug Red - error/critical */
+    --blue: #3399FF;        /* Docker Blue - general */
+    --violet: #9D8CFF;      /* Syntax Violet - analytics */
+    --pink: #FF66C4;        /* Hot Pink - high priority */
+
+    /* Grays (for components) */
+    --gray-100: #f8f8f8;
+    --gray-200: #f0f0f0;
+    --gray-300: #e0e0e0;
+    --gray-400: #c0c0c0;
+    --gray-500: #9a9a9a;
+    --gray-600: #6b6b6b;
+    --gray-700: #4a4a4a;
+    --gray-800: #2a2a2a;
+    --gray-900: #1a1a1a;
+
+    /* Logo invert for dark backgrounds */
+    --logo-invert: 0;
+}
+
+/* Dark Theme - Bluish Black */
+[data-theme="dark"] {
+    /* Backgrounds - Bluish black tones */
+    --bg-primary: #0e1016;
+    --bg-secondary: #151820;
+    --bg-tertiary: #1c202a;
+    --bg-inverse: #ffffff;
+
+    /* Text - Softer, easier on eyes */
+    --text-primary: #e2e4e9;
+    --text-secondary: #9aa3b5;
+    --text-tertiary: #6b7489;
+    --text-inverse: #0c0e14;
+    --text-inverse-secondary: #4a4a4a;
+
+    /* Borders - More visible */
+    --border: #2a3042;
+    --border-strong: #3d4558;
+
+    /* Accent Colors - Vibeship Palette */
+    --green: #2ECC71;       /* Terminal Green - success/fixed */
+    --green-dim: #00C49A;   /* Vibe Teal - primary accent */
+    --orange: #FFB020;      /* Compile Amber - warning/running */
+    --orange-dim: #d97706;
+    --red: #FF4D4D;         /* Debug Red - error/critical */
+    --blue: #3399FF;        /* Docker Blue - general */
+    --violet: #9D8CFF;      /* Syntax Violet - analytics */
+    --pink: #FF66C4;        /* Hot Pink - high priority */
+
+    /* Grays - Bluish tints */
+    --gray-100: #0f1218;
+    --gray-200: #181c25;
+    --gray-300: #2a3142;
+    --gray-400: #3d4559;
+    --gray-500: #5a6478;
+    --gray-600: #8892a6;
+    --gray-700: #b8c0d0;
+    --gray-800: #dce1eb;
+    --gray-900: #f0f2f5;
+
+    /* Logo invert for dark backgrounds */
+    --logo-invert: 1;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 14px;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+::selection {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+/* ============================================
+   Typography
+   ============================================ */
+
+.font-serif {
+    font-family: 'Instrument Serif', Georgia, serif;
+}
+
+.font-mono {
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-weight: 400;
+}
+
+code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg-tertiary);
+    padding: 0.1rem 0.3rem;
+    font-size: 0.85em;
+}
+
+/* ============================================
+   Scrollbar
+   ============================================ */
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-500);
+}

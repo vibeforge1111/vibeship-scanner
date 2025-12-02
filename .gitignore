@@ -6,11 +6,12 @@ node_modules/
 .svelte-kit/
 build/
 dist/
+/package
 
 # Environment files
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # IDE
 .vscode/
@@ -34,6 +35,10 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
 
 # Reference project (it has its own repo)
 vibeship-ref/

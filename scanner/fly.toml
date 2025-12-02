@@ -1,0 +1,22 @@
+# fly.toml app configuration file generated for scanner-empty-field-5676 on 2025-12-02T03:46:31+04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'scanner-empty-field-5676'
+primary_region = 'syd'
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
