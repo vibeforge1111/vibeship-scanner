@@ -216,14 +216,43 @@
 	}
 
 	const steps = [
-		{ id: 'init', label: 'Initializing', icon: '⚡' },
-		{ id: 'clone', label: 'Cloning repository', icon: '📥' },
-		{ id: 'detect', label: 'Detecting stack', icon: '🔍' },
-		{ id: 'sast', label: 'Scanning code', icon: '🛡️' },
-		{ id: 'deps', label: 'Checking dependencies', icon: '📦' },
-		{ id: 'secrets', label: 'Scanning for secrets', icon: '🔐' },
-		{ id: 'score', label: 'Calculating score', icon: '📊' }
+		{ id: 'init', label: 'Initializing', icon: '⚡', details: 'Setting up secure scan environment' },
+		{ id: 'clone', label: 'Cloning repository', icon: '📥', details: 'Fetching source code from GitHub' },
+		{ id: 'detect', label: 'Detecting stack', icon: '🔍', details: 'Identifying languages and frameworks' },
+		{ id: 'sast', label: 'Scanning code', icon: '🛡️', details: 'Running 200+ security patterns' },
+		{ id: 'deps', label: 'Checking dependencies', icon: '📦', details: 'Analyzing package vulnerabilities' },
+		{ id: 'secrets', label: 'Scanning for secrets', icon: '🔐', details: 'Detecting exposed credentials' },
+		{ id: 'score', label: 'Calculating score', icon: '📊', details: 'Generating security report' }
 	];
+
+	const securityFacts = [
+		{ icon: '💡', fact: 'SQL injection has been the #1 web vulnerability for over 20 years' },
+		{ icon: '🔑', fact: '80% of data breaches involve compromised credentials' },
+		{ icon: '📦', fact: 'The average app has 49 open source dependencies' },
+		{ icon: '⏱️', fact: 'Average time to detect a breach: 197 days' },
+		{ icon: '💰', fact: 'Average cost of a data breach: $4.45 million' },
+		{ icon: '🛡️', fact: 'SAST catches 70% of vulnerabilities before deployment' },
+		{ icon: '🔐', fact: '90% of leaked secrets are found in git history' },
+		{ icon: '⚠️', fact: 'XSS is present in 2 out of 3 web applications' },
+		{ icon: '🐛', fact: 'Finding bugs in dev is 100x cheaper than in prod' },
+		{ icon: '📊', fact: 'Security issues grow 2x for every 1000 lines of code' }
+	];
+
+	let currentFactIndex = $state(0);
+	let factInterval: ReturnType<typeof setInterval> | null = null;
+
+	$effect(() => {
+		if (status === 'scanning' || status === 'queued') {
+			if (!factInterval) {
+				factInterval = setInterval(() => {
+					currentFactIndex = (currentFactIndex + 1) % securityFacts.length;
+				}, 4000);
+			}
+		} else if (factInterval) {
+			clearInterval(factInterval);
+			factInterval = null;
+		}
+	});
 
 	function getStepIndex(stepId: string): number {
 		const index = steps.findIndex(s => s.id === stepId);
@@ -399,6 +428,9 @@
 		if (timeoutCheckInterval) {
 			clearInterval(timeoutCheckInterval);
 		}
+		if (factInterval) {
+			clearInterval(factInterval);
+		}
 	});
 
 	function getSeverityClass(severity: string): string {
@@ -571,7 +603,12 @@
 				{#each steps as step, i}
 					<div class="step" class:active={i === progress.stepNumber} class:complete={i < progress.stepNumber}>
 						<span class="step-icon">{step.icon}</span>
-						<span class="step-label">{step.label}</span>
+						<div class="step-content">
+							<span class="step-label">{step.label}</span>
+							{#if i === progress.stepNumber}
+								<span class="step-detail">{step.details}</span>
+							{/if}
+						</div>
 						{#if i < progress.stepNumber}
 							<span class="step-check">✓</span>
 						{:else if i === progress.stepNumber}
@@ -579,6 +616,11 @@
 						{/if}
 					</div>
 				{/each}
+			</div>
+
+			<div class="security-fact">
+				<span class="fact-icon">{securityFacts[currentFactIndex].icon}</span>
+				<span class="fact-text">{securityFacts[currentFactIndex].fact}</span>
 			</div>
 
 			<div class="progress-bar">
@@ -981,9 +1023,21 @@
 		font-size: 1.25rem;
 	}
 
-	.step-label {
+	.step-content {
 		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.step-label {
 		font-size: 0.9rem;
+	}
+
+	.step-detail {
+		font-size: 0.75rem;
+		color: var(--green-dim);
+		opacity: 0.8;
 	}
 
 	.step-check {
@@ -1019,6 +1073,39 @@
 	.progress-message {
 		font-size: 0.9rem;
 		color: var(--text-secondary);
+	}
+
+	.security-fact {
+		margin: 2rem auto;
+		max-width: 400px;
+		padding: 1rem;
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		animation: factFade 0.5s ease;
+	}
+
+	.fact-icon {
+		font-size: 1.25rem;
+	}
+
+	.fact-text {
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+		line-height: 1.4;
+	}
+
+	@keyframes factFade {
+		from {
+			opacity: 0;
+			transform: translateY(5px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.btn-cancel {
