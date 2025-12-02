@@ -615,8 +615,8 @@
 											</div>
 										{/if}
 
-										{@const fixTemplate = getFixTemplate(finding)}
-										{#if fixTemplate}
+										{#if getFixTemplate(finding)}
+											{@const fixTemplate = getFixTemplate(finding)}
 											<div class="fix-template">
 												<div class="fix-template-header">
 													<div class="fix-template-title">
