@@ -75,6 +75,20 @@
 		return date.toLocaleDateString();
 	}
 
+	function normalizeUrl(url: string): string {
+		let normalized = url.trim();
+		if (/^[\w-]+\/[\w.-]+$/.test(normalized)) {
+			normalized = `https://github.com/${normalized}`;
+		}
+		else if (/^github\.com\/[\w-]+\/[\w.-]+/.test(normalized)) {
+			normalized = `https://${normalized}`;
+		}
+		else if (/^gitlab\.com\/[\w-]+\/[\w.-]+/.test(normalized)) {
+			normalized = `https://${normalized}`;
+		}
+		return normalized.replace(/\/+$/, '');
+	}
+
 	function validateUrl(url: string): boolean {
 		const githubPattern = /^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$/;
 		const gitlabPattern = /^https?:\/\/(www\.)?gitlab\.com\/[\w-]+\/[\w.-]+\/?$/;
@@ -90,10 +104,14 @@
 			return;
 		}
 
-		if (!validateUrl(repoUrl)) {
+		const normalizedUrl = normalizeUrl(repoUrl);
+
+		if (!validateUrl(normalizedUrl)) {
 			error = 'Please enter a valid GitHub or GitLab URL';
 			return;
 		}
+
+		repoUrl = normalizedUrl;
 
 		loading = true;
 

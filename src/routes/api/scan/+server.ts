@@ -38,11 +38,21 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			);
 		}
 
-		const { url } = await request.json();
+		const { url: rawUrl } = await request.json();
 
-		if (!url) {
+		if (!rawUrl) {
 			return json({ error: 'url_required', message: 'Repository URL is required' }, { status: 400 });
 		}
+
+		let url = rawUrl.trim();
+		if (/^[\w-]+\/[\w.-]+$/.test(url)) {
+			url = `https://github.com/${url}`;
+		} else if (/^github\.com\/[\w-]+\/[\w.-]+/.test(url)) {
+			url = `https://${url}`;
+		} else if (/^gitlab\.com\/[\w-]+\/[\w.-]+/.test(url)) {
+			url = `https://${url}`;
+		}
+		url = url.replace(/\/+$/, '');
 
 		const githubPattern = /^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$/;
 		const gitlabPattern = /^https?:\/\/(www\.)?gitlab\.com\/[\w-]+\/[\w.-]+\/?$/;
