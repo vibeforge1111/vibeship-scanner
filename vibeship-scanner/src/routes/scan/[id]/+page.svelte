@@ -877,7 +877,7 @@
 											</div>
 										{/if}
 
-										{#if finding.snippet?.code}
+										{#if finding.snippet?.code && finding.snippet.code.trim() && finding.snippet.code.length > 0}
 											<div class="code-snippet">
 												<div class="snippet-header">
 													<span>Vulnerable Code</span>
