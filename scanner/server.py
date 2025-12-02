@@ -56,7 +56,7 @@ def run_scan(scan_id: str, repo_url: str, branch: str):
     start_time = datetime.now()
 
     try:
-        update_scan(supabase, scan_id, {'status': 'scanning', 'started_at': start_time.isoformat(), 'repo_url': repo_url})
+        update_scan(supabase, scan_id, {'status': 'scanning', 'started_at': start_time.isoformat()})
         update_progress(supabase, scan_id, 'init', 'Initializing scan...', 5)
 
         with tempfile.TemporaryDirectory() as temp_dir:

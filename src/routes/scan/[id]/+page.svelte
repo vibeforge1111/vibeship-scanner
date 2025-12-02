@@ -19,6 +19,7 @@
 	let results = $state<any>(null);
 	let error = $state<string | null>(null);
 	let repoUrl = $state<string | null>(null);
+	let rescanning = $state(false);
 	let channel: RealtimeChannel | null = null;
 
 	let displayScore = $state(0);
@@ -243,7 +244,7 @@
 
 		if (data) {
 			status = data.status;
-			repoUrl = data.repo_url || null;
+			repoUrl = data.repo_url || data.target_url || null;
 			if (data.status === 'complete') {
 				results = {
 					score: data.score,
@@ -305,6 +306,28 @@
 						error = 'Scan timed out after 15 minutes';
 					});
 			}
+		}
+	}
+
+	async function rescanRepo() {
+		if (!repoUrl || rescanning) return;
+		rescanning = true;
+		try {
+			const response = await fetch('/api/scan', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ url: repoUrl })
+			});
+			const data = await response.json();
+			if (data.scanId) {
+				window.location.href = `/scan/${data.scanId}`;
+			} else {
+				console.error('Rescan failed:', data);
+				rescanning = false;
+			}
+		} catch (e) {
+			console.error('Rescan error:', e);
+			rescanning = false;
 		}
 	}
 
@@ -905,6 +928,11 @@
 			{/if}
 
 			<div class="results-footer">
+				{#if repoUrl}
+					<button class="btn btn-rescan" onclick={rescanRepo} disabled={rescanning}>
+						{rescanning ? 'Starting...' : 'Rescan This Repo'}
+					</button>
+				{/if}
 				<a href="/" class="btn">Scan Another Repo</a>
 				<a href="https://vibeship.com" class="btn btn-glow">Get Expert Help</a>
 			</div>
@@ -1774,6 +1802,34 @@
 		display: flex;
 		gap: 1rem;
 		justify-content: center;
+		flex-wrap: wrap;
+	}
+
+	.btn-rescan {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.75rem 1.5rem;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		background: var(--blue);
+		border: 1px solid var(--blue);
+		color: white;
+		cursor: pointer;
+		text-decoration: none;
+		transition: all 0.15s;
+	}
+
+	.btn-rescan:hover:not(:disabled) {
+		background: #2980d9;
+		border-color: #2980d9;
+	}
+
+	.btn-rescan:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
 	}
 
 	@keyframes fadeUp {

@@ -1,0 +1,132 @@
+rules:
+  - id: eval-user-input
+    pattern: eval(...)
+    message: Dangerous eval() call detected - potential code injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: innerhtml-assignment
+    pattern: $X.innerHTML = $Y
+    message: innerHTML assignment - potential XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: document-write
+    pattern: document.write(...)
+    message: document.write() usage - potential XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: exec-call
+    pattern: exec(...)
+    message: Command execution detected - potential command injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: execsync-call
+    pattern: execSync(...)
+    message: Synchronous command execution - potential command injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: child-process-exec
+    pattern: child_process.exec(...)
+    message: child_process.exec() - potential command injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: fs-readfile-query
+    pattern: fs.readFile(req.query.$X, ...)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: fs-readfilesync-query
+    pattern: fs.readFileSync(req.query.$X)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: fs-readfile-body
+    pattern: fs.readFile(req.body.$X, ...)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: fs-readfilesync-body
+    pattern: fs.readFileSync(req.body.$X)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: redirect-query
+    pattern: res.redirect(req.query.$X)
+    message: Redirect using user input - potential open redirect
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: redirect-body
+    pattern: res.redirect(req.body.$X)
+    message: Redirect using user input - potential open redirect
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: weak-hash-md5
+    pattern: 'crypto.createHash("md5")'
+    message: MD5 is a weak hash function
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: weak-hash-sha1
+    pattern: 'crypto.createHash("sha1")'
+    message: SHA1 is a weak hash function
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: tls-reject-unauthorized
+    pattern: rejectUnauthorized = false
+    message: TLS certificate verification disabled
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: python-os-system
+    pattern: os.system(...)
+    message: os.system() call - potential command injection
+    languages: [python]
+    severity: ERROR
+
+  - id: python-pickle-loads
+    pattern: pickle.loads(...)
+    message: pickle.loads() - insecure deserialization
+    languages: [python]
+    severity: ERROR
+
+  - id: python-yaml-unsafe
+    pattern: yaml.load($DATA)
+    message: yaml.load() without Loader - insecure deserialization
+    languages: [python]
+    severity: ERROR
+
+  - id: python-sql-format
+    pattern: cursor.execute($Q % $V)
+    message: SQL query with string formatting - SQL injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: python-sql-concat
+    pattern: cursor.execute($Q + $V)
+    message: SQL query with string concatenation - SQL injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: new-function
+    pattern: new Function(...)
+    message: new Function() - potential code injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: dangerously-set-inner-html
+    pattern: dangerouslySetInnerHTML={...}
+    message: React dangerouslySetInnerHTML - XSS risk
+    languages: [javascript, typescript]
+    severity: ERROR

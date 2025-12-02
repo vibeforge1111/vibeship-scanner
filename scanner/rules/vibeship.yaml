@@ -1,742 +1,216 @@
 rules:
-  - id: hardcoded-api-key-assignment
-    patterns:
-      - pattern-either:
-          - pattern: $KEY = "sk-..."
-          - pattern: $KEY = "pk_..."
-          - pattern: apiKey = "..."
-          - pattern: api_key = "..."
-          - pattern: API_KEY = "..."
-    message: "Hardcoded API key detected. Move to environment variable."
+  - id: eval-injection
+    pattern: eval($X)
+    message: Dangerous eval() call - potential code injection
     severity: ERROR
-    metadata:
-      category: secrets
-      cwe: "CWE-798"
-      fix_template: env_variable
     languages: [javascript, typescript]
 
-  - id: sql-injection-template-string
-    patterns:
-      - pattern-either:
-          - pattern: $DB.query(`... ${$VAR} ...`)
-          - pattern: $DB.execute(`... ${$VAR} ...`)
-          - pattern: $DB.raw(`... ${$VAR} ...`)
-    message: "Potential SQL injection via template string. Use parameterized queries."
+  - id: innerhtml-xss
+    pattern: $EL.innerHTML = $VAR
+    message: XSS vulnerability via innerHTML
     severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-89"
-      fix_template: parameterized_query
     languages: [javascript, typescript]
 
-  - id: xss-innerhtml
-    patterns:
-      - pattern: $EL.innerHTML = $VAR
-    message: "XSS vulnerability via innerHTML. Use textContent or sanitize input."
+  - id: document-write-xss
+    pattern: document.write($VAR)
+    message: XSS via document.write
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: exec-command
+    pattern: exec($CMD)
+    message: Command execution - potential injection
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: execsync-command
+    pattern: execSync($CMD)
+    message: Synchronous command execution - potential injection
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: child-process-exec-call
+    pattern: child_process.exec($CMD)
+    message: child_process.exec - command injection risk
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: require-child-process
+    pattern: 'require("child_process").exec($X)'
+    message: child_process.exec - command injection risk
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: fs-readfile-query-input
+    pattern: fs.readFile(req.query.$X, ...)
+    message: Path traversal - reading file from user input
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: fs-readfilesync-query-input
+    pattern: fs.readFileSync(req.query.$X)
+    message: Path traversal - reading file from user input
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: redirect-open
+    pattern: res.redirect(req.query.$X)
+    message: Open redirect vulnerability
     severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-79"
-      fix_template: text_content
     languages: [javascript, typescript]
 
-  - id: xss-dangerously-set-html
-    patterns:
-      - pattern: dangerouslySetInnerHTML={{__html: $VAR}}
-    message: "XSS vulnerability via dangerouslySetInnerHTML. Sanitize input with DOMPurify."
+  - id: md5-weak-hash
+    pattern: 'crypto.createHash("md5")'
+    message: MD5 is a weak hash function
     severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-79"
-      fix_template: sanitize_html
-    languages: [javascript, typescript, jsx, tsx]
+    languages: [javascript, typescript]
 
-  - id: cors-allow-all
-    patterns:
-      - pattern-either:
-          - pattern: "cors({ origin: '*' })"
-          - pattern: "cors({ origin: true })"
-          - pattern: 'res.header("Access-Control-Allow-Origin", "*")'
-    message: "CORS allows all origins. Restrict to specific domains."
+  - id: sha1-weak-hash
+    pattern: 'crypto.createHash("sha1")'
+    message: SHA1 is a weak hash function
     severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-942"
-      fix_template: cors_whitelist
     languages: [javascript, typescript]
 
-  - id: weak-password-hashing
-    patterns:
-      - pattern-either:
-          - pattern: md5($PASSWORD)
-          - pattern: sha1($PASSWORD)
-          - pattern: crypto.createHash("md5")
-          - pattern: crypto.createHash("sha1")
-    message: "Weak password hashing algorithm. Use bcrypt or argon2."
+  - id: tls-disabled
+    pattern: rejectUnauthorized = false
+    message: TLS verification disabled
     severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-328"
-      fix_template: bcrypt_hash
     languages: [javascript, typescript]
 
-  - id: jwt-no-expiry
-    patterns:
-      - pattern: jwt.sign($PAYLOAD, $SECRET)
-      - pattern-not: jwt.sign($PAYLOAD, $SECRET, {..., expiresIn: ...})
-    message: "JWT token without expiration. Add expiresIn option."
+  - id: jwt-sign-string
+    pattern: 'jwt.sign($PAYLOAD, "...")'
+    message: Hardcoded JWT secret
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: jwt-verify-string
+    pattern: 'jwt.verify($TOKEN, "...")'
+    message: Hardcoded JWT secret
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: new-function-call
+    pattern: new Function($CODE)
+    message: new Function() - code injection risk
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: os-system-call
+    pattern: os.system($CMD)
+    message: os.system - command injection risk
+    severity: ERROR
+    languages: [python]
+
+  - id: subprocess-shell-call
+    pattern: 'subprocess.call($CMD, shell=True)'
+    message: subprocess with shell=True - command injection risk
+    severity: ERROR
+    languages: [python]
+
+  - id: subprocess-popen-shell-call
+    pattern: 'subprocess.Popen($CMD, shell=True)'
+    message: Popen with shell=True - command injection risk
+    severity: ERROR
+    languages: [python]
+
+  - id: subprocess-run-shell
+    pattern: 'subprocess.run($CMD, shell=True)'
+    message: subprocess.run with shell=True - command injection risk
+    severity: ERROR
+    languages: [python]
+
+  - id: pickle-loads-call
+    pattern: pickle.loads($DATA)
+    message: pickle.loads - insecure deserialization
+    severity: ERROR
+    languages: [python]
+
+  - id: yaml-load-unsafe-call
+    pattern: yaml.load($DATA)
+    message: yaml.load without Loader - insecure
+    severity: ERROR
+    languages: [python]
+
+  - id: mongodb-findone-body
+    pattern: '$DB.findOne({$FIELD: req.body.$X})'
+    message: MongoDB query with user input - NoSQL injection
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: mongodb-findone-query
+    pattern: '$DB.findOne({$FIELD: req.query.$X})'
+    message: MongoDB query with user input - NoSQL injection
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: prisma-queryraw-unsafe
+    pattern: prisma.$queryRawUnsafe($QUERY)
+    message: Prisma unsafe raw query
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: prisma-executeraw-unsafe
+    pattern: prisma.$executeRawUnsafe($QUERY)
+    message: Prisma unsafe raw execute
+    severity: ERROR
+    languages: [javascript, typescript]
+
+  - id: sequelize-query-raw
+    pattern: sequelize.query($Q, ...)
+    message: Raw SQL query - potential injection
     severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-613"
-      fix_template: jwt_with_expiry
     languages: [javascript, typescript]
 
-  - id: eval-usage
-    patterns:
-      - pattern-either:
-          - pattern: eval($CODE)
-          - pattern: eval(req.body.$FIELD)
-          - pattern: eval(req.query.$FIELD)
-          - pattern: eval(req.params.$FIELD)
-    message: "Dangerous use of eval() with potential user input. This allows arbitrary code execution."
-    severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-95"
-    languages: [javascript, typescript]
-
-  - id: disabled-ssl-verification
-    patterns:
-      - pattern-either:
-          - pattern: rejectUnauthorized = false
-          - pattern: rejectUnauthorized:false
-          - pattern: NODE_TLS_REJECT_UNAUTHORIZED = "0"
-    message: "SSL certificate verification disabled. This allows MITM attacks."
-    severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-295"
-    languages: [javascript, typescript]
-
-  - id: hardcoded-password
-    patterns:
-      - pattern-either:
-          - pattern: password = "..."
-          - pattern: PASSWORD = "..."
-          - pattern: pwd = "..."
-    message: "Hardcoded password detected. Use environment variables."
-    severity: ERROR
-    metadata:
-      category: secrets
-      cwe: "CWE-798"
-    languages: [javascript, typescript, python]
-
-  - id: insecure-random
-    patterns:
-      - pattern: Math.random()
-    message: "Math.random() is not cryptographically secure. Use crypto.randomBytes() for security."
+  - id: math-random-usage
+    pattern: Math.random()
+    message: Math.random() not cryptographically secure
     severity: INFO
-    metadata:
-      category: code
-      cwe: "CWE-338"
     languages: [javascript, typescript]
 
-  - id: nextjs-exposed-server-action
-    patterns:
-      - pattern: |
-          'use server'
-          ...
-          export async function $FUNC($PARAMS) {
-            ...
-          }
-      - pattern-not: |
-          const session = await $AUTH()
-    message: "Next.js server action may be missing authentication."
+  - id: dynamic-regex-redos
+    pattern: new RegExp($PATTERN)
+    message: Dynamic regex - potential ReDoS
     severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-306"
     languages: [javascript, typescript]
 
-  - id: supabase-service-role-client
-    patterns:
-      - pattern: createClient($URL, $KEY)
-      - metavariable-regex:
-          metavariable: $KEY
-          regex: '.*service.*role.*|.*SERVICE.*ROLE.*'
-    message: "Supabase service role key may be exposed in client-side code."
+  - id: password-comparison
+    pattern: password === $VAR
+    message: Plaintext password comparison - use bcrypt.compare
     severity: ERROR
-    metadata:
-      category: secrets
     languages: [javascript, typescript]
 
-  - id: sql-injection-string-concat
-    patterns:
-      - pattern-either:
-          - pattern: $DB.query("..." + $VAR + "...")
-          - pattern: $DB.query("..." + $VAR)
-          - pattern: $DB.execute("..." + $VAR + "...")
-          - pattern: "SELECT " + $VAR
-          - pattern: "INSERT " + $VAR
-          - pattern: "UPDATE " + $VAR
-          - pattern: "DELETE " + $VAR
-    message: "SQL injection via string concatenation. Use parameterized queries."
+  - id: sql-cursor-format
+    pattern: cursor.execute($QUERY % $VAR)
+    message: SQL injection via string formatting
     severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-89"
-      fix_template: parameterized_query
-    languages: [javascript, typescript]
+    languages: [python]
 
-  - id: prisma-raw-query-injection
-    patterns:
-      - pattern-either:
-          - pattern: prisma.$queryRaw`... ${$VAR} ...`
-          - pattern: prisma.$executeRaw`... ${$VAR} ...`
-          - pattern: prisma.$queryRawUnsafe($QUERY)
-          - pattern: prisma.$executeRawUnsafe($QUERY)
-    message: "Prisma raw query with potential user input. Use Prisma.sql or ORM methods."
+  - id: sql-cursor-concat
+    pattern: cursor.execute($QUERY + $VAR)
+    message: SQL injection via concatenation
     severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-89"
-      fix_template: prisma_safe_query
-    languages: [javascript, typescript]
+    languages: [python]
 
-  - id: xss-document-write
-    patterns:
-      - pattern: document.write($VAR)
-    message: "XSS vulnerability via document.write. Use safe DOM manipulation."
+  - id: python-exec-call
+    pattern: exec($CODE)
+    message: Python exec() - code injection risk
     severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-79"
+    languages: [python]
+
+  - id: console-log
+    pattern: console.log(...)
+    message: Console.log statement found
+    severity: INFO
     languages: [javascript, typescript]
 
-  - id: xss-jquery-html
-    patterns:
-      - pattern-either:
-          - pattern: $(...).html($VAR)
-          - pattern: $(...).append($VAR)
-          - pattern: $(...).prepend($VAR)
-    message: "Potential XSS via jQuery HTML manipulation. Sanitize user input."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-79"
-    languages: [javascript, typescript]
-
-  - id: command-injection-exec
-    patterns:
-      - pattern-either:
-          - pattern: exec($CMD)
-          - pattern: execSync($CMD)
-          - pattern: spawn($CMD, ...)
-          - pattern: child_process.exec($CMD)
-          - pattern: child_process.execSync($CMD)
-    message: "Potential command injection. Avoid using shell commands with user input."
+  - id: settimeout-string
+    pattern: 'setTimeout("...", ...)'
+    message: setTimeout with string - code injection risk
     severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-78"
     languages: [javascript, typescript]
 
-  - id: path-traversal
-    patterns:
-      - pattern-either:
-          - pattern: fs.readFile($PATH, ...)
-          - pattern: fs.readFileSync($PATH, ...)
-          - pattern: fs.writeFile($PATH, ...)
-          - pattern: fs.writeFileSync($PATH, ...)
-          - pattern: fs.unlink($PATH, ...)
-          - pattern: fs.unlinkSync($PATH)
-    message: "Potential path traversal. Validate and sanitize file paths."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-22"
-    languages: [javascript, typescript]
-
-  - id: ssrf-fetch
-    patterns:
-      - pattern-either:
-          - pattern: fetch($URL)
-          - pattern: axios.get($URL)
-          - pattern: axios.post($URL, ...)
-          - pattern: axios($URL)
-    message: "Potential SSRF if URL is user-controlled. Validate and whitelist URLs."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-918"
-    languages: [javascript, typescript]
-
-  - id: new-function-injection
-    patterns:
-      - pattern: new Function($CODE)
-    message: "Dangerous use of new Function(). Avoid executing dynamic code."
+  - id: setinterval-string
+    pattern: 'setInterval("...", ...)'
+    message: setInterval with string - code injection risk
     severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-94"
-    languages: [javascript, typescript]
-
-  - id: sveltekit-html-unsafe
-    patterns:
-      - pattern: "{@html $VAR}"
-    message: "Unescaped HTML in Svelte template. Sanitize with DOMPurify."
-    severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-79"
-      fix_template: sanitize_html
-    languages: [javascript, typescript]
-
-  - id: debug-mode-enabled
-    patterns:
-      - pattern-either:
-          - pattern: DEBUG = true
-          - pattern: debug = true
-          - pattern: debug:true
-          - pattern: NODE_ENV = "development"
-    message: "Debug mode may be enabled. Ensure this is disabled in production."
-    severity: INFO
-    metadata:
-      category: code
-    languages: [javascript, typescript]
-
-  - id: verbose-error-response
-    patterns:
-      - pattern-either:
-          - pattern: res.json({ error: $ERR.message })
-          - pattern: res.json({ error: $ERR.stack })
-          - pattern: res.send($ERR.stack)
-          - pattern: res.send($ERR.message)
-    message: "Verbose error response may leak sensitive information."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-209"
-    languages: [javascript, typescript]
-
-  - id: missing-helmet
-    patterns:
-      - pattern: express()
-      - pattern-not-inside: |
-          ...
-          app.use(helmet(...))
-          ...
-    message: "Express app may be missing Helmet security headers."
-    severity: INFO
-    metadata:
-      category: code
-    languages: [javascript, typescript]
-
-  - id: open-redirect
-    patterns:
-      - pattern-either:
-          - pattern: res.redirect($URL)
-          - pattern: window.location = $URL
-          - pattern: window.location.href = $URL
-          - pattern: location.href = $URL
-    message: "Potential open redirect. Validate redirect URLs."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-601"
-    languages: [javascript, typescript]
-
-  - id: hardcoded-jwt-secret
-    patterns:
-      - pattern-either:
-          - pattern: jwt.sign($PAYLOAD, "...")
-          - pattern: jwt.verify($TOKEN, "...")
-          - pattern: JWT_SECRET = "..."
-          - pattern: jwtSecret = "..."
-    message: "Hardcoded JWT secret. Use environment variable."
-    severity: ERROR
-    metadata:
-      category: secrets
-      cwe: "CWE-798"
-    languages: [javascript, typescript]
-
-  - id: insecure-cookie
-    patterns:
-      - pattern-either:
-          - pattern: "{ ..., httpOnly: false, ... }"
-          - pattern: "{ ..., secure: false, ... }"
-          - pattern: "cookie: { ..., httpOnly: false }"
-    message: "Insecure cookie configuration. Enable httpOnly and secure flags."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-614"
-    languages: [javascript, typescript]
-
-  - id: no-csrf-protection
-    patterns:
-      - pattern: app.post($ROUTE, $HANDLER)
-      - pattern-not-inside: |
-          ...
-          csrf(...)
-          ...
-    message: "POST route may lack CSRF protection."
-    severity: INFO
-    metadata:
-      category: code
-      cwe: "CWE-352"
-    languages: [javascript, typescript]
-
-  - id: prototype-pollution
-    patterns:
-      - pattern-either:
-          - pattern: Object.assign($TARGET, $SOURCE)
-          - pattern: "{ ...$SPREAD }"
-          - pattern: $OBJ[$KEY] = $VAL
-    message: "Potential prototype pollution if source is user-controlled."
-    severity: INFO
-    metadata:
-      category: code
-      cwe: "CWE-1321"
-    languages: [javascript, typescript]
-
-  - id: unsafe-regex
-    patterns:
-      - pattern: new RegExp($PATTERN)
-    message: "Dynamic regex from user input may cause ReDoS."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-1333"
-    languages: [javascript, typescript]
-
-  - id: console-log-sensitive
-    patterns:
-      - pattern-either:
-          - pattern: console.log(..., $PASSWORD, ...)
-          - pattern: console.log(..., $SECRET, ...)
-          - pattern: console.log(..., $TOKEN, ...)
-          - pattern: console.log(..., $KEY, ...)
-    message: "Logging potentially sensitive data. Remove before production."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-532"
-    languages: [javascript, typescript]
-
-  - id: deserialization-unsafe
-    patterns:
-      - pattern-either:
-          - pattern: JSON.parse($INPUT)
-          - pattern: eval($INPUT)
-          - pattern: serialize($DATA)
-    message: "Unsafe deserialization. Validate input before parsing."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-502"
-    languages: [javascript, typescript]
-
-  - id: nextjs-api-no-auth-check
-    patterns:
-      - pattern-inside: |
-          export default function handler(req, res) {
-            ...
-          }
-      - pattern: res.json($DATA)
-      - pattern-not-inside: |
-          if (!$AUTH) { ... }
-    message: "Next.js API route may lack authentication check."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-306"
-    languages: [javascript, typescript]
-
-  - id: sveltekit-load-no-validation
-    patterns:
-      - pattern-inside: |
-          export async function load({ params }) {
-            ...
-          }
-      - pattern: params.$ID
-      - pattern-not-inside: |
-          if (!$VALIDATE(...)) { ... }
-    message: "SvelteKit load function with unvalidated params."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-20"
-    languages: [javascript, typescript]
-
-  - id: env-file-committed
-    patterns:
-      - pattern: |
-          $VAR=$VALUE
-    message: ".env file may contain secrets. Ensure not committed to git."
-    severity: INFO
-    metadata:
-      category: secrets
-    languages: [generic]
-
-  - id: source-map-production
-    patterns:
-      - pattern-either:
-          - pattern: devtool = "source-map"
-          - pattern: 'devtool: "source-map"'
-          - pattern: sourcemap = true
-          - pattern: "sourcemap: true"
-    message: "Source maps enabled. May expose source code in production."
-    severity: INFO
-    metadata:
-      category: code
-    languages: [javascript, typescript]
-
-  - id: supabase-no-rls-check
-    patterns:
-      - pattern: supabase.from($TABLE).select(...)
-      - pattern-not-inside: |
-          ...
-          supabase.auth.getUser()
-          ...
-    message: "Supabase query without auth check. Ensure RLS is enabled."
-    severity: INFO
-    metadata:
-      category: code
-    languages: [javascript, typescript]
-
-  - id: express-no-rate-limit
-    patterns:
-      - pattern: app.post($ROUTE, ...)
-      - pattern-not-inside: |
-          ...
-          rateLimit(...)
-          ...
-    message: "API endpoint may lack rate limiting."
-    severity: INFO
-    metadata:
-      category: code
-      cwe: "CWE-770"
-    languages: [javascript, typescript]
-
-  - id: nosql-injection
-    patterns:
-      - pattern-either:
-          - pattern: $COLLECTION.find({ $WHERE: $INPUT })
-          - pattern: $COLLECTION.findOne({ $WHERE: $INPUT })
-          - pattern: $COLLECTION.findOne({ userName: $VAR })
-          - pattern: $COLLECTION.findOne({ email: $VAR })
-          - pattern: $COLLECTION.find({ ..., $where: $INPUT })
-          - pattern: "{ $where: $INPUT }"
-          - pattern: $DB.collection($NAME).findOne({ $FIELD: $VAR })
-          - pattern: $DB.collection($NAME).find({ $FIELD: $VAR })
-    message: "Potential NoSQL injection. Sanitize and validate query input."
-    severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-943"
-    languages: [javascript, typescript]
-
-  - id: xml-external-entity
-    patterns:
-      - pattern-either:
-          - pattern: new DOMParser().parseFromString($INPUT, ...)
-          - pattern: xml2js.parseString($INPUT, ...)
-    message: "Potential XXE vulnerability. Disable external entity processing."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-611"
-    languages: [javascript, typescript]
-
-  - id: timing-attack-comparison
-    patterns:
-      - pattern-either:
-          - pattern: $A === $B
-          - pattern: $A == $B
-    message: "Direct string comparison may be vulnerable to timing attacks. Use constant-time comparison for secrets."
-    severity: INFO
-    metadata:
-      category: code
-      cwe: "CWE-208"
-    languages: [javascript, typescript]
-
-  - id: graphql-introspection
-    patterns:
-      - pattern: introspection = true
-      - pattern: "introspection: true"
-    message: "GraphQL introspection enabled. Disable in production."
-    severity: INFO
-    metadata:
-      category: code
-    languages: [javascript, typescript]
-
-  - id: mongodb-direct-user-input
-    patterns:
-      - pattern-either:
-          - pattern: $COLLECTION.findOne({ $FIELD: req.body.$VAR })
-          - pattern: $COLLECTION.findOne({ $FIELD: req.query.$VAR })
-          - pattern: $COLLECTION.findOne({ $FIELD: req.params.$VAR })
-          - pattern: $COLLECTION.find({ $FIELD: req.body.$VAR })
-          - pattern: $COLLECTION.updateOne({ $FIELD: req.body.$VAR }, ...)
-          - pattern: $COLLECTION.deleteOne({ $FIELD: req.body.$VAR })
-    message: "MongoDB query with unsanitized user input. Validate and sanitize before querying."
-    severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-943"
-    languages: [javascript, typescript]
-
-  - id: weak-password-regex
-    patterns:
-      - pattern-either:
-          - pattern: /^.{1,$N}$/
-          - pattern: /^.{0,$N}$/
-          - pattern: /^[a-zA-Z0-9]+$/
-    message: "Weak password validation regex. Enforce minimum length, complexity requirements."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-521"
-    languages: [javascript, typescript]
-
-  - id: session-no-regenerate
-    patterns:
-      - pattern: req.session.userId = $VAR
-      - pattern-not-inside: |
-          req.session.regenerate(...)
-          ...
-    message: "Session ID not regenerated after authentication. Risk of session fixation."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-384"
-    languages: [javascript, typescript]
-
-  - id: log-injection
-    patterns:
-      - pattern-either:
-          - pattern: console.log(..., req.body.$VAR, ...)
-          - pattern: console.log(..., req.query.$VAR, ...)
-          - pattern: console.log(..., userName, ...)
-          - pattern: console.log(..., email, ...)
-    message: "Potential log injection. Sanitize user input before logging."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-117"
-    languages: [javascript, typescript]
-
-  - id: user-enumeration
-    patterns:
-      - pattern-either:
-          - pattern: '"Invalid username"'
-          - pattern: '"User not found"'
-          - pattern: '"Username does not exist"'
-          - pattern: '"No user with that email"'
-    message: "User enumeration vulnerability. Use generic error messages."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-204"
-    languages: [javascript, typescript]
-
-  - id: express-session-insecure
-    patterns:
-      - pattern-either:
-          - pattern: "session({ ..., cookie: { ..., secure: false, ... } })"
-          - pattern: "session({ ..., resave: true, ... })"
-          - pattern: session({ secret: "..." })
-    message: "Insecure Express session configuration. Use secure cookies and strong secret."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-614"
-    languages: [javascript, typescript]
-
-  - id: idor-vulnerability
-    patterns:
-      - pattern-either:
-          - pattern: $COLLECTION.findOne({ _id: req.params.$ID })
-          - pattern: $COLLECTION.findOne({ userId: req.params.$ID })
-          - pattern: $COLLECTION.updateOne({ _id: req.params.$ID }, ...)
-          - pattern: $COLLECTION.deleteOne({ _id: req.params.$ID })
-    message: "Potential IDOR vulnerability. Verify user owns the requested resource."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-639"
-    languages: [javascript, typescript]
-
-  - id: redos-vulnerable-regex
-    patterns:
-      - pattern-either:
-          - pattern: /(...)+/
-          - pattern: /(.*)+/
-          - pattern: /(.+)+/
-          - pattern: /([a-zA-Z]+)*$/
-    message: "ReDoS vulnerable regex pattern. Simplify or use safe-regex."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-1333"
-    languages: [javascript, typescript]
-
-  - id: plaintext-password-storage
-    patterns:
-      - pattern-either:
-          - pattern: password === $VAR
-          - pattern: $VAR === password
-          - pattern: user.password === $INPUT
-          - pattern: $INPUT === user.password
-    message: "Plaintext password comparison. Use bcrypt.compare() for secure password verification."
-    severity: ERROR
-    metadata:
-      category: code
-      cwe: "CWE-256"
-    languages: [javascript, typescript]
-
-  - id: missing-input-validation
-    patterns:
-      - pattern-inside: |
-          $FUNC(req, res) {
-            ...
-          }
-      - pattern-either:
-          - pattern: req.body.$FIELD
-          - pattern: req.query.$FIELD
-          - pattern: req.params.$FIELD
-      - pattern-not-inside: |
-          if (!$VAR || ...) { ... }
-    message: "User input used without validation. Always validate and sanitize input."
-    severity: INFO
-    metadata:
-      category: code
-      cwe: "CWE-20"
-    languages: [javascript, typescript]
-
-  - id: ssti-template-injection
-    patterns:
-      - pattern-either:
-          - pattern: res.render($TEMPLATE, { ..., $KEY: req.body.$VAR, ... })
-          - pattern: res.render($TEMPLATE, { ..., $KEY: req.query.$VAR, ... })
-    message: "Potential SSTI. User input passed directly to template engine."
-    severity: WARNING
-    metadata:
-      category: code
-      cwe: "CWE-1336"
-    languages: [javascript, typescript]
-
-  - id: hpp-vulnerability
-    patterns:
-      - pattern: app.use(bodyParser.urlencoded(...))
-      - pattern-not-inside: |
-          app.use(hpp())
-          ...
-    message: "HTTP Parameter Pollution risk. Consider using hpp middleware."
-    severity: INFO
-    metadata:
-      category: code
-      cwe: "CWE-235"
     languages: [javascript, typescript]
