@@ -853,22 +853,6 @@
 				<div class="findings-section" class:revealed={revealStage >= 4}>
 					<div class="findings-header">
 						<h2>Findings ({results.findings.length})</h2>
-						<div class="mode-toggle">
-							<button
-								class="mode-btn"
-								class:active={mode === 'founder'}
-								onclick={() => explanationMode.setMode('founder')}
-							>
-								Non-technical
-							</button>
-							<button
-								class="mode-btn"
-								class:active={mode === 'developer'}
-								onclick={() => explanationMode.setMode('developer')}
-							>
-								Technical
-							</button>
-						</div>
 					</div>
 					<div class="findings-list">
 						{#each results.findings as finding, i}
