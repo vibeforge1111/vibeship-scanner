@@ -14,7 +14,7 @@ async function checkRateLimit(identifier: string): Promise<{ allowed: boolean; r
 		.gte('created_at', hourAgo);
 
 	const used = count || 0;
-	const limit = 5;
+	const limit = 20;
 
 	return {
 		allowed: used < limit,
