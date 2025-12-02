@@ -84,6 +84,7 @@ export type Database = {
           step: string;
           step_number: number;
           total_steps: number;
+          percent: number;
           message: string | null;
           created_at: string;
         };
@@ -91,13 +92,15 @@ export type Database = {
           id?: string;
           scan_id: string;
           step: string;
-          step_number: number;
+          step_number?: number;
           total_steps?: number;
+          percent?: number;
           message?: string | null;
         };
         Update: {
           step?: string;
           step_number?: number;
+          percent?: number;
           message?: string | null;
         };
       };

@@ -25,12 +25,26 @@ SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 def get_supabase() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
+STEP_MAP = {
+    'init': 0,
+    'clone': 1,
+    'detect': 2,
+    'sast': 3,
+    'deps': 4,
+    'secrets': 5,
+    'score': 6,
+    'complete': 7
+}
+
 def update_progress(supabase: Client, scan_id: str, step: str, message: str, percent: int):
+    step_number = STEP_MAP.get(step, 0)
     supabase.table('scan_progress').insert({
         'scan_id': scan_id,
         'step': step,
-        'message': message,
-        'percent': percent
+        'step_number': step_number,
+        'total_steps': 7,
+        'percent': percent,
+        'message': message
     }).execute()
 
 def update_scan(supabase: Client, scan_id: str, data: dict):

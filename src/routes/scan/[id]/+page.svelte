@@ -77,6 +77,7 @@
 	const steps = [
 		{ id: 'init', label: 'Initializing', icon: '⚡' },
 		{ id: 'clone', label: 'Cloning repository', icon: '📥' },
+		{ id: 'detect', label: 'Detecting stack', icon: '🔍' },
 		{ id: 'sast', label: 'Scanning code', icon: '🛡️' },
 		{ id: 'deps', label: 'Checking dependencies', icon: '📦' },
 		{ id: 'secrets', label: 'Scanning for secrets', icon: '🔐' },
@@ -107,8 +108,8 @@
 					score: data.score,
 					grade: data.grade,
 					shipStatus: data.ship_status,
-					summary: data.summary,
-					stack: data.stack,
+					summary: data.finding_counts,
+					stack: data.detected_stack,
 					findings: data.findings || []
 				};
 			} else if (data.status === 'failed') {
@@ -160,8 +161,8 @@
 							score: data.score,
 							grade: data.grade,
 							shipStatus: data.ship_status,
-							summary: data.summary,
-							stack: data.stack,
+							summary: data.finding_counts,
+							stack: data.detected_stack,
 							findings: data.findings || []
 						};
 					} else if (data.status === 'failed') {
