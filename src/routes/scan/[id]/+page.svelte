@@ -749,16 +749,14 @@
 								class:active={mode === 'founder'}
 								onclick={() => explanationMode.setMode('founder')}
 							>
-								<span class="mode-icon">🎯</span>
-								Founder
+								Non-technical
 							</button>
 							<button
 								class="mode-btn"
 								class:active={mode === 'developer'}
 								onclick={() => explanationMode.setMode('developer')}
 							>
-								<span class="mode-icon">💻</span>
-								Developer
+								Technical
 							</button>
 						</div>
 					</div>
