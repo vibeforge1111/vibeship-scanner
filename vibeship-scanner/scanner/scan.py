@@ -346,7 +346,7 @@ def run_gitleaks(repo_dir: str) -> List[Dict[str, Any]]:
             cmd,
             capture_output=True,
             text=True,
-            timeout=120
+            timeout=300
         )
 
         # Gitleaks returns 1 when secrets are found, 0 when clean
@@ -465,14 +465,10 @@ def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     Remove duplicate findings that report the same issue at the same location.
     Keeps the finding with the highest severity when duplicates are found.
 
-    Deduplication rules:
-    1. Exact same title at same file:line -> keep highest severity
-    2. Same issue category at same file:line -> keep highest severity
-       (e.g., "Hardcoded API key" and "Hardcoded password" at same line = 1 finding)
+    Only deduplicates exact matches: same normalized title at same file:line.
+    Different vulnerability types at the same location are kept as separate findings.
     """
     seen = {}
-    seen_by_category = {}  # {file:line:category -> key}
-
     severity_rank = {'critical': 4, 'high': 3, 'medium': 2, 'low': 1, 'info': 0}
 
     for finding in findings:
@@ -481,44 +477,21 @@ def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         title = finding.get('title', '')
         severity = finding.get('severity', 'info')
 
+        # Normalize title for comparison (lowercase, collapse whitespace)
         normalized_title = ' '.join(title.lower().split())
         key = f"{file_path}:{line}:{normalized_title}"
-        location_key = f"{file_path}:{line}"
-
-        # Get the issue category for this finding
-        category = get_issue_category(title)
-        category_key = f"{location_key}:{category}" if category else None
 
         new_severity = severity_rank.get(severity, 0)
 
-        # Check 1: Exact duplicate (same title at same location)
+        # Only dedupe exact matches (same title at same location)
         if key in seen:
             existing_severity = severity_rank.get(seen[key].get('severity', 'info'), 0)
             if new_severity > existing_severity:
                 seen[key] = finding
             continue
 
-        # Check 2: Same category at same location
-        if category_key and category_key in seen_by_category:
-            existing_key = seen_by_category[category_key]
-            existing = seen.get(existing_key)
-            if existing:
-                existing_severity = severity_rank.get(existing.get('severity', 'info'), 0)
-                if new_severity > existing_severity:
-                    # Replace with higher severity finding
-                    del seen[existing_key]
-                    seen[key] = finding
-                    seen_by_category[category_key] = key
-                continue  # Skip adding this finding
-            # Existing key no longer in seen, add this one
-            seen[key] = finding
-            seen_by_category[category_key] = key
-            continue
-
         # New finding - add it
         seen[key] = finding
-        if category_key:
-            seen_by_category[category_key] = key
 
     return list(seen.values())
 
