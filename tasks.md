@@ -33,6 +33,11 @@
 - [x] Add Spring Security misconfiguration rules
 - [x] Add enhanced XXE detection patterns
 - [x] Upgrade Node.js to 20 (Railway deprecation warning)
+- [x] Fix broken Semgrep rules causing validation errors (exit code 7)
+- [x] Add PHP taint-mode rules (SQL injection, file inclusion, command injection, code injection)
+- [x] Add Ruby taint-mode rules (SQL injection, command injection, open redirect)
+- [x] Learn Semgrep PHP/Ruby limitations (language constructs can't be used as patterns)
+- [x] Create CURRENT-PRODUCT.md documenting full product state
 
 ## Environment Variables
 
@@ -110,14 +115,16 @@
 
 | Category | Status |
 |----------|--------|
-| Semgrep Rules | 130+ custom rules |
+| Semgrep Rules | 188 validated custom rules |
 | Gitleaks Rules | 70+ patterns |
 | Context Scoring | ✅ Implemented |
 | Deduplication | ✅ Category-based |
-| Fix Templates | 18 detailed templates |
+| Fix Templates | 20+ detailed templates |
 | CWE Database | 28 entries with CVSS |
 | Java Security | ✅ XXE, Path Traversal, Deserialization, JWT, SSRF, JNDI |
 | Spring Security | ✅ CSRF, Headers, Frame Options |
+| PHP Security | ✅ Taint-mode rules (SQLi, File ops, Command injection) |
+| Ruby Security | ✅ Taint-mode rules (SQLi, Command injection, Open redirect) |
 
 ---
 
