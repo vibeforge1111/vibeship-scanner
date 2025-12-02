@@ -166,3 +166,399 @@ rules:
     metadata:
       category: secrets
     languages: [javascript, typescript]
+
+  - id: sql-injection-string-concat
+    patterns:
+      - pattern-either:
+          - pattern: $DB.query("..." + $VAR + "...")
+          - pattern: $DB.query("..." + $VAR)
+          - pattern: $DB.execute("..." + $VAR + "...")
+          - pattern: "SELECT " + $VAR
+          - pattern: "INSERT " + $VAR
+          - pattern: "UPDATE " + $VAR
+          - pattern: "DELETE " + $VAR
+    message: "SQL injection via string concatenation. Use parameterized queries."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-89"
+      fix_template: parameterized_query
+    languages: [javascript, typescript]
+
+  - id: prisma-raw-query-injection
+    patterns:
+      - pattern-either:
+          - pattern: prisma.$queryRaw`... ${$VAR} ...`
+          - pattern: prisma.$executeRaw`... ${$VAR} ...`
+          - pattern: prisma.$queryRawUnsafe($QUERY)
+          - pattern: prisma.$executeRawUnsafe($QUERY)
+    message: "Prisma raw query with potential user input. Use Prisma.sql or ORM methods."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-89"
+      fix_template: prisma_safe_query
+    languages: [javascript, typescript]
+
+  - id: xss-document-write
+    patterns:
+      - pattern: document.write($VAR)
+    message: "XSS vulnerability via document.write. Use safe DOM manipulation."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-79"
+    languages: [javascript, typescript]
+
+  - id: xss-jquery-html
+    patterns:
+      - pattern-either:
+          - pattern: $(...).html($VAR)
+          - pattern: $(...).append($VAR)
+          - pattern: $(...).prepend($VAR)
+    message: "Potential XSS via jQuery HTML manipulation. Sanitize user input."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-79"
+    languages: [javascript, typescript]
+
+  - id: command-injection-exec
+    patterns:
+      - pattern-either:
+          - pattern: exec($CMD)
+          - pattern: execSync($CMD)
+          - pattern: spawn($CMD, ...)
+          - pattern: child_process.exec($CMD)
+          - pattern: child_process.execSync($CMD)
+    message: "Potential command injection. Avoid using shell commands with user input."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-78"
+    languages: [javascript, typescript]
+
+  - id: path-traversal
+    patterns:
+      - pattern-either:
+          - pattern: fs.readFile($PATH, ...)
+          - pattern: fs.readFileSync($PATH, ...)
+          - pattern: fs.writeFile($PATH, ...)
+          - pattern: fs.writeFileSync($PATH, ...)
+          - pattern: fs.unlink($PATH, ...)
+          - pattern: fs.unlinkSync($PATH)
+    message: "Potential path traversal. Validate and sanitize file paths."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-22"
+    languages: [javascript, typescript]
+
+  - id: ssrf-fetch
+    patterns:
+      - pattern-either:
+          - pattern: fetch($URL)
+          - pattern: axios.get($URL)
+          - pattern: axios.post($URL, ...)
+          - pattern: axios($URL)
+    message: "Potential SSRF if URL is user-controlled. Validate and whitelist URLs."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-918"
+    languages: [javascript, typescript]
+
+  - id: new-function-injection
+    patterns:
+      - pattern: new Function($CODE)
+    message: "Dangerous use of new Function(). Avoid executing dynamic code."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-94"
+    languages: [javascript, typescript]
+
+  - id: sveltekit-html-unsafe
+    patterns:
+      - pattern: "{@html $VAR}"
+    message: "Unescaped HTML in Svelte template. Sanitize with DOMPurify."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-79"
+      fix_template: sanitize_html
+    languages: [javascript, typescript]
+
+  - id: debug-mode-enabled
+    patterns:
+      - pattern-either:
+          - pattern: DEBUG = true
+          - pattern: debug = true
+          - pattern: debug:true
+          - pattern: NODE_ENV = "development"
+    message: "Debug mode may be enabled. Ensure this is disabled in production."
+    severity: INFO
+    metadata:
+      category: code
+    languages: [javascript, typescript]
+
+  - id: verbose-error-response
+    patterns:
+      - pattern-either:
+          - pattern: res.json({ error: $ERR.message })
+          - pattern: res.json({ error: $ERR.stack })
+          - pattern: res.send($ERR.stack)
+          - pattern: res.send($ERR.message)
+    message: "Verbose error response may leak sensitive information."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-209"
+    languages: [javascript, typescript]
+
+  - id: missing-helmet
+    patterns:
+      - pattern: express()
+      - pattern-not-inside: |
+          ...
+          app.use(helmet(...))
+          ...
+    message: "Express app may be missing Helmet security headers."
+    severity: INFO
+    metadata:
+      category: code
+    languages: [javascript, typescript]
+
+  - id: open-redirect
+    patterns:
+      - pattern-either:
+          - pattern: res.redirect($URL)
+          - pattern: window.location = $URL
+          - pattern: window.location.href = $URL
+          - pattern: location.href = $URL
+    message: "Potential open redirect. Validate redirect URLs."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-601"
+    languages: [javascript, typescript]
+
+  - id: hardcoded-jwt-secret
+    patterns:
+      - pattern-either:
+          - pattern: jwt.sign($PAYLOAD, "...")
+          - pattern: jwt.verify($TOKEN, "...")
+          - pattern: JWT_SECRET = "..."
+          - pattern: jwtSecret = "..."
+    message: "Hardcoded JWT secret. Use environment variable."
+    severity: ERROR
+    metadata:
+      category: secrets
+      cwe: "CWE-798"
+    languages: [javascript, typescript]
+
+  - id: insecure-cookie
+    patterns:
+      - pattern-either:
+          - pattern: "{ ..., httpOnly: false, ... }"
+          - pattern: "{ ..., secure: false, ... }"
+          - pattern: "cookie: { ..., httpOnly: false }"
+    message: "Insecure cookie configuration. Enable httpOnly and secure flags."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-614"
+    languages: [javascript, typescript]
+
+  - id: no-csrf-protection
+    patterns:
+      - pattern: app.post($ROUTE, $HANDLER)
+      - pattern-not-inside: |
+          ...
+          csrf(...)
+          ...
+    message: "POST route may lack CSRF protection."
+    severity: INFO
+    metadata:
+      category: code
+      cwe: "CWE-352"
+    languages: [javascript, typescript]
+
+  - id: prototype-pollution
+    patterns:
+      - pattern-either:
+          - pattern: Object.assign($TARGET, $SOURCE)
+          - pattern: "{ ...$SPREAD }"
+          - pattern: $OBJ[$KEY] = $VAL
+    message: "Potential prototype pollution if source is user-controlled."
+    severity: INFO
+    metadata:
+      category: code
+      cwe: "CWE-1321"
+    languages: [javascript, typescript]
+
+  - id: unsafe-regex
+    patterns:
+      - pattern: new RegExp($PATTERN)
+    message: "Dynamic regex from user input may cause ReDoS."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-1333"
+    languages: [javascript, typescript]
+
+  - id: console-log-sensitive
+    patterns:
+      - pattern-either:
+          - pattern: console.log(..., $PASSWORD, ...)
+          - pattern: console.log(..., $SECRET, ...)
+          - pattern: console.log(..., $TOKEN, ...)
+          - pattern: console.log(..., $KEY, ...)
+    message: "Logging potentially sensitive data. Remove before production."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-532"
+    languages: [javascript, typescript]
+
+  - id: deserialization-unsafe
+    patterns:
+      - pattern-either:
+          - pattern: JSON.parse($INPUT)
+          - pattern: eval($INPUT)
+          - pattern: serialize($DATA)
+    message: "Unsafe deserialization. Validate input before parsing."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-502"
+    languages: [javascript, typescript]
+
+  - id: nextjs-api-no-auth-check
+    patterns:
+      - pattern-inside: |
+          export default function handler(req, res) {
+            ...
+          }
+      - pattern: res.json($DATA)
+      - pattern-not-inside: |
+          if (!$AUTH) { ... }
+    message: "Next.js API route may lack authentication check."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-306"
+    languages: [javascript, typescript]
+
+  - id: sveltekit-load-no-validation
+    patterns:
+      - pattern-inside: |
+          export async function load({ params }) {
+            ...
+          }
+      - pattern: params.$ID
+      - pattern-not-inside: |
+          if (!$VALIDATE(...)) { ... }
+    message: "SvelteKit load function with unvalidated params."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-20"
+    languages: [javascript, typescript]
+
+  - id: env-file-committed
+    patterns:
+      - pattern: |
+          $VAR=$VALUE
+    message: ".env file may contain secrets. Ensure not committed to git."
+    severity: INFO
+    metadata:
+      category: secrets
+    languages: [generic]
+
+  - id: source-map-production
+    patterns:
+      - pattern-either:
+          - pattern: devtool = "source-map"
+          - pattern: 'devtool: "source-map"'
+          - pattern: sourcemap = true
+          - pattern: "sourcemap: true"
+    message: "Source maps enabled. May expose source code in production."
+    severity: INFO
+    metadata:
+      category: code
+    languages: [javascript, typescript]
+
+  - id: supabase-no-rls-check
+    patterns:
+      - pattern: supabase.from($TABLE).select(...)
+      - pattern-not-inside: |
+          ...
+          supabase.auth.getUser()
+          ...
+    message: "Supabase query without auth check. Ensure RLS is enabled."
+    severity: INFO
+    metadata:
+      category: code
+    languages: [javascript, typescript]
+
+  - id: express-no-rate-limit
+    patterns:
+      - pattern: app.post($ROUTE, ...)
+      - pattern-not-inside: |
+          ...
+          rateLimit(...)
+          ...
+    message: "API endpoint may lack rate limiting."
+    severity: INFO
+    metadata:
+      category: code
+      cwe: "CWE-770"
+    languages: [javascript, typescript]
+
+  - id: nosql-injection
+    patterns:
+      - pattern-either:
+          - pattern: $COLLECTION.find({ $WHERE: $INPUT })
+          - pattern: $COLLECTION.findOne({ $WHERE: $INPUT })
+          - pattern: "{ $where: $INPUT }"
+    message: "Potential NoSQL injection. Sanitize query input."
+    severity: ERROR
+    metadata:
+      category: code
+      cwe: "CWE-943"
+    languages: [javascript, typescript]
+
+  - id: xml-external-entity
+    patterns:
+      - pattern-either:
+          - pattern: new DOMParser().parseFromString($INPUT, ...)
+          - pattern: xml2js.parseString($INPUT, ...)
+    message: "Potential XXE vulnerability. Disable external entity processing."
+    severity: WARNING
+    metadata:
+      category: code
+      cwe: "CWE-611"
+    languages: [javascript, typescript]
+
+  - id: timing-attack-comparison
+    patterns:
+      - pattern-either:
+          - pattern: $A === $B
+          - pattern: $A == $B
+    message: "Direct string comparison may be vulnerable to timing attacks. Use constant-time comparison for secrets."
+    severity: INFO
+    metadata:
+      category: code
+      cwe: "CWE-208"
+    languages: [javascript, typescript]
+
+  - id: graphql-introspection
+    patterns:
+      - pattern: introspection = true
+      - pattern: "introspection: true"
+    message: "GraphQL introspection enabled. Disable in production."
+    severity: INFO
+    metadata:
+      category: code
+    languages: [javascript, typescript]

@@ -25,6 +25,116 @@ SEVERITY_MAP = {
     'ERROR': 'high',
 }
 
+SCRIPT_DIR = Path(__file__).parent
+RULES_DIR = SCRIPT_DIR / 'rules'
+GITLEAKS_CONFIG = SCRIPT_DIR / 'gitleaks.toml'
+
+TEST_FILE_PATTERNS = [
+    r'\.test\.(js|ts|jsx|tsx)$',
+    r'\.spec\.(js|ts|jsx|tsx)$',
+    r'__tests__/',
+    r'__mocks__/',
+    r'/test/',
+    r'/tests/',
+]
+
+EXAMPLE_FILE_PATTERNS = [
+    r'/examples?/',
+    r'/samples?/',
+    r'/demos?/',
+    r'\.example\.',
+    r'\.sample\.',
+]
+
+CLIENT_BUNDLE_PATTERNS = [
+    r'^src/',
+    r'^app/',
+    r'^pages/',
+    r'^components/',
+    r'^lib/',
+    r'^public/',
+]
+
+import re
+
+def is_test_file(filepath: str) -> bool:
+    for pattern in TEST_FILE_PATTERNS:
+        if re.search(pattern, filepath, re.IGNORECASE):
+            return True
+    return False
+
+def is_example_file(filepath: str) -> bool:
+    for pattern in EXAMPLE_FILE_PATTERNS:
+        if re.search(pattern, filepath, re.IGNORECASE):
+            return True
+    return False
+
+def is_client_bundle(filepath: str) -> bool:
+    for pattern in CLIENT_BUNDLE_PATTERNS:
+        if re.search(pattern, filepath, re.IGNORECASE):
+            return True
+    return False
+
+def downgrade_severity(severity: str) -> str:
+    downgrade_map = {
+        'critical': 'high',
+        'high': 'medium',
+        'medium': 'low',
+        'low': 'info',
+        'info': 'info'
+    }
+    return downgrade_map.get(severity, severity)
+
+def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Remove duplicate findings from different tools finding the same issue"""
+    seen = {}
+
+    for finding in findings:
+        file_path = finding.get('location', {}).get('file', '')
+        line = finding.get('location', {}).get('line', 0)
+        category = finding.get('category', '')
+
+        key = f"{file_path}:{line}:{category}"
+
+        if key not in seen:
+            seen[key] = finding
+        else:
+            existing = seen[key]
+            existing_severity = existing.get('severity', 'info')
+            new_severity = finding.get('severity', 'info')
+
+            severity_order = {'critical': 4, 'high': 3, 'medium': 2, 'low': 1, 'info': 0}
+            if severity_order.get(new_severity, 0) > severity_order.get(existing_severity, 0):
+                seen[key] = finding
+            elif finding.get('ruleId', '').startswith('semgrep'):
+                seen[key] = finding
+
+    return list(seen.values())
+
+def apply_context_scoring(finding: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply context-aware severity adjustments based on file location"""
+    filepath = finding.get('location', {}).get('file', '')
+    original_severity = finding.get('severity', 'info')
+    context_note = None
+    new_severity = original_severity
+
+    if is_test_file(filepath):
+        new_severity = downgrade_severity(original_severity)
+        context_note = 'Found in test file - lower production risk'
+    elif is_example_file(filepath):
+        new_severity = downgrade_severity(original_severity)
+        context_note = 'Found in example file - may be intentional for demonstration'
+    elif is_client_bundle(filepath) and finding.get('category') == 'secrets':
+        new_severity = 'critical'
+        context_note = 'Secret exposed in client-side code - highest risk'
+
+    if context_note:
+        finding['severity'] = new_severity
+        finding['contextNote'] = context_note
+        finding['originalSeverity'] = original_severity
+
+    return finding
+
 def clone_repo(url: str, target_dir: str, branch: str = 'main') -> bool:
     """Clone a git repository (shallow clone for speed)"""
     try:
@@ -100,12 +210,20 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
     }
 
 def run_semgrep(repo_dir: str) -> List[Dict[str, Any]]:
-    """Run Semgrep SAST scanner"""
+    """Run Semgrep SAST scanner with custom rules"""
     findings = []
+
+    cmd = ['semgrep', 'scan', '--json', repo_dir]
+
+    vibeship_rules = RULES_DIR / 'vibeship.yaml'
+    if vibeship_rules.exists():
+        cmd.extend(['--config', str(vibeship_rules)])
+
+    cmd.extend(['--config', 'auto'])
 
     try:
         result = subprocess.run(
-            ['semgrep', 'scan', '--config', 'auto', '--json', repo_dir],
+            cmd,
             capture_output=True,
             text=True,
             timeout=120
@@ -187,12 +305,17 @@ def run_trivy(repo_dir: str) -> List[Dict[str, Any]]:
     return findings
 
 def run_gitleaks(repo_dir: str) -> List[Dict[str, Any]]:
-    """Run Gitleaks secret scanner"""
+    """Run Gitleaks secret scanner with custom rules"""
     findings = []
+
+    cmd = ['gitleaks', 'detect', '--source', repo_dir, '--report-format', 'json', '--report-path', '/dev/stdout', '--no-git']
+
+    if GITLEAKS_CONFIG.exists():
+        cmd.extend(['--config', str(GITLEAKS_CONFIG)])
 
     try:
         result = subprocess.run(
-            ['gitleaks', 'detect', '--source', repo_dir, '--report-format', 'json', '--report-path', '/dev/stdout', '--no-git'],
+            cmd,
             capture_output=True,
             text=True,
             timeout=60
@@ -308,6 +431,10 @@ def main():
         gitleaks_findings = run_gitleaks(repo_dir)
 
         all_findings = semgrep_findings + trivy_findings + gitleaks_findings
+
+        all_findings = deduplicate_findings(all_findings)
+
+        all_findings = [apply_context_scoring(f) for f in all_findings]
 
         print(json.dumps({'step': 'score', 'message': 'Calculating score...'}), flush=True)
         score = calculate_score(all_findings)
