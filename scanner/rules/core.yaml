@@ -316,3 +316,441 @@ rules:
     message: PHP open redirect risk
     languages: [php]
     severity: WARNING
+
+  - id: php-query-get-concat
+    pattern: $QUERY . $_GET[$X]
+    message: PHP SQL injection - concatenating GET parameter into query
+    languages: [php]
+    severity: ERROR
+
+  - id: php-query-post-concat
+    pattern: $QUERY . $_POST[$X]
+    message: PHP SQL injection - concatenating POST parameter into query
+    languages: [php]
+    severity: ERROR
+
+  - id: php-query-request-concat
+    pattern: $QUERY . $_REQUEST[$X]
+    message: PHP SQL injection - concatenating REQUEST parameter into query
+    languages: [php]
+    severity: ERROR
+
+  - id: php-query-interpolation
+    pattern: '"SELECT $EXPR FROM $TABLE WHERE $FIELD = $_GET[$X]"'
+    message: PHP SQL injection via string interpolation
+    languages: [php]
+    severity: ERROR
+
+  - id: php-preg-replace-callback
+    pattern: preg_replace_callback($PATTERN, $CALLBACK, $_GET[$X])
+    message: PHP ReDoS risk - user input in regex
+    languages: [php]
+    severity: WARNING
+
+  - id: php-preg-match-input
+    pattern: preg_match($_GET[$X], ...)
+    message: PHP ReDoS risk - user-controlled regex pattern
+    languages: [php]
+    severity: ERROR
+
+  - id: php-header-injection
+    pattern: 'header($X . $_GET[$Y])'
+    message: PHP header injection - user input in header
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mail-injection
+    pattern: mail($_GET[$X], ...)
+    message: PHP mail header injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mail-body-injection
+    pattern: mail($TO, $SUBJECT, $_GET[$X])
+    message: PHP mail content injection risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-fopen-input
+    pattern: fopen($_GET[$X], ...)
+    message: PHP path traversal - user input in file path
+    languages: [php]
+    severity: ERROR
+
+  - id: php-file-input
+    pattern: file($_GET[$X])
+    message: PHP path traversal - user input in file path
+    languages: [php]
+    severity: ERROR
+
+  - id: php-readfile-input
+    pattern: readfile($_GET[$X])
+    message: PHP path traversal - user input in readfile
+    languages: [php]
+    severity: ERROR
+
+  - id: php-file-put-contents-input
+    pattern: file_put_contents($_GET[$X], ...)
+    message: PHP arbitrary file write via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-copy-input
+    pattern: copy($_GET[$X], ...)
+    message: PHP arbitrary file copy via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-rename-input
+    pattern: rename($_GET[$X], ...)
+    message: PHP arbitrary file rename via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-unlink-input
+    pattern: unlink($_GET[$X])
+    message: PHP arbitrary file delete via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mkdir-input
+    pattern: mkdir($_GET[$X])
+    message: PHP arbitrary directory creation via user input
+    languages: [php]
+    severity: WARNING
+
+  - id: php-rmdir-input
+    pattern: rmdir($_GET[$X])
+    message: PHP arbitrary directory deletion via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-chmod-input
+    pattern: chmod($_GET[$X], ...)
+    message: PHP arbitrary permission change via user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-ldap-search-input
+    pattern: ldap_search($CONN, $BASE, $_GET[$X])
+    message: PHP LDAP injection - user input in search filter
+    languages: [php]
+    severity: ERROR
+
+  - id: php-xpath-input
+    pattern: $XML->xpath($_GET[$X])
+    message: PHP XPath injection - user input in XPath query
+    languages: [php]
+    severity: ERROR
+
+  - id: php-simplexml-load
+    pattern: simplexml_load_string($_GET[$X])
+    message: PHP XXE risk - loading XML from user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-dom-loadxml
+    pattern: $DOC->loadXML($_GET[$X])
+    message: PHP XXE risk - loading XML from user input
+    languages: [php]
+    severity: ERROR
+
+  - id: php-json-decode-depth
+    pattern: json_decode($_GET[$X])
+    message: PHP JSON parsing user input - ensure depth limits
+    languages: [php]
+    severity: WARNING
+
+  - id: php-base64-decode-exec
+    pattern: eval(base64_decode($X))
+    message: PHP code injection via base64 decode
+    languages: [php]
+    severity: ERROR
+
+  - id: php-preg-replace-e-flag
+    pattern: 'preg_replace($PATTERN, $REPLACEMENT, $SUBJECT, $LIMIT)'
+    message: PHP preg_replace - check for dangerous /e modifier
+    languages: [php]
+    severity: WARNING
+
+  - id: php-usort-callback
+    pattern: usort($ARRAY, $_GET[$X])
+    message: PHP code injection via callback
+    languages: [php]
+    severity: ERROR
+
+  - id: php-array-map-callback
+    pattern: array_map($_GET[$X], ...)
+    message: PHP code injection via callback
+    languages: [php]
+    severity: ERROR
+
+  - id: php-call-user-func
+    pattern: call_user_func($_GET[$X], ...)
+    message: PHP code injection via call_user_func
+    languages: [php]
+    severity: ERROR
+
+  - id: php-call-user-func-array
+    pattern: call_user_func_array($_GET[$X], ...)
+    message: PHP code injection via call_user_func_array
+    languages: [php]
+    severity: ERROR
+
+  - id: php-var-var
+    pattern: $$_GET[$X]
+    message: PHP variable variable injection
+    languages: [php]
+    severity: ERROR
+
+  - id: php-compact-input
+    pattern: compact($_GET[$X])
+    message: PHP variable injection via compact
+    languages: [php]
+    severity: WARNING
+
+  - id: php-setcookie-httponly-false
+    pattern: 'setcookie($NAME, $VALUE, $EXPIRE, $PATH, $DOMAIN, $SECURE, false)'
+    message: PHP cookie without HttpOnly flag
+    languages: [php]
+    severity: WARNING
+
+  - id: php-session-regenerate-missing
+    pattern: session_start()
+    message: PHP session - ensure session_regenerate_id() after login
+    languages: [php]
+    severity: INFO
+
+  - id: php-rand-crypto
+    pattern: rand()
+    message: PHP rand() not cryptographically secure - use random_int()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-mt-rand-crypto
+    pattern: mt_rand()
+    message: PHP mt_rand() not cryptographically secure - use random_int()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-substr-token
+    pattern: substr(md5($X), ...)
+    message: PHP weak token generation - use random_bytes()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-strcmp-bypass
+    pattern: strcmp($_GET[$X], $SECRET)
+    message: PHP strcmp type juggling bypass risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-loose-comparison
+    pattern: $X == $_GET[$Y]
+    message: PHP loose comparison - consider strict === for security
+    languages: [php]
+    severity: INFO
+
+  - id: ruby-system-call
+    pattern: system($CMD)
+    message: Ruby system() - command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-exec-call
+    pattern: exec($CMD)
+    message: Ruby exec() - command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-backtick
+    pattern: '`$CMD`'
+    message: Ruby backtick execution - command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-eval
+    pattern: eval($CODE)
+    message: Ruby eval() - code injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-send-dynamic
+    pattern: $OBJ.send(params[$X], ...)
+    message: Ruby dynamic send - code injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-constantize
+    pattern: params[$X].constantize
+    message: Ruby constantize - arbitrary class instantiation
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-yaml-load
+    pattern: YAML.load($DATA)
+    message: Ruby YAML.load - insecure deserialization (use safe_load)
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-marshal-load
+    pattern: Marshal.load($DATA)
+    message: Ruby Marshal.load - insecure deserialization
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-erb-render
+    pattern: ERB.new(params[$X]).result
+    message: Ruby ERB template injection
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-render-inline
+    pattern: 'render inline: params[$X]'
+    message: Ruby Rails inline render - template injection
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-sql-interpolation
+    pattern: where("$FIELD = #{params[$X]}")
+    message: Ruby SQL injection via string interpolation
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-open-uri
+    pattern: open(params[$X])
+    message: Ruby open() with user input - SSRF/command injection
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-redirect-to-params
+    pattern: redirect_to params[$X]
+    message: Ruby open redirect risk
+    languages: [ruby]
+    severity: WARNING
+
+  - id: go-sql-query-concat
+    pattern: db.Query($Q + $INPUT)
+    message: Go SQL injection via concatenation
+    languages: [go]
+    severity: ERROR
+
+  - id: go-exec-command
+    pattern: exec.Command($CMD, ...)
+    message: Go command execution - ensure input validation
+    languages: [go]
+    severity: WARNING
+
+  - id: go-template-html
+    pattern: template.HTML($INPUT)
+    message: Go template.HTML bypasses escaping - XSS risk
+    languages: [go]
+    severity: ERROR
+
+  - id: go-tls-insecure
+    pattern: 'InsecureSkipVerify: true'
+    message: Go TLS verification disabled
+    languages: [go]
+    severity: ERROR
+
+  - id: go-yaml-unmarshal
+    pattern: yaml.Unmarshal($DATA, ...)
+    message: Go YAML unmarshal - check for safe parsing
+    languages: [go]
+    severity: WARNING
+
+  - id: java-runtime-exec
+    pattern: Runtime.getRuntime().exec($CMD)
+    message: Java command execution - injection risk
+    languages: [java]
+    severity: ERROR
+
+  - id: java-processbuilder
+    pattern: new ProcessBuilder($CMD)
+    message: Java ProcessBuilder - command injection risk
+    languages: [java]
+    severity: WARNING
+
+  - id: java-statement-execute
+    pattern: $STMT.execute($QUERY)
+    message: Java SQL - use PreparedStatement instead
+    languages: [java]
+    severity: WARNING
+
+  - id: java-xpath-compile
+    pattern: XPathFactory.newInstance().newXPath().compile($EXPR)
+    message: Java XPath injection risk
+    languages: [java]
+    severity: WARNING
+
+  - id: java-xxe-documentbuilder
+    pattern: DocumentBuilderFactory.newInstance()
+    message: Java XXE risk - disable external entities
+    languages: [java]
+    severity: WARNING
+
+  - id: java-deserialization
+    pattern: new ObjectInputStream($STREAM).readObject()
+    message: Java insecure deserialization
+    languages: [java]
+    severity: ERROR
+
+  - id: java-crypto-ecb
+    pattern: 'Cipher.getInstance("AES/ECB/$PADDING")'
+    message: Java ECB mode is insecure - use GCM or CBC
+    languages: [java]
+    severity: ERROR
+
+  - id: java-crypto-des
+    pattern: 'Cipher.getInstance("DES")'
+    message: Java DES is weak - use AES
+    languages: [java]
+    severity: ERROR
+
+  - id: java-random-security
+    pattern: new Random()
+    message: Java Random not secure - use SecureRandom
+    languages: [java]
+    severity: WARNING
+
+  - id: java-md5-hash
+    pattern: 'MessageDigest.getInstance("MD5")'
+    message: Java MD5 is weak for security purposes
+    languages: [java]
+    severity: WARNING
+
+  - id: java-sha1-hash
+    pattern: 'MessageDigest.getInstance("SHA-1")'
+    message: Java SHA-1 is deprecated for security
+    languages: [java]
+    severity: WARNING
+
+  - id: csharp-sql-concat
+    pattern: $CMD.CommandText = $Q + $INPUT
+    message: C# SQL injection via concatenation
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-process-start
+    pattern: Process.Start($CMD)
+    message: C# command execution - injection risk
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-deserialization
+    pattern: BinaryFormatter().Deserialize($STREAM)
+    message: C# BinaryFormatter deserialization is insecure
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-xxe-xmlreader
+    pattern: XmlReader.Create($INPUT)
+    message: C# XXE risk - configure XmlReaderSettings
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-regex-timeout
+    pattern: new Regex($PATTERN)
+    message: C# Regex without timeout - ReDoS risk
+    languages: [csharp]
+    severity: WARNING
