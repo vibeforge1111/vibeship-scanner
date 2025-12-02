@@ -99,3 +99,4 @@ vibeship-scanner/
 ✅ **Flexible** - Scanner still has full Docker control
 ✅ **No conflicts** - Clear separation via root directories
 
+

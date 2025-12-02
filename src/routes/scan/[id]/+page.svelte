@@ -401,10 +401,7 @@
 						<span class="score-number">{displayScore}</span>
 						<span class="score-label">out of 100</span>
 					</div>
-					<div class="grade-badge {getGradeClass(results.grade)}" class:pop={revealStage >= 1}>
-						<span class="grade-letter">{results.grade}</span>
-					</div>
-					<p class="ship-status" class:fade-in={revealStage >= 2}>{getShipMessage(results.shipStatus)}</p>
+					<p class="ship-status" class:fade-in={revealStage >= 1}>{getShipMessage(results.shipStatus)}</p>
 				</div>
 
 				<div class="summary-section" class:revealed={revealStage >= 3}>
@@ -618,7 +615,7 @@
 
 <style>
 	.scan-page {
-		padding: 6rem 2rem 4rem;
+		padding: 8rem 2rem 4rem;
 		max-width: 1000px;
 		margin: 0 auto;
 	}

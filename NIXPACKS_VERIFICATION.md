@@ -74,3 +74,4 @@ SUPABASE_ANON_KEY=your-anon-key
 
 Your webapp is correctly configured for Nixpacks on Railway!
 
+

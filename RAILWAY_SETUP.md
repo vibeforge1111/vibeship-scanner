@@ -120,3 +120,4 @@ docker run -p 8080:8080 \
 - Check that scanner service is deployed and healthy
 - Test scanner health endpoint: `https://your-scanner.railway.app/health`
 
+

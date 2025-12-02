@@ -169,3 +169,4 @@ fly dashboard
 3. Test end-to-end scan flow
 4. Monitor costs (should be very low with auto-stop)
 
+

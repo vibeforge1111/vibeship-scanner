@@ -51,3 +51,4 @@ This way:
 - Scanner gets the control of Dockerfile
 - Both work together in monorepo
 
+

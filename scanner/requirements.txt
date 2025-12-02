@@ -1,5 +1,5 @@
 flask==3.0.0
 supabase==1.0.4
 gunicorn==21.2.0
-httpx==0.23.3
+httpx==0.24.1
 gotrue==1.0.4
