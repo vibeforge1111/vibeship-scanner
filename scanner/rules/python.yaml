@@ -954,7 +954,7 @@ rules:
 
   # SQL Injection - f-string in SQL query
   - id: py-sqli-fstring-select
-    pattern-regex: 'f["\']SELECT.*FROM.*WHERE.*\{.*\}'
+    pattern-regex: "f[\"']SELECT.*FROM.*WHERE.*\\{.*\\}"
     message: SQL injection - f-string in SELECT query with user variable
     languages: [python]
     severity: ERROR
@@ -1047,13 +1047,13 @@ rules:
 
   # ReDoS - Dangerous regex patterns
   - id: py-redos-nested-quantifier
-    pattern-regex: 're\\.search\\([rf]?["\'][^"\']*\\([^)]+\\)\\*[^"\']*["\']'
+    pattern-regex: "re\\.search\\([rf]?[\"'][^\"']*\\([^)]+\\)\\*[^\"']*[\"']"
     message: ReDoS - nested quantifiers in regex can cause catastrophic backtracking
     languages: [python]
     severity: WARNING
 
   - id: py-redos-pattern
-    pattern-regex: 're\\.(search|match|findall)\\([rf]?["\'][^"\']*\\+\\*[^"\']*["\']'
+    pattern-regex: "re\\.(search|match|findall)\\([rf]?[\"'][^\"']*\\+\\*[^\"']*[\"']"
     message: ReDoS - greedy quantifiers may cause excessive backtracking
     languages: [python]
     severity: WARNING
@@ -1183,7 +1183,7 @@ rules:
     severity: ERROR
 
   - id: py-sqli-text-fstring
-    pattern: 'text(f"SELECT * FROM $TABLE WHERE $FIELD = ' + "'{$VAR}'" + '")'
+    pattern: 'text(f"...")'
     message: SQL injection - f-string in SQLAlchemy text()
     languages: [python]
     severity: ERROR
