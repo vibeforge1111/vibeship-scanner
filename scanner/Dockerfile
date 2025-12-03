@@ -8,7 +8,9 @@ RUN apt-get update && apt-get install -y \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install semgrep
+# Install Opengrep (LGPL fork of Semgrep - avoids commercial licensing issues)
+RUN curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash \
+    && ln -s ~/.opengrep/cli/latest/opengrep /usr/local/bin/opengrep
 
 RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.56.0
 

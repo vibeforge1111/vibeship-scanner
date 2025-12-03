@@ -112,8 +112,8 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
     }
 
 
-def run_semgrep(repo_dir: str) -> List[Dict[str, Any]]:
-    """Run Semgrep SAST scanner with local rules only"""
+def run_opengrep(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run Opengrep SAST scanner with local rules only (LGPL fork of Semgrep)"""
     findings = []
 
     # Use only local rules - no registry dependencies
@@ -122,18 +122,19 @@ def run_semgrep(repo_dir: str) -> List[Dict[str, Any]]:
 
     configs = []
     if core_rules.exists():
-        configs.extend(['--config', str(core_rules)])
+        configs.extend(['-f', str(core_rules)])
     if vibeship_rules.exists():
-        configs.extend(['--config', str(vibeship_rules)])
+        configs.extend(['-f', str(vibeship_rules)])
 
     if not configs:
         print("ERROR: No rule files found!", file=sys.stderr)
         return findings
 
-    cmd = ['semgrep', 'scan', '--json', '--no-git-ignore'] + configs + [repo_dir]
+    # Opengrep uses similar syntax: opengrep scan -f rules --json target
+    cmd = ['opengrep', 'scan', '--json'] + configs + [repo_dir]
 
     try:
-        print(f"Running Semgrep: {' '.join(cmd)}", file=sys.stderr)
+        print(f"Running Opengrep: {' '.join(cmd)}", file=sys.stderr)
         result = subprocess.run(
             cmd,
             capture_output=True,
@@ -141,16 +142,16 @@ def run_semgrep(repo_dir: str) -> List[Dict[str, Any]]:
             timeout=300
         )
 
-        print(f"Semgrep exit code: {result.returncode}", file=sys.stderr)
+        print(f"Opengrep exit code: {result.returncode}", file=sys.stderr)
 
         if result.stderr:
-            print(f"Semgrep stderr (first 2000 chars): {result.stderr[:2000]}", file=sys.stderr)
+            print(f"Opengrep stderr (first 2000 chars): {result.stderr[:2000]}", file=sys.stderr)
 
         if result.stdout:
             try:
                 data = json.loads(result.stdout)
                 results = data.get('results', [])
-                print(f"Semgrep raw results: {len(results)}", file=sys.stderr)
+                print(f"Opengrep raw results: {len(results)}", file=sys.stderr)
 
                 for item in results:
                     severity = SEVERITY_MAP.get(
@@ -422,7 +423,7 @@ def main():
         print(f"Detected stack: {stack}", file=sys.stderr)
 
         print(json.dumps({'step': 'sast', 'message': 'Running code analysis...'}), flush=True)
-        semgrep_findings = run_semgrep(repo_dir)
+        opengrep_findings = run_opengrep(repo_dir)
 
         print(json.dumps({'step': 'deps', 'message': 'Checking dependencies...'}), flush=True)
         trivy_findings = run_trivy(repo_dir)
@@ -430,7 +431,7 @@ def main():
         print(json.dumps({'step': 'secrets', 'message': 'Scanning for secrets...'}), flush=True)
         gitleaks_findings = run_gitleaks(repo_dir)
 
-        all_findings = semgrep_findings + trivy_findings + gitleaks_findings
+        all_findings = opengrep_findings + trivy_findings + gitleaks_findings
         print(f"Total findings: {len(all_findings)}", file=sys.stderr)
 
         print(json.dumps({'step': 'score', 'message': 'Calculating score...'}), flush=True)

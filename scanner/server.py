@@ -13,7 +13,7 @@ from flask import Flask, request, jsonify
 from supabase import create_client, Client
 
 from scan import (
-    clone_repo, detect_stack, run_semgrep, run_trivy, run_gitleaks,
+    clone_repo, detect_stack, run_opengrep, run_trivy, run_gitleaks,
     calculate_score, calculate_grade, calculate_ship_status
 )
 
@@ -74,7 +74,7 @@ def run_scan(scan_id: str, repo_url: str, branch: str):
             stack = detect_stack(repo_dir)
 
             update_progress(supabase, scan_id, 'sast', 'Running code analysis...', 40)
-            semgrep_findings = run_semgrep(repo_dir)
+            opengrep_findings = run_opengrep(repo_dir)
 
             update_progress(supabase, scan_id, 'deps', 'Checking dependencies...', 60)
             trivy_findings = run_trivy(repo_dir)
@@ -82,7 +82,7 @@ def run_scan(scan_id: str, repo_url: str, branch: str):
             update_progress(supabase, scan_id, 'secrets', 'Scanning for secrets...', 80)
             gitleaks_findings = run_gitleaks(repo_dir)
 
-            all_findings = semgrep_findings + trivy_findings + gitleaks_findings
+            all_findings = opengrep_findings + trivy_findings + gitleaks_findings
 
             update_progress(supabase, scan_id, 'score', 'Calculating score...', 95)
             score = calculate_score(all_findings)
