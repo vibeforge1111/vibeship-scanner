@@ -38,6 +38,21 @@
 - [x] Add Ruby taint-mode rules (SQL injection, command injection, open redirect)
 - [x] Learn Semgrep PHP/Ruby limitations (language constructs can't be used as patterns)
 - [x] Create CURRENT-PRODUCT.md documenting full product state
+- [x] Fix CVE-2025-43859 (h11 HTTP smuggling) - upgraded h11>=0.16.0, httpx>=0.27.0, supabase>=2.0.0
+- [x] Fix CVE-2024-1135, CVE-2024-6827, AIKIDO-2024-10216 (gunicorn) - upgraded to >=23.0.0
+- [x] Update landing page copy (vibe coder tone, consolidated steps)
+- [x] Fix YAML escaping error in javascript.yaml (@ts-ignore rules)
+- [x] Remove noisy bash set-e/pipefail rules (was causing 180+ false positives)
+- [x] Add comprehensive Node.js security rules (SQL injection, XSS, NoSQL, SSRF, path traversal, XXE, etc.)
+- [x] Remove "Get Vibeship to fix this" from vulnerability cards
+- [x] Add info count display in Security Summary
+- [x] Add DVNA-targeted vulnerability patterns (SQL injection concat, mathjs.eval, node-serialize, libxmljs XXE)
+- [x] Add MongoDB/Mongoose NoSQL injection rules (find, update, delete, regex, operator injection)
+- [x] Add XSS template rules (Swig, EJS, Pug, Handlebars)
+- [x] Add IDOR/authorization bypass patterns
+- [x] Add enhanced SSRF detection
+- [x] Add session security rules (fixation, cookie flags)
+- [x] Add sensitive data exposure rules
 
 ## Environment Variables
 
@@ -93,10 +108,18 @@
 
 ## P3: Future Features
 
-### GitHub OAuth & Private Repos
-- [ ] Add GitHub OAuth for authenticated scans
-- [ ] Add support for private repositories
+### GitHub OAuth & Private Repos (Paid Tier)
+Prerequisites: Solid detection rates on public repos, user demand
+- [ ] Create GitHub OAuth App (scope: repo read access)
+- [ ] Add "Connect GitHub" button in UI
+- [ ] Store encrypted access tokens in Supabase
+- [ ] Build repo picker dropdown (list user's repos)
+- [ ] Modify scanner to use token for private clone
+- [ ] Add user accounts/auth to frontend
 - [ ] Verify repository ownership
+- [ ] Auto-delete cloned repos after scan
+- [ ] Add billing/subscription for private repo scans
+- [ ] Update privacy policy for code access
 
 ### Pro Features
 - [ ] Tier 2 AI analysis with Claude

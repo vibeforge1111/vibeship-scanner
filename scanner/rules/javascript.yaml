@@ -1175,3 +1175,551 @@ rules:
     metadata:
       tags: [express, headers]
 
+  # ============================================
+  # DVNA-Specific Vulnerability Patterns
+  # ============================================
+
+  # SQL Injection - String concatenation patterns
+  - id: sql-string-concat-login
+    pattern-regex: "\"SELECT[^\"]+WHERE[^\"]+='\\s*\"\\s*\\+\\s*req\\."
+    message: SQL injection - string concatenation with user input in WHERE clause
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, injection, sql]
+
+  - id: sql-string-concat-select
+    pattern-regex: "\"SELECT[^\"]+\"\\s*\\+\\s*req\\."
+    message: SQL injection - string concatenation in SELECT query
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, injection, sql]
+
+  - id: sql-string-concat-insert
+    pattern-regex: "\"INSERT[^\"]+\"\\s*\\+\\s*req\\."
+    message: SQL injection - string concatenation in INSERT query
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, injection, sql]
+
+  - id: sql-string-concat-update
+    pattern-regex: "\"UPDATE[^\"]+\"\\s*\\+\\s*req\\."
+    message: SQL injection - string concatenation in UPDATE query
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, injection, sql]
+
+  - id: sql-string-concat-delete
+    pattern-regex: "\"DELETE[^\"]+\"\\s*\\+\\s*req\\."
+    message: SQL injection - string concatenation in DELETE query
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, injection, sql]
+
+  # Code Injection - mathjs.eval
+  - id: mathjs-eval-injection
+    patterns:
+      - pattern: 'mathjs.eval($INPUT)'
+      - pattern: 'math.eval($INPUT)'
+      - pattern: 'mathjs.evaluate($INPUT)'
+      - pattern: 'math.evaluate($INPUT)'
+    message: Code injection via mathjs eval - user input can execute arbitrary expressions
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, injection, code]
+
+  - id: mathjs-eval-request
+    pattern-regex: "math(js)?\\.(eval|evaluate)\\(req\\."
+    message: Code injection - mathjs eval with request input
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, injection, code]
+
+  # Insecure Deserialization - node-serialize
+  - id: node-serialize-unserialize
+    patterns:
+      - pattern: 'serialize.unserialize(...)'
+      - pattern: 'nodeSerialize.unserialize(...)'
+      - pattern: 'unserialize(...)'
+    message: Insecure deserialization - node-serialize can lead to RCE
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, deserialization, rce]
+
+  - id: node-serialize-regex
+    pattern-regex: "serialize\\.unserialize\\("
+    message: Insecure deserialization via node-serialize - remote code execution risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, deserialization, rce]
+
+  # XXE - libxmljs with noent:true
+  - id: libxmljs-xxe-noent
+    pattern-regex: "libxmljs\\.parseXml(String)?\\([^,]+,\\s*\\{[^}]*noent\\s*:\\s*true"
+    message: XXE vulnerability - libxmljs with noent:true enables external entity processing
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [xml, xxe]
+
+  - id: xml-external-entities
+    pattern-regex: "\\{[^}]*noent\\s*:\\s*true[^}]*\\}"
+    message: XML external entity processing enabled - potential XXE vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [xml, xxe]
+
+  # Open Redirect - res.redirect with user input
+  - id: express-open-redirect
+    patterns:
+      - pattern: 'res.redirect(req.body.$PARAM)'
+      - pattern: 'res.redirect(req.query.$PARAM)'
+      - pattern: 'res.redirect(req.params.$PARAM)'
+    message: Open redirect - user-controlled redirect destination
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, redirect]
+
+  - id: open-redirect-regex
+    pattern-regex: "res\\.redirect\\(req\\.(body|query|params)\\."
+    message: Open redirect vulnerability - validate redirect URL against whitelist
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, redirect]
+
+  # Stored XSS via database
+  - id: stored-xss-db-to-html
+    patterns:
+      - pattern: 'res.send($DATA)'
+      - pattern: 'res.send(`${$DATA}`)'
+    message: Response may contain unsanitized data - potential stored XSS
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [express, xss]
+
+  # SSRF via user-controlled URLs
+  - id: ssrf-needle
+    patterns:
+      - pattern: 'needle($METHOD, req.$PARAM.$FIELD, ...)'
+      - pattern: 'needle.get(req.$PARAM.$FIELD, ...)'
+      - pattern: 'needle.post(req.$PARAM.$FIELD, ...)'
+    message: SSRF - needle HTTP request with user-controlled URL
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, ssrf]
+
+  - id: ssrf-got
+    patterns:
+      - pattern: 'got(req.$PARAM.$FIELD)'
+      - pattern: 'got.get(req.$PARAM.$FIELD)'
+    message: SSRF - got HTTP request with user-controlled URL
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, ssrf]
+
+  # Hardcoded credentials detection
+  - id: hardcoded-db-password
+    pattern-regex: "(password|passwd|pwd)\\s*[=:]\\s*['\"][^'\"]{4,}['\"]"
+    message: Hardcoded database password detected - use environment variables
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, secrets]
+
+  - id: hardcoded-db-connection
+    pattern-regex: "(mysql|postgres|mongodb)://[^:]+:[^@]+@"
+    message: Hardcoded database credentials in connection string
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, secrets]
+
+  # Weak crypto
+  - id: crypto-weak-hash-password
+    pattern-regex: "createHash\\(['\"]md5['\"]\\)"
+    message: MD5 is cryptographically weak - do not use for passwords
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [crypto]
+
+  # Missing input validation
+  - id: express-unvalidated-body
+    patterns:
+      - pattern: 'db.query($Q, [req.body.$FIELD])'
+      - pattern: '$MODEL.create(req.body)'
+      - pattern: '$MODEL.update(req.body)'
+    message: User input passed directly to database - add input validation
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, validation]
+
+  # File upload vulnerabilities
+  - id: multer-no-filefilter
+    pattern: 'multer({dest: $DEST})'
+    message: Multer without file type validation - may allow malicious uploads
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, upload]
+
+  # Information disclosure
+  - id: express-stack-trace
+    pattern: 'res.send(err.stack)'
+    message: Stack trace exposed to client - information disclosure
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, disclosure]
+
+  - id: express-error-details
+    pattern: 'res.status($CODE).send(err)'
+    message: Full error object sent to client - may leak sensitive info
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [express, disclosure]
+
+  # ============================================
+  # MongoDB/Mongoose NoSQL Injection (Enhanced)
+  # ============================================
+
+  - id: mongodb-find-user-input
+    patterns:
+      - pattern: '$COLL.find({$FIELD: req.body.$PARAM})'
+      - pattern: '$COLL.find({$FIELD: req.query.$PARAM})'
+      - pattern: '$COLL.find({$FIELD: req.params.$PARAM})'
+      - pattern: '$COLL.findOne({$FIELD: req.body.$PARAM})'
+      - pattern: '$COLL.findOne({$FIELD: req.query.$PARAM})'
+    message: MongoDB query with user input - NoSQL injection risk, sanitize input
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [mongodb, injection, nosql]
+
+  - id: mongodb-update-user-input
+    patterns:
+      - pattern: '$COLL.update({$FIELD: req.body.$PARAM}, ...)'
+      - pattern: '$COLL.updateOne({$FIELD: req.body.$PARAM}, ...)'
+      - pattern: '$COLL.updateMany({$FIELD: req.body.$PARAM}, ...)'
+      - pattern: '$COLL.findOneAndUpdate({$FIELD: req.body.$PARAM}, ...)'
+    message: MongoDB update with user input - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [mongodb, injection, nosql]
+
+  - id: mongodb-delete-user-input
+    patterns:
+      - pattern: '$COLL.remove({$FIELD: req.body.$PARAM})'
+      - pattern: '$COLL.deleteOne({$FIELD: req.body.$PARAM})'
+      - pattern: '$COLL.deleteMany({$FIELD: req.body.$PARAM})'
+    message: MongoDB delete with user input - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [mongodb, injection, nosql]
+
+  - id: mongoose-find-user-input
+    patterns:
+      - pattern: '$MODEL.find(req.body)'
+      - pattern: '$MODEL.find(req.query)'
+      - pattern: '$MODEL.findOne(req.body)'
+      - pattern: '$MODEL.findOne(req.query)'
+      - pattern: '$MODEL.findById(req.body.$PARAM)'
+      - pattern: '$MODEL.findById(req.params.$PARAM)'
+    message: Mongoose query with unvalidated user input - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [mongoose, injection, nosql]
+
+  - id: mongodb-regex-user-input
+    patterns:
+      - pattern: '{$regex: req.$PARAM}'
+      - pattern: '{$FIELD: {$regex: $INPUT}}'
+      - pattern: 'new RegExp(req.$PARAM.$FIELD)'
+    message: MongoDB regex with user input - ReDoS and injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [mongodb, injection, redos]
+
+  - id: mongodb-operator-injection
+    pattern-regex: "\\{\\s*\\$[a-z]+\\s*:\\s*req\\.(body|query|params)"
+    message: MongoDB operator injection - user input may contain $ operators
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [mongodb, injection, nosql]
+
+  # ============================================
+  # XSS - Template Rendering (Swig, EJS, Pug)
+  # ============================================
+
+  - id: swig-render-user-input
+    patterns:
+      - pattern: 'swig.render($TEMPLATE, {$KEY: req.$PARAM})'
+      - pattern: 'swig.renderFile($FILE, {$KEY: req.$PARAM})'
+    message: Swig template with user input - potential XSS if not escaped
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [swig, xss, template]
+
+  - id: ejs-render-user-input
+    patterns:
+      - pattern: 'ejs.render($TEMPLATE, {$KEY: req.$PARAM})'
+      - pattern: 'ejs.renderFile($FILE, {$KEY: req.$PARAM})'
+      - pattern: 'res.render($VIEW, {$KEY: req.body.$PARAM})'
+      - pattern: 'res.render($VIEW, {$KEY: req.query.$PARAM})'
+    message: Template render with user input - ensure output is escaped
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [ejs, xss, template]
+
+  - id: pug-render-unescaped
+    patterns:
+      - pattern: '!{$VAR}'
+      - pattern: '!= $VAR'
+    message: Pug unescaped output - XSS risk if variable contains user input
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [pug, xss, template]
+
+  - id: handlebars-triple-stache
+    pattern-regex: "\\{\\{\\{[^}]+\\}\\}\\}"
+    message: Handlebars triple-mustache bypasses escaping - XSS risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [handlebars, xss, template]
+
+  - id: express-send-html-user-input
+    patterns:
+      - pattern: 'res.send("<html>" + $INPUT)'
+      - pattern: 'res.send(`<html>${$INPUT}`)'
+      - pattern: 'res.send("<div>" + req.$PARAM)'
+    message: HTML response with user input - XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [express, xss]
+
+  - id: express-write-html
+    patterns:
+      - pattern: 'res.write("<" + $INPUT)'
+      - pattern: 'res.write(`<${$INPUT}`)'
+    message: Writing HTML with dynamic content - XSS risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, xss]
+
+  # ============================================
+  # Authorization/IDOR Patterns
+  # ============================================
+
+  - id: idor-direct-param-access
+    patterns:
+      - pattern: '$MODEL.findById(req.params.id)'
+      - pattern: '$MODEL.findById(req.params.$ID)'
+      - pattern: '$COLL.findOne({_id: req.params.$ID})'
+    message: Direct object access via URL param - verify user authorization
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [authz, idor]
+
+  - id: idor-missing-owner-check
+    patterns:
+      - pattern: |
+          $MODEL.findById($ID)
+          ...
+          res.json($DATA)
+      - pattern: |
+          $MODEL.findOne({_id: $ID})
+          ...
+          res.send($DATA)
+    message: Object lookup without ownership verification - potential IDOR
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [authz, idor]
+
+  - id: auth-bypass-admin-check
+    patterns:
+      - pattern: 'if (req.body.isAdmin)'
+      - pattern: 'if (req.query.admin)'
+      - pattern: 'if (req.body.role === "admin")'
+    message: Admin check using user-supplied input - authentication bypass
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [authz, bypass]
+
+  # ============================================
+  # SSRF Patterns (Enhanced)
+  # ============================================
+
+  - id: ssrf-url-user-input
+    patterns:
+      - pattern: 'new URL(req.body.$PARAM)'
+      - pattern: 'new URL(req.query.$PARAM)'
+      - pattern: 'url.parse(req.body.$PARAM)'
+      - pattern: 'url.parse(req.query.$PARAM)'
+    message: URL parsing user input - validate against allowlist for SSRF prevention
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [ssrf, url]
+
+  - id: ssrf-image-fetch
+    patterns:
+      - pattern: 'fetch(req.body.imageUrl)'
+      - pattern: 'fetch(req.body.url)'
+      - pattern: 'axios.get(req.body.url)'
+      - pattern: 'request(req.body.url)'
+    message: Fetching user-supplied URL - SSRF vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [ssrf]
+
+  - id: ssrf-dns-rebinding
+    pattern-regex: "(fetch|axios|request|http\\.get)\\(.*req\\.(body|query)\\."
+    message: HTTP request with user-controlled URL - SSRF/DNS rebinding risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [ssrf]
+
+  # ============================================
+  # Session Security
+  # ============================================
+
+  - id: session-fixation
+    patterns:
+      - pattern: 'req.session = req.body.$PARAM'
+      - pattern: 'req.session.id = req.$PARAM'
+    message: Session assignment from user input - session fixation risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [session, fixation]
+
+  - id: session-no-regenerate
+    pattern: |
+      req.session.user = $USER
+      ...
+      res.redirect($URL)
+    message: Session not regenerated after login - session fixation risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [session, fixation]
+
+  - id: cookie-no-httponly
+    pattern: "res.cookie($NAME, $VALUE, {httpOnly: false})"
+    message: Cookie without httpOnly flag - vulnerable to XSS theft
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [cookie, session]
+
+  - id: cookie-no-secure
+    pattern: "res.cookie($NAME, $VALUE, {secure: false})"
+    message: Cookie without secure flag - sent over HTTP
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [cookie, session]
+
+  # ============================================
+  # Sensitive Data Exposure
+  # ============================================
+
+  - id: password-in-response
+    patterns:
+      - pattern: 'res.json({password: $PASS})'
+      - pattern: 'res.send({password: $PASS})'
+      - pattern: 'res.json($USER)'
+    message: Potentially exposing password in response - exclude sensitive fields
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [data-exposure]
+
+  - id: user-enumeration
+    patterns:
+      - pattern: 'res.send("User not found")'
+      - pattern: 'res.send("Invalid username")'
+      - pattern: 'res.json({error: "User does not exist"})'
+    message: User enumeration - use generic error messages
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [auth, enumeration]
+
+  - id: verbose-error-message
+    patterns:
+      - pattern: 'res.send(err.message)'
+      - pattern: 'res.json({error: err.message})'
+      - pattern: 'res.status($CODE).json({error: $ERR.message})'
+    message: Verbose error messages may leak sensitive information
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [disclosure]
+
+  # ============================================
+  # Insecure Crypto
+  # ============================================
+
+  - id: crypto-weak-key
+    patterns:
+      - pattern: 'crypto.createCipheriv($ALG, $KEY, ...)'
+      - pattern: 'crypto.pbkdf2($PASS, $SALT, $ITER, ...)'
+    message: Review crypto parameters - ensure adequate key size and iterations
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [crypto]
+
+  - id: password-plaintext-storage
+    patterns:
+      - pattern: 'user.password = req.body.password'
+      - pattern: '{password: req.body.password}'
+    message: Storing password - ensure it's hashed with bcrypt/argon2
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [auth, crypto]
+
+  - id: password-md5-hash
+    patterns:
+      - pattern: 'crypto.createHash("md5").update(password)'
+      - pattern: 'md5(password)'
+    message: MD5 is not suitable for password hashing - use bcrypt
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [auth, crypto]
+
