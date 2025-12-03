@@ -301,8 +301,11 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
 
         print(f"Opengrep exit code: {result.returncode}", file=sys.stderr)
 
-        if result.stderr:
-            print(f"Opengrep stderr (first 2000 chars): {result.stderr[:2000]}", file=sys.stderr)
+        # Always log stderr to help diagnose rule issues
+        print(f"Opengrep stderr: {result.stderr[:3000] if result.stderr else 'none'}", file=sys.stderr)
+
+        # Log raw stdout to see errors
+        print(f"Opengrep stdout preview: {result.stdout[:2000] if result.stdout else 'none'}", file=sys.stderr)
 
         if result.stdout:
             try:

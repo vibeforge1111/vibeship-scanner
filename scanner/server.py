@@ -124,6 +124,54 @@ def run_scan(scan_id: str, repo_url: str, branch: str):
 def health():
     return jsonify({'status': 'ok'})
 
+@app.route('/test-scan', methods=['POST'])
+def test_scan():
+    """Test endpoint - runs scan without database, returns results directly"""
+    import tempfile
+    data = request.json
+    repo_url = data.get('repoUrl')
+    branch = data.get('branch', 'main')
+
+    if not repo_url:
+        return jsonify({'error': 'Missing repoUrl'}), 400
+
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_dir = os.path.join(temp_dir, 'repo')
+
+            if not clone_repo(repo_url, repo_dir, branch):
+                return jsonify({'error': 'Failed to clone repository'}), 400
+
+            stack = detect_stack(repo_dir)
+            opengrep_findings = run_opengrep(repo_dir, stack.get('languages', []))
+            trivy_findings = run_trivy(repo_dir)
+            gitleaks_findings = run_gitleaks(repo_dir)
+
+            all_findings = opengrep_findings + trivy_findings + gitleaks_findings
+            all_findings = deduplicate_findings(all_findings)
+
+            score = calculate_score(all_findings)
+            grade = calculate_grade(score)
+            ship_status = calculate_ship_status(score)
+
+            counts = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0}
+            for f in all_findings:
+                sev = f.get('severity', 'info')
+                counts[sev] = counts.get(sev, 0) + 1
+
+            return jsonify({
+                'status': 'complete',
+                'score': score,
+                'grade': grade,
+                'ship_status': ship_status,
+                'finding_counts': counts,
+                'total_findings': len(all_findings),
+                'detected_stack': stack,
+                'findings_preview': all_findings[:20]  # First 20 findings for preview
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/scan', methods=['POST'])
 def start_scan():
     data = request.json

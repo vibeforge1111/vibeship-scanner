@@ -87,7 +87,7 @@ rules:
 
   - id: react-href-javascript
     pattern: 'href={"javascript:$X"}'
-    message: React javascript: URL in href - XSS vulnerability
+    message: "React javascript: URL in href - XSS vulnerability"
     languages: [javascript, typescript]
     severity: ERROR
     metadata:

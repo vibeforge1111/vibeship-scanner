@@ -301,45 +301,41 @@ rules:
     severity: WARNING
 
   # ============================================
-  # Taint Mode Rules
+  # Direct User Input Patterns (replaces taint mode)
   # ============================================
 
-  - id: ruby-taint-sql-injection
-    mode: taint
-    message: Ruby SQL injection - user input in SQL query without parameterization
+  - id: ruby-params-in-where
+    pattern: $MODEL.where(params[$X])
+    message: Ruby SQL injection - direct params in where clause
     languages: [ruby]
     severity: ERROR
-    pattern-sources:
-      - pattern: params
-      - pattern: request.params
-    pattern-sinks:
-      - pattern: $MODEL.where($SINK)
-      - pattern: $MODEL.find_by_sql($SINK)
-      - pattern: $CONN.execute($SINK)
-      - pattern: ActiveRecord::Base.connection.execute($SINK)
 
-  - id: ruby-taint-command-injection
-    mode: taint
-    message: Ruby command injection - user input in shell command
+  - id: ruby-params-in-find-by-sql
+    pattern: $MODEL.find_by_sql(params[$X])
+    message: Ruby SQL injection - direct params in find_by_sql
     languages: [ruby]
     severity: ERROR
-    pattern-sources:
-      - pattern: params
-      - pattern: request.params
-    pattern-sinks:
-      - pattern: system($SINK)
-      - pattern: exec($SINK)
-      - pattern: Kernel.system($SINK)
-      - pattern: IO.popen($SINK)
-      - pattern: Open3.capture2($SINK)
-      - pattern: Open3.capture3($SINK)
 
-  - id: ruby-taint-open-redirect
-    mode: taint
-    message: Ruby open redirect - user input in redirect
+  - id: ruby-params-in-system
+    pattern: system(params[$X])
+    message: Ruby command injection - direct params in system
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-params-in-exec
+    pattern: exec(params[$X])
+    message: Ruby command injection - direct params in exec
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-params-in-redirect
+    pattern: redirect_to(params[$X])
+    message: Ruby open redirect - direct params in redirect_to
     languages: [ruby]
     severity: WARNING
-    pattern-sources:
-      - pattern: params
-    pattern-sinks:
-      - pattern: redirect_to($SINK)
+
+  - id: ruby-params-in-render-inline
+    pattern: 'render inline: params[$X]'
+    message: Ruby XSS - direct params in render inline
+    languages: [ruby]
+    severity: ERROR

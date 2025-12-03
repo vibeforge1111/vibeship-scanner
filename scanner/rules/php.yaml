@@ -269,125 +269,86 @@ rules:
     severity: WARNING
 
   # ============================================
-  # Taint Mode - XSS
+  # Direct User Input Patterns (replaces taint mode)
   # ============================================
 
-  - id: php-xss-printf
-    mode: taint
-    message: PHP XSS vulnerability - user input in printf without sanitization
+  - id: php-get-in-query
+    pattern: mysqli_query($CONN, $_GET[$X])
+    message: PHP SQL injection - direct $_GET in query
     languages: [php]
     severity: ERROR
-    pattern-sources:
-      - pattern: $_GET
-      - pattern: $_POST
-      - pattern: $_REQUEST
-    pattern-sinks:
-      - pattern: printf(...)
-      - pattern: sprintf(...)
-    pattern-sanitizers:
-      - pattern: htmlspecialchars(...)
-      - pattern: htmlentities(...)
 
-  # ============================================
-  # Taint Mode - SQL Injection
-  # ============================================
-
-  - id: php-taint-sqli-query
-    mode: taint
-    message: PHP SQL injection - user input in database query
+  - id: php-post-in-query
+    pattern: mysqli_query($CONN, $_POST[$X])
+    message: PHP SQL injection - direct $_POST in query
     languages: [php]
     severity: ERROR
-    pattern-sources:
-      - pattern: $_GET
-      - pattern: $_POST
-      - pattern: $_REQUEST
-    pattern-sinks:
-      - pattern: mysqli_query($CONN, $SINK)
-      - pattern: $PDO->query($SINK)
-      - pattern: $MYSQLI->query($SINK)
-    pattern-sanitizers:
-      - pattern: mysqli_real_escape_string(...)
-      - pattern: intval(...)
-      - pattern: (int)$X
 
-  # ============================================
-  # Taint Mode - File Operations
-  # ============================================
-
-  - id: php-taint-file-read
-    mode: taint
-    message: PHP file read with user input - path traversal/SSRF risk
+  - id: php-request-in-query
+    pattern: mysqli_query($CONN, $_REQUEST[$X])
+    message: PHP SQL injection - direct $_REQUEST in query
     languages: [php]
     severity: ERROR
-    pattern-sources:
-      - pattern: $_GET
-      - pattern: $_POST
-      - pattern: $_REQUEST
-    pattern-sinks:
-      - pattern: file_get_contents($SINK)
-      - pattern: fopen($SINK, ...)
-      - pattern: readfile($SINK)
-    pattern-sanitizers:
-      - pattern: basename(...)
-      - pattern: realpath(...)
 
-  - id: php-taint-include
-    mode: taint
-    message: PHP file inclusion with user input - LFI/RFI vulnerability
+  - id: php-get-in-shell
+    pattern: shell_exec($_GET[$X])
+    message: PHP command injection - direct $_GET in shell_exec
     languages: [php]
     severity: ERROR
-    pattern-sources:
-      - pattern: $_GET
-      - pattern: $_POST
-      - pattern: $_REQUEST
-    pattern-sinks:
-      - pattern: include($SINK)
-      - pattern: include_once($SINK)
-      - pattern: require($SINK)
-      - pattern: require_once($SINK)
-    pattern-sanitizers:
-      - pattern: basename(...)
 
-  # ============================================
-  # Taint Mode - Command Injection
-  # ============================================
-
-  - id: php-taint-command-injection
-    mode: taint
-    message: PHP command injection - user input in shell command
+  - id: php-get-in-system
+    pattern: system($_GET[$X])
+    message: PHP command injection - direct $_GET in system
     languages: [php]
     severity: ERROR
-    pattern-sources:
-      - pattern: $_GET
-      - pattern: $_POST
-      - pattern: $_REQUEST
-    pattern-sinks:
-      - pattern: shell_exec($SINK)
-      - pattern: exec($SINK)
-      - pattern: system($SINK)
-      - pattern: passthru($SINK)
-    pattern-sanitizers:
-      - pattern: escapeshellarg(...)
-      - pattern: escapeshellcmd(...)
 
-  # ============================================
-  # Taint Mode - XXE
-  # ============================================
-
-  - id: php-taint-xxe
-    mode: taint
-    message: PHP XXE vulnerability - user input in XML parsing
+  - id: php-get-in-exec
+    pattern: exec($_GET[$X])
+    message: PHP command injection - direct $_GET in exec
     languages: [php]
     severity: ERROR
-    pattern-sources:
-      - pattern: $_GET
-      - pattern: $_POST
-      - pattern: $_REQUEST
-      - pattern: file_get_contents("php://input")
-    pattern-sinks:
-      - pattern: simplexml_load_string($SINK)
-      - pattern: new SimpleXMLElement($SINK)
-      - pattern: $DOM->loadXML($SINK)
+
+  - id: php-get-in-include
+    pattern: include($_GET[$X])
+    message: PHP LFI/RFI - direct $_GET in include
+    languages: [php]
+    severity: ERROR
+
+  - id: php-get-in-require
+    pattern: require($_GET[$X])
+    message: PHP LFI/RFI - direct $_GET in require
+    languages: [php]
+    severity: ERROR
+
+  - id: php-get-in-file
+    pattern: file_get_contents($_GET[$X])
+    message: PHP SSRF/path traversal - direct $_GET in file_get_contents
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-get
+    pattern: echo $_GET[$X]
+    message: PHP XSS - direct echo of $_GET without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-post
+    pattern: echo $_POST[$X]
+    message: PHP XSS - direct echo of $_POST without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-echo-request
+    pattern: echo $_REQUEST[$X]
+    message: PHP XSS - direct echo of $_REQUEST without escaping
+    languages: [php]
+    severity: ERROR
+
+  - id: php-print-get
+    pattern: print($_GET[$X])
+    message: PHP XSS - direct print of $_GET without escaping
+    languages: [php]
+    severity: ERROR
 
   # ============================================
   # Laravel Security
@@ -428,7 +389,7 @@ rules:
   # ============================================
 
   - id: php-symfony-raw-filter
-    pattern: '|raw'
+    pattern: '{{ $VAR|raw }}'
     message: Symfony Twig raw filter - XSS risk
     languages: [php]
     severity: WARNING
