@@ -1,0 +1,376 @@
+# Solidity/Smart Contract Security Rules
+# Based on semgrep-rules/solidity - https://github.com/semgrep/semgrep-rules
+rules:
+  # ============================================
+  # Critical: Access Control
+  # ============================================
+
+  - id: sol-accessible-selfdestruct
+    message: Contract can be destructed by anyone - missing access control on selfdestruct
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - https://www.parity.io/blog/a-postmortem-on-the-parity-multi-sig-library-self-destruct/
+    patterns:
+      - pattern-either:
+          - pattern: selfdestruct($ADDR)
+          - pattern: suicide($ADDR)
+      - pattern-not-inside: |
+          function $FUNC(...) onlyOwner { ... }
+      - pattern-not-inside: |
+          require(msg.sender == owner, ...);
+          ...
+
+  - id: sol-unrestricted-transferownership
+    message: transferOwnership() lacks access control - anyone can take ownership
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    patterns:
+      - pattern-inside: |
+          function transferOwnership($ADDR) public { ... }
+      - pattern-not-inside: |
+          function transferOwnership($ADDR) public onlyOwner { ... }
+
+  # ============================================
+  # Critical: Reentrancy
+  # ============================================
+
+  - id: sol-erc721-reentrancy
+    message: ERC721 safeTransferFrom/safeMint can trigger reentrancy via onERC721Received callback
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      references:
+        - https://blocksecteam.medium.com/when-safemint-becomes-unsafe-lessons-from-the-hypebears-security-incident-2965209bda2a
+    pattern: _checkOnERC721Received(...)
+
+  - id: sol-erc777-reentrancy
+    message: ERC777 tokens have send/receive hooks that can trigger reentrancy
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+    pattern-either:
+      - pattern: IERC777($TOKEN).send(...)
+      - pattern: IERC777($TOKEN).operatorSend(...)
+
+  - id: sol-external-call-state-change
+    message: State change after external call - potential reentrancy vulnerability
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      references:
+        - https://consensys.github.io/smart-contract-best-practices/attacks/reentrancy/
+    patterns:
+      - pattern-inside: |
+          function $FUNC(...) {
+            ...
+          }
+      - pattern: |
+          $ADDR.call{...}(...);
+          ...
+          $STATE = $VALUE;
+
+  # ============================================
+  # Critical: Arbitrary Calls
+  # ============================================
+
+  - id: sol-arbitrary-low-level-call
+    message: Arbitrary address with controlled calldata in low-level call - potential code injection
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://blocksecteam.medium.com/li-fi-attack-a-cross-chain-bridge-vulnerability-no-its-due-to-unchecked-external-call-c31e7dadf60f
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              function $F(..., address $ADDR, ..., bytes calldata $DATA, ...) external { ... }
+          - pattern-inside: |
+              function $F(..., address $ADDR, ..., bytes calldata $DATA, ...) public { ... }
+      - pattern-either:
+          - pattern: $ADDR.call($DATA)
+          - pattern: $ADDR.call{value:$V}($DATA)
+
+  - id: sol-delegatecall-to-arbitrary-address
+    message: Delegatecall to user-controlled address - attacker can execute arbitrary code in contract context
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://entethalliance.org/specs/ethtrust-sl/v1/#req-1-delegatecall
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              function $ANY(..., address $CONTRACT, ...) public {...}
+          - pattern-inside: |
+              function $ANY(..., address $CONTRACT, ...) external {...}
+      - pattern-either:
+          - pattern: $CONTRACT.delegatecall(...)
+          - pattern: $CONTRACT.delegatecall{gas:$GAS}(...)
+
+  # ============================================
+  # High: Integer Issues
+  # ============================================
+
+  - id: sol-unchecked-arithmetic
+    message: Unchecked arithmetic operation - potential overflow/underflow (Solidity <0.8.0)
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow or Wraparound"
+    patterns:
+      - pattern-inside: |
+          unchecked {
+            ...
+          }
+      - pattern-either:
+          - pattern: $X + $Y
+          - pattern: $X - $Y
+          - pattern: $X * $Y
+
+  # ============================================
+  # High: Token Security
+  # ============================================
+
+  - id: sol-erc20-public-burn
+    message: Public burn function without access control - anyone can burn tokens
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    patterns:
+      - pattern-either:
+          - pattern: |
+              function burn($AMT) public {
+                ...
+              }
+          - pattern: |
+              function burn($AMT) external {
+                ...
+              }
+      - pattern-not-inside: |
+          function burn(...) ... onlyOwner { ... }
+
+  - id: sol-arbitrary-transferfrom
+    message: ERC721/ERC20 transferFrom with user-controlled from address - potential unauthorized transfer
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              function $F(..., address $FROM, ...) external { ... }
+          - pattern-inside: |
+              function $F(..., address $FROM, ...) public { ... }
+      - pattern-either:
+          - pattern: $TOKEN.transferFrom($FROM, ...)
+          - pattern: IERC20($TOKEN).transferFrom($FROM, ...)
+          - pattern: IERC721($TOKEN).transferFrom($FROM, ...)
+
+  # ============================================
+  # High: Oracle & Price Manipulation
+  # ============================================
+
+  - id: sol-basic-oracle-manipulation
+    message: Single-block price oracle - vulnerable to flash loan manipulation
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      references:
+        - https://www.paradigm.xyz/2020/11/so-you-want-to-use-a-price-oracle
+    patterns:
+      - pattern-either:
+          - pattern: $PAIR.getReserves()
+          - pattern: IUniswapV2Pair($PAIR).getReserves()
+
+  - id: sol-no-slippage-check
+    message: DEX swap without slippage protection - vulnerable to sandwich attacks
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+    patterns:
+      - pattern-either:
+          - pattern: $ROUTER.swapExactTokensForTokens(..., 0, ...)
+          - pattern: $ROUTER.swapExactETHForTokens{...}(..., 0, ...)
+          - pattern: IUniswapV2Router($R).swapExactTokensForTokens(..., 0, ...)
+
+  # ============================================
+  # Medium: Randomness
+  # ============================================
+
+  - id: sol-weak-randomness-blockhash
+    message: Using blockhash for randomness - miners can manipulate this value
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+    pattern-either:
+      - pattern: blockhash($BLOCK)
+      - pattern: block.timestamp
+      - pattern: block.difficulty
+      - pattern: block.prevrandao
+
+  - id: sol-incorrect-blockhash
+    message: blockhash(block.number) always returns 0 - use block.number - 1
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+    pattern: blockhash(block.number)
+
+  # ============================================
+  # Medium: Signature Issues
+  # ============================================
+
+  - id: sol-ecrecover-malleable
+    message: ecrecover is vulnerable to signature malleability - use OpenZeppelin ECDSA
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      references:
+        - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/ECDSA.sol
+    pattern: ecrecover($HASH, $V, $R, $S)
+
+  - id: sol-missing-zero-address-check
+    message: Missing zero address validation - tokens/ETH could be lost
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              function $F(..., address $ADDR, ...) external { ... }
+          - pattern-inside: |
+              function $F(..., address $ADDR, ...) public { ... }
+      - pattern-either:
+          - pattern: $ADDR.transfer(...)
+          - pattern: $TOKEN.transfer($ADDR, ...)
+      - pattern-not-inside: |
+          require($ADDR != address(0), ...);
+          ...
+
+  # ============================================
+  # Medium: Proxy Patterns
+  # ============================================
+
+  - id: sol-proxy-storage-collision
+    message: Potential storage collision in proxy pattern - use EIP-1967 slots
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-706: Use of Incorrectly-Resolved Name or Reference"
+      references:
+        - https://eips.ethereum.org/EIPS/eip-1967
+    patterns:
+      - pattern-inside: |
+          contract $PROXY {
+            ...
+            address $IMPL;
+            ...
+          }
+      - pattern: delegatecall(...)
+
+  # ============================================
+  # Info: Best Practices
+  # ============================================
+
+  - id: sol-use-ownable2step
+    message: Consider using Ownable2Step instead of Ownable for safer ownership transfers
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+      references:
+        - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable2Step.sol
+    pattern: import "@openzeppelin/contracts/access/Ownable.sol"
+
+  - id: sol-tx-origin-auth
+    message: tx.origin used for authorization - vulnerable to phishing attacks
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-477: Use of Obsolete Function"
+    patterns:
+      - pattern-either:
+          - pattern: require(tx.origin == $ADDR, ...)
+          - pattern: if (tx.origin == $ADDR) { ... }
+          - pattern: tx.origin == owner
+
+  - id: sol-encode-packed-collision
+    message: abi.encodePacked with multiple dynamic types - potential hash collision
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+    pattern: abi.encodePacked($A, $B, ...)
+
+  - id: sol-deprecated-suicide
+    message: suicide() is deprecated - use selfdestruct() instead
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+    pattern: suicide(...)
+
+  - id: sol-floating-pragma
+    message: Floating pragma version - pin to a specific version for production
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+    pattern-regex: 'pragma solidity \^'
+
+  - id: sol-missing-visibility
+    message: Function missing explicit visibility specifier
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    patterns:
+      - pattern: |
+          function $FUNC(...) {
+            ...
+          }
+      - pattern-not: |
+          function $FUNC(...) public { ... }
+      - pattern-not: |
+          function $FUNC(...) external { ... }
+      - pattern-not: |
+          function $FUNC(...) internal { ... }
+      - pattern-not: |
+          function $FUNC(...) private { ... }
+

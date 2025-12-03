@@ -42,3 +42,5 @@ vite.config.ts.timestamp-*
 
 # Reference project (it has its own repo)
 vibeship-ref/
+scanner/semgrep-rules-reference/
+scanner/rules/opengrep/

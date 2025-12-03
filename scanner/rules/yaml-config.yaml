@@ -1,0 +1,323 @@
+# YAML Configuration Security Rules
+# Based on semgrep-rules/yaml - https://github.com/semgrep/semgrep-rules
+# Covers GitHub Actions, Kubernetes, Docker Compose
+rules:
+  # ============================================
+  # GitHub Actions - Command Injection
+  # ============================================
+
+  - id: gha-run-shell-injection
+    message: >-
+      Using ${{...}} with untrusted github context data in a run: step could allow code injection.
+      Use env: to store the data first, then reference with "$ENV_VAR".
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+      references:
+        - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections
+        - https://securitylab.github.com/research/github-actions-untrusted-input/
+    pattern-regex: 'run:.*\$\{\{\s*github\.event\.(issue|pull_request|comment|review|discussion)\.(title|body)'
+
+  - id: gha-head-ref-injection
+    message: >-
+      github.head_ref is user-controlled and can be used for injection attacks.
+      Validate the branch name or use env: variable.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+    pattern-regex: 'run:.*\$\{\{\s*github\.head_ref\s*\}\}'
+
+  - id: gha-curl-pipe-bash
+    message: >-
+      Piping curl to bash is dangerous - an attacker controlling the URL could execute arbitrary code.
+      Download the script first, verify its contents, then execute.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-94: Code Injection"
+    pattern-regex: 'curl.*\|\s*(bash|sh|zsh)'
+
+  # ============================================
+  # GitHub Actions - Dangerous Triggers
+  # ============================================
+
+  - id: gha-pull-request-target-checkout
+    message: >-
+      Using pull_request_target with checkout of PR code gives untrusted code access to secrets.
+      This is a critical security vulnerability - see GitHub Security Lab advisory.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-913: Improper Control of Dynamically-Managed Code Resources"
+      references:
+        - https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+    patterns:
+      - pattern-regex: 'pull_request_target'
+      - pattern-regex: 'actions/checkout'
+      - pattern-regex: 'ref:.*\$\{\{\s*github\.event\.pull_request'
+
+  - id: gha-workflow-dispatch-no-validation
+    message: >-
+      workflow_dispatch inputs should be validated before use.
+      User-provided inputs could contain malicious values.
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+    pattern-regex: '\$\{\{\s*github\.event\.inputs\.'
+
+  # ============================================
+  # GitHub Actions - Secrets
+  # ============================================
+
+  - id: gha-secrets-in-output
+    message: >-
+      Secrets should not be written to workflow outputs as they may be logged.
+      Use GITHUB_OUTPUT file instead.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+    pattern-regex: 'echo.*\$\{\{\s*secrets\.'
+
+  - id: gha-hardcoded-token
+    message: >-
+      Hardcoded token or credential in workflow file. Use GitHub secrets instead.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+    pattern-regex: '(token|password|api_key|apikey|secret):\s*["\'][^$][^"\']{8,}'
+
+  # ============================================
+  # Kubernetes - Privileged Containers
+  # ============================================
+
+  - id: k8s-privileged-container
+    message: >-
+      Container running in privileged mode has full host access.
+      This enables container escape and host compromise. Remove privileged: true.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+      references:
+        - https://kubernetes.io/docs/concepts/security/pod-security-standards/
+    pattern-regex: 'privileged:\s*true'
+
+  - id: k8s-allow-privilege-escalation
+    message: >-
+      allowPrivilegeEscalation enables setuid binaries to gain privileges.
+      Set to false unless specifically required.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+    pattern-regex: 'allowPrivilegeEscalation:\s*true'
+
+  - id: k8s-run-as-root
+    message: >-
+      Container running as root (UID 0). Use runAsNonRoot: true or specify a non-root runAsUser.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+    pattern-regex: 'runAsUser:\s*0\b'
+
+  # ============================================
+  # Kubernetes - Host Access
+  # ============================================
+
+  - id: k8s-hostnetwork
+    message: >-
+      Pod using host network namespace. This gives access to host network interfaces and services.
+      Remove hostNetwork: true unless absolutely required.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-668: Exposure of Resource to Wrong Sphere"
+    pattern-regex: 'hostNetwork:\s*true'
+
+  - id: k8s-hostpid
+    message: >-
+      Pod using host PID namespace. This exposes host processes to the container.
+      Remove hostPID: true unless absolutely required.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-668: Exposure of Resource to Wrong Sphere"
+    pattern-regex: 'hostPID:\s*true'
+
+  - id: k8s-hostipc
+    message: >-
+      Pod using host IPC namespace. This allows inter-process communication with host processes.
+      Remove hostIPC: true unless absolutely required.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-668: Exposure of Resource to Wrong Sphere"
+    pattern-regex: 'hostIPC:\s*true'
+
+  - id: k8s-docker-socket
+    message: >-
+      Docker socket mounted in container. This gives container full control over Docker daemon.
+      Critical security risk - container escape possible.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+    pattern-regex: '/var/run/docker\.sock'
+
+  # ============================================
+  # Kubernetes - RBAC
+  # ============================================
+
+  - id: k8s-cluster-admin-binding
+    message: >-
+      ClusterRoleBinding to cluster-admin grants full cluster access.
+      Use more restrictive roles following principle of least privilege.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+    patterns:
+      - pattern-regex: 'kind:\s*ClusterRoleBinding'
+      - pattern-regex: 'name:\s*cluster-admin'
+
+  - id: k8s-wildcard-rbac
+    message: >-
+      RBAC rule with wildcard (*) grants excessive permissions.
+      Specify explicit resources and verbs.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+    patterns:
+      - pattern-regex: 'kind:\s*(Cluster)?Role\b'
+      - pattern-regex: 'resources:\s*\[\s*["\']?\*["\']?\s*\]'
+
+  # ============================================
+  # Docker Compose - Security
+  # ============================================
+
+  - id: docker-compose-privileged
+    message: >-
+      Docker Compose service running in privileged mode.
+      This grants full host capabilities. Remove privileged: true.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+    patterns:
+      - pattern-regex: 'services:'
+      - pattern-regex: 'privileged:\s*true'
+
+  - id: docker-compose-cap-add-all
+    message: >-
+      Adding all Linux capabilities defeats container isolation.
+      Only add specific capabilities that are needed.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+    patterns:
+      - pattern-regex: 'cap_add:'
+      - pattern-regex: '- ALL'
+
+  - id: docker-compose-no-new-privileges
+    message: >-
+      Container allows privilege escalation via setuid/setgid.
+      Add 'no-new-privileges:true' to security_opt.
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-732: Incorrect Permission Assignment"
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html
+    patterns:
+      - pattern-regex: 'services:'
+      - pattern-regex: 'image:'
+      - pattern-not-regex: 'no-new-privileges'
+
+  # ============================================
+  # Docker Compose - Network Exposure
+  # ============================================
+
+  - id: docker-compose-host-network
+    message: >-
+      Docker container using host network mode exposes all host ports.
+      Use bridge networking with explicit port mappings.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-668: Exposure of Resource to Wrong Sphere"
+    pattern-regex: 'network_mode:\s*["\']?host["\']?'
+
+  - id: docker-compose-port-binding-all
+    message: >-
+      Port bound to all interfaces (0.0.0.0). Consider binding to 127.0.0.1 for local-only access.
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-668: Exposure of Resource to Wrong Sphere"
+    pattern-regex: 'ports:[\s\S]*?["\']?0\.0\.0\.0:'
+
+  # ============================================
+  # General YAML - Environment Variables
+  # ============================================
+
+  - id: yaml-hardcoded-password
+    message: >-
+      Hardcoded password in configuration file.
+      Use environment variables or secrets management.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+    pattern-regex: '(password|passwd|pwd):\s*["\'][^$\{][^"\']{4,}'
+
+  - id: yaml-hardcoded-api-key
+    message: >-
+      Hardcoded API key in configuration file.
+      Use environment variables or secrets management.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+    pattern-regex: '(api_key|apikey|api-key):\s*["\'][a-zA-Z0-9]{16,}'
+
+  - id: yaml-debug-enabled
+    message: >-
+      Debug mode enabled in configuration. Disable for production deployment.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-489: Active Debug Code"
+    pattern-regex: '(debug|DEBUG):\s*(true|True|1|yes|on)'
+

@@ -1,0 +1,188 @@
+# Cross-Language URL/Endpoint Detection Rules
+# Detects localhost, dev URLs, and other environment-specific configs
+rules:
+  # ============================================
+  # Localhost URLs
+  # ============================================
+
+  - id: shared-localhost-http
+    pattern-regex: 'http://localhost[:/]'
+    message: Localhost URL hardcoded - use environment variables for different environments
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  - id: shared-localhost-127
+    pattern-regex: 'http://127\.0\.0\.1[:/]'
+    message: Localhost (127.0.0.1) URL hardcoded - use environment variables
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  - id: shared-localhost-0000
+    pattern-regex: 'http://0\.0\.0\.0[:/]'
+    message: 0.0.0.0 binding detected - verify this is intentional for production
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  - id: shared-localhost-https
+    pattern-regex: 'https://localhost[:/]'
+    message: Localhost HTTPS URL - typically development only
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: INFO
+
+  # ============================================
+  # Development/Staging URLs
+  # ============================================
+
+  - id: shared-dev-subdomain
+    pattern-regex: 'https?://(dev|development|staging|stage|test|qa|uat)\.[a-zA-Z0-9\-]+\.[a-zA-Z]{2,}'
+    message: Development/staging URL detected - should use environment variables
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  - id: shared-local-domain
+    pattern-regex: 'https?://[a-zA-Z0-9\-]+\.local[:/]'
+    message: .local domain detected - development only
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  - id: shared-internal-domain
+    pattern-regex: 'https?://[a-zA-Z0-9\-]+\.internal[:/]'
+    message: .internal domain detected - should not be in client code
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  - id: shared-ngrok-url
+    pattern-regex: 'https?://[a-zA-Z0-9\-]+\.ngrok\.(io|app)'
+    message: ngrok tunnel URL detected - development/testing only
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  - id: shared-localtunnel-url
+    pattern-regex: 'https?://[a-zA-Z0-9\-]+\.loca\.lt'
+    message: localtunnel URL detected - development only
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  # ============================================
+  # Vercel/Netlify Preview URLs
+  # ============================================
+
+  - id: shared-vercel-preview
+    pattern-regex: 'https://[a-zA-Z0-9\-]+-[a-zA-Z0-9]+\.vercel\.app'
+    message: Vercel preview URL detected - should use environment variables
+    languages: [python, javascript, typescript]
+    severity: INFO
+
+  - id: shared-netlify-preview
+    pattern-regex: 'https://[a-zA-Z0-9\-]+--[a-zA-Z0-9\-]+\.netlify\.app'
+    message: Netlify preview URL detected - should use environment variables
+    languages: [python, javascript, typescript]
+    severity: INFO
+
+  # ============================================
+  # Hardcoded Ports (Common Dev Ports)
+  # ============================================
+
+  - id: shared-port-3000
+    pattern-regex: '(localhost|127\.0\.0\.1):3000'
+    message: Port 3000 hardcoded (common React/Node dev port)
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: INFO
+
+  - id: shared-port-5000
+    pattern-regex: '(localhost|127\.0\.0\.1):5000'
+    message: Port 5000 hardcoded (common Flask dev port)
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: INFO
+
+  - id: shared-port-8000
+    pattern-regex: '(localhost|127\.0\.0\.1):8000'
+    message: Port 8000 hardcoded (common Django/FastAPI dev port)
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: INFO
+
+  - id: shared-port-8080
+    pattern-regex: '(localhost|127\.0\.0\.1):8080'
+    message: Port 8080 hardcoded (common Java/Go dev port)
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: INFO
+
+  - id: shared-port-4200
+    pattern-regex: '(localhost|127\.0\.0\.1):4200'
+    message: Port 4200 hardcoded (common Angular dev port)
+    languages: [python, javascript, typescript]
+    severity: INFO
+
+  - id: shared-port-5173
+    pattern-regex: '(localhost|127\.0\.0\.1):5173'
+    message: Port 5173 hardcoded (Vite dev server)
+    languages: [python, javascript, typescript]
+    severity: INFO
+
+  # ============================================
+  # API Endpoint Patterns
+  # ============================================
+
+  - id: shared-api-v1-localhost
+    pattern-regex: 'http://localhost[^"\']*(/api/|/v[0-9]/)'
+    message: Local API endpoint hardcoded - use BASE_URL environment variable
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  - id: shared-graphql-localhost
+    pattern-regex: 'http://localhost[^"\']*(/graphql)'
+    message: Local GraphQL endpoint hardcoded
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  # ============================================
+  # Database Hosts
+  # ============================================
+
+  - id: shared-db-localhost
+    patterns:
+      - pattern: 'host = "localhost"'
+      - pattern: 'host: "localhost"'
+      - pattern: '"host": "localhost"'
+      - pattern: 'DB_HOST=localhost'
+    message: Database host set to localhost - use environment variables
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  # ============================================
+  # WebSocket URLs
+  # ============================================
+
+  - id: shared-ws-localhost
+    pattern-regex: 'ws://localhost[:/]'
+    message: WebSocket localhost URL - use environment variables
+    languages: [python, javascript, typescript, go, java]
+    severity: WARNING
+
+  - id: shared-wss-localhost
+    pattern-regex: 'wss://localhost[:/]'
+    message: Secure WebSocket localhost URL - development only
+    languages: [python, javascript, typescript, go, java]
+    severity: INFO
+
+  # ============================================
+  # IP Address Patterns
+  # ============================================
+
+  - id: shared-private-ip-10
+    pattern-regex: 'https?://10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}[:/]'
+    message: Private IP (10.x.x.x) hardcoded - internal network only
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  - id: shared-private-ip-172
+    pattern-regex: 'https?://172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}[:/]'
+    message: Private IP (172.16-31.x.x) hardcoded - internal network only
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING
+
+  - id: shared-private-ip-192
+    pattern-regex: 'https?://192\.168\.[0-9]{1,3}\.[0-9]{1,3}[:/]'
+    message: Private IP (192.168.x.x) hardcoded - internal network only
+    languages: [python, javascript, typescript, go, java, ruby, php]
+    severity: WARNING

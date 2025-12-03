@@ -1,0 +1,152 @@
+# Cross-Language Comment Detection Rules
+# Detects TODO, FIXME, and incomplete implementation markers
+rules:
+  # ============================================
+  # Security TODOs
+  # ============================================
+
+  - id: shared-todo-security
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME|XXX|HACK).*[Ss]ecur'
+    message: Security-related TODO/FIXME found - address before production
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-todo-auth
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Aa]uth(entication|orization)?'
+    message: Authentication/authorization TODO found - critical for security
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-todo-validate
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Vv]alidat'
+    message: Validation TODO found - may indicate missing input validation
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-todo-sanitize
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Ss]anitiz'
+    message: Sanitization TODO found - may indicate XSS/injection risk
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-todo-encrypt
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Ee]ncrypt'
+    message: Encryption TODO found - sensitive data may be unprotected
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-todo-hash
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Hh]ash'
+    message: Hashing TODO found - passwords may be stored insecurely
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  # ============================================
+  # Incomplete Implementation
+  # ============================================
+
+  - id: shared-todo-implement
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Ii]mplement'
+    message: Implementation TODO found - feature may be incomplete
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: INFO
+
+  - id: shared-todo-error-handling
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*(error|exception).*handl'
+    message: Error handling TODO - errors may not be properly handled
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-todo-rate-limit
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Rr]ate.?[Ll]imit'
+    message: Rate limiting TODO - API may be vulnerable to abuse
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-todo-logging
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Ll]og'
+    message: Logging TODO - may affect debugging/audit capabilities
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: INFO
+
+  # ============================================
+  # Temporary/Hardcoded Values
+  # ============================================
+
+  - id: shared-todo-hardcoded
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Hh]ardcoded'
+    message: Hardcoded value TODO - should be moved to config
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-todo-temporary
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*(temporary|temp|tmp)'
+    message: Temporary code TODO - remove before production
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: INFO
+
+  - id: shared-todo-remove
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Rr]emove'
+    message: Code marked for removal - clean up before production
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: INFO
+
+  # ============================================
+  # Debug/Test Code
+  # ============================================
+
+  - id: shared-todo-debug
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Dd]ebug'
+    message: Debug TODO found - ensure debug code is removed
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: INFO
+
+  - id: shared-todo-test
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(TODO|FIXME).*[Tt]est'
+    message: Test-related TODO found
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: INFO
+
+  # ============================================
+  # HACK/XXX/FIXME (Higher Priority)
+  # ============================================
+
+  - id: shared-hack-comment
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*HACK[:\s]'
+    message: HACK comment found - technical debt or workaround
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: INFO
+
+  - id: shared-xxx-comment
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*XXX[:\s]'
+    message: XXX comment found - indicates problematic code
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-fixme-urgent
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*FIXME[:\s]'
+    message: FIXME found - known issue that needs fixing
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: INFO
+
+  # ============================================
+  # Dangerous Comments
+  # ============================================
+
+  - id: shared-comment-disable-security
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*(nosec|noqa|nolint|@suppress|eslint-disable|NOSONAR)'
+    message: Security/linting suppression comment - verify this is justified
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-comment-skip-validation
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*[Ss]kip.*[Vv]alidat'
+    message: Validation skip comment - potential security bypass
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
+
+  - id: shared-comment-unsafe
+    pattern-regex: '(//|#|/\*|\*|--|<!--|%)\s*[Uu]nsafe'
+    message: Unsafe code comment - review carefully
+    languages: [python, javascript, typescript, go, java, ruby, php, csharp]
+    severity: WARNING
