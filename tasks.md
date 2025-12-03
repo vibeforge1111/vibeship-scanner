@@ -63,6 +63,12 @@
 - [x] Add sensitive data exposure rules (password/token in response)
 - [x] Add insecure randomness detection (Math.random, weak token generation)
 - [x] Add 25+ VAmPI-specific Python patterns (SQL injection f-string, mass assignment, BOLA, user enumeration, ReDoS, weak JWT, debug endpoints, plaintext passwords)
+- [x] Fix YAML syntax errors in python.yaml (curly braces in pattern-regex fields)
+- [x] Add enhanced ReDoS detection (nested group quantifiers like (a+)+)
+- [x] VAmPI vulnerability coverage: 8/9 (45 findings, up from 2)
+- [x] Fix recent scans refresh (afterNavigate + visibilitychange listeners)
+- [x] Landing page styling (3-column grid, bigger step numbers/headings)
+- [x] Remove "Just vibes." from CTA section
 
 ## Environment Variables
 
