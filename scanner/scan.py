@@ -573,38 +573,56 @@ def main():
     branch = sys.argv[2] if len(sys.argv) > 2 else 'main'
 
     start_time = datetime.now()
+    timing = {}  # Track timing for each phase
     print(f"Starting scan of {repo_url}", file=sys.stderr)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         repo_dir = os.path.join(temp_dir, 'repo')
 
+        # Clone phase
+        clone_start = datetime.now()
         print(json.dumps({'step': 'clone', 'message': 'Cloning repository...'}), flush=True)
         if not clone_repo(repo_url, repo_dir, branch):
             print(json.dumps({'error': 'Failed to clone repository'}))
             sys.exit(1)
+        timing['clone'] = int((datetime.now() - clone_start).total_seconds() * 1000)
+        print(f"Clone completed in {timing['clone']}ms", file=sys.stderr)
 
+        # Detect phase
+        detect_start = datetime.now()
         print(json.dumps({'step': 'detect', 'message': 'Detecting stack...'}), flush=True)
         stack = detect_stack(repo_dir)
-        print(f"Detected stack: {stack}", file=sys.stderr)
+        timing['detect'] = int((datetime.now() - detect_start).total_seconds() * 1000)
+        print(f"Detected stack: {stack} in {timing['detect']}ms", file=sys.stderr)
 
         # Run all scanners in PARALLEL for speed optimization
+        scan_start = datetime.now()
         print(json.dumps({'step': 'scan', 'message': 'Running security scans in parallel...'}), flush=True)
 
         opengrep_findings = []
         trivy_findings = []
         gitleaks_findings = []
+        scanner_times = {}  # Track individual scanner times
 
         with ThreadPoolExecutor(max_workers=3) as executor:
-            # Submit all scanner jobs
-            futures = {
-                executor.submit(run_opengrep, repo_dir, stack.get('languages', [])): 'opengrep',
-                executor.submit(run_trivy, repo_dir): 'trivy',
-                executor.submit(run_gitleaks, repo_dir): 'gitleaks',
-            }
+            # Submit all scanner jobs with their start times
+            scanner_start_times = {}
+            futures = {}
+
+            for scanner_name, scanner_func, args in [
+                ('opengrep', run_opengrep, (repo_dir, stack.get('languages', []))),
+                ('trivy', run_trivy, (repo_dir,)),
+                ('gitleaks', run_gitleaks, (repo_dir,)),
+            ]:
+                scanner_start_times[scanner_name] = datetime.now()
+                future = executor.submit(scanner_func, *args)
+                futures[future] = scanner_name
 
             # Collect results as they complete
             for future in as_completed(futures):
                 scanner_name = futures[future]
+                scanner_end = datetime.now()
+                scanner_times[scanner_name] = int((scanner_end - scanner_start_times[scanner_name]).total_seconds() * 1000)
                 try:
                     result = future.result()
                     if scanner_name == 'opengrep':
@@ -613,9 +631,13 @@ def main():
                         trivy_findings = result
                     elif scanner_name == 'gitleaks':
                         gitleaks_findings = result
-                    print(f"{scanner_name} completed with {len(result)} findings", file=sys.stderr)
+                    print(f"{scanner_name} completed in {scanner_times[scanner_name]}ms with {len(result)} findings", file=sys.stderr)
                 except Exception as e:
-                    print(f"{scanner_name} failed: {e}", file=sys.stderr)
+                    print(f"{scanner_name} failed in {scanner_times[scanner_name]}ms: {e}", file=sys.stderr)
+
+        timing['scan'] = int((datetime.now() - scan_start).total_seconds() * 1000)
+        timing['scanners'] = scanner_times
+        print(f"All scans completed in {timing['scan']}ms (parallel)", file=sys.stderr)
 
         all_findings = opengrep_findings + trivy_findings + gitleaks_findings
         print(f"Total raw findings: {len(all_findings)}", file=sys.stderr)
@@ -631,11 +653,33 @@ def main():
 
         end_time = datetime.now()
         duration_ms = int((end_time - start_time).total_seconds() * 1000)
+        timing['total'] = duration_ms
+
+        # Create human-readable duration string
+        if duration_ms < 1000:
+            duration_human = f"{duration_ms}ms"
+        elif duration_ms < 60000:
+            duration_human = f"{duration_ms / 1000:.1f}s"
+        else:
+            minutes = duration_ms // 60000
+            seconds = (duration_ms % 60000) / 1000
+            duration_human = f"{minutes}m {seconds:.0f}s"
 
         counts = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0}
         for f in all_findings:
             sev = f.get('severity', 'info')
             counts[sev] = counts.get(sev, 0) + 1
+
+        print(f"\n=== SCAN COMPLETE ===", file=sys.stderr)
+        print(f"Total time: {duration_human} ({duration_ms}ms)", file=sys.stderr)
+        print(f"  Clone: {timing.get('clone', 0)}ms", file=sys.stderr)
+        print(f"  Detect: {timing.get('detect', 0)}ms", file=sys.stderr)
+        print(f"  Scan: {timing.get('scan', 0)}ms (parallel)", file=sys.stderr)
+        for scanner, ms in timing.get('scanners', {}).items():
+            print(f"    - {scanner}: {ms}ms", file=sys.stderr)
+        print(f"  Findings: {len(all_findings)} (after dedup)", file=sys.stderr)
+        print(f"  Score: {score} ({grade})", file=sys.stderr)
+        print(f"=====================\n", file=sys.stderr)
 
         result = {
             'status': 'complete',
@@ -645,7 +689,9 @@ def main():
             'summary': counts,
             'stack': stack,
             'findings': all_findings,
-            'duration': duration_ms
+            'duration': duration_ms,
+            'durationHuman': duration_human,
+            'timing': timing
         }
 
         print(json.dumps({'step': 'complete', 'result': result}), flush=True)
