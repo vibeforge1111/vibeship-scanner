@@ -62,6 +62,7 @@
 - [x] Add broken access control patterns (admin param, user ID comparison)
 - [x] Add sensitive data exposure rules (password/token in response)
 - [x] Add insecure randomness detection (Math.random, weak token generation)
+- [x] Add 25+ VAmPI-specific Python patterns (SQL injection f-string, mass assignment, BOLA, user enumeration, ReDoS, weak JWT, debug endpoints, plaintext passwords)
 
 ## Environment Variables
 

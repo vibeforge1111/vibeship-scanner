@@ -1206,3 +1206,196 @@ rules:
     message: Silent exception swallowing - log or handle errors
     languages: [python]
     severity: WARNING
+
+  # ============================================
+  # VAmPI-Specific Exact Patterns
+  # ============================================
+
+  # SQL Injection - f-string with variable in WHERE clause (VAmPI pattern)
+  - id: py-vampi-sqli-fstring
+    pattern-regex: "user_query\\s*=\\s*f[\"']SELECT.*FROM.*WHERE.*\\{.*\\}"
+    message: SQL injection - f-string with user input in WHERE clause
+    languages: [python]
+    severity: ERROR
+
+  - id: py-vampi-sqli-text-execute
+    pattern: 'db.session.execute(text($QUERY))'
+    message: SQL injection - executing text query (check for f-string interpolation)
+    languages: [python]
+    severity: WARNING
+
+  # Mass Assignment - admin flag from request data (VAmPI pattern)
+  - id: py-vampi-mass-assign-admin-check
+    pattern-regex: "if.*'admin'\\s+in\\s+request_data"
+    message: Mass assignment - checking for admin flag in user input allows privilege escalation
+    languages: [python]
+    severity: ERROR
+
+  - id: py-vampi-mass-assign-admin-value
+    pattern-regex: "if\\s+request_data\\['admin'\\]"
+    message: Mass assignment - admin flag from user input allows privilege escalation
+    languages: [python]
+    severity: ERROR
+
+  - id: py-vampi-admin-from-request
+    pattern: 'admin = $DATA[$KEY]'
+    message: Admin flag from user request - mass assignment privilege escalation
+    languages: [python]
+    severity: ERROR
+
+  # User Enumeration - specific error messages (VAmPI pattern)
+  - id: py-vampi-user-enum-password-error
+    pattern-regex: '"Password is not correct'
+    message: User enumeration - password error message reveals username exists
+    languages: [python]
+    severity: WARNING
+
+  - id: py-vampi-user-enum-username-error
+    pattern-regex: '"Username does not exist'
+    message: User enumeration - error message reveals username does not exist
+    languages: [python]
+    severity: WARNING
+
+  # ReDoS - Complex regex with nested quantifiers (VAmPI pattern)
+  - id: py-vampi-redos-email
+    pattern-regex: "re\\.search\\([rf]?[\"'][^\"']*\\[-\\.\\\\w\\]\\*[^\"']*\\)"
+    message: ReDoS - complex regex with nested quantifiers can cause catastrophic backtracking
+    languages: [python]
+    severity: WARNING
+
+  - id: py-redos-email-validator
+    pattern-regex: "re\\.(search|match)\\([^,]+,\\s*str\\(request"
+    message: ReDoS - regex on user input may be vulnerable to ReDoS attack
+    languages: [python]
+    severity: WARNING
+
+  # Weak JWT Secret - hardcoded in config (VAmPI pattern)
+  - id: py-vampi-weak-jwt-secret
+    pattern-regex: "config\\['SECRET_KEY'\\]\\s*=\\s*['\"]\\w+['\"]"
+    message: Weak JWT secret - hardcoded short/predictable secret enables token forgery
+    languages: [python]
+    severity: ERROR
+
+  - id: py-flask-config-secret-key
+    pattern: "$APP.config['SECRET_KEY'] = '...'"
+    message: Hardcoded Flask SECRET_KEY - use environment variable
+    languages: [python]
+    severity: ERROR
+
+  # Debug Endpoint - exposing all user data (VAmPI pattern)
+  - id: py-vampi-debug-endpoint
+    pattern-regex: "def\\s+debug\\(\\):"
+    message: Debug function exposed - may leak sensitive data
+    languages: [python]
+    severity: WARNING
+
+  - id: py-vampi-debug-all-users
+    pattern: 'User.get_all_users_debug()'
+    message: Debug endpoint exposing all users with sensitive fields
+    languages: [python]
+    severity: ERROR
+
+  - id: py-debug-method-call
+    pattern: '$OBJ.get_all_$TYPE_debug()'
+    message: Debug method exposing sensitive data - remove in production
+    languages: [python]
+    severity: ERROR
+
+  - id: py-json-debug-method
+    pattern: 'return $OBJ.json_debug()'
+    message: Debug JSON method exposes sensitive fields like passwords
+    languages: [python]
+    severity: ERROR
+
+  # BOLA - Object access by URL parameter without auth check (VAmPI pattern)
+  - id: py-vampi-bola-password-update
+    pattern: |
+      user = User.query.filter_by(username=username).first()
+      ...
+      user.password = $VALUE
+    message: BOLA - updating user password by URL username without ownership check
+    languages: [python]
+    severity: ERROR
+
+  - id: py-vampi-bola-book-access
+    pattern: 'Book.query.filter_by(book_title=$TITLE).first()'
+    message: BOLA - accessing book by title without owner verification
+    languages: [python]
+    severity: WARNING
+
+  - id: py-bola-query-url-param
+    pattern: '$MODEL.query.filter_by($FIELD=$URL_PARAM).first()'
+    message: BOLA - object lookup by URL parameter without authorization check
+    languages: [python]
+    severity: WARNING
+
+  # Plaintext Password Comparison (VAmPI pattern)
+  - id: py-vampi-plaintext-password
+    pattern: "request_data.get('password') == user.password"
+    message: Plaintext password comparison - passwords should be hashed
+    languages: [python]
+    severity: ERROR
+
+  - id: py-vampi-plaintext-password-ne
+    pattern: "request_data.get('password') != user.password"
+    message: Plaintext password comparison - passwords should be hashed
+    languages: [python]
+    severity: ERROR
+
+  - id: py-direct-password-equality
+    pattern: '$USER_INPUT == $USER.password'
+    message: Direct password comparison - use check_password_hash
+    languages: [python]
+    severity: ERROR
+
+  # Flask Debug Mode (VAmPI has debug=True)
+  - id: py-vampi-flask-debug
+    pattern: 'vuln_app.run(host=$HOST, port=$PORT, debug=True)'
+    message: Flask running with debug=True - disable in production
+    languages: [python]
+    severity: WARNING
+
+  # Password stored in User model without hashing
+  - id: py-model-password-plaintext
+    pattern: 'self.password = password'
+    message: Storing password without hashing - use generate_password_hash
+    languages: [python]
+    severity: ERROR
+
+  # Missing authorization check on sensitive operations
+  - id: py-update-without-auth-check
+    pattern: |
+      user = $MODEL.query.filter_by(username=$PARAM).first()
+      user.$FIELD = $VALUE
+      db.session.commit()
+    message: Database update without authorization check - verify user owns object
+    languages: [python]
+    severity: ERROR
+
+  # API route returning user debug info
+  - id: py-route-returns-debug
+    pattern: 'return_value = jsonify({...: $MODEL.get_all_$TYPE_debug()})'
+    message: API route returning debug data - may expose sensitive fields
+    languages: [python]
+    severity: ERROR
+
+  # Password in JSON response
+  - id: py-password-in-json-response
+    pattern-regex: "'password':\\s*\\$?\\w+\\.password"
+    message: Password field in response - never expose passwords in API responses
+    languages: [python]
+    severity: ERROR
+
+  # Random string for secret (VAmPI uses 'random')
+  - id: py-weak-secret-string
+    pattern-regex: "SECRET_KEY['\"]\\]?\\s*=\\s*['\"]random['\"]"
+    message: Weak secret key - use cryptographically secure random value
+    languages: [python]
+    severity: ERROR
+
+  # JWT encode with config secret
+  - id: py-jwt-encode-config-secret
+    pattern: 'jwt.encode($PAYLOAD, $CONFIG.get($KEY), algorithm=$ALG)'
+    message: JWT encoding - ensure secret key is not weak/hardcoded
+    languages: [python]
+    severity: INFO
