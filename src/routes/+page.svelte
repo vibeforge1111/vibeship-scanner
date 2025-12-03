@@ -141,7 +141,9 @@
 	<section class="hero">
 		<p class="hero-label">Free security scanner for vibe coders</p>
 		<h1>
-			You built it with <span class="ai-rotate">{tools[currentToolIndex]}</span><br>
+			{#key currentToolIndex}
+				<span class="ai-rotate">You built it with <span class="ai-tool">{tools[currentToolIndex]}</span></span>
+			{/key}<br>
 			Let's make sure it's <em>secure</em>.
 		</h1>
 		<p class="hero-sub">
@@ -213,7 +215,8 @@
 
 <section class="features" id="features">
 	<div class="features-inner">
-		<p class="section-label">What we scan</p>
+		<p class="section-label">Security Analysis</p>
+		<h2 class="section-title">What we scan</h2>
 		<div class="features-grid">
 			<div class="feature-card">
 				<div class="feature-icon">🔐</div>
@@ -230,13 +233,44 @@
 				<h3>Dependencies</h3>
 				<p>Known CVEs in your npm, pip, or cargo packages with upgrade recommendations.</p>
 			</div>
+			<div class="feature-card">
+				<div class="feature-icon">🛡️</div>
+				<h3>Authentication</h3>
+				<p>Weak password policies, missing rate limiting, insecure session handling, and auth bypasses.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">🗄️</div>
+				<h3>Database Security</h3>
+				<p>NoSQL injection, ORM misuse, unparameterized queries, and data exposure risks.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">🌐</div>
+				<h3>API Security</h3>
+				<p>CORS misconfigurations, missing auth on endpoints, and insecure data serialization.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">📁</div>
+				<h3>File Handling</h3>
+				<p>Path traversal, unrestricted uploads, insecure file permissions, and directory exposure.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">⚡</div>
+				<h3>Injection Attacks</h3>
+				<p>Command injection, LDAP injection, template injection, and code execution vulnerabilities.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">🔒</div>
+				<h3>Cryptography</h3>
+				<p>Weak algorithms, hardcoded keys, improper random generation, and insecure hashing.</p>
+			</div>
 		</div>
 	</div>
 </section>
 
 <section class="how" id="how">
 	<div class="how-inner">
-		<p class="section-label">How it works</p>
+		<p class="section-label">Simple Process</p>
+		<h2 class="section-title">How it works</h2>
 		<div class="how-grid">
 			<div class="how-step">
 				<p class="how-step-number">01</p>
@@ -246,7 +280,7 @@
 			<div class="how-step">
 				<p class="how-step-number">02</p>
 				<h4>We scan everything</h4>
-				<p>Semgrep for code, Trivy for dependencies, Gitleaks for secrets. All in ~30 seconds.</p>
+				<p>Industry-standard security tools and vulnerability databases.</p>
 			</div>
 			<div class="how-step">
 				<p class="how-step-number">03</p>
@@ -257,7 +291,7 @@
 				<p class="how-step-number">04</p>
 				<h4>Need help?</h4>
 				<p>Our experts at Vibeship can fix everything for you.</p>
-				<a href="https://vibeship.com" class="how-link">Get expert help →</a>
+				<span class="how-coming-soon">Coming soon</span>
 			</div>
 		</div>
 	</div>
@@ -267,7 +301,7 @@
 	<section class="cta">
 		<div class="cta-inner">
 			<h2>Ship secure, ship fast</h2>
-			<p>Free security scans. Expert help when you need it.</p>
+			<p>Free security scans now. Expert help when you need it <span class="cta-coming-soon">(coming soon)</span>.</p>
 			<button class="btn btn-glow btn-lg" onclick={() => document.querySelector<HTMLInputElement>('.scan-input')?.focus()}>
 				Scan Your Repo Now
 			</button>
@@ -309,7 +343,6 @@
 		color: var(--text-tertiary);
 		margin-bottom: 2rem;
 		font-weight: 500;
-		animation: fadeUp 0.8s ease forwards;
 	}
 
 	.hero h1 {
@@ -318,8 +351,6 @@
 		font-weight: 400;
 		line-height: 1.1;
 		letter-spacing: -0.03em;
-		animation: fadeUp 0.8s ease 0.1s forwards;
-		opacity: 0;
 	}
 
 	.hero h1 em {
@@ -327,8 +358,17 @@
 	}
 
 	.ai-rotate {
+		display: inline-block;
+		animation: fadeSwap 0.4s ease;
+	}
+
+	.ai-tool {
 		color: var(--green-dim);
-		transition: opacity 0.2s ease;
+	}
+
+	@keyframes fadeSwap {
+		0% { opacity: 0; transform: translateY(10px); }
+		100% { opacity: 1; transform: translateY(0); }
 	}
 
 	.hero-sub {
@@ -339,14 +379,10 @@
 		margin-left: auto;
 		margin-right: auto;
 		line-height: 1.8;
-		animation: fadeUp 0.8s ease 0.2s forwards;
-		opacity: 0;
 	}
 
 	.scan-form {
 		margin-top: 3rem;
-		animation: fadeUp 0.8s ease 0.3s forwards;
-		opacity: 0;
 	}
 
 	.scan-input-wrapper {
@@ -396,19 +432,6 @@
 		margin-top: 2rem;
 		font-size: 0.8rem;
 		color: var(--text-tertiary);
-		animation: fadeUp 0.8s ease 0.4s forwards;
-		opacity: 0;
-	}
-
-	@keyframes fadeUp {
-		from {
-			opacity: 0;
-			transform: translateY(20px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
 	}
 
 	.features {
@@ -419,6 +442,14 @@
 	.features-inner {
 		max-width: 1200px;
 		margin: 0 auto;
+	}
+
+	.features-inner .section-title {
+		font-family: 'Instrument Serif', serif;
+		font-size: 2.5rem;
+		font-weight: 400;
+		margin-bottom: 2.5rem;
+		letter-spacing: -0.02em;
 	}
 
 	.features-grid {
@@ -471,11 +502,18 @@
 		color: var(--text-inverse-secondary);
 	}
 
+	.how .section-title {
+		font-family: 'Instrument Serif', serif;
+		font-size: 2.5rem;
+		font-weight: 400;
+		margin-bottom: 2.5rem;
+		letter-spacing: -0.02em;
+	}
+
 	.how-grid {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		gap: 2rem;
-		margin-top: 3rem;
 	}
 
 	.how-step {
@@ -502,12 +540,15 @@
 		line-height: 1.7;
 	}
 
-	.how-link {
-		color: var(--green-dim);
-		font-size: 0.85rem;
-		text-decoration: underline;
+	.how-coming-soon {
 		display: inline-block;
-		margin-top: 0.5rem;
+		margin-top: 0.75rem;
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--green-dim);
+		border: 1px solid var(--green-dim);
+		padding: 0.25rem 0.5rem;
 	}
 
 	.cta-wrapper {
@@ -548,6 +589,11 @@
 		margin-bottom: 2.5rem;
 	}
 
+	.cta-coming-soon {
+		color: var(--text-tertiary);
+		font-size: 0.85rem;
+	}
+
 	.btn-lg {
 		padding: 1rem 2.5rem;
 		font-size: 0.9rem;
@@ -555,8 +601,6 @@
 
 	.recent-scans {
 		margin-top: 3rem;
-		animation: fadeUp 0.8s ease 0.5s forwards;
-		opacity: 0;
 	}
 
 	.recent-label {

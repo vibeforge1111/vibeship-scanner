@@ -1016,6 +1016,10 @@
 				<a href="/" class="btn">Scan Another Repo</a>
 				<a href="https://vibeship.com" class="btn btn-glow">Get Expert Help</a>
 			</div>
+
+			<div class="scan-disclaimer">
+				<p><strong>Disclaimer:</strong> Vibeship Scanner uses industry-standard security tools to identify potential vulnerabilities in your codebase. While we strive to detect as many security issues as possible, this scan is not a guarantee of complete security coverage. False positives and false negatives may occur. Recommendations provided may not be applicable to your specific use case. This tool is not a substitute for professional security audits or penetration testing. By using this service, you agree to our <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>.</p>
+			</div>
 		</div>
 
 	{:else if status === 'failed'}
@@ -1985,6 +1989,33 @@
 		gap: 1rem;
 		justify-content: center;
 		flex-wrap: wrap;
+	}
+
+	.scan-disclaimer {
+		margin-top: 3rem;
+		padding: 1.5rem;
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+	}
+
+	.scan-disclaimer p {
+		font-size: 0.75rem;
+		color: var(--text-tertiary);
+		line-height: 1.7;
+		margin: 0;
+	}
+
+	.scan-disclaimer strong {
+		color: var(--text-secondary);
+	}
+
+	.scan-disclaimer a {
+		color: var(--green-dim);
+		text-decoration: underline;
+	}
+
+	.scan-disclaimer a:hover {
+		color: var(--text-primary);
 	}
 
 	.btn-rescan {

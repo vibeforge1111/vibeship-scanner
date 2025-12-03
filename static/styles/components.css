@@ -76,6 +76,23 @@
     color: var(--text-primary);
 }
 
+.navbar-x-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+.navbar-x-btn:hover {
+    border-color: var(--text-primary);
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
 /* Theme Toggle */
 .theme-toggle {
     width: 36px;
@@ -708,11 +725,32 @@ textarea.form-input {
 }
 
 /* ============================================
+   Section Labels
+   ============================================ */
+
+.section-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-tertiary);
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: 2.5rem;
+    font-weight: 400;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+}
+
+/* ============================================
    Footer
    ============================================ */
 
 .footer {
-    padding: 3rem;
+    padding: 1.5rem 3rem;
     border-top: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
@@ -738,6 +776,45 @@ textarea.form-input {
 
 .footer-links a:hover {
     color: var(--text-primary);
+}
+
+.footer-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.footer-link {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.footer-link:hover {
+    color: var(--text-primary);
+}
+
+.footer-x-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+.footer-x-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.footer-x-btn:hover {
+    border-color: var(--text-primary);
+    background: var(--text-primary);
+    color: var(--bg-primary);
 }
 
 /* ============================================
