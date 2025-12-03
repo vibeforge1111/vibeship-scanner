@@ -57,6 +57,11 @@
 - [x] Tune SSRF detection to reduce false positives (VAmPI scan improved from 27 to 5 findings)
 - [x] Add VAmPI-specific vulnerability patterns (BOLA, mass assignment, user enumeration, ReDoS)
 - [x] Add 30+ Express.js security rules (SSTI, IDOR, JWT decode, path traversal, mass assignment)
+- [x] Add enhanced IDOR detection (generic function call with user ID patterns)
+- [x] Add XSS detection for Express views (res.send, template variables, EJS unescaped)
+- [x] Add broken access control patterns (admin param, user ID comparison)
+- [x] Add sensitive data exposure rules (password/token in response)
+- [x] Add insecure randomness detection (Math.random, weak token generation)
 
 ## Environment Variables
 

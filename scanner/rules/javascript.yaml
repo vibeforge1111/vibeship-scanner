@@ -2078,3 +2078,250 @@ rules:
     metadata:
       tags: [auth, enumeration]
 
+  # ============================================
+  # Enhanced IDOR/BOLA Detection
+  # ============================================
+
+  - id: idor-query-id-to-function
+    patterns:
+      - pattern: '$FUNC(req.query.id)'
+      - pattern: '$FUNC(req.query.id, ...)'
+      - pattern: '$FUNC(req.params.id)'
+      - pattern: '$FUNC(req.params.id, ...)'
+      - pattern: '$FUNC(req.body.id)'
+      - pattern: '$FUNC(req.body.id, ...)'
+    message: Function called with user-controlled ID - verify authorization
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, bola]
+
+  - id: idor-sequelize-query-id
+    patterns:
+      - pattern: '$MODEL.findOne({where: {id: req.query.id}})'
+      - pattern: '$MODEL.findOne({where: {id: req.params.id}})'
+      - pattern: '$MODEL.findOne({where: {id: req.body.id}})'
+      - pattern: '$MODEL.update($DATA, {where: {id: req.query.id}})'
+      - pattern: '$MODEL.update($DATA, {where: {id: req.body.id}})'
+      - pattern: '$MODEL.destroy({where: {id: req.query.id}})'
+      - pattern: '$MODEL.destroy({where: {id: req.params.id}})'
+    message: Sequelize query with user-controlled ID - IDOR risk without auth check
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, bola, sequelize]
+
+  - id: idor-knex-query-id
+    patterns:
+      - pattern: '$DB($TABLE).where({id: req.query.id})'
+      - pattern: '$DB($TABLE).where({id: req.params.id})'
+      - pattern: '$DB($TABLE).where("id", req.query.id)'
+      - pattern: '$DB.select(...).where({id: req.params.id})'
+    message: Knex query with user-controlled ID - verify authorization
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, bola, knex]
+
+  - id: idor-prisma-query-id
+    patterns:
+      - pattern: 'prisma.$MODEL.findUnique({where: {id: req.params.id}})'
+      - pattern: 'prisma.$MODEL.findUnique({where: {id: req.query.id}})'
+      - pattern: 'prisma.$MODEL.update({where: {id: req.body.id}, ...})'
+      - pattern: 'prisma.$MODEL.delete({where: {id: req.params.id}})'
+    message: Prisma query with user-controlled ID - IDOR risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, bola, prisma]
+
+  # ============================================
+  # XSS in Express Views
+  # ============================================
+
+  - id: xss-res-send-user-input
+    patterns:
+      - pattern: 'res.send(req.query.$PARAM)'
+      - pattern: 'res.send(req.body.$PARAM)'
+      - pattern: 'res.send(req.params.$PARAM)'
+      - pattern: 'res.send("<..." + req.query.$PARAM + "...")'
+    message: Response with user input - XSS risk without encoding
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [xss]
+
+  - id: xss-template-variable-unescaped
+    patterns:
+      - pattern: 'res.render($TEMPLATE, {$VAR: req.query.$PARAM})'
+      - pattern: 'res.render($TEMPLATE, {$VAR: req.body.$PARAM})'
+    message: User input passed to template - ensure template escapes output
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [xss]
+
+  - id: xss-ejs-unescaped
+    pattern-regex: "<%[-=]\\s*[^%]*req\\.(query|body|params)"
+    message: EJS template with user input - use <%= for escaping
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [xss, ejs]
+
+  # ============================================
+  # Path Traversal (Enhanced)
+  # ============================================
+
+  - id: path-traversal-resolve
+    patterns:
+      - pattern: 'path.resolve($BASE, req.query.$FILE)'
+      - pattern: 'path.resolve($BASE, req.params.$FILE)'
+      - pattern: 'path.resolve($BASE, req.body.$FILE)'
+    message: path.resolve with user input - path traversal risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [path-traversal]
+
+  - id: path-traversal-concat
+    patterns:
+      - pattern: '$DIR + "/" + req.query.$FILE'
+      - pattern: '$DIR + "/" + req.params.$FILE'
+      - pattern: '`${$DIR}/${req.query.$FILE}`'
+      - pattern: '`${$DIR}/${req.params.$FILE}`'
+    message: Path concatenation with user input - path traversal vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [path-traversal]
+
+  # ============================================
+  # Broken Access Control
+  # ============================================
+
+  - id: broken-access-admin-param
+    patterns:
+      - pattern: 'if (req.query.admin)'
+      - pattern: 'if (req.body.admin)'
+      - pattern: 'if (req.query.isAdmin)'
+      - pattern: 'if (req.body.isAdmin)'
+      - pattern: 'if (req.body.role === "admin")'
+    message: Admin/role check from user input - privilege escalation risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [auth, privilege-escalation]
+
+  - id: broken-access-user-id-comparison
+    patterns:
+      - pattern: 'if (req.user.id == req.params.id)'
+      - pattern: 'if (req.user.id === req.params.id)'
+      - pattern: 'req.params.id == req.user.id'
+    message: User ID comparison - ensure proper authorization logic
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [auth, idor]
+
+  # ============================================
+  # Sensitive Data Exposure
+  # ============================================
+
+  - id: sensitive-data-password-response
+    patterns:
+      - pattern: 'res.json({..., password: $PASS, ...})'
+      - pattern: 'res.send({..., password: $PASS, ...})'
+      - pattern: '{password: user.password}'
+      - pattern: '{password: $USER.password}'
+    message: Password in API response - remove sensitive field
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [data-exposure]
+
+  - id: sensitive-data-token-response
+    patterns:
+      - pattern: 'res.json({..., token: $TOKEN, ...})'
+      - pattern: 'console.log($MSG, token)'
+      - pattern: 'console.log($MSG, $USER.token)'
+    message: Token may be exposed - verify intentional
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [data-exposure]
+
+  # ============================================
+  # Input Validation Issues
+  # ============================================
+
+  - id: no-input-validation-parseInt
+    patterns:
+      - pattern: 'parseInt(req.query.$PARAM)'
+      - pattern: 'parseInt(req.body.$PARAM)'
+      - pattern: 'Number(req.query.$PARAM)'
+    message: Parsing user input - handle NaN and invalid values
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [validation]
+
+  - id: json-parse-user-input
+    patterns:
+      - pattern: 'JSON.parse(req.body.$PARAM)'
+      - pattern: 'JSON.parse(req.query.$PARAM)'
+    message: JSON.parse on user input - handle parse errors
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [validation]
+
+  # ============================================
+  # Logging Sensitive Data
+  # ============================================
+
+  - id: logging-password
+    patterns:
+      - pattern: 'console.log($MSG, password)'
+      - pattern: 'console.log($MSG, req.body.password)'
+      - pattern: 'logger.info($MSG, password)'
+    message: Password logged - remove from logs
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [logging, data-exposure]
+
+  - id: logging-full-request
+    patterns:
+      - pattern: 'console.log(req.body)'
+      - pattern: 'console.log(req)'
+      - pattern: 'logger.debug(req.body)'
+    message: Full request body logged - may contain sensitive data
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [logging]
+
+  # ============================================
+  # Insecure Randomness
+  # ============================================
+
+  - id: math-random-security
+    patterns:
+      - pattern: 'Math.random()'
+    message: Math.random() is not cryptographically secure - use crypto.randomBytes
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [crypto]
+
+  - id: insecure-token-generation
+    patterns:
+      - pattern: 'Math.random().toString(36)'
+      - pattern: 'Math.random().toString(16)'
+    message: Insecure token generation - use crypto.randomBytes or uuid
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [crypto, auth]
+
