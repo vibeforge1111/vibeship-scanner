@@ -3,3 +3,4 @@ supabase==1.0.4
 gunicorn==21.2.0
 httpx==0.24.1
 gotrue==1.0.4
+h11>=0.16.0
