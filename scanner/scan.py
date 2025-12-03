@@ -14,6 +14,7 @@ import hashlib
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 SEVERITY_MAP = {
     'CRITICAL': 'critical',
@@ -259,17 +260,8 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
                 configs.extend(['-f', str(rule_path)])
                 rule_files_used.append(rule_file)
 
-    # Fallback to old core.yaml and vibeship.yaml if no language-specific rules found
-    # (but only if we don't have shared rules either)
-    if len(configs) <= len(SHARED_RULES) * 2:  # Only shared rules or none
-        core_rules = RULES_DIR / 'core.yaml'
-        vibeship_rules = RULES_DIR / 'vibeship.yaml'
-        if core_rules.exists():
-            configs.extend(['-f', str(core_rules)])
-            rule_files_used.append('core.yaml')
-        if vibeship_rules.exists():
-            configs.extend(['-f', str(vibeship_rules)])
-            rule_files_used.append('vibeship.yaml')
+    # Legacy fallback removed - shared rules (_shared/secrets, urls, comments)
+    # now provide baseline coverage for all scans regardless of language detection
 
     if not configs:
         print("ERROR: No rule files found!", file=sys.stderr)
@@ -595,14 +587,35 @@ def main():
         stack = detect_stack(repo_dir)
         print(f"Detected stack: {stack}", file=sys.stderr)
 
-        print(json.dumps({'step': 'sast', 'message': 'Running code analysis...'}), flush=True)
-        opengrep_findings = run_opengrep(repo_dir, stack.get('languages', []))
+        # Run all scanners in PARALLEL for speed optimization
+        print(json.dumps({'step': 'scan', 'message': 'Running security scans in parallel...'}), flush=True)
 
-        print(json.dumps({'step': 'deps', 'message': 'Checking dependencies...'}), flush=True)
-        trivy_findings = run_trivy(repo_dir)
+        opengrep_findings = []
+        trivy_findings = []
+        gitleaks_findings = []
 
-        print(json.dumps({'step': 'secrets', 'message': 'Scanning for secrets...'}), flush=True)
-        gitleaks_findings = run_gitleaks(repo_dir)
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            # Submit all scanner jobs
+            futures = {
+                executor.submit(run_opengrep, repo_dir, stack.get('languages', [])): 'opengrep',
+                executor.submit(run_trivy, repo_dir): 'trivy',
+                executor.submit(run_gitleaks, repo_dir): 'gitleaks',
+            }
+
+            # Collect results as they complete
+            for future in as_completed(futures):
+                scanner_name = futures[future]
+                try:
+                    result = future.result()
+                    if scanner_name == 'opengrep':
+                        opengrep_findings = result
+                    elif scanner_name == 'trivy':
+                        trivy_findings = result
+                    elif scanner_name == 'gitleaks':
+                        gitleaks_findings = result
+                    print(f"{scanner_name} completed with {len(result)} findings", file=sys.stderr)
+                except Exception as e:
+                    print(f"{scanner_name} failed: {e}", file=sys.stderr)
 
         all_findings = opengrep_findings + trivy_findings + gitleaks_findings
         print(f"Total raw findings: {len(all_findings)}", file=sys.stderr)
