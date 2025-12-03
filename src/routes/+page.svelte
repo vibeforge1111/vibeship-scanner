@@ -180,7 +180,7 @@
 			{/if}
 		</form>
 
-		<p class="hero-note">Public repos only • No signup required • Results in ~30 seconds</p>
+		<p class="hero-note">Public repos only • No signup required</p>
 
 		{#if recentScans.length > 0}
 			<div class="recent-scans">

@@ -697,7 +697,12 @@
 	{#if error}
 		<div class="error-container">
 			<h1>Scan Error</h1>
-			<p>{error}</p>
+			{#if error.toLowerCase().includes('clone') || error.toLowerCase().includes('repository') || error.toLowerCase().includes('not found')}
+				<p>This repository couldn't be scanned. It may be private or doesn't exist.</p>
+				<p class="error-note">We can only scan public repositories.</p>
+			{:else}
+				<p>{error}</p>
+			{/if}
 			<a href="/" class="btn">Try Again</a>
 		</div>
 
@@ -1052,6 +1057,12 @@
 
 	.error-container p {
 		color: var(--text-secondary);
+		margin-bottom: 1rem;
+	}
+
+	.error-container .error-note {
+		font-size: 0.85rem;
+		color: var(--text-tertiary);
 		margin-bottom: 2rem;
 	}
 
@@ -1159,20 +1170,24 @@
 
 	.security-fact {
 		margin: 2rem auto;
-		max-width: 500px;
-		padding: 1.25rem 1.5rem;
+		max-width: 600px;
+		padding: 1rem 1.5rem;
 		background: var(--bg-secondary);
 		border: 1px solid var(--border);
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.25rem;
 		animation: factFade 0.5s ease;
 		text-align: center;
+		min-height: 60px;
 	}
 
 	.fact-text {
-		font-size: 0.95rem;
+		font-size: 0.85rem;
 		color: var(--text-primary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		line-height: 1.5;
 		font-weight: 500;
 	}
