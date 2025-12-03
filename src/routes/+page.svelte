@@ -284,14 +284,8 @@
 			</div>
 			<div class="how-step">
 				<p class="how-step-number">03</p>
-				<h4>Get actionable fixes</h4>
-				<p>Every issue comes with copy-paste fixes tailored to your stack.</p>
-			</div>
-			<div class="how-step">
-				<p class="how-step-number">04</p>
-				<h4>Need help?</h4>
-				<p>Our experts at Vibeship can fix everything for you.</p>
-				<span class="how-coming-soon">Coming soon</span>
+				<h4>Ship the fix</h4>
+				<p>Get clear recommendations for each issue, or just point your AI to it and let it cook.</p>
 			</div>
 		</div>
 	</div>
@@ -300,8 +294,8 @@
 <div class="cta-wrapper">
 	<section class="cta">
 		<div class="cta-inner">
-			<h2>Ship secure, ship fast</h2>
-			<p>Free security scans now. Expert help when you need it <span class="cta-coming-soon">(coming soon)</span>.</p>
+			<h2>Ready to ship with confidence?</h2>
+			<p>Free. No signup required. Just vibes.</p>
 			<button class="btn btn-glow btn-lg" onclick={() => document.querySelector<HTMLInputElement>('.scan-input')?.focus()}>
 				Scan Your Repo Now
 			</button>
