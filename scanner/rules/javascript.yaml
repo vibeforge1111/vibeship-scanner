@@ -674,7 +674,7 @@ rules:
 
   - id: ts-ts-ignore
     pattern: '// @ts-ignore'
-    message: @ts-ignore suppresses TypeScript errors - review carefully
+    message: "'@ts-ignore suppresses TypeScript errors - review carefully'"
     languages: [typescript]
     severity: WARNING
     metadata:
@@ -682,7 +682,7 @@ rules:
 
   - id: ts-ts-expect-error
     pattern: '// @ts-expect-error'
-    message: @ts-expect-error suppresses TypeScript errors - ensure intentional
+    message: "'@ts-expect-error suppresses TypeScript errors - ensure intentional'"
     languages: [typescript]
     severity: INFO
     metadata:
