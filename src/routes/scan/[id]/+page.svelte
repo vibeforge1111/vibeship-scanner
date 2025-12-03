@@ -812,7 +812,10 @@
 						{#if results.summary?.low > 0}
 							<span class="count severity-low">{results.summary.low} Low</span>
 						{/if}
-						{#if !results.summary?.critical && !results.summary?.high && !results.summary?.medium && !results.summary?.low}
+						{#if results.summary?.info > 0}
+							<span class="count severity-info">{results.summary.info} Info</span>
+						{/if}
+						{#if !results.summary?.critical && !results.summary?.high && !results.summary?.medium && !results.summary?.low && !results.summary?.info}
 							<span class="count severity-info">No issues found</span>
 						{/if}
 					</div>
@@ -993,12 +996,7 @@
 											</div>
 										{/if}
 
-										<div class="finding-actions">
-											<a href="https://vibeship.com" class="btn btn-glow btn-sm">
-												Get Vibeship to fix this →
-											</a>
 										</div>
-									</div>
 								{/if}
 							</div>
 						{/each}

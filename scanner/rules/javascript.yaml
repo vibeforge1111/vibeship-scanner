@@ -752,3 +752,426 @@ rules:
     metadata:
       tags: [core, secrets]
 
+  # ============================================
+  # SQL Injection - Node.js/Express/Sequelize
+  # ============================================
+
+  - id: node-sql-string-concat
+    patterns:
+      - pattern: $DB.query($Q + $INPUT)
+      - pattern: $DB.query($Q + req.$X)
+      - pattern: $DB.query(`${...}`)
+      - pattern: 'connection.query($Q + $INPUT)'
+      - pattern: 'connection.query(`${...}`)'
+    message: SQL injection - string concatenation in query. Use parameterized queries
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, injection, sql]
+
+  - id: sequelize-raw-query
+    patterns:
+      - pattern: 'sequelize.query($Q + $INPUT)'
+      - pattern: 'sequelize.query(`${...}`)'
+      - pattern: '$MODEL.sequelize.query($Q + $INPUT)'
+    message: Sequelize raw query with string interpolation - SQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [sequelize, injection, sql]
+
+  - id: sequelize-literal-unsafe
+    patterns:
+      - pattern: 'Sequelize.literal($INPUT)'
+      - pattern: 'sequelize.literal($INPUT)'
+    message: Sequelize.literal with user input - SQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [sequelize, injection, sql]
+
+  - id: knex-raw-unsafe
+    patterns:
+      - pattern: 'knex.raw($Q + $INPUT)'
+      - pattern: 'knex.raw(`${...}`)'
+      - pattern: '$DB.raw($Q + $INPUT)'
+    message: Knex raw query with interpolation - use bindings instead
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [knex, injection, sql]
+
+  - id: mysql-query-unsafe
+    patterns:
+      - pattern: 'mysql.query($Q + $INPUT)'
+      - pattern: 'mysql.query(`${...}`)'
+      - pattern: 'pool.query($Q + $INPUT)'
+      - pattern: 'pool.query(`${...}`)'
+    message: MySQL query with string concatenation - use parameterized queries
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [mysql, injection, sql]
+
+  - id: pg-query-unsafe
+    patterns:
+      - pattern: 'client.query($Q + $INPUT)'
+      - pattern: 'client.query(`${...}`)'
+      - pattern: 'pool.query($Q + $INPUT)'
+      - pattern: 'pool.query(`${...}`)'
+    message: PostgreSQL query with string interpolation - use parameterized queries
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [postgres, injection, sql]
+
+  # ============================================
+  # XSS - Cross-Site Scripting
+  # ============================================
+
+  - id: js-innerhtml-xss
+    patterns:
+      - pattern: '$EL.innerHTML = $INPUT'
+      - pattern: 'document.getElementById($ID).innerHTML = $INPUT'
+      - pattern: '$EL.outerHTML = $INPUT'
+    message: innerHTML assignment - potential XSS if input is user-controlled
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, xss]
+
+  - id: js-document-write-xss
+    patterns:
+      - pattern: 'document.write($INPUT)'
+      - pattern: 'document.writeln($INPUT)'
+    message: document.write with dynamic content - XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, xss]
+
+  - id: js-insertadjacenthtml-xss
+    pattern: '$EL.insertAdjacentHTML($POS, $INPUT)'
+    message: insertAdjacentHTML - XSS risk if input is user-controlled
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, xss]
+
+  - id: express-res-send-unsanitized
+    patterns:
+      - pattern: 'res.send(req.$PARAM)'
+      - pattern: 'res.send($INPUT + req.$PARAM)'
+    message: Express response reflects user input - potential reflected XSS
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [express, xss]
+
+  - id: express-res-render-unsanitized
+    pattern: 'res.render($TEMPLATE, {$KEY: req.$PARAM})'
+    message: User input passed to template - ensure template escapes output
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, xss]
+
+  - id: jquery-html-xss
+    patterns:
+      - pattern: '$($SEL).html($INPUT)'
+      - pattern: '$.html($INPUT)'
+    message: jQuery .html() with dynamic content - XSS risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [jquery, xss]
+
+  - id: jquery-append-xss
+    patterns:
+      - pattern: '$($SEL).append($INPUT)'
+      - pattern: '$($SEL).prepend($INPUT)'
+      - pattern: '$($SEL).after($INPUT)'
+      - pattern: '$($SEL).before($INPUT)'
+    message: jQuery DOM insertion with dynamic content - XSS risk if unsanitized
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [jquery, xss]
+
+  # ============================================
+  # NoSQL Injection
+  # ============================================
+
+  - id: mongodb-nosql-injection
+    patterns:
+      - pattern: '$COLLECTION.find({$FIELD: req.$PARAM})'
+      - pattern: '$COLLECTION.findOne({$FIELD: req.$PARAM})'
+      - pattern: '$COLLECTION.findOneAndUpdate({$FIELD: req.$PARAM}, ...)'
+      - pattern: '$COLLECTION.deleteOne({$FIELD: req.$PARAM})'
+      - pattern: '$COLLECTION.updateOne({$FIELD: req.$PARAM}, ...)'
+    message: MongoDB query with direct user input - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [mongodb, injection, nosql]
+
+  - id: mongodb-where-injection
+    patterns:
+      - pattern: '$COLLECTION.find({$where: $INPUT})'
+      - pattern: '$MODEL.find({$where: $INPUT})'
+    message: MongoDB $where with user input - code injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [mongodb, injection, nosql]
+
+  - id: mongoose-unsafe-query
+    patterns:
+      - pattern: '$MODEL.find(req.$PARAM)'
+      - pattern: '$MODEL.findOne(req.$PARAM)'
+      - pattern: '$MODEL.findById(req.$PARAM.$FIELD)'
+    message: Mongoose query with unvalidated user input - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [mongoose, injection, nosql]
+
+  # ============================================
+  # SSRF - Server-Side Request Forgery
+  # ============================================
+
+  - id: node-ssrf-fetch
+    patterns:
+      - pattern: 'fetch(req.$PARAM)'
+      - pattern: 'fetch($URL + req.$PARAM)'
+      - pattern: 'fetch(`${...}${req.$PARAM}...`)'
+    message: Server-side fetch with user-controlled URL - SSRF vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, ssrf]
+
+  - id: node-ssrf-axios
+    patterns:
+      - pattern: 'axios.get(req.$PARAM)'
+      - pattern: 'axios.get($URL + req.$PARAM)'
+      - pattern: 'axios.post(req.$PARAM, ...)'
+      - pattern: 'axios({url: req.$PARAM})'
+    message: Axios request with user-controlled URL - SSRF vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [axios, ssrf]
+
+  - id: node-ssrf-request
+    patterns:
+      - pattern: 'request(req.$PARAM)'
+      - pattern: 'request.get(req.$PARAM)'
+      - pattern: 'request({url: req.$PARAM})'
+    message: HTTP request with user-controlled URL - SSRF vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, ssrf]
+
+  - id: node-ssrf-http
+    patterns:
+      - pattern: 'http.get(req.$PARAM, ...)'
+      - pattern: 'https.get(req.$PARAM, ...)'
+      - pattern: 'http.request({host: req.$PARAM}, ...)'
+    message: Native HTTP request with user input - SSRF vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, ssrf]
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: node-path-traversal
+    patterns:
+      - pattern: 'fs.readFile($PATH + req.$PARAM, ...)'
+      - pattern: 'fs.readFileSync($PATH + req.$PARAM)'
+      - pattern: 'fs.readFile(`${...}${req.$PARAM}...`, ...)'
+      - pattern: 'path.join($BASE, req.$PARAM)'
+    message: Path traversal - user input in file path without validation
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, path-traversal]
+
+  - id: express-sendfile-traversal
+    patterns:
+      - pattern: 'res.sendFile(req.$PARAM)'
+      - pattern: 'res.sendFile($PATH + req.$PARAM)'
+      - pattern: 'res.download(req.$PARAM)'
+    message: Express file send with user input - path traversal risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [express, path-traversal]
+
+  - id: node-fs-unvalidated
+    patterns:
+      - pattern: 'fs.writeFile(req.$PARAM, ...)'
+      - pattern: 'fs.unlink(req.$PARAM, ...)'
+      - pattern: 'fs.rmdir(req.$PARAM, ...)'
+      - pattern: 'fs.mkdir(req.$PARAM, ...)'
+    message: File system operation with user-controlled path - validate input
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, path-traversal]
+
+  # ============================================
+  # XXE - XML External Entity
+  # ============================================
+
+  - id: node-xxe-xml2js
+    pattern: 'xml2js.parseString($INPUT, ...)'
+    message: XML parsing - ensure external entities are disabled to prevent XXE
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [xml, xxe]
+
+  - id: node-xxe-libxmljs
+    patterns:
+      - pattern: 'libxmljs.parseXml($INPUT)'
+      - pattern: 'libxmljs.parseXmlString($INPUT)'
+    message: libxmljs XML parsing - disable external entities to prevent XXE
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [xml, xxe]
+
+  - id: node-xxe-domparser
+    pattern: 'new DOMParser().parseFromString($INPUT, ...)'
+    message: DOMParser XML parsing - potential XXE if processing untrusted XML
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [xml, xxe]
+
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: node-unsafe-deserialize
+    patterns:
+      - pattern: 'serialize.unserialize($INPUT)'
+      - pattern: 'node-serialize.unserialize($INPUT)'
+    message: Unsafe deserialization - can lead to remote code execution
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, deserialization]
+
+  - id: node-json-parse-uncaught
+    pattern: 'JSON.parse(req.$PARAM)'
+    message: JSON.parse on user input without try-catch - may crash on invalid JSON
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, error-handling]
+
+  # ============================================
+  # IDOR - Insecure Direct Object Reference
+  # ============================================
+
+  - id: express-idor-param
+    patterns:
+      - pattern: '$MODEL.findById(req.params.$ID)'
+      - pattern: '$MODEL.findByPk(req.params.$ID)'
+      - pattern: '$DB.find({id: req.params.$ID})'
+    message: Direct object access using URL parameter - verify user authorization
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, idor, authz]
+
+  # ============================================
+  # Authentication/Session Issues
+  # ============================================
+
+  - id: express-session-insecure
+    patterns:
+      - pattern: 'session({secret: $SECRET, cookie: {secure: false}})'
+      - pattern: 'session({cookie: {httpOnly: false}})'
+    message: Insecure session configuration - enable secure and httpOnly
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [express, session, auth]
+
+  - id: jwt-none-algorithm
+    patterns:
+      - pattern: 'jwt.verify($TOKEN, $SECRET, {algorithms: ["none"]})'
+      - pattern: 'jwt.decode($TOKEN)'
+    message: JWT with none algorithm or decode without verify - authentication bypass
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [jwt, auth]
+
+  - id: bcrypt-low-rounds
+    pattern: 'bcrypt.hash($PASS, $ROUNDS)'
+    message: Verify bcrypt salt rounds - should be at least 10 for security
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [crypto, auth]
+
+  # ============================================
+  # CORS Misconfiguration
+  # ============================================
+
+  - id: express-cors-wildcard
+    patterns:
+      - pattern: "cors({origin: '*'})"
+      - pattern: "cors({origin: true})"
+      - pattern: 'res.setHeader("Access-Control-Allow-Origin", "*")'
+    message: CORS allows all origins - restrict to trusted domains in production
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, cors]
+
+  - id: express-cors-credentials-wildcard
+    pattern: "cors({origin: '*', credentials: true})"
+    message: CORS wildcard with credentials - security misconfiguration
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [express, cors]
+
+  # ============================================
+  # Prototype Pollution
+  # ============================================
+
+  - id: js-prototype-pollution
+    patterns:
+      - pattern: '$OBJ[req.$PARAM] = $VALUE'
+      - pattern: '$OBJ[$KEY][req.$PARAM] = $VALUE'
+      - pattern: 'Object.assign($TARGET, req.$PARAM)'
+      - pattern: '_.merge($TARGET, req.$PARAM)'
+      - pattern: '_.extend($TARGET, req.$PARAM)'
+    message: Potential prototype pollution - validate property names
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, prototype-pollution]
+
+  # ============================================
+  # Missing Security Headers
+  # ============================================
+
+  - id: express-no-helmet
+    pattern: 'express()'
+    message: Express app - consider using helmet() for security headers
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [express, headers]
+

@@ -223,22 +223,6 @@ rules:
     severity: INFO
 
   # ============================================
-  # Missing Error Handling
-  # ============================================
-
-  - id: bash-no-set-e
-    pattern: '#!/bin/bash'
-    message: Bash script - consider using 'set -e' for error handling
-    languages: [bash]
-    severity: INFO
-
-  - id: bash-no-pipefail
-    pattern: '#!/bin/bash'
-    message: Bash script - consider 'set -o pipefail' for pipeline errors
-    languages: [bash]
-    severity: INFO
-
-  # ============================================
   # Debug Output
   # ============================================
 
