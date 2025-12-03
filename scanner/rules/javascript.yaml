@@ -50,6 +50,80 @@ rules:
     languages: [javascript, typescript]
     severity: ERROR
 
+  - id: js-outerhtml-xss
+    pattern: $X.outerHTML = $Y
+    message: outerHTML assignment - potential XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-insertadjacenthtml
+    pattern: $X.insertAdjacentHTML(...)
+    message: insertAdjacentHTML - potential XSS vulnerability without sanitization
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # ============================================
+  # Vue.js XSS
+  # ============================================
+
+  - id: vue-v-html-directive
+    pattern: 'v-html="$X"'
+    message: Vue v-html directive bypasses sanitization - XSS risk with user input
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: vue-v-html-binding
+    pattern: ':v-html="$X"'
+    message: Vue v-html binding bypasses sanitization - XSS risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: vue-compile-dynamic
+    pattern: Vue.compile($X)
+    message: Dynamic Vue template compilation - potential XSS with user input
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # ============================================
+  # Angular XSS - bypassSecurityTrust*
+  # ============================================
+
+  - id: angular-bypass-security-html
+    pattern: bypassSecurityTrustHtml(...)
+    message: Angular bypassSecurityTrustHtml - XSS risk without proper sanitization
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: angular-bypass-security-script
+    pattern: bypassSecurityTrustScript(...)
+    message: Angular bypassSecurityTrustScript - XSS risk, avoid using
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: angular-bypass-security-url
+    pattern: bypassSecurityTrustUrl(...)
+    message: Angular bypassSecurityTrustUrl - potential open redirect or XSS
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: angular-bypass-security-resource-url
+    pattern: bypassSecurityTrustResourceUrl(...)
+    message: Angular bypassSecurityTrustResourceUrl - potential XSS
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: angular-bypass-security-style
+    pattern: bypassSecurityTrustStyle(...)
+    message: Angular bypassSecurityTrustStyle - potential CSS injection
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: angular-innerhtml-binding
+    pattern: '[innerHTML]="$X"'
+    message: Angular innerHTML binding - sanitized but review for user input
+    languages: [javascript, typescript]
+    severity: INFO
+
   # ============================================
   # Command Injection
   # ============================================
@@ -144,6 +218,62 @@ rules:
     languages: [javascript, typescript]
     severity: INFO
 
+  - id: js-weak-cipher-des
+    pattern: 'crypto.createCipheriv("des", ...)'
+    message: DES is a weak cipher - use AES-256-GCM instead
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-weak-cipher-des-ede
+    pattern: 'crypto.createCipheriv("des-ede", ...)'
+    message: Triple DES (3DES) is deprecated - use AES-256-GCM instead
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-weak-cipher-des-ede3
+    pattern: 'crypto.createCipheriv("des-ede3", ...)'
+    message: Triple DES (3DES) is deprecated - use AES-256-GCM instead
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-weak-cipher-rc4
+    pattern: 'crypto.createCipheriv("rc4", ...)'
+    message: RC4 is a broken cipher - use AES-256-GCM instead
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-weak-cipher-ecb-mode
+    pattern-regex: "createCipheriv\\([\"']aes[^\"]*-ecb[\"']"
+    message: ECB mode is insecure - use GCM or CBC with proper IV
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-weak-cipher-blowfish
+    pattern: 'crypto.createCipheriv("bf", ...)'
+    message: Blowfish cipher is deprecated - use AES-256-GCM instead
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-weak-key-size
+    pattern-regex: "crypto\\.generateKeyPair(Sync)?\\([^,]+,\\s*\\{[^}]*modulusLength:\\s*(512|1024)[^}]*\\}"
+    message: RSA key size too small - use at least 2048 bits
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-static-iv
+    patterns:
+      - pattern: 'createCipheriv($ALG, $KEY, "...")'
+      - pattern: "createCipheriv($ALG, $KEY, '...')"
+    message: Static IV in encryption - IV should be random for each encryption
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-crypto-createcipher-deprecated
+    pattern: crypto.createCipher(...)
+    message: crypto.createCipher is deprecated - use createCipheriv with random IV
+    languages: [javascript, typescript]
+    severity: ERROR
+
   # ============================================
   # TLS/SSL Issues
   # ============================================
@@ -237,6 +367,170 @@ rules:
     message: Raw SQL query - potential injection if not parameterized
     languages: [javascript, typescript]
     severity: WARNING
+
+  - id: js-knex-raw
+    pattern: knex.raw($QUERY)
+    message: Knex raw query - potential SQL injection if query contains user input
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-knex-whereraw
+    pattern: $Q.whereRaw($QUERY)
+    message: Knex whereRaw - potential SQL injection if query contains user input
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-typeorm-query
+    pattern: $CONN.query($QUERY)
+    message: TypeORM raw query - verify parameterization
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-mongoose-where-js
+    pattern: '$MODEL.$WHERE({$this: {$jsFunction: ...}})'
+    message: Mongoose $where with JS function - potential NoSQL injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-mongodb-where
+    pattern: '$COLL.find({$where: $FUNC})'
+    message: MongoDB $where operator - code injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-mongodb-aggregation-user-input
+    pattern: '$COLL.aggregate([{$match: req.$X}])'
+    message: MongoDB aggregation with user input - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # ============================================
+  # Express/Fastify/NestJS Security
+  # ============================================
+
+  - id: express-cors-wildcard
+    pattern: 'cors({origin: "*"})'
+    message: CORS allows all origins - restrict to specific domains in production
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: express-cors-wildcard-true
+    pattern: 'cors({origin: true})'
+    message: CORS reflects request origin - verify this is intentional
+    languages: [javascript, typescript]
+    severity: INFO
+
+  - id: express-cors-credentials-wildcard
+    pattern: 'cors({origin: "*", credentials: true})'
+    message: CORS wildcard with credentials - security risk, browsers block this
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: express-body-parser-limit
+    pattern: 'bodyParser.json()'
+    message: Body parser without size limit - potential DoS via large payloads
+    languages: [javascript, typescript]
+    severity: INFO
+
+  - id: express-session-insecure
+    patterns:
+      - pattern: 'session({secret: "..."})'
+      - pattern: "session({secret: '...'})"
+    message: Hardcoded session secret - use environment variable
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: express-session-no-secure
+    pattern: 'session({..., cookie: {...}})'
+    message: Session cookie - verify secure and httpOnly flags are set
+    languages: [javascript, typescript]
+    severity: INFO
+
+  - id: express-trust-proxy
+    pattern: 'app.set("trust proxy", true)'
+    message: Trust proxy enabled - verify this is behind a trusted reverse proxy
+    languages: [javascript, typescript]
+    severity: INFO
+
+  - id: fastify-body-limit
+    pattern: 'fastify.register($PLUGIN)'
+    message: Verify Fastify body limit is configured for production
+    languages: [javascript, typescript]
+    severity: INFO
+
+  - id: nestjs-validation-disabled
+    pattern: 'ValidationPipe({transform: true, whitelist: false})'
+    message: NestJS validation whitelist disabled - extra properties not stripped
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: nestjs-all-exceptions-filter
+    pattern: '@Catch()'
+    message: NestJS catch-all filter - ensure sensitive errors are not exposed
+    languages: [javascript, typescript]
+    severity: INFO
+
+  # ============================================
+  # Prototype Pollution
+  # ============================================
+
+  - id: js-prototype-pollution-merge
+    pattern: 'Object.assign({}, $SRC)'
+    message: Object.assign - verify source is not user-controlled (prototype pollution)
+    languages: [javascript, typescript]
+    severity: INFO
+
+  - id: js-prototype-pollution-spread
+    pattern: '{...$SRC}'
+    message: Object spread - verify source is not from user input
+    languages: [javascript, typescript]
+    severity: INFO
+
+  - id: js-lodash-merge
+    pattern: '_.merge($TARGET, $SRC)'
+    message: lodash merge can cause prototype pollution with user input
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-lodash-defaultsdeep
+    pattern: '_.defaultsDeep($TARGET, $SRC)'
+    message: lodash defaultsDeep can cause prototype pollution with user input
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # ============================================
+  # SSRF (Server-Side Request Forgery)
+  # ============================================
+
+  - id: js-fetch-user-input
+    pattern: fetch(req.$X.$Y)
+    message: Fetch with user-controlled URL - SSRF risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-axios-user-input
+    pattern: axios.get(req.$X.$Y)
+    message: Axios GET with user-controlled URL - SSRF risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-axios-post-user-input
+    pattern: axios.post(req.$X.$Y, ...)
+    message: Axios POST with user-controlled URL - SSRF risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-got-user-input
+    pattern: got(req.$X.$Y)
+    message: Got request with user-controlled URL - SSRF risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-request-user-input
+    pattern: request(req.$X.$Y)
+    message: Request with user-controlled URL - SSRF risk
+    languages: [javascript, typescript]
+    severity: ERROR
 
   # ============================================
   # Authentication Issues

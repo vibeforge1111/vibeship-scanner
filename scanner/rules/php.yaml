@@ -704,3 +704,211 @@ rules:
       - pattern: new SimpleXMLElement($SINK)
       - pattern: $DOM->loadXML($SINK)
       - pattern: DOMDocument::loadXML($SINK)
+
+  # ============================================
+  # Laravel Security
+  # ============================================
+
+  - id: php-laravel-raw-sql
+    pattern: DB::raw($QUERY)
+    message: Laravel DB::raw() - ensure proper escaping for user input
+    languages: [php]
+    severity: WARNING
+
+  - id: php-laravel-raw-where
+    pattern: '$QUERY->whereRaw($SQL)'
+    message: Laravel whereRaw() - SQL injection risk with user input
+    languages: [php]
+    severity: WARNING
+
+  - id: php-laravel-select-raw
+    pattern: '$QUERY->selectRaw($SQL)'
+    message: Laravel selectRaw() - SQL injection risk with user input
+    languages: [php]
+    severity: WARNING
+
+  - id: php-laravel-order-by-raw
+    pattern: '$QUERY->orderByRaw($SQL)'
+    message: Laravel orderByRaw() - SQL injection risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-laravel-unguarded
+    pattern: '$MODEL::unguard()'
+    message: Laravel mass assignment protection disabled
+    languages: [php]
+    severity: WARNING
+
+  - id: php-laravel-blade-unescape
+    pattern: '{!! $VAR !!}'
+    message: Laravel Blade unescaped output - XSS risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-laravel-debug-true
+    pattern: "'debug' => true"
+    message: Laravel debug mode enabled - disable in production
+    languages: [php]
+    severity: WARNING
+
+  - id: php-laravel-app-key-hardcoded
+    pattern: "'key' => '...'"
+    message: Laravel app key hardcoded - use environment variable
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # Symfony Security
+  # ============================================
+
+  - id: php-symfony-raw-filter
+    pattern: '|raw'
+    message: Symfony Twig raw filter - XSS risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-symfony-csrf-disabled
+    pattern: "'csrf_protection' => false"
+    message: Symfony CSRF protection disabled
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # Additional Crypto Patterns
+  # ============================================
+
+  - id: php-openssl-ecb
+    pattern: 'openssl_encrypt($DATA, "...-ecb", ...)'
+    message: PHP ECB mode is insecure - use GCM or CBC
+    languages: [php]
+    severity: ERROR
+
+  - id: php-openssl-des
+    pattern: 'openssl_encrypt($DATA, "des-...", ...)'
+    message: PHP DES is weak - use AES-256
+    languages: [php]
+    severity: ERROR
+
+  - id: php-openssl-rc4
+    pattern: 'openssl_encrypt($DATA, "rc4", ...)'
+    message: PHP RC4 is broken - use AES-256
+    languages: [php]
+    severity: ERROR
+
+  - id: php-weak-pbkdf2-iterations
+    pattern: 'hash_pbkdf2($ALGO, $PASSWORD, $SALT, 1000, ...)'
+    message: PHP PBKDF2 iterations too low - use at least 100000
+    languages: [php]
+    severity: WARNING
+
+  - id: php-static-iv-openssl
+    patterns:
+      - pattern: 'openssl_encrypt($DATA, $METHOD, $KEY, $OPTIONS, "...")'
+      - pattern: "openssl_encrypt($DATA, $METHOD, $KEY, $OPTIONS, '...')"
+    message: PHP static IV in encryption - IV should be random
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # Object Injection / Deserialization
+  # ============================================
+
+  - id: php-unserialize-allowed-classes
+    pattern: 'unserialize($DATA, ["allowed_classes" => true])'
+    message: PHP unserialize allows all classes - specify allowed classes
+    languages: [php]
+    severity: WARNING
+
+  - id: php-wakeup-magic
+    pattern: 'function __wakeup()'
+    message: PHP __wakeup magic method - review for object injection vectors
+    languages: [php]
+    severity: INFO
+
+  - id: php-destruct-magic
+    pattern: 'function __destruct()'
+    message: PHP __destruct magic method - review for object injection vectors
+    languages: [php]
+    severity: INFO
+
+  # ============================================
+  # SSRF Additional Patterns
+  # ============================================
+
+  - id: php-curl-user-url
+    pattern: curl_setopt($CH, CURLOPT_URL, $USER_INPUT)
+    message: PHP cURL with user input - SSRF risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-guzzle-request
+    pattern: '$CLIENT->request($METHOD, $USER_INPUT)'
+    message: PHP Guzzle request with user input - SSRF risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-fopen-user
+    pattern: fopen($USER_INPUT, ...)
+    message: PHP fopen with user input - SSRF/path traversal risk
+    languages: [php]
+    severity: WARNING
+
+  # ============================================
+  # Type Juggling Vulnerabilities
+  # ============================================
+
+  - id: php-loose-comparison
+    pattern: if ($PASSWORD == $HASH)
+    message: PHP loose comparison - use === for security comparisons
+    languages: [php]
+    severity: ERROR
+
+  - id: php-strcmp-comparison
+    pattern: if (strcmp($A, $B) == 0)
+    message: PHP strcmp loose comparison - use === for result check
+    languages: [php]
+    severity: WARNING
+
+  - id: php-in-array-loose
+    pattern: in_array($NEEDLE, $HAYSTACK)
+    message: PHP in_array without strict mode - use third parameter true
+    languages: [php]
+    severity: INFO
+
+  - id: php-array-search-loose
+    pattern: array_search($NEEDLE, $HAYSTACK)
+    message: PHP array_search without strict mode - use third parameter true
+    languages: [php]
+    severity: INFO
+
+  # ============================================
+  # JWT Security
+  # ============================================
+
+  - id: php-jwt-none-algorithm
+    pattern: '"alg":"none"'
+    message: PHP JWT none algorithm - authentication bypass
+    languages: [php]
+    severity: ERROR
+
+  - id: php-jwt-verify-disabled
+    pattern: 'JWT::decode($TOKEN, $KEY, ["none"])'
+    message: PHP JWT verification disabled
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # Information Disclosure - Error Handling
+  # ============================================
+
+  - id: php-exception-message-output
+    pattern: 'echo $EXCEPTION->getMessage()'
+    message: PHP exception message exposed - may leak sensitive info
+    languages: [php]
+    severity: WARNING
+
+  - id: php-error-get-last
+    pattern: error_get_last()
+    message: PHP error_get_last may expose sensitive info
+    languages: [php]
+    severity: INFO

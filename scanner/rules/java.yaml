@@ -421,3 +421,247 @@ rules:
     message: Potential hardcoded password in setProperty call
     languages: [java]
     severity: WARNING
+
+  # ============================================
+  # Spring Boot / Hibernate ORM
+  # ============================================
+
+  - id: java-hibernate-native-query
+    pattern: $EM.createNativeQuery($QUERY)
+    message: Java Hibernate native query - SQL injection risk with user input
+    languages: [java]
+    severity: WARNING
+
+  - id: java-hibernate-hql-concat
+    pattern: $EM.createQuery("..." + $VAR)
+    message: Java HQL query concatenation - injection risk
+    languages: [java]
+    severity: ERROR
+
+  - id: java-spring-data-query-native
+    pattern: '@Query(value = $QUERY, nativeQuery = true)'
+    message: Spring Data native query - ensure parameterized
+    languages: [java]
+    severity: WARNING
+
+  - id: java-jpa-criteria-like-user
+    pattern: $CB.like($EXPR, $USER_INPUT)
+    message: JPA Criteria like with user input - potential injection
+    languages: [java]
+    severity: WARNING
+
+  - id: java-spring-el-injection
+    pattern: '@Value("${..."}'
+    message: Spring @Value - ensure properties are validated
+    languages: [java]
+    severity: INFO
+
+  - id: java-spring-spel-injection
+    pattern: 'SpelExpressionParser().parseExpression($INPUT)'
+    message: Spring SpEL expression - injection risk with user input
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # Additional Crypto Weaknesses
+  # ============================================
+
+  - id: java-crypto-rc4
+    pattern: 'Cipher.getInstance("RC4")'
+    message: Java RC4 is broken - use AES
+    languages: [java]
+    severity: ERROR
+
+  - id: java-crypto-blowfish
+    pattern: 'Cipher.getInstance("Blowfish")'
+    message: Java Blowfish is deprecated - use AES
+    languages: [java]
+    severity: WARNING
+
+  - id: java-weak-rsa-keygen
+    pattern: $KPG.initialize(1024)
+    message: Java RSA key size too small - use at least 2048 bits
+    languages: [java]
+    severity: ERROR
+
+  - id: java-weak-rsa-keygen-512
+    pattern: $KPG.initialize(512)
+    message: Java RSA key size too small - use at least 2048 bits
+    languages: [java]
+    severity: ERROR
+
+  - id: java-static-iv
+    pattern: 'new IvParameterSpec("...".getBytes())'
+    message: Java static IV in encryption - IV should be random
+    languages: [java]
+    severity: ERROR
+
+  - id: java-static-salt
+    pattern: 'new PBEParameterSpec("...".getBytes(), $ITER)'
+    message: Java static salt in PBE - salt should be random
+    languages: [java]
+    severity: ERROR
+
+  - id: java-weak-pbkdf-iterations
+    pattern: 'new PBEKeySpec($PASS, $SALT, 1000, ...)'
+    message: Java PBKDF2 iterations too low - use at least 100000
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Expression Language Injection
+  # ============================================
+
+  - id: java-el-injection
+    pattern: $EF.createValueExpression($CTX, $USER_INPUT, ...)
+    message: Java EL injection - user input in expression
+    languages: [java]
+    severity: ERROR
+
+  - id: java-ognl-injection
+    pattern: Ognl.getValue($EXPR, ...)
+    message: Java OGNL injection risk
+    languages: [java]
+    severity: ERROR
+
+  - id: java-mvel-injection
+    pattern: MVEL.eval($USER_INPUT)
+    message: Java MVEL expression injection
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # Server-Side Template Injection
+  # ============================================
+
+  - id: java-velocity-template-user
+    pattern: Velocity.evaluate($CTX, $WRITER, $TAG, $USER_INPUT)
+    message: Java Velocity template from user input - SSTI risk
+    languages: [java]
+    severity: ERROR
+
+  - id: java-freemarker-template-user
+    pattern: new Template($NAME, new StringReader($USER_INPUT), ...)
+    message: Java FreeMarker template from user input - SSTI risk
+    languages: [java]
+    severity: ERROR
+
+  - id: java-thymeleaf-template-user
+    pattern: $ENGINE.process($USER_INPUT, ...)
+    message: Java Thymeleaf template processing - verify input is safe
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Open Redirect
+  # ============================================
+
+  - id: java-servlet-redirect
+    pattern: $RESPONSE.sendRedirect($USER_INPUT)
+    message: Java servlet redirect with user input - open redirect risk
+    languages: [java]
+    severity: WARNING
+
+  - id: java-spring-redirect
+    pattern: '"redirect:" + $USER_INPUT'
+    message: Spring redirect with user input - open redirect risk
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Logging Sensitive Data
+  # ============================================
+
+  - id: java-log4j-format-user
+    pattern: $LOG.info($USER_INPUT)
+    message: Java logging user input - potential Log4Shell if unpatched
+    languages: [java]
+    severity: WARNING
+
+  - id: java-log-password
+    pattern: '$LOG.$METHOD("..." + $PASSWORD)'
+    message: Java logging sensitive data - review for password/secret exposure
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # File Upload
+  # ============================================
+
+  - id: java-multipart-filename
+    pattern: $FILE.getOriginalFilename()
+    message: Java file upload - validate/sanitize filename before use
+    languages: [java]
+    severity: WARNING
+
+  - id: java-file-transfer
+    pattern: $FILE.transferTo($DEST)
+    message: Java file upload - ensure destination path is validated
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Cookie Security
+  # ============================================
+
+  - id: java-cookie-no-httponly
+    pattern: $COOKIE.setHttpOnly(false)
+    message: Java cookie HttpOnly disabled - XSS risk
+    languages: [java]
+    severity: ERROR
+
+  - id: java-cookie-no-secure
+    pattern: $COOKIE.setSecure(false)
+    message: Java cookie Secure flag disabled - MITM risk
+    languages: [java]
+    severity: WARNING
+
+  - id: java-cookie-samesite-none
+    pattern: '$COOKIE.setAttribute("SameSite", "None")'
+    message: Java cookie SameSite=None - CSRF risk
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Reflection Security
+  # ============================================
+
+  - id: java-class-forname-user
+    pattern: Class.forName($USER_INPUT)
+    message: Java Class.forName with user input - arbitrary class loading
+    languages: [java]
+    severity: ERROR
+
+  - id: java-method-invoke-user
+    pattern: $METHOD.invoke($OBJ, $USER_INPUT)
+    message: Java reflection invoke - verify arguments are validated
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Misconfiguration
+  # ============================================
+
+  - id: java-spring-debug-enabled
+    pattern: 'logging.level.root=DEBUG'
+    message: Spring DEBUG logging enabled - disable in production
+    languages: [java]
+    severity: INFO
+
+  - id: java-spring-devtools-enabled
+    pattern: spring.devtools
+    message: Spring DevTools - should be disabled in production
+    languages: [java]
+    severity: WARNING
+
+  - id: java-cors-allow-all
+    pattern: '.allowedOrigins("*")'
+    message: Java CORS allows all origins - restrict in production
+    languages: [java]
+    severity: WARNING
+
+  - id: java-cors-credentials-wildcard
+    pattern: '.allowedOrigins("*").allowCredentials(true)'
+    message: Java CORS wildcard with credentials - security risk
+    languages: [java]
+    severity: ERROR

@@ -286,3 +286,139 @@ rules:
     message: Go JWT parsed without verification
     languages: [go]
     severity: ERROR
+
+  # ============================================
+  # Gin/Echo/Fiber Framework Security
+  # ============================================
+
+  - id: go-gin-html-raw
+    pattern: c.HTML($CODE, $TEMPLATE, gin.H{$DATA})
+    message: Gin HTML rendering - ensure templates escape user data
+    languages: [go]
+    severity: INFO
+
+  - id: go-gin-cors-all
+    pattern: 'cors.Default()'
+    message: Gin CORS allows all origins - restrict in production
+    languages: [go]
+    severity: WARNING
+
+  - id: go-echo-html-blob
+    pattern: c.HTMLBlob($CODE, $DATA)
+    message: Echo HTMLBlob - ensure data is properly escaped
+    languages: [go]
+    severity: WARNING
+
+  - id: go-fiber-static-user
+    pattern: c.SendFile($USER_INPUT)
+    message: Fiber SendFile with user input - path traversal risk
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # GORM / Database Security
+  # ============================================
+
+  - id: go-gorm-raw
+    pattern: db.Raw($QUERY)
+    message: GORM Raw query - ensure parameterized
+    languages: [go]
+    severity: WARNING
+
+  - id: go-gorm-exec
+    pattern: db.Exec($QUERY)
+    message: GORM Exec - ensure parameterized queries
+    languages: [go]
+    severity: WARNING
+
+  - id: go-sqlx-get-unsafe
+    pattern: sqlx.Get($DB, $DEST, $QUERY+$INPUT)
+    message: sqlx query concatenation - SQL injection risk
+    languages: [go]
+    severity: ERROR
+
+  # ============================================
+  # Additional Crypto Issues
+  # ============================================
+
+  - id: go-des-3des
+    pattern: des.NewTripleDESCipher($KEY)
+    message: Go 3DES is deprecated - use AES
+    languages: [go]
+    severity: WARNING
+
+  - id: go-rc4-cipher
+    pattern: rc4.NewCipher($KEY)
+    message: Go RC4 is broken - use AES
+    languages: [go]
+    severity: ERROR
+
+  - id: go-weak-rsa-key
+    pattern: rsa.GenerateKey($RAND, 1024)
+    message: Go RSA key size too small - use at least 2048 bits
+    languages: [go]
+    severity: ERROR
+
+  - id: go-weak-rsa-key-512
+    pattern: rsa.GenerateKey($RAND, 512)
+    message: Go RSA key size too small - use at least 2048 bits
+    languages: [go]
+    severity: ERROR
+
+  - id: go-static-iv
+    pattern: 'cipher.NewCBCEncrypter($BLOCK, []byte{...})'
+    message: Go static IV in encryption - IV should be random
+    languages: [go]
+    severity: ERROR
+
+  # ============================================
+  # Open Redirect
+  # ============================================
+
+  - id: go-http-redirect-user
+    pattern: http.Redirect($W, $R, $USER_INPUT, $CODE)
+    message: Go redirect with user input - open redirect risk
+    languages: [go]
+    severity: WARNING
+
+  - id: go-gin-redirect-user
+    pattern: c.Redirect($CODE, $USER_INPUT)
+    message: Gin redirect with user input - open redirect risk
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # Information Disclosure
+  # ============================================
+
+  - id: go-panic-error
+    pattern: panic($ERR)
+    message: Go panic exposes stack trace - use proper error handling
+    languages: [go]
+    severity: WARNING
+
+  - id: go-log-sensitive
+    pattern: log.Print($ERR)
+    message: Go log may expose sensitive data - review log content
+    languages: [go]
+    severity: INFO
+
+  # ============================================
+  # XML/XXE
+  # ============================================
+
+  - id: go-xml-decode-unsafe
+    pattern: xml.NewDecoder($INPUT).Decode(...)
+    message: Go XML parsing - ensure external entities are disabled
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # Prototype Pollution Equivalent (Map Merge)
+  # ============================================
+
+  - id: go-map-user-keys
+    pattern: '$MAP[$USER_INPUT] = $VALUE'
+    message: Go map with user-controlled keys - verify key validation
+    languages: [go]
+    severity: INFO

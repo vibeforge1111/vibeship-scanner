@@ -180,6 +180,62 @@ rules:
     languages: [python]
     severity: WARNING
 
+  - id: py-weak-cipher-des
+    pattern: 'DES.new(...)'
+    message: DES is a weak cipher - use AES instead
+    languages: [python]
+    severity: ERROR
+
+  - id: py-weak-cipher-des3
+    pattern: 'DES3.new(...)'
+    message: Triple DES (3DES) is deprecated - use AES instead
+    languages: [python]
+    severity: WARNING
+
+  - id: py-weak-cipher-blowfish
+    pattern: 'Blowfish.new(...)'
+    message: Blowfish is deprecated - use AES instead
+    languages: [python]
+    severity: WARNING
+
+  - id: py-weak-cipher-rc4
+    pattern: 'ARC4.new(...)'
+    message: RC4 is broken - use AES instead
+    languages: [python]
+    severity: ERROR
+
+  - id: py-ecb-mode
+    pattern: 'AES.new($KEY, AES.MODE_ECB)'
+    message: ECB mode is insecure - use GCM or CBC with random IV
+    languages: [python]
+    severity: ERROR
+
+  - id: py-weak-rsa-key
+    pattern: 'RSA.generate(1024)'
+    message: RSA key size too small - use at least 2048 bits
+    languages: [python]
+    severity: ERROR
+
+  - id: py-weak-rsa-key-512
+    pattern: 'RSA.generate(512)'
+    message: RSA key size too small - use at least 2048 bits
+    languages: [python]
+    severity: ERROR
+
+  - id: py-static-iv
+    patterns:
+      - pattern: 'AES.new($KEY, $MODE, iv=b"...")'
+      - pattern: "AES.new($KEY, $MODE, iv=b'...')"
+    message: Static IV in encryption - IV should be random for each encryption
+    languages: [python]
+    severity: ERROR
+
+  - id: py-fernet-hardcoded-key
+    pattern: 'Fernet(b"...")'
+    message: Hardcoded Fernet key - use environment variable
+    languages: [python]
+    severity: ERROR
+
   # ============================================
   # TLS/SSL Issues
   # ============================================
@@ -343,3 +399,163 @@ rules:
     message: Traceback printed - may expose sensitive information
     languages: [python]
     severity: INFO
+
+  # ============================================
+  # FastAPI / Starlette Security
+  # ============================================
+
+  - id: py-fastapi-cors-wildcard
+    pattern: 'CORSMiddleware($APP, allow_origins=["*"])'
+    message: FastAPI CORS allows all origins - restrict in production
+    languages: [python]
+    severity: WARNING
+
+  - id: py-fastapi-cors-credentials-wildcard
+    pattern: 'CORSMiddleware($APP, allow_origins=["*"], allow_credentials=True)'
+    message: FastAPI CORS wildcard with credentials - security risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-starlette-session-hardcoded
+    pattern: 'SessionMiddleware($APP, secret_key="...")'
+    message: Hardcoded session secret - use environment variable
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # Server-Side Template Injection (SSTI)
+  # ============================================
+
+  - id: py-jinja2-autoescape-false
+    pattern: 'Environment(autoescape=False)'
+    message: Jinja2 autoescape disabled - XSS vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-jinja2-from-string
+    pattern: 'Template($USER_INPUT).render(...)'
+    message: Jinja2 template from user input - SSTI vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-mako-template-user
+    pattern: 'MakoTemplate($USER_INPUT).render(...)'
+    message: Mako template from user input - SSTI vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-flask-render-template-string
+    pattern: render_template_string($INPUT)
+    message: Flask render_template_string - SSTI risk with user input
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Additional ORM/Database Patterns
+  # ============================================
+
+  - id: py-sqlalchemy-execute-text
+    pattern: '$CONN.execute(text($QUERY))'
+    message: SQLAlchemy execute with text - ensure parameterized
+    languages: [python]
+    severity: WARNING
+
+  - id: py-django-cursor-execute
+    pattern: 'cursor.execute($QUERY.format(...))'
+    message: Django raw SQL with format - SQL injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-django-connection-cursor
+    pattern: 'connection.cursor().execute($Q % $V)'
+    message: Django raw SQL with string formatting - SQL injection
+    languages: [python]
+    severity: ERROR
+
+  - id: py-peewee-raw
+    pattern: '$MODEL.raw($QUERY)'
+    message: Peewee raw SQL - ensure parameterized
+    languages: [python]
+    severity: WARNING
+
+  - id: py-tortoise-raw
+    pattern: '$CONN.execute_query($QUERY)'
+    message: Tortoise ORM raw query - ensure parameterized
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Additional SSRF Patterns
+  # ============================================
+
+  - id: py-httpx-user-url
+    pattern: httpx.get($USER_INPUT)
+    message: httpx request with user input - potential SSRF
+    languages: [python]
+    severity: WARNING
+
+  - id: py-aiohttp-user-url
+    pattern: '$SESSION.get($USER_INPUT)'
+    message: aiohttp request with user input - potential SSRF
+    languages: [python]
+    severity: WARNING
+
+  - id: py-urllib3-user-url
+    pattern: 'urllib3.request("GET", $USER_INPUT)'
+    message: urllib3 request with user input - potential SSRF
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Mass Assignment / Object Injection
+  # ============================================
+
+  - id: py-django-model-from-dict
+    pattern: '$MODEL(**request.POST)'
+    message: Django model from POST data - mass assignment risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-django-form-unvalidated
+    pattern: '$MODEL(**request.data)'
+    message: Model from request data - ensure validation
+    languages: [python]
+    severity: WARNING
+
+  - id: py-setattr-user-input
+    pattern: setattr($OBJ, $USER_INPUT, $VALUE)
+    message: setattr with user input - attribute injection risk
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # Information Disclosure
+  # ============================================
+
+  - id: py-exception-details
+    pattern: 'return {"error": str($EXCEPTION)}'
+    message: Exception details in response - may leak sensitive info
+    languages: [python]
+    severity: WARNING
+
+  - id: py-flask-exception-response
+    pattern: 'return str(e), 500'
+    message: Exception details returned - may leak sensitive info
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Async Security Issues
+  # ============================================
+
+  - id: py-asyncio-subprocess-shell
+    pattern: 'asyncio.create_subprocess_shell(...)'
+    message: Async subprocess with shell - command injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-asyncio-run-in-executor-os
+    pattern: 'loop.run_in_executor($EX, os.system, $CMD)'
+    message: os.system in executor - command injection risk
+    languages: [python]
+    severity: ERROR
