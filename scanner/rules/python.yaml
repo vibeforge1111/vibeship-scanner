@@ -495,7 +495,10 @@ rules:
     severity: WARNING
 
   - id: py-aiohttp-user-url
-    pattern: '$SESSION.get($USER_INPUT)'
+    patterns:
+      - pattern: 'await $SESSION.get(request.$ATTR)'
+      - pattern: 'await $SESSION.post(request.$ATTR, ...)'
+      - pattern: 'await $SESSION.request($METHOD, request.$ATTR)'
     message: aiohttp request with user input - potential SSRF
     languages: [python]
     severity: WARNING
@@ -557,5 +560,390 @@ rules:
   - id: py-asyncio-run-in-executor-os
     pattern: 'loop.run_in_executor($EX, os.system, $CMD)'
     message: os.system in executor - command injection risk
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # OWASP API Security Top 10
+  # ============================================
+
+  # API1: Broken Object Level Authorization (BOLA/IDOR)
+  - id: py-flask-idor-param
+    patterns:
+      - pattern: '$MODEL.query.get(request.args.get($ID))'
+      - pattern: '$MODEL.query.get(request.form.get($ID))'
+      - pattern: '$MODEL.query.filter_by(id=request.args[$ID])'
+      - pattern: 'db.session.query($MODEL).get($ID)'
+    message: Direct object access via user input - verify authorization
+    languages: [python]
+    severity: WARNING
+
+  - id: py-sqlalchemy-idor
+    patterns:
+      - pattern: '$SESSION.query($MODEL).filter($MODEL.id == $USER_INPUT)'
+      - pattern: '$MODEL.query.filter_by(id=$USER_INPUT).first()'
+    message: Object lookup by user-supplied ID - ensure authorization check
+    languages: [python]
+    severity: WARNING
+
+  # API2: Broken Authentication
+  - id: py-flask-no-auth-decorator
+    pattern: |
+      @app.route($PATH)
+      def $FUNC(...):
+        ...
+        return $DATA
+    message: Flask route without authentication decorator - verify auth is enforced
+    languages: [python]
+    severity: INFO
+
+  - id: py-jwt-weak-secret
+    patterns:
+      - pattern: 'jwt.encode($PAYLOAD, "...")'
+      - pattern: "jwt.encode($PAYLOAD, '...')"
+    message: Hardcoded JWT secret - use environment variable
+    languages: [python]
+    severity: ERROR
+
+  - id: py-flask-login-no-fresh
+    pattern: '@login_required'
+    message: Using login_required - consider fresh_login_required for sensitive actions
+    languages: [python]
+    severity: INFO
+
+  # API3: Broken Object Property Level Authorization
+  - id: py-flask-mass-assignment
+    patterns:
+      - pattern: '$MODEL(**request.json)'
+      - pattern: '$MODEL(**request.get_json())'
+      - pattern: '$MODEL(**request.form.to_dict())'
+    message: Mass assignment from request data - whitelist allowed fields
+    languages: [python]
+    severity: ERROR
+
+  - id: py-sqlalchemy-update-dict
+    patterns:
+      - pattern: '$OBJ.update(request.json)'
+      - pattern: '$OBJ.update(request.get_json())'
+    message: Updating object with unvalidated request data - mass assignment risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-flask-restful-mass-assign
+    pattern: '$MODEL.query.filter_by($FILTER).update(request.json)'
+    message: Bulk update with request data - mass assignment vulnerability
+    languages: [python]
+    severity: ERROR
+
+  # API4: Unrestricted Resource Consumption
+  - id: py-flask-no-rate-limit
+    pattern: '@app.route($PATH, methods=["POST"])'
+    message: POST endpoint - consider adding rate limiting
+    languages: [python]
+    severity: INFO
+
+  - id: py-file-upload-no-size-limit
+    patterns:
+      - pattern: 'request.files[$FILE]'
+      - pattern: 'request.files.get($FILE)'
+    message: File upload - ensure MAX_CONTENT_LENGTH is configured
+    languages: [python]
+    severity: WARNING
+
+  # API5: Broken Function Level Authorization
+  - id: py-flask-admin-route
+    pattern-regex: "@app\\.route\\(['\"].*admin.*['\"]"
+    message: Admin route detected - ensure proper authorization
+    languages: [python]
+    severity: WARNING
+
+  - id: py-role-check-user-input
+    patterns:
+      - pattern: 'if request.json.get("role") == "admin"'
+      - pattern: 'if request.args.get("is_admin")'
+    message: Admin check from user input - authorization bypass risk
+    languages: [python]
+    severity: ERROR
+
+  # API6: Unrestricted Access to Sensitive Business Flows
+  - id: py-flask-no-csrf
+    pattern: 'WTF_CSRF_ENABLED = False'
+    message: CSRF protection disabled - enable for production
+    languages: [python]
+    severity: ERROR
+
+  # API7: Server Side Request Forgery (SSRF) - Enhanced
+  - id: py-ssrf-requests-json
+    patterns:
+      - pattern: 'requests.get(request.json.get($URL))'
+      - pattern: 'requests.get(request.json[$URL])'
+      - pattern: 'requests.post(request.json.get($URL), ...)'
+    message: HTTP request with URL from JSON body - SSRF vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-ssrf-aiohttp-session
+    patterns:
+      - pattern: 'await session.get(request.json[$URL])'
+      - pattern: 'await session.post(request.json[$URL], ...)'
+    message: aiohttp request with user-controlled URL - SSRF vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-ssrf-httpx
+    patterns:
+      - pattern: 'await client.get(request.json[$URL])'
+      - pattern: 'httpx.get(request.json[$URL])'
+    message: httpx request with user-controlled URL - SSRF vulnerability
+    languages: [python]
+    severity: ERROR
+
+  # API8: Security Misconfiguration
+  - id: py-flask-secret-key-default
+    pattern: "app.secret_key = 'dev'"
+    message: Flask using default/dev secret key - use strong random key
+    languages: [python]
+    severity: ERROR
+
+  - id: py-flask-cors-all-origins
+    pattern: 'CORS(app, origins="*")'
+    message: Flask CORS allows all origins - restrict in production
+    languages: [python]
+    severity: WARNING
+
+  - id: py-flask-cors-credentials-wildcard
+    pattern: 'CORS(app, origins="*", supports_credentials=True)'
+    message: CORS wildcard with credentials - security misconfiguration
+    languages: [python]
+    severity: ERROR
+
+  - id: py-debug-endpoint
+    pattern-regex: "@app\\.route\\(['\"].*(debug|test|dev).*['\"]"
+    message: Debug/test endpoint detected - remove in production
+    languages: [python]
+    severity: WARNING
+
+  # API9: Improper Inventory Management
+  - id: py-deprecated-endpoint
+    pattern-regex: "@app\\.route\\(['\"].*v1.*['\"]"
+    message: Version 1 API endpoint - ensure deprecated versions are removed
+    languages: [python]
+    severity: INFO
+
+  # API10: Unsafe Consumption of APIs
+  - id: py-external-api-no-validation
+    patterns:
+      - pattern: 'response.json()'
+      - pattern: 'await response.json()'
+    message: External API response - validate data before processing
+    languages: [python]
+    severity: INFO
+
+  # ============================================
+  # Flask-SQLAlchemy SQL Injection
+  # ============================================
+
+  - id: py-sqlalchemy-raw-sql
+    patterns:
+      - pattern: 'db.engine.execute($QUERY)'
+      - pattern: 'db.session.execute($QUERY)'
+      - pattern: 'engine.execute($QUERY)'
+    message: Raw SQL execution - use parameterized queries
+    languages: [python]
+    severity: WARNING
+
+  - id: py-sqlalchemy-text-format
+    patterns:
+      - pattern: 'text(f"...")'
+      - pattern: 'text($Q % $V)'
+      - pattern: 'text($Q + $V)'
+      - pattern: 'text($Q.format(...))'
+    message: SQLAlchemy text with string interpolation - SQL injection
+    languages: [python]
+    severity: ERROR
+
+  - id: py-sqlalchemy-from-statement
+    pattern: '$MODEL.query.from_statement(text($QUERY))'
+    message: from_statement with text - ensure parameterized
+    languages: [python]
+    severity: WARNING
+
+  - id: py-filter-by-user-input
+    pattern: '$MODEL.query.filter_by(**request.args)'
+    message: filter_by with request args - NoSQL-style injection risk
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # Flask Authentication Issues
+  # ============================================
+
+  - id: py-flask-password-compare
+    patterns:
+      - pattern: 'if password == user.password'
+      - pattern: 'if user.password == password'
+    message: Direct password comparison - use check_password_hash
+    languages: [python]
+    severity: ERROR
+
+  - id: py-flask-password-plaintext
+    patterns:
+      - pattern: 'user.password = request.json["password"]'
+      - pattern: 'user.password = password'
+    message: Storing password without hashing - use generate_password_hash
+    languages: [python]
+    severity: ERROR
+
+  - id: py-werkzeug-weak-hash
+    pattern: 'generate_password_hash($PASS, method="md5")'
+    message: MD5 password hashing is weak - use pbkdf2 or scrypt
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # Flask Session Security
+  # ============================================
+
+  - id: py-flask-session-permanent
+    pattern: 'session.permanent = True'
+    message: Permanent session - ensure PERMANENT_SESSION_LIFETIME is set
+    languages: [python]
+    severity: INFO
+
+  - id: py-flask-session-cookie-insecure
+    patterns:
+      - pattern: 'SESSION_COOKIE_SECURE = False'
+      - pattern: 'SESSION_COOKIE_HTTPONLY = False'
+    message: Insecure session cookie configuration
+    languages: [python]
+    severity: ERROR
+
+  - id: py-flask-session-from-user
+    patterns:
+      - pattern: 'session[$KEY] = request.json[$VALUE]'
+      - pattern: 'session.update(request.json)'
+    message: Session data from user input - validate before storing
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Flask Response Security
+  # ============================================
+
+  - id: py-flask-jsonify-sensitive
+    patterns:
+      - pattern: 'return jsonify(user)'
+      - pattern: 'return jsonify({"user": user})'
+    message: Returning full user object - exclude sensitive fields
+    languages: [python]
+    severity: WARNING
+
+  - id: py-flask-password-in-response
+    patterns:
+      - pattern: 'jsonify({"password": $PASS})'
+      - pattern: 'jsonify({..., "password": $PASS, ...})'
+    message: Password in API response - remove immediately
+    languages: [python]
+    severity: ERROR
+
+  - id: py-flask-user-enumeration
+    patterns:
+      - pattern: 'return {"error": "User not found"}'
+      - pattern: 'return jsonify({"error": "Invalid username"})'
+      - pattern: 'abort(404, "User does not exist")'
+    message: User enumeration via error message - use generic errors
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Input Validation
+  # ============================================
+
+  - id: py-flask-no-input-validation
+    pattern: |
+      @app.route($PATH, methods=["POST"])
+      def $FUNC():
+        data = request.json
+        ...
+    message: POST endpoint - validate input data with schema
+    languages: [python]
+    severity: INFO
+
+  - id: py-marshmallow-no-strict
+    pattern: 'Schema().load(data)'
+    message: Marshmallow load without strict - unknown fields accepted
+    languages: [python]
+    severity: INFO
+
+  - id: py-pydantic-no-validation
+    pattern: '$MODEL.parse_obj(request.json)'
+    message: Pydantic parsing - handle ValidationError
+    languages: [python]
+    severity: INFO
+
+  # ============================================
+  # Dangerous Operations
+  # ============================================
+
+  - id: py-flask-send-file-user
+    patterns:
+      - pattern: 'send_file(request.args[$FILE])'
+      - pattern: 'send_file(request.form[$FILE])'
+      - pattern: 'send_from_directory($DIR, request.args[$FILE])'
+    message: File send with user input - path traversal risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-flask-redirect-open
+    patterns:
+      - pattern: 'redirect(request.args.get("next"))'
+      - pattern: 'redirect(request.args.get("url"))'
+      - pattern: 'redirect(request.args.get("redirect"))'
+    message: Open redirect - validate redirect URL against whitelist
+    languages: [python]
+    severity: WARNING
+
+  - id: py-flask-redirect-unvalidated
+    patterns:
+      - pattern: 'redirect(request.json[$URL])'
+      - pattern: 'redirect(request.form[$URL])'
+    message: Redirect with user-controlled URL - open redirect vulnerability
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # Logging Security
+  # ============================================
+
+  - id: py-logging-password
+    patterns:
+      - pattern: 'logging.info($MSG, password)'
+      - pattern: 'logger.info($MSG, password)'
+      - pattern: 'app.logger.info($MSG, password)'
+    message: Password logged - remove sensitive data from logs
+    languages: [python]
+    severity: ERROR
+
+  - id: py-logging-token
+    patterns:
+      - pattern: 'logging.info($MSG, token)'
+      - pattern: 'logger.debug($MSG, $OBJ.token)'
+    message: Token logged - remove sensitive data from logs
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # Database Connection Security
+  # ============================================
+
+  - id: py-sqlalchemy-uri-password
+    pattern-regex: "SQLALCHEMY_DATABASE_URI.*://.*:.*@"
+    message: Database credentials in URI - use environment variables
+    languages: [python]
+    severity: ERROR
+
+  - id: py-mongodb-hardcoded-creds
+    pattern-regex: "mongodb://[^:]+:[^@]+@"
+    message: MongoDB credentials hardcoded - use environment variables
     languages: [python]
     severity: ERROR
