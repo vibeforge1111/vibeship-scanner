@@ -374,3 +374,385 @@ rules:
       - pattern-not: |
           function $FUNC(...) private { ... }
 
+  # ============================================
+  # DeFi: Flash Loan Attacks
+  # ============================================
+
+  - id: sol-flash-loan-no-check
+    message: Flash loan without proper balance check - ensure atomic execution
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution Using Shared Resource"
+    pattern-either:
+      - pattern: IFlashLoanReceiver($X).executeOperation(...)
+      - pattern: IERC3156FlashBorrower($X).onFlashLoan(...)
+
+  - id: sol-unchecked-return-value
+    message: Return value of external call not checked - silent failure possible
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+    patterns:
+      - pattern: $TOKEN.transfer($TO, $AMT)
+      - pattern-not-inside: require($TOKEN.transfer(...), ...)
+      - pattern-not-inside: if ($TOKEN.transfer(...)) { ... }
+
+  - id: sol-unsafe-erc20-transfer
+    message: ERC20 transfer without SafeERC20 - some tokens dont return bool
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      references:
+        - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/utils/SafeERC20.sol
+    pattern-either:
+      - pattern: IERC20($TOKEN).transfer(...)
+      - pattern: IERC20($TOKEN).transferFrom(...)
+      - pattern: IERC20($TOKEN).approve(...)
+
+  # ============================================
+  # DeFi: Liquidity & AMM Issues
+  # ============================================
+
+  - id: sol-hardcoded-deadline
+    message: Hardcoded deadline in swap - use block.timestamp + buffer
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+    pattern-either:
+      - pattern: $ROUTER.swapExactTokensForTokens(..., 9999999999, ...)
+      - pattern: $ROUTER.swapExactTokensForTokens(..., type(uint256).max, ...)
+
+  - id: sol-approve-max
+    message: Unlimited token approval - use exact amount needed
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+    pattern-either:
+      - pattern: $TOKEN.approve($SPENDER, type(uint256).max)
+      - pattern: IERC20($TOKEN).approve($SPENDER, type(uint256).max)
+
+  - id: sol-missing-deadline
+    message: DEX swap without deadline - transaction can be delayed by miners
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+    pattern: $ROUTER.swapExactTokensForTokens(..., block.timestamp, ...)
+
+  # ============================================
+  # NFT Security
+  # ============================================
+
+  - id: sol-nft-overflow-mint
+    message: NFT mint without supply check - potential overflow in tokenId
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+    patterns:
+      - pattern: _mint($TO, $ID)
+      - pattern-not-inside: |
+          require($ID <= $MAX, ...);
+          ...
+
+  - id: sol-erc721-no-exists-check
+    message: ERC721 operation without existence check - token may not exist
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+    patterns:
+      - pattern: ownerOf($ID)
+      - pattern-not-inside: |
+          require(_exists($ID), ...);
+          ...
+
+  - id: sol-nft-royalty-bypass
+    message: NFT transfer without royalty enforcement - use ERC2981
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+    pattern-either:
+      - pattern: safeTransferFrom($FROM, $TO, $ID)
+      - pattern: transferFrom($FROM, $TO, $ID)
+
+  # ============================================
+  # Staking & Rewards
+  # ============================================
+
+  - id: sol-reward-before-update
+    message: Reward calculation before state update - stale rewards possible
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+    patterns:
+      - pattern-inside: |
+          function $FUNC(...) {
+            ...
+          }
+      - pattern: |
+          $REWARD = $CALC;
+          ...
+          $STATE = $NEW;
+
+  - id: sol-division-before-multiplication
+    message: Division before multiplication causes precision loss
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern: ($X / $Y) * $Z
+
+  # ============================================
+  # Gas & DOS
+  # ============================================
+
+  - id: sol-unbounded-loop
+    message: Unbounded loop over array - potential DOS via gas limit
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+    patterns:
+      - pattern: |
+          for (uint $I = 0; $I < $ARR.length; $I++) {
+            ...
+          }
+
+  - id: sol-external-call-in-loop
+    message: External call in loop - gas griefing and DOS risk
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+    patterns:
+      - pattern-inside: |
+          for (...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: $ADDR.call(...)
+          - pattern: $ADDR.transfer(...)
+          - pattern: $ADDR.send(...)
+
+  - id: sol-send-without-check
+    message: send() return value not checked - silent failure
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+    patterns:
+      - pattern: $ADDR.send($AMT)
+      - pattern-not-inside: require($ADDR.send(...), ...)
+      - pattern-not-inside: if ($ADDR.send(...)) { ... }
+
+  # ============================================
+  # Governance & Voting
+  # ============================================
+
+  - id: sol-flashloan-governance
+    message: Governance vote without snapshot - flash loan attack possible
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+    patterns:
+      - pattern: balanceOf($VOTER)
+      - pattern-inside: |
+          function vote(...) {
+            ...
+          }
+
+  - id: sol-centralized-admin
+    message: Single admin with full control - consider multisig or timelock
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+    patterns:
+      - pattern-either:
+          - pattern: onlyOwner
+          - pattern: require(msg.sender == owner, ...)
+
+  # ============================================
+  # Upgradeable Contracts
+  # ============================================
+
+  - id: sol-initialize-not-protected
+    message: initialize() without initializer modifier - can be called multiple times
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+    patterns:
+      - pattern: |
+          function initialize(...) public {
+            ...
+          }
+      - pattern-not: |
+          function initialize(...) public initializer { ... }
+
+  - id: sol-selfdestruct-in-implementation
+    message: selfdestruct in implementation contract - proxy becomes unusable
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+    patterns:
+      - pattern: selfdestruct($ADDR)
+      - pattern-inside: |
+          contract $CONTRACT is Initializable {
+            ...
+          }
+
+  - id: sol-no-gap-storage
+    message: Upgradeable contract without storage gap - future upgrade collision risk
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+      references:
+        - https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+    patterns:
+      - pattern-inside: |
+          contract $CONTRACT is Initializable {
+            ...
+          }
+      - pattern-not: uint256[50] private __gap
+
+  # ============================================
+  # Cross-Chain & Bridge
+  # ============================================
+
+  - id: sol-cross-chain-replay
+    message: Cross-chain call without chain ID check - replay attack possible
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+    patterns:
+      - pattern-either:
+          - pattern: keccak256(abi.encode(...))
+          - pattern: keccak256(abi.encodePacked(...))
+      - pattern-not-inside: |
+          keccak256(abi.encode(..., block.chainid, ...))
+
+  # ============================================
+  # Additional Token Issues
+  # ============================================
+
+  - id: sol-erc20-double-approve
+    message: ERC20 approve race condition - use increaseAllowance instead
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      references:
+        - https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+    pattern: approve($SPENDER, $AMT)
+
+  - id: sol-fee-on-transfer-token
+    message: Token amount after transfer may differ - check actual received amount
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+    patterns:
+      - pattern: $TOKEN.transferFrom($FROM, $TO, $AMT)
+      - pattern-not-inside: |
+          $BEFORE = $TOKEN.balanceOf($TO);
+          ...
+          $AFTER = $TOKEN.balanceOf($TO);
+
+  - id: sol-reentrancy-lock
+    message: State variable used as reentrancy guard - use OpenZeppelin ReentrancyGuard
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+    patterns:
+      - pattern-either:
+          - pattern: |
+              bool private locked;
+          - pattern: |
+              require(!locked, ...);
+              locked = true;
+
+  # ============================================
+  # Compiler & Language Issues
+  # ============================================
+
+  - id: sol-assembly-usage
+    message: Inline assembly detected - review carefully for security issues
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+    pattern: assembly { ... }
+
+  - id: sol-deprecated-sha3
+    message: sha3() is deprecated - use keccak256() instead
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+    pattern: sha3(...)
+
+  - id: sol-implicit-conversion
+    message: Implicit type conversion - use explicit casting
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+    pattern-either:
+      - pattern: int($X)
+      - pattern: uint($X)
+
+  # ============================================
+  # Event & Logging
+  # ============================================
+
+  - id: sol-missing-event-ownership
+    message: Ownership transfer without event - makes tracking difficult
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+    patterns:
+      - pattern: owner = $NEW
+      - pattern-not-inside: |
+          emit OwnershipTransferred(...);
+
+  - id: sol-missing-indexed-event
+    message: Event parameter not indexed - harder to filter logs
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+    pattern: event $NAME(address $ADDR, ...)
+
+  # ============================================
+  # Security Modifiers
+  # ============================================
+
+  - id: sol-require-without-message
+    message: require() without error message - harder to debug failures
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: best-practice
+    patterns:
+      - pattern: require($COND)
+      - pattern-not: require($COND, $MSG)
+

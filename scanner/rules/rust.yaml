@@ -1,4 +1,4 @@
-# Rust Security Rules
+# Rust Security Rules (includes Solana smart contract patterns)
 rules:
   # ============================================
   # Command Injection
@@ -6,12 +6,6 @@ rules:
 
   - id: rust-command-arg
     pattern: Command::new($CMD).arg($ARG)
-    message: Rust command execution - validate arguments
-    languages: [rust]
-    severity: WARNING
-
-  - id: rust-command-args
-    pattern: Command::new($CMD).args($ARGS)
     message: Rust command execution - validate arguments
     languages: [rust]
     severity: WARNING
@@ -47,12 +41,6 @@ rules:
   - id: rust-sqlx-query
     pattern: sqlx::query($QUERY)
     message: Rust SQLx query - use parameterized queries
-    languages: [rust]
-    severity: WARNING
-
-  - id: rust-diesel-sql
-    pattern: sql::<$TYPE>($QUERY)
-    message: Rust Diesel raw SQL - ensure parameterized
     languages: [rust]
     severity: WARNING
 
@@ -100,21 +88,9 @@ rules:
     languages: [rust]
     severity: WARNING
 
-  - id: rust-file-create-user
-    pattern: File::create($USER_INPUT)
-    message: Rust file create with user input - traversal risk
-    languages: [rust]
-    severity: WARNING
-
   - id: rust-fs-read-user
     pattern: fs::read($USER_INPUT)
     message: Rust fs::read with user input - traversal risk
-    languages: [rust]
-    severity: WARNING
-
-  - id: rust-fs-write-user
-    pattern: fs::write($USER_INPUT, ...)
-    message: Rust fs::write with user input - traversal risk
     languages: [rust]
     severity: WARNING
 
@@ -125,12 +101,6 @@ rules:
   - id: rust-reqwest-get-user
     pattern: reqwest::get($USER_INPUT)
     message: Rust reqwest with user URL - potential SSRF
-    languages: [rust]
-    severity: WARNING
-
-  - id: rust-hyper-client-user
-    pattern: $CLIENT.get($USER_INPUT)
-    message: Rust HTTP client with user URL - potential SSRF
     languages: [rust]
     severity: WARNING
 
@@ -172,12 +142,6 @@ rules:
     languages: [rust]
     severity: ERROR
 
-  - id: rust-native-tls-danger
-    pattern: TlsConnector::builder().danger_accept_invalid_certs(true)
-    message: Rust native-tls accepting invalid certs
-    languages: [rust]
-    severity: ERROR
-
   # ============================================
   # Deserialization
   # ============================================
@@ -210,12 +174,6 @@ rules:
     languages: [rust]
     severity: INFO
 
-  - id: rust-panic
-    pattern: panic!(...)
-    message: Rust panic! - ensure this is intentional
-    languages: [rust]
-    severity: INFO
-
   # ============================================
   # Hardcoded Credentials
   # ============================================
@@ -245,22 +203,6 @@ rules:
     severity: ERROR
 
   # ============================================
-  # Debug/Logging
-  # ============================================
-
-  - id: rust-dbg-macro
-    pattern: dbg!(...)
-    message: Rust dbg! macro - remove in production
-    languages: [rust]
-    severity: INFO
-
-  - id: rust-println
-    pattern: println!(...)
-    message: Rust println! - use proper logging in production
-    languages: [rust]
-    severity: INFO
-
-  # ============================================
   # WebAssembly Specific
   # ============================================
 
@@ -279,3 +221,113 @@ rules:
     message: Rust regex from user input - ReDoS risk
     languages: [rust]
     severity: WARNING
+
+  # ============================================
+  # Solana Smart Contract Security
+  # ============================================
+
+  - id: solana-missing-signer-check
+    pattern: |
+      if !$ACCOUNT.is_signer {
+        ...
+      }
+    message: Solana account signer check - ensure all required signers are verified
+    languages: [rust]
+    severity: WARNING
+
+  - id: solana-missing-owner-check
+    pattern: |
+      if $ACCOUNT.owner != $PROGRAM_ID {
+        ...
+      }
+    message: Solana account owner check - verify account ownership
+    languages: [rust]
+    severity: WARNING
+
+  - id: solana-unchecked-account
+    pattern: next_account_info($ITER)
+    message: Solana next_account_info - ensure account validation follows
+    languages: [rust]
+    severity: INFO
+
+  - id: solana-arbitrary-cpi
+    pattern: invoke($INSTRUCTION, $ACCOUNTS)
+    message: Solana CPI - ensure program ID and accounts are validated
+    languages: [rust]
+    severity: WARNING
+
+  - id: solana-signed-invoke
+    pattern: invoke_signed($INSTRUCTION, $ACCOUNTS, $SEEDS)
+    message: Solana signed CPI - verify PDA seeds are correct
+    languages: [rust]
+    severity: WARNING
+
+  - id: solana-pda-bump-seed
+    pattern: Pubkey::find_program_address($SEEDS, $PROGRAM_ID)
+    message: Solana PDA creation - store and verify bump seed
+    languages: [rust]
+    severity: INFO
+
+  - id: solana-arithmetic-overflow
+    pattern: $A + $B
+    message: Solana arithmetic - use checked_add to prevent overflow
+    languages: [rust]
+    severity: INFO
+
+  - id: solana-checked-math
+    pattern: $A.checked_add($B)
+    message: Good - using checked arithmetic in Solana
+    languages: [rust]
+    severity: INFO
+
+  - id: solana-lamport-theft
+    pattern: '**$ACCOUNT.lamports.borrow_mut() = 0'
+    message: Solana lamport manipulation - ensure proper authorization
+    languages: [rust]
+    severity: ERROR
+
+  - id: solana-account-close
+    pattern: $ACCOUNT.assign(&system_program::ID)
+    message: Solana account closing - ensure funds are transferred first
+    languages: [rust]
+    severity: WARNING
+
+  - id: solana-reinitialization
+    pattern: |
+      if $ACCOUNT.is_initialized {
+        return Err(...);
+      }
+    message: Solana reinitialization check - prevent double-init attacks
+    languages: [rust]
+    severity: INFO
+
+  - id: solana-type-confusion
+    pattern: try_from_slice($DATA)
+    message: Solana deserialization - verify account discriminator first
+    languages: [rust]
+    severity: WARNING
+
+  - id: anchor-missing-constraint
+    pattern: '#[account(mut)]'
+    message: Anchor account - consider adding has_one or constraint checks
+    languages: [rust]
+    severity: INFO
+
+  - id: anchor-unchecked-account
+    pattern: 'UncheckedAccount'
+    message: Anchor UncheckedAccount - ensure manual validation is performed
+    languages: [rust]
+    severity: WARNING
+
+  - id: anchor-init-if-needed
+    pattern: '#[account(init_if_needed, ...)]'
+    message: Anchor init_if_needed - vulnerable to reinitialization attacks
+    languages: [rust]
+    severity: ERROR
+
+  - id: anchor-close-account
+    pattern: '#[account(close = $TARGET)]'
+    message: Anchor close - ensure account cannot be reopened in same tx
+    languages: [rust]
+    severity: WARNING
+

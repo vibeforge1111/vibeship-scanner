@@ -46,6 +46,7 @@ LANGUAGE_RULES = {
     'Bash': 'bash.yaml',
     'Shell': 'bash.yaml',
     'Solidity': 'solidity.yaml',
+    'Dart': 'dart.yaml',
     'YAML': 'yaml-config.yaml',
 }
 
@@ -113,6 +114,7 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
         '.sh': 'Bash',
         '.bash': 'Bash',
         '.sol': 'Solidity',
+        '.dart': 'Dart',
     }
 
     # Files/directories that indicate YAML config scanning is needed
@@ -177,6 +179,18 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
                     frameworks.add('Supabase')
                 if 'mongoose' in deps or 'mongodb' in deps:
                     frameworks.add('MongoDB')
+                if 'firebase' in deps or 'firebase-admin' in deps:
+                    frameworks.add('Firebase')
+                if '@angular/core' in deps:
+                    frameworks.add('Angular')
+                if 'fastify' in deps:
+                    frameworks.add('Fastify')
+                if 'hono' in deps:
+                    frameworks.add('Hono')
+                if 'prisma' in deps or '@prisma/client' in deps:
+                    frameworks.add('Prisma')
+                if 'drizzle-orm' in deps:
+                    frameworks.add('Drizzle')
         except:
             pass
 
@@ -218,6 +232,10 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
 
     if 'Package.swift' in files:
         languages.add('Swift')
+
+    if 'pubspec.yaml' in files:
+        languages.add('Dart')
+        frameworks.add('Flutter')
 
     lang_list = sorted(list(languages))
     framework_list = sorted(list(frameworks))

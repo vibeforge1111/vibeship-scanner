@@ -1,0 +1,286 @@
+# Dart/Flutter Security Rules
+rules:
+  # ============================================
+  # Insecure HTTP
+  # ============================================
+
+  - id: dart-http-without-tls
+    pattern: 'Uri.parse("http://$URL")'
+    message: Insecure HTTP connection - use HTTPS
+    languages: [dart]
+    severity: WARNING
+
+  - id: dart-http-client-insecure
+    pattern: 'HttpClient()..badCertificateCallback = $CALLBACK'
+    message: SSL certificate validation disabled - MITM risk
+    languages: [dart]
+    severity: ERROR
+
+  - id: dart-dio-insecure
+    pattern: 'Dio()..options.validateStatus = $FUNC'
+    message: Custom status validation may bypass security checks
+    languages: [dart]
+    severity: WARNING
+
+  # ============================================
+  # SQL Injection (SQLite/Drift)
+  # ============================================
+
+  - id: dart-sqflite-raw-query
+    pattern: 'database.rawQuery($QUERY + $INPUT)'
+    message: SQL injection via string concatenation
+    languages: [dart]
+    severity: ERROR
+
+  - id: dart-sqflite-raw-insert
+    pattern: 'database.rawInsert($QUERY + $INPUT)'
+    message: SQL injection via string concatenation
+    languages: [dart]
+    severity: ERROR
+
+  - id: dart-sqflite-execute
+    pattern: 'database.execute($QUERY + $INPUT)'
+    message: SQL injection via string concatenation
+    languages: [dart]
+    severity: ERROR
+
+  - id: dart-sqflite-interpolation
+    pattern: 'database.rawQuery("$QUERY")'
+    message: SQL injection via string interpolation - use parameters
+    languages: [dart]
+    severity: ERROR
+
+  # ============================================
+  # Hardcoded Secrets
+  # ============================================
+
+  - id: dart-hardcoded-api-key
+    pattern: 'apiKey = "..."'
+    message: Hardcoded API key - use environment variables
+    languages: [dart]
+    severity: ERROR
+
+  - id: dart-hardcoded-secret
+    pattern: 'secret = "..."'
+    message: Hardcoded secret - use secure storage
+    languages: [dart]
+    severity: ERROR
+
+  - id: dart-hardcoded-password
+    pattern: 'password = "..."'
+    message: Hardcoded password detected
+    languages: [dart]
+    severity: ERROR
+
+  - id: dart-hardcoded-token
+    pattern: 'token = "..."'
+    message: Hardcoded token - use secure storage
+    languages: [dart]
+    severity: ERROR
+
+  - id: dart-firebase-key-exposed
+    pattern: 'apiKey: "AIza$KEY"'
+    message: Firebase API key exposed - move to environment config
+    languages: [dart]
+    severity: ERROR
+
+  # ============================================
+  # Insecure Storage
+  # ============================================
+
+  - id: dart-shared-prefs-sensitive
+    pattern: 'SharedPreferences.$METHOD($KEY, $PASSWORD)'
+    message: Storing sensitive data in SharedPreferences - use flutter_secure_storage
+    languages: [dart]
+    severity: WARNING
+
+  - id: dart-shared-prefs-token
+    pattern: 'prefs.setString("token", $VALUE)'
+    message: Storing token in SharedPreferences - use flutter_secure_storage
+    languages: [dart]
+    severity: ERROR
+
+  - id: dart-shared-prefs-password
+    pattern: 'prefs.setString("password", $VALUE)'
+    message: Storing password in SharedPreferences - use flutter_secure_storage
+    languages: [dart]
+    severity: ERROR
+
+  # ============================================
+  # WebView Security
+  # ============================================
+
+  - id: dart-webview-javascript-enabled
+    pattern: 'WebView(javascriptMode: JavascriptMode.unrestricted)'
+    message: WebView with unrestricted JavaScript - XSS risk
+    languages: [dart]
+    severity: WARNING
+
+  - id: dart-webview-user-url
+    pattern: 'WebView(initialUrl: $USER_INPUT)'
+    message: WebView loading user-controlled URL - XSS/phishing risk
+    languages: [dart]
+    severity: WARNING
+
+  - id: dart-inappwebview-js
+    pattern: 'InAppWebView(initialSettings: InAppWebViewSettings(javaScriptEnabled: true))'
+    message: InAppWebView with JavaScript enabled - review content safety
+    languages: [dart]
+    severity: INFO
+
+  # ============================================
+  # Command/Code Injection
+  # ============================================
+
+  - id: dart-process-run
+    pattern: 'Process.run($CMD, $ARGS)'
+    message: Process execution - ensure input validation
+    languages: [dart]
+    severity: WARNING
+
+  - id: dart-process-run-shell
+    pattern: 'Process.run($CMD, $ARGS, runInShell: true)'
+    message: Shell command execution - command injection risk
+    languages: [dart]
+    severity: ERROR
+
+  - id: dart-eval-string
+    pattern: 'eval($CODE)'
+    message: Dynamic code evaluation - code injection risk
+    languages: [dart]
+    severity: ERROR
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: dart-file-user-path
+    pattern: 'File($USER_INPUT)'
+    message: File path from user input - path traversal risk
+    languages: [dart]
+    severity: WARNING
+
+  - id: dart-directory-user-path
+    pattern: 'Directory($USER_INPUT)'
+    message: Directory path from user input - path traversal risk
+    languages: [dart]
+    severity: WARNING
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: dart-md5-hash
+    pattern: 'md5.convert($DATA)'
+    message: MD5 is weak - use SHA-256 or better
+    languages: [dart]
+    severity: WARNING
+
+  - id: dart-sha1-hash
+    pattern: 'sha1.convert($DATA)'
+    message: SHA1 is weak - use SHA-256 or better
+    languages: [dart]
+    severity: WARNING
+
+  - id: dart-random-insecure
+    pattern: 'Random().next$METHOD()'
+    message: Random() is not cryptographically secure - use Random.secure()
+    languages: [dart]
+    severity: WARNING
+
+  - id: dart-random-secure
+    pattern: 'Random.secure()'
+    message: Good - using cryptographically secure random
+    languages: [dart]
+    severity: INFO
+
+  # ============================================
+  # Debug/Logging
+  # ============================================
+
+  - id: dart-print-sensitive
+    pattern: 'print($SENSITIVE)'
+    message: Print statement may expose sensitive data in logs
+    languages: [dart]
+    severity: INFO
+
+  - id: dart-debug-print
+    pattern: 'debugPrint($DATA)'
+    message: Debug print may expose data - remove in production
+    languages: [dart]
+    severity: INFO
+
+  - id: dart-krelease-mode
+    pattern: 'if (kDebugMode)'
+    message: Debug-only code detected - ensure proper release handling
+    languages: [dart]
+    severity: INFO
+
+  # ============================================
+  # Biometric/Auth Bypass
+  # ============================================
+
+  - id: dart-biometric-weak
+    pattern: 'LocalAuthentication().authenticate(localizedReason: $REASON)'
+    message: Biometric auth - ensure fallback is also secure
+    languages: [dart]
+    severity: INFO
+
+  - id: dart-biometric-bypass
+    pattern: 'biometricOnly: false'
+    message: Biometric fallback enabled - ensure PIN/pattern is secure
+    languages: [dart]
+    severity: INFO
+
+  # ============================================
+  # Deeplink/Intent Security
+  # ============================================
+
+  - id: dart-deeplink-handler
+    pattern: 'getInitialUri()'
+    message: Deep link handler - validate URI before processing
+    languages: [dart]
+    severity: INFO
+
+  - id: dart-url-launcher-user
+    pattern: 'launchUrl(Uri.parse($USER_INPUT))'
+    message: Launching user-controlled URL - open redirect risk
+    languages: [dart]
+    severity: WARNING
+
+  # ============================================
+  # JSON/Deserialization
+  # ============================================
+
+  - id: dart-json-decode-unsafe
+    pattern: 'jsonDecode($UNTRUSTED)'
+    message: JSON decode of untrusted data - validate structure
+    languages: [dart]
+    severity: INFO
+
+  # ============================================
+  # Certificate Pinning
+  # ============================================
+
+  - id: dart-no-cert-pinning
+    pattern: 'HttpClient()'
+    message: Consider implementing certificate pinning for sensitive APIs
+    languages: [dart]
+    severity: INFO
+
+  # ============================================
+  # Firebase Security
+  # ============================================
+
+  - id: dart-firebase-anon-auth
+    pattern: 'FirebaseAuth.instance.signInAnonymously()'
+    message: Anonymous auth - ensure proper security rules
+    languages: [dart]
+    severity: INFO
+
+  - id: dart-firestore-no-rules
+    pattern: 'FirebaseFirestore.instance.collection($COL).add($DATA)'
+    message: Firestore write - ensure security rules are configured
+    languages: [dart]
+    severity: INFO
+

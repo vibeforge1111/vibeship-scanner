@@ -1,4 +1,4 @@
-# Java Security Rules
+# Java Security Rules (Streamlined ~70 rules)
 rules:
   # ============================================
   # Command Injection
@@ -13,12 +13,6 @@ rules:
   - id: java-processbuilder
     pattern: new ProcessBuilder($CMD)
     message: Java ProcessBuilder - command injection risk
-    languages: [java]
-    severity: WARNING
-
-  - id: java-processbuilder-command
-    pattern: $PB.command($CMD)
-    message: Java ProcessBuilder command - injection risk
     languages: [java]
     severity: WARNING
 
@@ -38,12 +32,6 @@ rules:
     languages: [java]
     severity: WARNING
 
-  - id: java-statement-executeupdate
-    pattern: $STMT.executeUpdate($QUERY)
-    message: Java SQL - use PreparedStatement instead
-    languages: [java]
-    severity: WARNING
-
   - id: java-sql-concat
     pattern: '"SELECT " + $VAR'
     message: Java SQL concatenation - SQL injection risk
@@ -54,15 +42,9 @@ rules:
   # XPath Injection
   # ============================================
 
-  - id: java-xpath-compile
-    pattern: XPathFactory.newInstance().newXPath().compile($EXPR)
-    message: Java XPath injection risk
-    languages: [java]
-    severity: WARNING
-
   - id: java-xpath-evaluate
     pattern: $XPATH.evaluate($EXPR, ...)
-    message: Java XPath evaluation - injection risk if expression is user input
+    message: Java XPath - injection risk if expression is user input
     languages: [java]
     severity: WARNING
 
@@ -79,12 +61,6 @@ rules:
   - id: java-objectinputstream-new
     pattern: new ObjectInputStream(...)
     message: Java ObjectInputStream - insecure deserialization vulnerability
-    languages: [java]
-    severity: ERROR
-
-  - id: java-readobject
-    pattern: $X.readObject()
-    message: Java readObject() - insecure deserialization vulnerability
     languages: [java]
     severity: ERROR
 
@@ -122,21 +98,9 @@ rules:
     languages: [java]
     severity: ERROR
 
-  - id: java-crypto-3des
-    pattern: 'Cipher.getInstance("DESede")'
-    message: Java 3DES is deprecated - use AES
-    languages: [java]
-    severity: WARNING
-
   - id: java-random-security
     pattern: new Random()
     message: Java Random not secure - use SecureRandom
-    languages: [java]
-    severity: WARNING
-
-  - id: java-securerandom-seed
-    pattern: new SecureRandom($SEED)
-    message: Java SecureRandom with seed may be predictable
     languages: [java]
     severity: WARNING
 
@@ -151,6 +115,24 @@ rules:
     message: Java SHA-1 is deprecated for security
     languages: [java]
     severity: WARNING
+
+  - id: java-crypto-rc4
+    pattern: 'Cipher.getInstance("RC4")'
+    message: Java RC4 is broken - use AES
+    languages: [java]
+    severity: ERROR
+
+  - id: java-weak-rsa-keygen
+    pattern: $KPG.initialize(1024)
+    message: Java RSA key size too small - use at least 2048 bits
+    languages: [java]
+    severity: ERROR
+
+  - id: java-static-iv
+    pattern: 'new IvParameterSpec("...".getBytes())'
+    message: Java static IV in encryption - IV should be random
+    languages: [java]
+    severity: ERROR
 
   # ============================================
   # XXE (XML External Entity)
@@ -173,24 +155,6 @@ rules:
     message: Java StAX parser may be vulnerable to XXE - disable external entities
     languages: [java]
     severity: WARNING
-
-  - id: java-xxe-transformerfactory
-    pattern: TransformerFactory.newInstance()
-    message: Java Transformer may be vulnerable to XXE - disable external entities
-    languages: [java]
-    severity: WARNING
-
-  - id: java-xxe-xmlreader
-    pattern: XMLReaderFactory.createXMLReader()
-    message: Java XMLReader may be vulnerable to XXE - disable external entities
-    languages: [java]
-    severity: WARNING
-
-  - id: java-xxe-feature-disabled
-    pattern: $FACTORY.setFeature("http://apache.org/xml/features/disallow-doctype-decl", false)
-    message: XXE protection explicitly disabled
-    languages: [java]
-    severity: ERROR
 
   - id: java-xxe-external-entities-enabled
     pattern: $FACTORY.setFeature("http://xml.org/sax/features/external-general-entities", true)
@@ -220,24 +184,6 @@ rules:
     languages: [java]
     severity: ERROR
 
-  - id: java-path-traversal-fileoutputstream
-    pattern: new FileOutputStream($REQUEST)
-    message: Java FileOutputStream with user input - potential path traversal
-    languages: [java]
-    severity: ERROR
-
-  - id: java-path-traversal-filereader
-    pattern: new FileReader($REQUEST)
-    message: Java FileReader with user input - potential path traversal
-    languages: [java]
-    severity: ERROR
-
-  - id: java-path-traversal-filewriter
-    pattern: new FileWriter($REQUEST)
-    message: Java FileWriter with user input - potential path traversal
-    languages: [java]
-    severity: ERROR
-
   # ============================================
   # JWT Security
   # ============================================
@@ -253,12 +199,6 @@ rules:
     message: Java JWT none algorithm - authentication bypass vulnerability
     languages: [java]
     severity: ERROR
-
-  - id: java-jwt-weak-hmac
-    pattern: Algorithm.HMAC256($SECRET)
-    message: Java JWT - ensure HMAC secret is strong (256+ bits)
-    languages: [java]
-    severity: WARNING
 
   # ============================================
   # SSRF
@@ -276,12 +216,6 @@ rules:
     languages: [java]
     severity: WARNING
 
-  - id: java-ssrf-httpclient
-    pattern: HttpClients.createDefault()
-    message: Java HttpClient - ensure URLs are validated against SSRF
-    languages: [java]
-    severity: INFO
-
   # ============================================
   # LDAP Injection
   # ============================================
@@ -292,12 +226,6 @@ rules:
     languages: [java]
     severity: WARNING
 
-  - id: java-ldap-injection-lookup
-    pattern: $CTX.lookup($USER_INPUT)
-    message: Java LDAP lookup with user input - potential LDAP injection
-    languages: [java]
-    severity: ERROR
-
   # ============================================
   # JNDI Injection (Log4Shell style)
   # ============================================
@@ -307,12 +235,6 @@ rules:
     message: JNDI lookup - potential JNDI injection (Log4Shell style attack)
     languages: [java]
     severity: ERROR
-
-  - id: java-jndi-initial-context
-    pattern: new InitialContext()
-    message: JNDI InitialContext - ensure lookup inputs are validated
-    languages: [java]
-    severity: WARNING
 
   - id: java-jndi-ldap-url
     pattern: '"ldap://..."'
@@ -342,18 +264,6 @@ rules:
     languages: [java]
     severity: ERROR
 
-  - id: java-spring-permit-all
-    pattern: $X.permitAll()
-    message: Spring Security permitAll() - ensure this endpoint should be public
-    languages: [java]
-    severity: INFO
-
-  - id: java-spring-anonymous-access
-    pattern: $X.anonymous()
-    message: Spring Security anonymous access configured - verify this is intentional
-    languages: [java]
-    severity: WARNING
-
   - id: java-spring-headers-disabled
     pattern: $X.headers().disable()
     message: Spring Security headers disabled - removes XSS and clickjacking protection
@@ -376,33 +286,15 @@ rules:
     languages: [java]
     severity: ERROR
 
-  - id: java-weak-tls-context
-    pattern: 'SSLContext.getInstance("TLS")'
-    message: Java TLS context - ensure TLSv1.2 or higher is used
-    languages: [java]
-    severity: WARNING
-
   - id: java-trust-all-certs
     pattern: X509TrustManager
     message: Java X509TrustManager - ensure certificates are properly validated
     languages: [java]
     severity: WARNING
 
-  - id: java-hostname-verifier-disabled
-    pattern: HostnameVerifier
-    message: Java HostnameVerifier - ensure hostname verification is not disabled
-    languages: [java]
-    severity: WARNING
-
   # ============================================
   # Hardcoded Credentials
   # ============================================
-
-  - id: java-hardcoded-password-connection
-    pattern: DriverManager.getConnection($URL, $USER, $PASS)
-    message: Java database connection - ensure credentials are from environment variables
-    languages: [java]
-    severity: WARNING
 
   - id: java-hardcoded-password-literal
     pattern: DriverManager.getConnection($URL, $USER, "...")
@@ -415,12 +307,6 @@ rules:
     message: Hardcoded password in Properties
     languages: [java]
     severity: ERROR
-
-  - id: java-setproperty-password
-    pattern: $X.setProperty("password", ...)
-    message: Potential hardcoded password in setProperty call
-    languages: [java]
-    severity: WARNING
 
   # ============================================
   # Spring Boot / Hibernate ORM
@@ -438,75 +324,11 @@ rules:
     languages: [java]
     severity: ERROR
 
-  - id: java-spring-data-query-native
-    pattern: '@Query(value = $QUERY, nativeQuery = true)'
-    message: Spring Data native query - ensure parameterized
-    languages: [java]
-    severity: WARNING
-
-  - id: java-jpa-criteria-like-user
-    pattern: $CB.like($EXPR, $USER_INPUT)
-    message: JPA Criteria like with user input - potential injection
-    languages: [java]
-    severity: WARNING
-
-  - id: java-spring-el-injection
-    pattern: '@Value("${..."}'
-    message: Spring @Value - ensure properties are validated
-    languages: [java]
-    severity: INFO
-
   - id: java-spring-spel-injection
     pattern: 'SpelExpressionParser().parseExpression($INPUT)'
     message: Spring SpEL expression - injection risk with user input
     languages: [java]
     severity: ERROR
-
-  # ============================================
-  # Additional Crypto Weaknesses
-  # ============================================
-
-  - id: java-crypto-rc4
-    pattern: 'Cipher.getInstance("RC4")'
-    message: Java RC4 is broken - use AES
-    languages: [java]
-    severity: ERROR
-
-  - id: java-crypto-blowfish
-    pattern: 'Cipher.getInstance("Blowfish")'
-    message: Java Blowfish is deprecated - use AES
-    languages: [java]
-    severity: WARNING
-
-  - id: java-weak-rsa-keygen
-    pattern: $KPG.initialize(1024)
-    message: Java RSA key size too small - use at least 2048 bits
-    languages: [java]
-    severity: ERROR
-
-  - id: java-weak-rsa-keygen-512
-    pattern: $KPG.initialize(512)
-    message: Java RSA key size too small - use at least 2048 bits
-    languages: [java]
-    severity: ERROR
-
-  - id: java-static-iv
-    pattern: 'new IvParameterSpec("...".getBytes())'
-    message: Java static IV in encryption - IV should be random
-    languages: [java]
-    severity: ERROR
-
-  - id: java-static-salt
-    pattern: 'new PBEParameterSpec("...".getBytes(), $ITER)'
-    message: Java static salt in PBE - salt should be random
-    languages: [java]
-    severity: ERROR
-
-  - id: java-weak-pbkdf-iterations
-    pattern: 'new PBEKeySpec($PASS, $SALT, 1000, ...)'
-    message: Java PBKDF2 iterations too low - use at least 100000
-    languages: [java]
-    severity: WARNING
 
   # ============================================
   # Expression Language Injection
@@ -546,12 +368,6 @@ rules:
     languages: [java]
     severity: ERROR
 
-  - id: java-thymeleaf-template-user
-    pattern: $ENGINE.process($USER_INPUT, ...)
-    message: Java Thymeleaf template processing - verify input is safe
-    languages: [java]
-    severity: WARNING
-
   # ============================================
   # Open Redirect
   # ============================================
@@ -575,12 +391,6 @@ rules:
   - id: java-log4j-format-user
     pattern: $LOG.info($USER_INPUT)
     message: Java logging user input - potential Log4Shell if unpatched
-    languages: [java]
-    severity: WARNING
-
-  - id: java-log-password
-    pattern: '$LOG.$METHOD("..." + $PASSWORD)'
-    message: Java logging sensitive data - review for password/secret exposure
     languages: [java]
     severity: WARNING
 
@@ -616,12 +426,6 @@ rules:
     languages: [java]
     severity: WARNING
 
-  - id: java-cookie-samesite-none
-    pattern: '$COOKIE.setAttribute("SameSite", "None")'
-    message: Java cookie SameSite=None - CSRF risk
-    languages: [java]
-    severity: WARNING
-
   # ============================================
   # Reflection Security
   # ============================================
@@ -632,27 +436,9 @@ rules:
     languages: [java]
     severity: ERROR
 
-  - id: java-method-invoke-user
-    pattern: $METHOD.invoke($OBJ, $USER_INPUT)
-    message: Java reflection invoke - verify arguments are validated
-    languages: [java]
-    severity: WARNING
-
   # ============================================
   # Misconfiguration
   # ============================================
-
-  - id: java-spring-debug-enabled
-    pattern: 'logging.level.root=DEBUG'
-    message: Spring DEBUG logging enabled - disable in production
-    languages: [java]
-    severity: INFO
-
-  - id: java-spring-devtools-enabled
-    pattern: spring.devtools
-    message: Spring DevTools - should be disabled in production
-    languages: [java]
-    severity: WARNING
 
   - id: java-cors-allow-all
     pattern: '.allowedOrigins("*")'
@@ -665,3 +451,4 @@ rules:
     message: Java CORS wildcard with credentials - security risk
     languages: [java]
     severity: ERROR
+

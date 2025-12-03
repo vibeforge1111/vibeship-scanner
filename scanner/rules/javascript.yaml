@@ -1,7 +1,8 @@
 # JavaScript/TypeScript Security Rules
+# Tags: core, react, vue, angular, nextjs, express, node, typescript
 rules:
   # ============================================
-  # Code Injection
+  # Core: Code Injection (always run)
   # ============================================
 
   - id: js-eval-injection
@@ -9,27 +10,35 @@ rules:
     message: Dangerous eval() call - potential code injection vulnerability
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, injection]
 
   - id: js-new-function
     pattern: new Function(...)
     message: new Function() - potential code injection vulnerability
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, injection]
 
   - id: js-settimeout-string
     pattern: 'setTimeout("...", ...)'
     message: setTimeout with string argument - code injection risk
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, injection]
 
   - id: js-setinterval-string
     pattern: 'setInterval("...", ...)'
     message: setInterval with string argument - code injection risk
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, injection]
 
   # ============================================
-  # XSS (Cross-Site Scripting)
+  # Core: XSS (DOM manipulation)
   # ============================================
 
   - id: js-innerhtml-xss
@@ -37,30 +46,60 @@ rules:
     message: innerHTML assignment - potential XSS vulnerability
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, xss]
 
   - id: js-document-write
     pattern: document.write(...)
     message: document.write() usage - potential XSS vulnerability
     languages: [javascript, typescript]
     severity: ERROR
-
-  - id: js-dangerously-set-inner-html
-    pattern: dangerouslySetInnerHTML={...}
-    message: React dangerouslySetInnerHTML - XSS risk without proper sanitization
-    languages: [javascript, typescript]
-    severity: ERROR
+    metadata:
+      tags: [core, xss]
 
   - id: js-outerhtml-xss
     pattern: $X.outerHTML = $Y
     message: outerHTML assignment - potential XSS vulnerability
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, xss]
 
   - id: js-insertadjacenthtml
     pattern: $X.insertAdjacentHTML(...)
-    message: insertAdjacentHTML - potential XSS vulnerability without sanitization
+    message: insertAdjacentHTML - potential XSS without sanitization
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, xss]
+
+  # ============================================
+  # React XSS
+  # ============================================
+
+  - id: react-dangerously-set-inner-html
+    pattern: dangerouslySetInnerHTML={...}
+    message: React dangerouslySetInnerHTML - XSS risk without proper sanitization
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [react, xss]
+
+  - id: react-href-javascript
+    pattern: 'href={"javascript:$X"}'
+    message: React javascript: URL in href - XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [react, xss]
+
+  - id: react-ref-innerhtml
+    pattern: $REF.current.innerHTML = $X
+    message: React ref innerHTML manipulation - XSS risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [react, xss]
 
   # ============================================
   # Vue.js XSS
@@ -71,21 +110,27 @@ rules:
     message: Vue v-html directive bypasses sanitization - XSS risk with user input
     languages: [javascript, typescript]
     severity: ERROR
-
-  - id: vue-v-html-binding
-    pattern: ':v-html="$X"'
-    message: Vue v-html binding bypasses sanitization - XSS risk
-    languages: [javascript, typescript]
-    severity: ERROR
+    metadata:
+      tags: [vue, xss]
 
   - id: vue-compile-dynamic
     pattern: Vue.compile($X)
     message: Dynamic Vue template compilation - potential XSS with user input
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [vue, xss]
+
+  - id: vue-render-raw
+    pattern: h('div', {innerHTML: $X})
+    message: Vue render function with innerHTML - XSS risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [vue, xss]
 
   # ============================================
-  # Angular XSS - bypassSecurityTrust*
+  # Angular XSS
   # ============================================
 
   - id: angular-bypass-security-html
@@ -93,111 +138,248 @@ rules:
     message: Angular bypassSecurityTrustHtml - XSS risk without proper sanitization
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [angular, xss]
 
   - id: angular-bypass-security-script
     pattern: bypassSecurityTrustScript(...)
     message: Angular bypassSecurityTrustScript - XSS risk, avoid using
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [angular, xss]
 
   - id: angular-bypass-security-url
     pattern: bypassSecurityTrustUrl(...)
     message: Angular bypassSecurityTrustUrl - potential open redirect or XSS
     languages: [javascript, typescript]
     severity: WARNING
+    metadata:
+      tags: [angular, xss]
 
   - id: angular-bypass-security-resource-url
     pattern: bypassSecurityTrustResourceUrl(...)
     message: Angular bypassSecurityTrustResourceUrl - potential XSS
     languages: [javascript, typescript]
     severity: WARNING
+    metadata:
+      tags: [angular, xss]
 
-  - id: angular-bypass-security-style
-    pattern: bypassSecurityTrustStyle(...)
-    message: Angular bypassSecurityTrustStyle - potential CSS injection
+  # ============================================
+  # Next.js Specific
+  # ============================================
+
+  - id: nextjs-dangerouslysetinnerhtml-getserverside
+    pattern: |
+      export async function getServerSideProps(...) {
+        ...
+        return { props: { $HTML } }
+      }
+    message: Next.js SSR with HTML prop - ensure sanitized before dangerouslySetInnerHTML
     languages: [javascript, typescript]
     severity: WARNING
+    metadata:
+      tags: [nextjs, xss]
 
-  - id: angular-innerhtml-binding
-    pattern: '[innerHTML]="$X"'
-    message: Angular innerHTML binding - sanitized but review for user input
+  - id: nextjs-api-sql-injection
+    pattern: |
+      export default async function handler(req, res) {
+        ...
+        $DB.query($Q + req.$X)
+        ...
+      }
+    message: Next.js API route SQL injection - use parameterized queries
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [nextjs, injection]
+
+  - id: nextjs-headers-exposed
+    pattern: 'headers: { "Access-Control-Allow-Origin": "*" }'
+    message: Next.js API with CORS wildcard - restrict origins in production
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [nextjs, config]
+
+  - id: nextjs-middleware-bypass
+    pattern: |
+      if (req.nextUrl.pathname.startsWith($PATH)) {
+        return NextResponse.next()
+      }
+    message: Next.js middleware - verify auth check isn't bypassed
+    languages: [typescript]
+    severity: INFO
+    metadata:
+      tags: [nextjs, auth]
+
+  # ============================================
+  # SvelteKit Specific
+  # ============================================
+
+  - id: sveltekit-html-injection
+    pattern: '{@html $X}'
+    message: SvelteKit @html - XSS risk if content is user-controlled
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [svelte, xss]
+
+  - id: sveltekit-load-user-data
+    pattern: |
+      export async function load({ params }) {
+        ...
+        return { $DATA: params.$X }
+      }
+    message: SvelteKit load with unvalidated params - validate before use
     languages: [javascript, typescript]
     severity: INFO
+    metadata:
+      tags: [svelte, validation]
+
+  - id: sveltekit-form-action-sqli
+    pattern: |
+      export const actions = {
+        default: async ({ request }) => {
+          ...
+          $DB.query($Q + $FORM)
+          ...
+        }
+      }
+    message: SvelteKit form action SQL injection - use parameterized queries
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [svelte, injection]
 
   # ============================================
-  # Command Injection
+  # Node.js: Command Injection
   # ============================================
 
-  - id: js-exec-call
+  - id: node-exec-call
     pattern: exec(...)
     message: Command execution detected - potential command injection
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [node, injection]
 
-  - id: js-execsync-call
+  - id: node-execsync-call
     pattern: execSync(...)
     message: Synchronous command execution - potential command injection
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [node, injection]
 
-  - id: js-child-process-exec
+  - id: node-child-process-exec
     pattern: child_process.exec(...)
     message: child_process.exec() - potential command injection
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [node, injection]
 
-  - id: js-require-child-process
-    pattern: 'require("child_process").exec($X)'
-    message: child_process.exec - command injection risk
+  - id: node-spawn-shell
+    pattern: spawn($CMD, $ARGS, {shell: true})
+    message: spawn with shell=true - command injection risk
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [node, injection]
 
   # ============================================
-  # Path Traversal
+  # Node.js: Path Traversal
   # ============================================
 
-  - id: js-fs-readfile-query
-    pattern: fs.readFile(req.query.$X, ...)
+  - id: node-path-traversal-readfile
+    pattern: fs.readFile(req.$X.$Y, ...)
     message: Reading file from user input - potential path traversal
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [node, path-traversal]
 
-  - id: js-fs-readfilesync-query
-    pattern: fs.readFileSync(req.query.$X)
+  - id: node-path-traversal-readfilesync
+    pattern: fs.readFileSync(req.$X.$Y)
     message: Reading file from user input - potential path traversal
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [node, path-traversal]
 
-  - id: js-fs-readfile-body
-    pattern: fs.readFile(req.body.$X, ...)
-    message: Reading file from user input - potential path traversal
+  - id: node-path-join-user
+    pattern: path.join($BASE, req.$X.$Y)
+    message: path.join with user input - validate to prevent traversal
     languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-fs-readfilesync-body
-    pattern: fs.readFileSync(req.body.$X)
-    message: Reading file from user input - potential path traversal
-    languages: [javascript, typescript]
-    severity: ERROR
+    severity: WARNING
+    metadata:
+      tags: [node, path-traversal]
 
   # ============================================
-  # Open Redirect
+  # Express.js Security
   # ============================================
 
-  - id: js-redirect-query
-    pattern: res.redirect(req.query.$X)
+  - id: express-cors-wildcard
+    pattern: 'cors({origin: "*"})'
+    message: CORS allows all origins - restrict to specific domains in production
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, config]
+
+  - id: express-cors-credentials-wildcard
+    pattern: 'cors({origin: "*", credentials: true})'
+    message: CORS wildcard with credentials - security risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [express, config]
+
+  - id: express-session-hardcoded
+    patterns:
+      - pattern: 'session({secret: "..."})'
+      - pattern: "session({secret: '...'})"
+    message: Hardcoded session secret - use environment variable
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [express, secrets]
+
+  - id: express-redirect-open
+    pattern: res.redirect(req.$X.$Y)
     message: Redirect using user input - potential open redirect
     languages: [javascript, typescript]
     severity: WARNING
+    metadata:
+      tags: [express, redirect]
 
-  - id: js-redirect-body
-    pattern: res.redirect(req.body.$X)
-    message: Redirect using user input - potential open redirect
+  - id: express-sql-injection
+    pattern: '$DB.query("SELECT * FROM " + req.$X)'
+    message: Express SQL injection via concatenation
     languages: [javascript, typescript]
-    severity: WARNING
+    severity: ERROR
+    metadata:
+      tags: [express, injection]
+
+  - id: express-nosql-injection-body
+    pattern: '$COLL.find(req.body)'
+    message: Express MongoDB with raw body - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [express, injection]
+
+  - id: express-nosql-injection-query
+    pattern: '$COLL.find(req.query)'
+    message: Express MongoDB with raw query - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [express, injection]
 
   # ============================================
-  # Weak Cryptography
+  # Core: Weak Cryptography
   # ============================================
 
   - id: js-weak-hash-md5
@@ -205,60 +387,48 @@ rules:
     message: MD5 is a weak hash function - use SHA-256 or better
     languages: [javascript, typescript]
     severity: WARNING
+    metadata:
+      tags: [core, crypto]
 
   - id: js-weak-hash-sha1
     pattern: 'crypto.createHash("sha1")'
     message: SHA1 is a weak hash function - use SHA-256 or better
     languages: [javascript, typescript]
     severity: WARNING
+    metadata:
+      tags: [core, crypto]
 
   - id: js-math-random
     pattern: Math.random()
     message: Math.random() is not cryptographically secure - use crypto.randomBytes()
     languages: [javascript, typescript]
     severity: INFO
+    metadata:
+      tags: [core, crypto]
 
   - id: js-weak-cipher-des
     pattern: 'crypto.createCipheriv("des", ...)'
     message: DES is a weak cipher - use AES-256-GCM instead
     languages: [javascript, typescript]
     severity: ERROR
-
-  - id: js-weak-cipher-des-ede
-    pattern: 'crypto.createCipheriv("des-ede", ...)'
-    message: Triple DES (3DES) is deprecated - use AES-256-GCM instead
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-weak-cipher-des-ede3
-    pattern: 'crypto.createCipheriv("des-ede3", ...)'
-    message: Triple DES (3DES) is deprecated - use AES-256-GCM instead
-    languages: [javascript, typescript]
-    severity: WARNING
+    metadata:
+      tags: [core, crypto]
 
   - id: js-weak-cipher-rc4
     pattern: 'crypto.createCipheriv("rc4", ...)'
     message: RC4 is a broken cipher - use AES-256-GCM instead
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, crypto]
 
   - id: js-weak-cipher-ecb-mode
     pattern-regex: "createCipheriv\\([\"']aes[^\"]*-ecb[\"']"
     message: ECB mode is insecure - use GCM or CBC with proper IV
     languages: [javascript, typescript]
     severity: ERROR
-
-  - id: js-weak-cipher-blowfish
-    pattern: 'crypto.createCipheriv("bf", ...)'
-    message: Blowfish cipher is deprecated - use AES-256-GCM instead
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-weak-key-size
-    pattern-regex: "crypto\\.generateKeyPair(Sync)?\\([^,]+,\\s*\\{[^}]*modulusLength:\\s*(512|1024)[^}]*\\}"
-    message: RSA key size too small - use at least 2048 bits
-    languages: [javascript, typescript]
-    severity: ERROR
+    metadata:
+      tags: [core, crypto]
 
   - id: js-static-iv
     patterns:
@@ -267,15 +437,19 @@ rules:
     message: Static IV in encryption - IV should be random for each encryption
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, crypto]
 
   - id: js-crypto-createcipher-deprecated
     pattern: crypto.createCipher(...)
     message: crypto.createCipher is deprecated - use createCipheriv with random IV
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, crypto]
 
   # ============================================
-  # TLS/SSL Issues
+  # Core: TLS/SSL Issues
   # ============================================
 
   - id: js-tls-reject-unauthorized
@@ -283,9 +457,19 @@ rules:
     message: TLS certificate verification disabled - MITM attack risk
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, tls]
+
+  - id: js-node-tls-reject-env
+    pattern: 'process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"'
+    message: TLS verification disabled globally - MITM attack risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, tls]
 
   # ============================================
-  # JWT Security
+  # Core: JWT Security
   # ============================================
 
   - id: js-jwt-none-algorithm
@@ -293,61 +477,35 @@ rules:
     message: JWT none algorithm - authentication bypass vulnerability
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, jwt]
 
-  - id: js-jwt-none-algorithm-alt
-    pattern: 'algorithm: "none"'
-    message: JWT none algorithm - authentication bypass vulnerability
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-jwt-weak-secret
-    pattern: jwt.sign($PAYLOAD, "secret", ...)
-    message: JWT signed with weak/hardcoded secret
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-jwt-hardcoded-sign
+  - id: js-jwt-hardcoded-secret
     pattern: 'jwt.sign($PAYLOAD, "...")'
     message: Hardcoded JWT secret - use environment variables
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, jwt]
 
-  - id: js-jwt-hardcoded-verify
+  - id: js-jwt-verify-hardcoded
     pattern: 'jwt.verify($TOKEN, "...")'
     message: Hardcoded JWT secret - use environment variables
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, jwt]
 
   - id: js-jwt-verify-disabled
     pattern: 'verify: false'
     message: JWT verification disabled - tokens will not be validated
     languages: [javascript, typescript]
     severity: ERROR
-
-  - id: js-jwt-no-expiry
-    pattern: jwt.sign($PAYLOAD, $SECRET)
-    message: JWT without expiration - consider adding expiresIn option
-    languages: [javascript, typescript]
-    severity: INFO
+    metadata:
+      tags: [core, jwt]
 
   # ============================================
-  # NoSQL Injection
-  # ============================================
-
-  - id: js-mongodb-findone-body
-    pattern: '$DB.findOne({$FIELD: req.body.$X})'
-    message: MongoDB query with user input - NoSQL injection risk
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-mongodb-findone-query
-    pattern: '$DB.findOne({$FIELD: req.query.$X})'
-    message: MongoDB query with user input - NoSQL injection risk
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  # ============================================
-  # SQL Injection (ORM)
+  # Core: SQL/NoSQL Injection
   # ============================================
 
   - id: js-prisma-queryraw-unsafe
@@ -355,151 +513,51 @@ rules:
     message: Prisma unsafe raw query - SQL injection risk
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, injection]
 
   - id: js-prisma-executeraw-unsafe
     pattern: prisma.$executeRawUnsafe($QUERY)
     message: Prisma unsafe raw execute - SQL injection risk
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, injection]
 
   - id: js-sequelize-query-raw
     pattern: sequelize.query($Q, ...)
     message: Raw SQL query - potential injection if not parameterized
     languages: [javascript, typescript]
     severity: WARNING
+    metadata:
+      tags: [core, injection]
 
   - id: js-knex-raw
     pattern: knex.raw($QUERY)
-    message: Knex raw query - potential SQL injection if query contains user input
+    message: Knex raw query - potential SQL injection
     languages: [javascript, typescript]
     severity: WARNING
-
-  - id: js-knex-whereraw
-    pattern: $Q.whereRaw($QUERY)
-    message: Knex whereRaw - potential SQL injection if query contains user input
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-typeorm-query
-    pattern: $CONN.query($QUERY)
-    message: TypeORM raw query - verify parameterization
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-mongoose-where-js
-    pattern: '$MODEL.$WHERE({$this: {$jsFunction: ...}})'
-    message: Mongoose $where with JS function - potential NoSQL injection
-    languages: [javascript, typescript]
-    severity: ERROR
+    metadata:
+      tags: [core, injection]
 
   - id: js-mongodb-where
     pattern: '$COLL.find({$where: $FUNC})'
     message: MongoDB $where operator - code injection risk
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, injection]
 
-  - id: js-mongodb-aggregation-user-input
-    pattern: '$COLL.aggregate([{$match: req.$X}])'
-    message: MongoDB aggregation with user input - NoSQL injection risk
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  # ============================================
-  # Express/Fastify/NestJS Security
-  # ============================================
-
-  - id: express-cors-wildcard
-    pattern: 'cors({origin: "*"})'
-    message: CORS allows all origins - restrict to specific domains in production
+  - id: js-drizzle-raw
+    pattern: sql.raw($QUERY)
+    message: Drizzle raw SQL - injection risk if query contains user input
     languages: [javascript, typescript]
     severity: WARNING
-
-  - id: express-cors-wildcard-true
-    pattern: 'cors({origin: true})'
-    message: CORS reflects request origin - verify this is intentional
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: express-cors-credentials-wildcard
-    pattern: 'cors({origin: "*", credentials: true})'
-    message: CORS wildcard with credentials - security risk, browsers block this
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: express-body-parser-limit
-    pattern: 'bodyParser.json()'
-    message: Body parser without size limit - potential DoS via large payloads
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: express-session-insecure
-    patterns:
-      - pattern: 'session({secret: "..."})'
-      - pattern: "session({secret: '...'})"
-    message: Hardcoded session secret - use environment variable
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: express-session-no-secure
-    pattern: 'session({..., cookie: {...}})'
-    message: Session cookie - verify secure and httpOnly flags are set
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: express-trust-proxy
-    pattern: 'app.set("trust proxy", true)'
-    message: Trust proxy enabled - verify this is behind a trusted reverse proxy
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: fastify-body-limit
-    pattern: 'fastify.register($PLUGIN)'
-    message: Verify Fastify body limit is configured for production
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: nestjs-validation-disabled
-    pattern: 'ValidationPipe({transform: true, whitelist: false})'
-    message: NestJS validation whitelist disabled - extra properties not stripped
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: nestjs-all-exceptions-filter
-    pattern: '@Catch()'
-    message: NestJS catch-all filter - ensure sensitive errors are not exposed
-    languages: [javascript, typescript]
-    severity: INFO
+    metadata:
+      tags: [core, injection]
 
   # ============================================
-  # Prototype Pollution
-  # ============================================
-
-  - id: js-prototype-pollution-merge
-    pattern: 'Object.assign({}, $SRC)'
-    message: Object.assign - verify source is not user-controlled (prototype pollution)
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: js-prototype-pollution-spread
-    pattern: '{...$SRC}'
-    message: Object spread - verify source is not from user input
-    languages: [javascript, typescript]
-    severity: INFO
-
-  - id: js-lodash-merge
-    pattern: '_.merge($TARGET, $SRC)'
-    message: lodash merge can cause prototype pollution with user input
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  - id: js-lodash-defaultsdeep
-    pattern: '_.defaultsDeep($TARGET, $SRC)'
-    message: lodash defaultsDeep can cause prototype pollution with user input
-    languages: [javascript, typescript]
-    severity: WARNING
-
-  # ============================================
-  # SSRF (Server-Side Request Forgery)
+  # Core: SSRF
   # ============================================
 
   - id: js-fetch-user-input
@@ -507,33 +565,55 @@ rules:
     message: Fetch with user-controlled URL - SSRF risk
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, ssrf]
 
   - id: js-axios-user-input
     pattern: axios.get(req.$X.$Y)
     message: Axios GET with user-controlled URL - SSRF risk
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, ssrf]
 
   - id: js-axios-post-user-input
     pattern: axios.post(req.$X.$Y, ...)
     message: Axios POST with user-controlled URL - SSRF risk
     languages: [javascript, typescript]
     severity: ERROR
-
-  - id: js-got-user-input
-    pattern: got(req.$X.$Y)
-    message: Got request with user-controlled URL - SSRF risk
-    languages: [javascript, typescript]
-    severity: ERROR
-
-  - id: js-request-user-input
-    pattern: request(req.$X.$Y)
-    message: Request with user-controlled URL - SSRF risk
-    languages: [javascript, typescript]
-    severity: ERROR
+    metadata:
+      tags: [core, ssrf]
 
   # ============================================
-  # Authentication Issues
+  # Core: Prototype Pollution
+  # ============================================
+
+  - id: js-lodash-merge
+    pattern: '_.merge($TARGET, $SRC)'
+    message: lodash merge can cause prototype pollution with user input
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-lodash-defaultsdeep
+    pattern: '_.defaultsDeep($TARGET, $SRC)'
+    message: lodash defaultsDeep can cause prototype pollution with user input
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-object-assign-user
+    pattern: Object.assign($TARGET, req.$X)
+    message: Object.assign with user input - prototype pollution risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  # ============================================
+  # Core: Authentication
   # ============================================
 
   - id: js-password-comparison
@@ -541,9 +621,19 @@ rules:
     message: Plaintext password comparison - use bcrypt.compare() instead
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, auth]
+
+  - id: js-timing-attack-comparison
+    pattern: $SECRET === req.$X
+    message: String comparison may be vulnerable to timing attacks - use crypto.timingSafeEqual
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, auth]
 
   # ============================================
-  # ReDoS (Regular Expression Denial of Service)
+  # Core: ReDoS
   # ============================================
 
   - id: js-dynamic-regex
@@ -551,13 +641,114 @@ rules:
     message: Dynamic regex with user input - potential ReDoS vulnerability
     languages: [javascript, typescript]
     severity: WARNING
+    metadata:
+      tags: [core, redos]
 
   # ============================================
-  # Debug/Info Disclosure
+  # TypeScript Specific
   # ============================================
 
-  - id: js-console-log
-    pattern: console.log(...)
-    message: Console.log statement found - remove in production
+  - id: ts-any-type
+    pattern: ': any'
+    message: TypeScript any type bypasses type safety - consider strict typing
+    languages: [typescript]
+    severity: INFO
+    metadata:
+      tags: [typescript, type-safety]
+
+  - id: ts-type-assertion-any
+    pattern: 'as any'
+    message: Type assertion to any - bypasses type checking
+    languages: [typescript]
+    severity: INFO
+    metadata:
+      tags: [typescript, type-safety]
+
+  - id: ts-non-null-assertion
+    pattern: $X!
+    message: Non-null assertion - may cause runtime errors if value is null
+    languages: [typescript]
+    severity: INFO
+    metadata:
+      tags: [typescript, type-safety]
+
+  - id: ts-ts-ignore
+    pattern: '// @ts-ignore'
+    message: @ts-ignore suppresses TypeScript errors - review carefully
+    languages: [typescript]
+    severity: WARNING
+    metadata:
+      tags: [typescript, type-safety]
+
+  - id: ts-ts-expect-error
+    pattern: '// @ts-expect-error'
+    message: @ts-expect-error suppresses TypeScript errors - ensure intentional
+    languages: [typescript]
+    severity: INFO
+    metadata:
+      tags: [typescript, type-safety]
+
+  - id: ts-unsafe-type-assertion
+    pattern: '$X as unknown as $Y'
+    message: Double type assertion bypasses type safety entirely
+    languages: [typescript]
+    severity: WARNING
+    metadata:
+      tags: [typescript, type-safety]
+
+  # ============================================
+  # Supabase/Firebase (common with vibe coders)
+  # ============================================
+
+  - id: supabase-service-role-client
+    pattern: 'createClient($URL, $SERVICE_ROLE_KEY)'
+    message: Supabase service role key in client - should only be used server-side
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [supabase, secrets]
+
+  - id: supabase-rls-bypass
+    pattern: '.from($TABLE).select().eq($COL, $VAL)'
+    message: Supabase query - ensure RLS policies are enabled for security
     languages: [javascript, typescript]
     severity: INFO
+    metadata:
+      tags: [supabase, auth]
+
+  - id: firebase-admin-client
+    pattern: 'admin.initializeApp({credential: admin.credential.cert($KEY)})'
+    message: Firebase Admin SDK - ensure credentials are not exposed client-side
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [firebase, secrets]
+
+  - id: firebase-security-rules-disabled
+    pattern: '.write": true'
+    message: Firebase security rules allow all writes - restrict in production
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [firebase, config]
+
+  # ============================================
+  # API Key Exposure
+  # ============================================
+
+  - id: js-hardcoded-api-key
+    pattern-regex: "(api[_-]?key|apikey)\\s*[=:]\\s*['\"][a-zA-Z0-9]{20,}['\"]"
+    message: Hardcoded API key detected - use environment variables
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, secrets]
+
+  - id: js-hardcoded-secret
+    pattern-regex: "(secret|password|token)\\s*[=:]\\s*['\"][^'\"]{8,}['\"]"
+    message: Hardcoded secret detected - use environment variables
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, secrets]
+
