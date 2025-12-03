@@ -947,3 +947,262 @@ rules:
     message: MongoDB credentials hardcoded - use environment variables
     languages: [python]
     severity: ERROR
+
+  # ============================================
+  # VAmPI-Style Vulnerabilities (Common Flask/API Patterns)
+  # ============================================
+
+  # SQL Injection - f-string in SQL query
+  - id: py-sqli-fstring-select
+    pattern-regex: 'f["\']SELECT.*FROM.*WHERE.*\{.*\}'
+    message: SQL injection - f-string in SELECT query with user variable
+    languages: [python]
+    severity: ERROR
+
+  - id: py-sqli-session-execute-text
+    patterns:
+      - pattern: 'db.session.execute(text(f"..."))'
+      - pattern: '$DB.session.execute(text(f"..."))'
+    message: SQL injection - f-string in SQLAlchemy text() execution
+    languages: [python]
+    severity: ERROR
+
+  - id: py-sqli-execute-fstring
+    patterns:
+      - pattern: '$CONN.execute(f"...")'
+      - pattern: 'cursor.execute(f"...")'
+    message: SQL injection - f-string in SQL execute
+    languages: [python]
+    severity: ERROR
+
+  # IDOR/BOLA - Object access by URL parameter
+  - id: py-idor-url-param-lookup
+    patterns:
+      - pattern: '$MODEL.query.filter_by(username=username).first()'
+      - pattern: '$MODEL.query.filter_by($FIELD=$PARAM).first()'
+    message: Object lookup by URL/function parameter - verify authorization
+    languages: [python]
+    severity: WARNING
+
+  - id: py-idor-no-auth-update
+    patterns:
+      - pattern: |
+          user = $MODEL.query.filter_by(username=username).first()
+          ...
+          user.$FIELD = $VALUE
+      - pattern: |
+          $OBJ = $MODEL.query.filter_by($FIELD=$PARAM).first()
+          ...
+          $OBJ.$ATTR = $VALUE
+    message: Object update without checking current user owns object - IDOR risk
+    languages: [python]
+    severity: WARNING
+
+  # Mass Assignment - Admin privilege escalation
+  - id: py-mass-assignment-admin
+    patterns:
+      - pattern: 'if $DATA["admin"]'
+      - pattern: 'if request_data["admin"]'
+      - pattern: "if $DATA.get('admin')"
+      - pattern: 'if request_data.get("admin")'
+    message: Admin flag from user input - mass assignment privilege escalation
+    languages: [python]
+    severity: ERROR
+
+  - id: py-mass-assignment-role
+    patterns:
+      - pattern: '$USER.admin = $DATA["admin"]'
+      - pattern: '$USER.role = request.json["role"]'
+      - pattern: '$USER.is_admin = $DATA.get("is_admin")'
+    message: User role/admin from request data - privilege escalation risk
+    languages: [python]
+    severity: ERROR
+
+  # User Enumeration - Different error messages
+  - id: py-user-enum-username
+    patterns:
+      - pattern: 'return "Username does not exist"'
+      - pattern: 'return {"status": "fail", "message": "Username does not exist"}'
+      - pattern: '"Username does not exist"'
+    message: User enumeration - reveals if username exists
+    languages: [python]
+    severity: WARNING
+
+  - id: py-user-enum-password
+    patterns:
+      - pattern: 'return "Password is not correct"'
+      - pattern: '"Password is not correct"'
+      - pattern: 'return {"status": "fail", "message": "Password is not correct..."}'
+    message: User enumeration - password error reveals username exists
+    languages: [python]
+    severity: WARNING
+
+  - id: py-user-enum-separate-errors
+    patterns:
+      - pattern: 'if not user: return $USER_ERROR'
+      - pattern: 'elif not user: return $USER_ERROR'
+    message: Separate user/password errors enable enumeration - use generic message
+    languages: [python]
+    severity: WARNING
+
+  # ReDoS - Dangerous regex patterns
+  - id: py-redos-nested-quantifier
+    pattern-regex: 're\\.search\\([rf]?["\'][^"\']*\\([^)]+\\)\\*[^"\']*["\']'
+    message: ReDoS - nested quantifiers in regex can cause catastrophic backtracking
+    languages: [python]
+    severity: WARNING
+
+  - id: py-redos-pattern
+    pattern-regex: 're\\.(search|match|findall)\\([rf]?["\'][^"\']*\\+\\*[^"\']*["\']'
+    message: ReDoS - greedy quantifiers may cause excessive backtracking
+    languages: [python]
+    severity: WARNING
+
+  # Debug/Info Disclosure - Exposing sensitive data
+  - id: py-debug-password-response
+    patterns:
+      - pattern: '"password": user.password'
+      - pattern: '"password": $USER.password'
+      - pattern: "'password': user.password"
+    message: Password exposed in API response - remove immediately
+    languages: [python]
+    severity: ERROR
+
+  - id: py-debug-json-all-fields
+    patterns:
+      - pattern: 'return user.json_debug()'
+      - pattern: 'return $OBJ.json_debug()'
+      - pattern: 'jsonify($MODEL.json_debug())'
+    message: Debug JSON method in response - may expose sensitive fields
+    languages: [python]
+    severity: WARNING
+
+  - id: py-debug-get-all-users
+    patterns:
+      - pattern: 'return User.get_all_users()'
+      - pattern: 'return $MODEL.get_all_users()'
+      - pattern: '$MODEL.query.all()'
+    message: Returning all users - ensure authorization and field filtering
+    languages: [python]
+    severity: WARNING
+
+  # Weak Authentication - Plaintext password comparison
+  - id: py-plaintext-password-check
+    patterns:
+      - pattern: 'request_data.get("password") != user.password'
+      - pattern: '$DATA["password"] != $USER.password'
+      - pattern: 'password != user.password'
+    message: Plaintext password comparison - use password hashing
+    languages: [python]
+    severity: ERROR
+
+  - id: py-plaintext-password-store
+    patterns:
+      - pattern: 'user.password = request_data.get("password")'
+      - pattern: '$USER.password = $DATA["password"]'
+      - pattern: 'self.password = password'
+    message: Storing plaintext password - use generate_password_hash
+    languages: [python]
+    severity: ERROR
+
+  # Broken Object Level Authorization (BOLA) - No ownership check
+  - id: py-bola-update-any-user
+    patterns:
+      - pattern: |
+          user = User.query.filter_by(username=username).first()
+          user.password = $NEW_PASS
+      - pattern: |
+          $OBJ = $MODEL.query.filter_by($FIELD=$PARAM).first()
+          ...
+          db.session.commit()
+    message: BOLA - updating object by URL param without ownership verification
+    languages: [python]
+    severity: ERROR
+
+  - id: py-bola-delete-any
+    patterns:
+      - pattern: |
+          $OBJ = $MODEL.query.filter_by($FIELD=$PARAM).first()
+          db.session.delete($OBJ)
+    message: BOLA - deleting object by URL param without ownership check
+    languages: [python]
+    severity: ERROR
+
+  # Excessive Data Exposure
+  - id: py-excessive-data-all-fields
+    patterns:
+      - pattern: 'return jsonify([u.__dict__ for u in $USERS])'
+      - pattern: 'return jsonify([$U.to_dict() for $U in $USERS])'
+    message: Excessive data exposure - filter fields in response
+    languages: [python]
+    severity: WARNING
+
+  - id: py-excessive-data-model-dump
+    patterns:
+      - pattern: 'return jsonify($MODEL.__dict__)'
+      - pattern: 'return jsonify(vars($MODEL))'
+    message: Model __dict__ in response - exposes all fields including sensitive
+    languages: [python]
+    severity: WARNING
+
+  # Broken Authentication - Weak JWT
+  - id: py-jwt-hardcoded-secret
+    patterns:
+      - pattern: 'SECRET_KEY = "..."'
+      - pattern: "SECRET_KEY = '...'"
+      - pattern: 'jwt.encode($P, "...", ...)'
+    message: Hardcoded JWT secret - use environment variable
+    languages: [python]
+    severity: ERROR
+
+  - id: py-jwt-no-expiry
+    pattern: 'jwt.encode($PAYLOAD, $SECRET)'
+    message: JWT without expiration - add exp claim
+    languages: [python]
+    severity: WARNING
+
+  # Missing Rate Limiting
+  - id: py-no-rate-limit-login
+    pattern-regex: "@app\\.route\\(['\"].*login.*['\"]"
+    message: Login endpoint - add rate limiting to prevent brute force
+    languages: [python]
+    severity: WARNING
+
+  - id: py-no-rate-limit-register
+    pattern-regex: "@app\\.route\\(['\"].*register.*['\"]"
+    message: Registration endpoint - add rate limiting to prevent abuse
+    languages: [python]
+    severity: INFO
+
+  # SQLAlchemy f-string injection (VAmPI specific)
+  - id: py-sqli-vampi-style
+    pattern: |
+      $QUERY = f"SELECT * FROM $TABLE WHERE $FIELD = '{$VAR}'"
+    message: SQL injection - user input in f-string query
+    languages: [python]
+    severity: ERROR
+
+  - id: py-sqli-text-fstring
+    pattern: 'text(f"SELECT * FROM $TABLE WHERE $FIELD = ' + "'{$VAR}'" + '")'
+    message: SQL injection - f-string in SQLAlchemy text()
+    languages: [python]
+    severity: ERROR
+
+  # Broad Exception Handling
+  - id: py-bare-except
+    pattern: |
+      try:
+        ...
+      except:
+        ...
+    message: Bare except clause - catch specific exceptions
+    languages: [python]
+    severity: INFO
+
+  - id: py-except-pass
+    pattern: |
+      except:
+        pass
+    message: Silent exception swallowing - log or handle errors
+    languages: [python]
+    severity: WARNING
