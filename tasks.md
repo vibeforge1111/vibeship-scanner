@@ -53,6 +53,10 @@
 - [x] Add enhanced SSRF detection
 - [x] Add session security rules (fixation, cookie flags)
 - [x] Add sensitive data exposure rules
+- [x] Add 50+ Python/Flask API security rules (OWASP API Top 10, SQLAlchemy, Flask auth)
+- [x] Tune SSRF detection to reduce false positives (VAmPI scan improved from 27 to 5 findings)
+- [x] Add VAmPI-specific vulnerability patterns (BOLA, mass assignment, user enumeration, ReDoS)
+- [x] Add 30+ Express.js security rules (SSTI, IDOR, JWT decode, path traversal, mass assignment)
 
 ## Environment Variables
 
