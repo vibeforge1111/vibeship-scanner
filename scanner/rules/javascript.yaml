@@ -1723,3 +1723,358 @@ rules:
     metadata:
       tags: [auth, crypto]
 
+  # ============================================
+  # Server-Side Template Injection (SSTI)
+  # ============================================
+
+  - id: nunjucks-renderstring-ssti
+    patterns:
+      - pattern: nunjucks.renderString($INPUT)
+      - pattern: nunjucks.renderString(req.query.$PARAM)
+      - pattern: nunjucks.renderString(req.body.$PARAM)
+      - pattern: nunjucks.renderString(req.params.$PARAM)
+    message: Nunjucks renderString with user input - SSTI vulnerability (RCE possible)
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [ssti, rce]
+
+  - id: pug-render-user-input
+    patterns:
+      - pattern: pug.render($USER_INPUT)
+      - pattern: pug.compile($USER_INPUT)
+    message: Pug render with user input - SSTI vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [ssti, rce]
+
+  - id: ejs-render-user-input
+    patterns:
+      - pattern: ejs.render($INPUT, ...)
+      - pattern: ejs.compile($INPUT)
+    message: EJS render with user input - potential SSTI
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [ssti]
+
+  - id: mustache-render-user-input
+    pattern: Mustache.render($TEMPLATE, ...)
+    message: Mustache render - ensure template is not user-controlled
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [ssti]
+
+  # ============================================
+  # XSS via Redirect
+  # ============================================
+
+  - id: xss-redirect-concat
+    patterns:
+      - pattern: 'res.redirect($BASE + req.query.$PARAM)'
+      - pattern: 'res.redirect($BASE + req.body.$PARAM)'
+      - pattern: 'res.redirect("..." + $USER_INPUT)'
+    message: Redirect with concatenated user input - XSS/open redirect risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [xss, redirect]
+
+  - id: xss-redirect-template
+    patterns:
+      - pattern: 'res.redirect(`${$BASE}${req.query.$PARAM}`)'
+      - pattern: 'res.redirect(`...${$USER_INPUT}...`)'
+    message: Redirect with template literal user input - XSS/open redirect risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [xss, redirect]
+
+  # ============================================
+  # JWT Security Issues
+  # ============================================
+
+  - id: jwt-decode-no-verify
+    patterns:
+      - pattern: jwt.decode($TOKEN)
+      - pattern: jwt.decode($TOKEN, ...)
+    message: jwt.decode() without verification - use jwt.verify() instead
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [auth, jwt]
+
+  - id: jwt-verify-no-algorithm
+    pattern: 'jwt.verify($TOKEN, $SECRET)'
+    message: jwt.verify without algorithm option - specify algorithms array
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [auth, jwt]
+
+  - id: jwt-none-algorithm
+    patterns:
+      - pattern: 'jwt.sign($PAYLOAD, $SECRET, {algorithm: "none"})'
+      - pattern: '{algorithms: ["none"]}'
+    message: JWT none algorithm - authentication bypass vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [auth, jwt]
+
+  # ============================================
+  # IDOR / Missing Authorization
+  # ============================================
+
+  - id: express-route-no-auth-delete
+    pattern-regex: "app\\.(delete|del)\\(['\"][^'\"]+/:id['\"]"
+    message: DELETE route with ID param - verify authorization check exists
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, auth]
+
+  - id: express-route-no-auth-put
+    pattern-regex: "app\\.put\\(['\"][^'\"]+/:id['\"]"
+    message: PUT route with ID param - verify authorization check exists
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, auth]
+
+  - id: sequelize-find-by-id-param
+    patterns:
+      - pattern: '$MODEL.findByPk(req.params.id)'
+      - pattern: '$MODEL.findByPk(req.params.$ID)'
+      - pattern: '$MODEL.findOne({where: {id: req.params.id}})'
+    message: Direct object lookup by URL param - ensure authorization check
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, bola]
+
+  - id: mongoose-find-by-id-param
+    patterns:
+      - pattern: '$MODEL.findById(req.params.id)'
+      - pattern: '$MODEL.findById(req.params.$ID)'
+    message: MongoDB findById with URL param - verify authorization
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, bola]
+
+  # ============================================
+  # Weak Password Handling
+  # ============================================
+
+  - id: plaintext-password-compare
+    patterns:
+      - pattern: '$USER.password == $INPUT'
+      - pattern: '$INPUT == $USER.password'
+      - pattern: 'password == user.password'
+      - pattern: 'user.password == password'
+    message: Plaintext password comparison - use bcrypt.compare()
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [auth, crypto]
+
+  - id: md5-password-compare
+    patterns:
+      - pattern: 'md5($PASSWORD) == $USER.password'
+      - pattern: '$USER.password == md5($PASSWORD)'
+    message: MD5 password comparison - use bcrypt instead
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [auth, crypto]
+
+  # ============================================
+  # Session Security
+  # ============================================
+
+  - id: session-regenerate-missing
+    pattern-regex: "req\\.session\\.user\\s*="
+    message: Session user assignment - call req.session.regenerate() to prevent fixation
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [session, auth]
+
+  - id: session-secret-weak
+    patterns:
+      - pattern: 'session({secret: "secret"})'
+      - pattern: 'session({secret: "keyboard cat"})'
+      - pattern: "session({secret: 'secret'})"
+    message: Weak session secret - use strong random secret
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [session]
+
+  # ============================================
+  # SSRF Patterns
+  # ============================================
+
+  - id: axios-ssrf-user-url
+    patterns:
+      - pattern: 'axios.get(req.body.$URL)'
+      - pattern: 'axios.get(req.query.$URL)'
+      - pattern: 'axios.post(req.body.$URL, ...)'
+      - pattern: 'axios($CONFIG)'
+    message: Axios request with user-controlled URL - SSRF risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [ssrf]
+
+  - id: fetch-ssrf-user-url
+    patterns:
+      - pattern: 'fetch(req.body.$URL)'
+      - pattern: 'fetch(req.query.$URL)'
+      - pattern: 'fetch(req.params.$URL)'
+    message: Fetch with user-controlled URL - SSRF vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [ssrf]
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: path-traversal-join
+    patterns:
+      - pattern: 'path.join($BASE, req.params.$FILE)'
+      - pattern: 'path.join($BASE, req.query.$FILE)'
+      - pattern: 'path.join($BASE, req.body.$FILE)'
+    message: Path join with user input - validate and sanitize for path traversal
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [path-traversal]
+
+  - id: fs-read-user-path
+    patterns:
+      - pattern: 'fs.readFile(req.params.$FILE, ...)'
+      - pattern: 'fs.readFileSync(req.query.$FILE)'
+      - pattern: 'fs.createReadStream(req.body.$FILE)'
+    message: File read with user input - path traversal vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [path-traversal]
+
+  - id: res-sendfile-user-path
+    patterns:
+      - pattern: 'res.sendFile(req.params.$FILE)'
+      - pattern: 'res.sendFile(req.query.$FILE)'
+      - pattern: 'res.download(req.params.$FILE)'
+    message: sendFile/download with user input - path traversal risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [path-traversal]
+
+  # ============================================
+  # Mass Assignment
+  # ============================================
+
+  - id: sequelize-mass-assignment
+    patterns:
+      - pattern: '$MODEL.create(req.body)'
+      - pattern: '$MODEL.update(req.body, ...)'
+      - pattern: '$INSTANCE.update(req.body)'
+    message: Sequelize create/update with full req.body - mass assignment risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [mass-assignment]
+
+  - id: mongoose-mass-assignment
+    patterns:
+      - pattern: 'new $MODEL(req.body)'
+      - pattern: '$MODEL.findByIdAndUpdate($ID, req.body)'
+      - pattern: '$DOC.set(req.body)'
+    message: Mongoose with full req.body - mass assignment vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [mass-assignment]
+
+  # ============================================
+  # Missing Security Headers
+  # ============================================
+
+  - id: missing-helmet
+    pattern: 'const app = express()'
+    message: Express app - consider using helmet() for security headers
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [headers]
+
+  - id: cors-wildcard-credentials
+    patterns:
+      - pattern: 'cors({origin: "*", credentials: true})'
+      - pattern: 'cors({origin: true, credentials: true})'
+    message: CORS wildcard with credentials - security misconfiguration
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [cors]
+
+  # ============================================
+  # SQL Injection (Sequelize)
+  # ============================================
+
+  - id: sequelize-raw-query
+    patterns:
+      - pattern: 'sequelize.query($QUERY)'
+      - pattern: '$DB.query($QUERY)'
+    message: Sequelize raw query - ensure parameterized
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [sqli]
+
+  - id: sequelize-literal-user-input
+    patterns:
+      - pattern: 'Sequelize.literal(req.body.$FIELD)'
+      - pattern: 'Sequelize.literal(req.query.$FIELD)'
+      - pattern: 'sequelize.literal($USER_INPUT)'
+    message: Sequelize.literal with user input - SQL injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [sqli]
+
+  # ============================================
+  # User Enumeration
+  # ============================================
+
+  - id: user-enumeration-error
+    patterns:
+      - pattern: 'res.send("User not found")'
+      - pattern: 'res.json({error: "User not found"})'
+      - pattern: 'res.send("Invalid username")'
+      - pattern: '"User does not exist"'
+    message: User enumeration - use generic error message
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [auth, enumeration]
+
+  - id: user-enumeration-password
+    patterns:
+      - pattern: 'res.send("Wrong password")'
+      - pattern: 'res.json({error: "Incorrect password"})'
+      - pattern: '"Password is incorrect"'
+    message: Password error reveals user exists - use generic error
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [auth, enumeration]
+
