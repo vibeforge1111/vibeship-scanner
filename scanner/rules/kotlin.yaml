@@ -1,0 +1,237 @@
+# Kotlin Security Rules
+rules:
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: kotlin-runtime-exec
+    pattern: Runtime.getRuntime().exec($CMD)
+    message: Kotlin command execution - injection risk
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-processbuilder
+    pattern: ProcessBuilder($CMD)
+    message: Kotlin ProcessBuilder - command injection risk
+    languages: [kotlin]
+    severity: WARNING
+
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: kotlin-sql-concat
+    pattern: '"SELECT " + $VAR'
+    message: Kotlin SQL concatenation - SQL injection risk
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-sql-template
+    pattern: '"SELECT ... $VAR ..."'
+    message: Kotlin SQL string template - SQL injection risk
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-createquery
+    pattern: $EM.createQuery($QUERY)
+    message: Kotlin JPA createQuery - ensure parameterized queries
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-createnativequery
+    pattern: $EM.createNativeQuery($QUERY)
+    message: Kotlin JPA native query - SQL injection risk
+    languages: [kotlin]
+    severity: WARNING
+
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: kotlin-objectinputstream
+    pattern: ObjectInputStream($STREAM).readObject()
+    message: Kotlin insecure deserialization
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-objectinputstream-new
+    pattern: ObjectInputStream(...)
+    message: Kotlin ObjectInputStream - deserialization vulnerability
+    languages: [kotlin]
+    severity: ERROR
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: kotlin-md5
+    pattern: 'MessageDigest.getInstance("MD5")'
+    message: Kotlin MD5 is weak - use SHA-256 or better
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-sha1
+    pattern: 'MessageDigest.getInstance("SHA-1")'
+    message: Kotlin SHA1 is deprecated - use SHA-256 or better
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-des
+    pattern: 'Cipher.getInstance("DES")'
+    message: Kotlin DES is weak - use AES
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-ecb
+    pattern: 'Cipher.getInstance("AES/ECB/$PADDING")'
+    message: Kotlin ECB mode is insecure - use GCM or CBC
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-random
+    pattern: Random()
+    message: Kotlin Random not secure - use SecureRandom
+    languages: [kotlin]
+    severity: WARNING
+
+  # ============================================
+  # XXE
+  # ============================================
+
+  - id: kotlin-xxe-documentbuilder
+    pattern: DocumentBuilderFactory.newInstance()
+    message: Kotlin XML parser may be vulnerable to XXE
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-xxe-saxparser
+    pattern: SAXParserFactory.newInstance()
+    message: Kotlin SAX parser may be vulnerable to XXE
+    languages: [kotlin]
+    severity: WARNING
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: kotlin-file-user
+    pattern: File($USER_INPUT)
+    message: Kotlin File with user input - path traversal risk
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-paths-get
+    pattern: Paths.get($USER_INPUT)
+    message: Kotlin Paths.get with user input - path traversal risk
+    languages: [kotlin]
+    severity: WARNING
+
+  # ============================================
+  # SSRF
+  # ============================================
+
+  - id: kotlin-url-user
+    pattern: URL($USER_INPUT)
+    message: Kotlin URL with user input - potential SSRF
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-http-get
+    pattern: $CLIENT.get($URL)
+    message: Kotlin HTTP request - validate URL for SSRF
+    languages: [kotlin]
+    severity: INFO
+
+  # ============================================
+  # SSL/TLS Issues
+  # ============================================
+
+  - id: kotlin-ssl-trust-all
+    pattern: 'hostnameVerifier = HostnameVerifier { _, _ -> true }'
+    message: Kotlin hostname verification disabled
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-ssl-context-old
+    pattern: 'SSLContext.getInstance("SSL")'
+    message: Kotlin SSL is outdated - use TLS 1.2+
+    languages: [kotlin]
+    severity: ERROR
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: kotlin-hardcoded-password
+    pattern: 'val password = "..."'
+    message: Kotlin hardcoded password detected
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-hardcoded-secret
+    pattern: 'val secret = "..."'
+    message: Kotlin hardcoded secret detected
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-hardcoded-apikey
+    pattern: 'val apiKey = "..."'
+    message: Kotlin hardcoded API key detected
+    languages: [kotlin]
+    severity: ERROR
+
+  # ============================================
+  # Android Specific
+  # ============================================
+
+  - id: kotlin-android-webview-js
+    pattern: $WEBVIEW.settings.javaScriptEnabled = true
+    message: Kotlin WebView JavaScript enabled - XSS risk if loading untrusted content
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-android-webview-file
+    pattern: $WEBVIEW.settings.allowFileAccess = true
+    message: Kotlin WebView file access enabled - potential data leak
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-android-intent-extra
+    pattern: intent.getStringExtra($KEY)
+    message: Kotlin intent extra - validate data from other apps
+    languages: [kotlin]
+    severity: INFO
+
+  - id: kotlin-android-exported-true
+    pattern: 'android:exported="true"'
+    message: Kotlin Android exported component - verify access control
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-android-world-readable
+    pattern: MODE_WORLD_READABLE
+    message: Kotlin world-readable file mode - security risk
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-android-world-writable
+    pattern: MODE_WORLD_WRITEABLE
+    message: Kotlin world-writable file mode - security risk
+    languages: [kotlin]
+    severity: ERROR
+
+  # ============================================
+  # Logging Sensitive Data
+  # ============================================
+
+  - id: kotlin-log-password
+    pattern: Log.d($TAG, ...$PASSWORD...)
+    message: Kotlin logging potentially sensitive data
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-println-debug
+    pattern: println(...)
+    message: Kotlin println - use proper logging, avoid in production
+    languages: [kotlin]
+    severity: INFO

@@ -1,0 +1,345 @@
+# Python Security Rules
+rules:
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: py-os-system
+    pattern: os.system(...)
+    message: os.system() call - potential command injection vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-subprocess-shell
+    pattern: 'subprocess.call($CMD, shell=True)'
+    message: subprocess with shell=True - command injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-subprocess-popen-shell
+    pattern: 'subprocess.Popen($CMD, shell=True)'
+    message: Popen with shell=True - command injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-subprocess-run-shell
+    pattern: 'subprocess.run($CMD, shell=True)'
+    message: subprocess.run with shell=True - command injection risk
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # Code Injection
+  # ============================================
+
+  - id: py-exec-call
+    pattern: exec(...)
+    message: Python exec() - code injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-eval-call
+    pattern: eval(...)
+    message: Python eval() - code injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-compile-call
+    pattern: compile($CODE, ...)
+    message: Python compile() with user input - code injection risk
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: py-pickle-loads
+    pattern: pickle.loads(...)
+    message: pickle.loads() - insecure deserialization vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-pickle-load
+    pattern: pickle.load(...)
+    message: pickle.load() - insecure deserialization vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-cPickle-loads
+    pattern: cPickle.loads(...)
+    message: cPickle.loads() - insecure deserialization vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-cPickle-load
+    pattern: cPickle.load(...)
+    message: cPickle.load() - insecure deserialization vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-yaml-unsafe
+    pattern: yaml.load($DATA)
+    message: yaml.load() without Loader - insecure deserialization (use safe_load)
+    languages: [python]
+    severity: ERROR
+
+  - id: py-yaml-unsafe-loader
+    pattern: 'yaml.load($DATA, Loader=yaml.Loader)'
+    message: yaml.load with Loader - insecure deserialization (use safe_load)
+    languages: [python]
+    severity: ERROR
+
+  - id: py-marshal-loads
+    pattern: marshal.loads(...)
+    message: marshal.loads() - insecure deserialization
+    languages: [python]
+    severity: ERROR
+
+  - id: py-shelve-open
+    pattern: shelve.open(...)
+    message: shelve uses pickle internally - insecure deserialization risk
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: py-sql-format
+    pattern: cursor.execute($Q % $V)
+    message: SQL query with string formatting - SQL injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-sql-concat
+    pattern: cursor.execute($Q + $V)
+    message: SQL query with string concatenation - SQL injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-sql-fstring
+    pattern: cursor.execute(f"...")
+    message: SQL query with f-string - SQL injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-sqlalchemy-text
+    pattern: text($QUERY)
+    message: SQLAlchemy text() - ensure parameterized queries
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: py-open-user-input
+    pattern: open($USER_INPUT, ...)
+    message: File open with user input - potential path traversal
+    languages: [python]
+    severity: WARNING
+
+  - id: py-os-path-join-user
+    pattern: os.path.join($BASE, request.$X)
+    message: Path construction with user input - path traversal risk
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: py-md5-hashlib
+    pattern: hashlib.md5(...)
+    message: MD5 is a weak hash function - use SHA-256 or better
+    languages: [python]
+    severity: WARNING
+
+  - id: py-sha1-hashlib
+    pattern: hashlib.sha1(...)
+    message: SHA1 is a weak hash function - use SHA-256 or better
+    languages: [python]
+    severity: WARNING
+
+  - id: py-random-security
+    pattern: random.random()
+    message: random module is not cryptographically secure - use secrets module
+    languages: [python]
+    severity: WARNING
+
+  - id: py-random-randint
+    pattern: random.randint(...)
+    message: random module is not cryptographically secure - use secrets module
+    languages: [python]
+    severity: WARNING
+
+  - id: py-random-choice
+    pattern: random.choice(...)
+    message: random module is not cryptographically secure - use secrets.choice()
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # TLS/SSL Issues
+  # ============================================
+
+  - id: py-ssl-unverified
+    pattern: 'ssl._create_unverified_context()'
+    message: SSL certificate verification disabled - MITM attack risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-requests-verify-false
+    pattern: 'requests.get($URL, verify=False)'
+    message: SSL verification disabled in requests - MITM attack risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-requests-post-verify-false
+    pattern: 'requests.post($URL, verify=False)'
+    message: SSL verification disabled in requests - MITM attack risk
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # JWT Security
+  # ============================================
+
+  - id: py-jwt-none-algorithm
+    pattern: '"alg":"none"'
+    message: JWT none algorithm - authentication bypass vulnerability
+    languages: [python]
+    severity: ERROR
+
+  - id: py-jwt-decode-no-verify
+    pattern: 'jwt.decode($TOKEN, verify=False)'
+    message: JWT verification disabled - authentication bypass
+    languages: [python]
+    severity: ERROR
+
+  - id: py-jwt-decode-options-no-verify
+    pattern: 'jwt.decode($TOKEN, options={"verify_signature": False})'
+    message: JWT signature verification disabled
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # SSRF (Server-Side Request Forgery)
+  # ============================================
+
+  - id: py-requests-user-url
+    pattern: requests.get($USER_INPUT)
+    message: HTTP request with user input - potential SSRF
+    languages: [python]
+    severity: WARNING
+
+  - id: py-urllib-user-url
+    pattern: urllib.request.urlopen($USER_INPUT)
+    message: URL open with user input - potential SSRF
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # XXE (XML External Entity)
+  # ============================================
+
+  - id: py-xml-etree-parse
+    pattern: ET.parse($INPUT)
+    message: XML parsing - ensure external entities are disabled
+    languages: [python]
+    severity: WARNING
+
+  - id: py-xml-etree-fromstring
+    pattern: ET.fromstring($INPUT)
+    message: XML parsing - ensure external entities are disabled
+    languages: [python]
+    severity: WARNING
+
+  - id: py-lxml-parse
+    pattern: lxml.etree.parse($INPUT)
+    message: lxml XML parsing - disable external entities
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Django Specific
+  # ============================================
+
+  - id: py-django-mark-safe
+    pattern: mark_safe($INPUT)
+    message: Django mark_safe() - XSS risk if input is user-controlled
+    languages: [python]
+    severity: WARNING
+
+  - id: py-django-raw-sql
+    pattern: $MODEL.objects.raw($QUERY)
+    message: Django raw SQL - ensure parameterized queries
+    languages: [python]
+    severity: WARNING
+
+  - id: py-django-extra
+    pattern: $QUERYSET.extra($KWARGS)
+    message: Django QuerySet.extra() is deprecated - SQL injection risk
+    languages: [python]
+    severity: ERROR
+
+  - id: py-django-debug-true
+    pattern: 'DEBUG = True'
+    message: Django DEBUG enabled - disable in production
+    languages: [python]
+    severity: WARNING
+
+  # ============================================
+  # Flask Specific
+  # ============================================
+
+  - id: py-flask-debug-true
+    pattern: 'app.run(debug=True)'
+    message: Flask debug mode enabled - disable in production
+    languages: [python]
+    severity: WARNING
+
+  - id: py-flask-secret-key-hardcoded
+    pattern: 'app.secret_key = "..."'
+    message: Hardcoded Flask secret key - use environment variables
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: py-hardcoded-password
+    pattern: 'password = "..."'
+    message: Hardcoded password detected
+    languages: [python]
+    severity: ERROR
+
+  - id: py-hardcoded-api-key
+    pattern: 'api_key = "..."'
+    message: Hardcoded API key detected
+    languages: [python]
+    severity: ERROR
+
+  - id: py-hardcoded-secret
+    pattern: 'secret = "..."'
+    message: Hardcoded secret detected
+    languages: [python]
+    severity: ERROR
+
+  # ============================================
+  # Debug/Info Disclosure
+  # ============================================
+
+  - id: py-print-statement
+    pattern: print(...)
+    message: Print statement found - consider using logging
+    languages: [python]
+    severity: INFO
+
+  - id: py-traceback-print
+    pattern: traceback.print_exc()
+    message: Traceback printed - may expose sensitive information
+    languages: [python]
+    severity: INFO

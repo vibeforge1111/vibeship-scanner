@@ -29,6 +29,23 @@ SCRIPT_DIR = Path(__file__).parent
 RULES_DIR = SCRIPT_DIR / 'rules'
 GITLEAKS_CONFIG = SCRIPT_DIR / 'gitleaks.toml'
 
+# Map detected languages to rule files
+LANGUAGE_RULES = {
+    'JavaScript': 'javascript.yaml',
+    'TypeScript': 'javascript.yaml',
+    'Python': 'python.yaml',
+    'PHP': 'php.yaml',
+    'Ruby': 'ruby.yaml',
+    'Go': 'go.yaml',
+    'Java': 'java.yaml',
+    'C#': 'csharp.yaml',
+    'Kotlin': 'kotlin.yaml',
+    'Swift': 'swift.yaml',
+    'Rust': 'rust.yaml',
+    'Bash': 'bash.yaml',
+    'Shell': 'bash.yaml',
+}
+
 
 def clone_repo(url: str, target_dir: str, branch: str = 'main') -> bool:
     """Clone a git repository (shallow clone for speed)"""
@@ -66,13 +83,46 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
     except:
         files = []
 
+    # Walk through repo to detect languages by file extensions
+    lang_extensions = {
+        '.js': 'JavaScript',
+        '.jsx': 'JavaScript',
+        '.ts': 'TypeScript',
+        '.tsx': 'TypeScript',
+        '.py': 'Python',
+        '.php': 'PHP',
+        '.rb': 'Ruby',
+        '.go': 'Go',
+        '.java': 'Java',
+        '.kt': 'Kotlin',
+        '.kts': 'Kotlin',
+        '.swift': 'Swift',
+        '.rs': 'Rust',
+        '.cs': 'C#',
+        '.sh': 'Bash',
+        '.bash': 'Bash',
+    }
+
+    try:
+        for root, dirs, filenames in os.walk(repo_dir):
+            # Skip hidden directories and common non-code folders
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'vendor', 'venv', '__pycache__', 'target', 'build', 'dist']]
+            for filename in filenames:
+                ext = os.path.splitext(filename)[1].lower()
+                if ext in lang_extensions:
+                    languages.add(lang_extensions[ext])
+    except:
+        pass
+
+    # Detect from package files (more reliable)
     if 'package.json' in files:
         languages.add('JavaScript')
-        languages.add('TypeScript')
         try:
             with open(os.path.join(repo_dir, 'package.json')) as f:
                 pkg = json.load(f)
                 deps = {**pkg.get('dependencies', {}), **pkg.get('devDependencies', {})}
+                if 'typescript' in deps:
+                    languages.add('TypeScript')
                 if 'next' in deps:
                     frameworks.add('Next.js')
                 if 'svelte' in deps or '@sveltejs/kit' in deps:
@@ -90,16 +140,44 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
         except:
             pass
 
-    if 'requirements.txt' in files or 'pyproject.toml' in files:
+    if 'requirements.txt' in files or 'pyproject.toml' in files or 'setup.py' in files:
         languages.add('Python')
         if 'manage.py' in files:
             frameworks.add('Django')
+
+    if 'composer.json' in files:
+        languages.add('PHP')
+        try:
+            with open(os.path.join(repo_dir, 'composer.json')) as f:
+                composer = json.load(f)
+                require = composer.get('require', {})
+                if 'laravel/framework' in require:
+                    frameworks.add('Laravel')
+                if 'symfony/framework-bundle' in require:
+                    frameworks.add('Symfony')
+        except:
+            pass
+
+    if 'Gemfile' in files:
+        languages.add('Ruby')
+        frameworks.add('Rails')  # Most Gemfiles are Rails
 
     if 'go.mod' in files:
         languages.add('Go')
 
     if 'Cargo.toml' in files:
         languages.add('Rust')
+
+    if 'pom.xml' in files or 'build.gradle' in files or 'build.gradle.kts' in files:
+        languages.add('Java')
+        if 'build.gradle.kts' in files:
+            languages.add('Kotlin')
+
+    if any(f.endswith('.csproj') or f.endswith('.sln') for f in files):
+        languages.add('C#')
+
+    if 'Package.swift' in files:
+        languages.add('Swift')
 
     lang_list = sorted(list(languages))
     framework_list = sorted(list(frameworks))
@@ -112,23 +190,44 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
     }
 
 
-def run_opengrep(repo_dir: str) -> List[Dict[str, Any]]:
-    """Run Opengrep SAST scanner with local rules only (LGPL fork of Semgrep)"""
+def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Dict[str, Any]]:
+    """Run Opengrep SAST scanner with language-specific rules (LGPL fork of Semgrep)"""
     findings = []
 
-    # Use only local rules - no registry dependencies
-    core_rules = RULES_DIR / 'core.yaml'
-    vibeship_rules = RULES_DIR / 'vibeship.yaml'
-
+    # Build list of rule files based on detected languages
     configs = []
-    if core_rules.exists():
-        configs.extend(['-f', str(core_rules)])
-    if vibeship_rules.exists():
-        configs.extend(['-f', str(vibeship_rules)])
+    rule_files_used = []
+
+    if detected_languages:
+        # Get unique rule files for detected languages
+        rule_files = set()
+        for lang in detected_languages:
+            if lang in LANGUAGE_RULES:
+                rule_files.add(LANGUAGE_RULES[lang])
+
+        # Add each rule file
+        for rule_file in sorted(rule_files):
+            rule_path = RULES_DIR / rule_file
+            if rule_path.exists():
+                configs.extend(['-f', str(rule_path)])
+                rule_files_used.append(rule_file)
+
+    # Fallback to old core.yaml and vibeship.yaml if no language-specific rules found
+    if not configs:
+        core_rules = RULES_DIR / 'core.yaml'
+        vibeship_rules = RULES_DIR / 'vibeship.yaml'
+        if core_rules.exists():
+            configs.extend(['-f', str(core_rules)])
+            rule_files_used.append('core.yaml')
+        if vibeship_rules.exists():
+            configs.extend(['-f', str(vibeship_rules)])
+            rule_files_used.append('vibeship.yaml')
 
     if not configs:
         print("ERROR: No rule files found!", file=sys.stderr)
         return findings
+
+    print(f"Using rule files: {', '.join(rule_files_used)}", file=sys.stderr)
 
     # Opengrep uses similar syntax: opengrep scan -f rules --json target
     cmd = ['opengrep', 'scan', '--json'] + configs + [repo_dir]
@@ -350,6 +449,32 @@ def run_gitleaks(repo_dir: str) -> List[Dict[str, Any]]:
     return findings
 
 
+def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Remove duplicates - same issue at same file:line.
+    Strategy: Normalize title (strip, lowercase) + file + line
+    This catches both exact duplicates and near-duplicates from similar rules.
+    """
+    seen = set()
+    deduplicated = []
+
+    for finding in findings:
+        loc = finding.get('location', {})
+        # Normalize title: strip whitespace and lowercase for comparison
+        title = finding.get('title', '').strip().lower()
+        file_path = loc.get('file', '')
+        line = loc.get('line', 0)
+
+        # Key is: normalized_title + file + line
+        key = f"{title}:{file_path}:{line}"
+
+        if key not in seen:
+            seen.add(key)
+            deduplicated.append(finding)
+
+    return deduplicated
+
+
 def calculate_score(findings: List[Dict[str, Any]]) -> int:
     """Calculate security score from findings"""
     score = 100
@@ -423,7 +548,7 @@ def main():
         print(f"Detected stack: {stack}", file=sys.stderr)
 
         print(json.dumps({'step': 'sast', 'message': 'Running code analysis...'}), flush=True)
-        opengrep_findings = run_opengrep(repo_dir)
+        opengrep_findings = run_opengrep(repo_dir, stack.get('languages', []))
 
         print(json.dumps({'step': 'deps', 'message': 'Checking dependencies...'}), flush=True)
         trivy_findings = run_trivy(repo_dir)
@@ -432,7 +557,11 @@ def main():
         gitleaks_findings = run_gitleaks(repo_dir)
 
         all_findings = opengrep_findings + trivy_findings + gitleaks_findings
-        print(f"Total findings: {len(all_findings)}", file=sys.stderr)
+        print(f"Total raw findings: {len(all_findings)}", file=sys.stderr)
+
+        # Deduplicate findings (multiple rules can flag same line)
+        all_findings = deduplicate_findings(all_findings)
+        print(f"After deduplication: {len(all_findings)}", file=sys.stderr)
 
         print(json.dumps({'step': 'score', 'message': 'Calculating score...'}), flush=True)
         score = calculate_score(all_findings)

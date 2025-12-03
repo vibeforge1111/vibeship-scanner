@@ -1,0 +1,706 @@
+# PHP Security Rules
+rules:
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: php-shell-exec
+    pattern: shell_exec(...)
+    message: PHP shell_exec() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-exec
+    pattern: exec(...)
+    message: PHP exec() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-system
+    pattern: system(...)
+    message: PHP system() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-passthru
+    pattern: passthru(...)
+    message: PHP passthru() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-popen
+    pattern: popen(...)
+    message: PHP popen() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-proc-open
+    pattern: proc_open(...)
+    message: PHP proc_open() - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-backtick
+    pattern: '`$CMD`'
+    message: PHP backtick execution - command injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-shell-exec-concat
+    pattern: shell_exec($CMD . $VAR)
+    message: PHP command injection - variable concatenated to shell command
+    languages: [php]
+    severity: ERROR
+
+  - id: php-shell-exec-concat-2
+    pattern: shell_exec($X . $Y . $Z)
+    message: PHP command injection - string concatenation in shell command
+    languages: [php]
+    severity: ERROR
+
+  - id: php-exec-concat
+    pattern: exec($CMD . $VAR)
+    message: PHP command injection - variable concatenated to exec
+    languages: [php]
+    severity: ERROR
+
+  - id: php-system-concat
+    pattern: system($CMD . $VAR)
+    message: PHP command injection - variable concatenated to system
+    languages: [php]
+    severity: ERROR
+
+  - id: php-passthru-concat
+    pattern: passthru($CMD . $VAR)
+    message: PHP command injection - variable concatenated to passthru
+    languages: [php]
+    severity: ERROR
+
+  - id: php-popen-concat
+    pattern: popen($CMD . $VAR, $MODE)
+    message: PHP command injection - variable concatenated to popen
+    languages: [php]
+    severity: ERROR
+
+  - id: php-proc-open-concat
+    pattern: proc_open($CMD . $VAR, ...)
+    message: PHP command injection - variable concatenated to proc_open
+    languages: [php]
+    severity: ERROR
+
+  - id: php-backtick-var
+    pattern: '`$CMD $VAR`'
+    message: PHP command injection - variable in backtick execution
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # Code Injection
+  # ============================================
+
+  - id: php-eval
+    pattern: eval(...)
+    message: PHP eval() - code injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-assert
+    pattern: assert(...)
+    message: PHP assert() with string - code injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-create-function
+    pattern: create_function(...)
+    message: PHP create_function() - code injection risk (deprecated)
+    languages: [php]
+    severity: ERROR
+
+  - id: php-preg-replace-e
+    pattern: 'preg_replace("/.*/e", ...)'
+    message: PHP preg_replace with /e modifier - code injection
+    languages: [php]
+    severity: ERROR
+
+  - id: php-base64-decode-exec
+    pattern: eval(base64_decode($X))
+    message: PHP code injection via base64 decode
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # File Inclusion (LFI/RFI)
+  # ============================================
+
+  - id: php-include-var
+    pattern: include($X)
+    message: PHP include with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-include-once-var
+    pattern: include_once($X)
+    message: PHP include_once with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-require-var
+    pattern: require($X)
+    message: PHP require with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-require-once-var
+    pattern: require_once($X)
+    message: PHP require_once with variable - file inclusion risk
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: php-mysqli-query-concat
+    pattern: mysqli_query($CONN, $Q . $V)
+    message: PHP SQL injection via string concatenation
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mysql-query
+    pattern: mysql_query(...)
+    message: PHP mysql_query() - deprecated and SQL injection risk
+    languages: [php]
+    severity: ERROR
+
+  - id: php-sql-string-var-interpolation
+    pattern: '"SELECT ... FROM ... WHERE ... = $VAR"'
+    message: PHP SQL injection - variable interpolated in query string
+    languages: [php]
+    severity: ERROR
+
+  - id: php-sql-double-quote-var
+    pattern: '"... WHERE ... = $ID"'
+    message: PHP SQL injection - variable in WHERE clause
+    languages: [php]
+    severity: ERROR
+
+  - id: php-mysqli-query-var
+    pattern: mysqli_query($CONN, $QUERY)
+    message: PHP SQL query - ensure parameterized queries are used
+    languages: [php]
+    severity: WARNING
+
+  - id: php-pdo-query-var
+    pattern: $PDO->query($QUERY)
+    message: PHP PDO query() - use prepare() with bound parameters instead
+    languages: [php]
+    severity: WARNING
+
+  - id: php-pdo-exec-var
+    pattern: $PDO->exec($QUERY)
+    message: PHP PDO exec() - use prepare() with bound parameters instead
+    languages: [php]
+    severity: WARNING
+
+  - id: php-mysql-real-escape-only
+    pattern: mysql_real_escape_string($X)
+    message: PHP mysql_real_escape_string is deprecated - use prepared statements
+    languages: [php]
+    severity: WARNING
+
+  - id: php-mysqli-real-escape-only
+    pattern: mysqli_real_escape_string($CONN, $X)
+    message: PHP escaping alone is insufficient - use prepared statements
+    languages: [php]
+    severity: WARNING
+
+  - id: php-addslashes-sql
+    pattern: addslashes($X)
+    message: PHP addslashes() is not safe for SQL - use prepared statements
+    languages: [php]
+    severity: WARNING
+
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: php-unserialize
+    pattern: unserialize(...)
+    message: PHP unserialize() - insecure deserialization risk
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # Weak Password Handling
+  # ============================================
+
+  - id: php-md5-password
+    pattern: md5($PASSWORD)
+    message: PHP MD5 for password - use password_hash() instead
+    languages: [php]
+    severity: WARNING
+
+  - id: php-sha1-password
+    pattern: sha1($PASSWORD)
+    message: PHP SHA1 for password - use password_hash() instead
+    languages: [php]
+    severity: WARNING
+
+  - id: php-password-plain-compare
+    pattern: if ($PASSWORD == $X)
+    message: PHP password - use password_verify() instead of direct comparison
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # SSRF (Server-Side Request Forgery)
+  # ============================================
+
+  - id: php-file-get-contents-url
+    pattern: file_get_contents($URL)
+    message: PHP file_get_contents with URL - potential SSRF
+    languages: [php]
+    severity: WARNING
+
+  - id: php-curl-ssl-verify-off
+    pattern: 'curl_setopt($CH, CURLOPT_SSL_VERIFYPEER, false)'
+    message: PHP cURL SSL verification disabled
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # Variable Injection
+  # ============================================
+
+  - id: php-extract
+    pattern: extract(...)
+    message: PHP extract() - variable injection risk
+    languages: [php]
+    severity: WARNING
+
+  - id: php-parse-str
+    pattern: parse_str($X)
+    message: PHP parse_str() without second param - variable injection
+    languages: [php]
+    severity: WARNING
+
+  # ============================================
+  # File Upload
+  # ============================================
+
+  - id: php-move-uploaded-file
+    pattern: move_uploaded_file(...)
+    message: PHP file upload - ensure proper validation
+    languages: [php]
+    severity: WARNING
+
+  - id: php-upload-no-type-check
+    pattern: move_uploaded_file($_FILES[$X]['tmp_name'], $DEST)
+    message: PHP file upload - verify file type validation exists
+    languages: [php]
+    severity: WARNING
+
+  - id: php-upload-user-filename
+    pattern: $_FILES[$X]['name']
+    message: PHP file upload - user-controlled filename (sanitize before use)
+    languages: [php]
+    severity: WARNING
+
+  # ============================================
+  # Open Redirect
+  # ============================================
+
+  - id: php-header-redirect
+    pattern: 'header("Location: " . $X)'
+    message: PHP open redirect risk
+    languages: [php]
+    severity: WARNING
+
+  # ============================================
+  # Session/Cookie Security
+  # ============================================
+
+  - id: php-setcookie-httponly-false
+    pattern: 'setcookie($NAME, $VALUE, $EXPIRE, $PATH, $DOMAIN, $SECURE, false)'
+    message: PHP cookie without HttpOnly flag
+    languages: [php]
+    severity: WARNING
+
+  - id: php-setcookie-no-httponly
+    pattern: setcookie($NAME, $VALUE)
+    message: PHP cookie - missing httponly/secure flags
+    languages: [php]
+    severity: WARNING
+
+  - id: php-setcookie-no-secure
+    pattern: setcookie($NAME, $VALUE, $EXPIRE)
+    message: PHP cookie - missing httponly/secure flags
+    languages: [php]
+    severity: WARNING
+
+  - id: php-session-regenerate-missing
+    pattern: session_start()
+    message: PHP session - ensure session_regenerate_id() after login
+    languages: [php]
+    severity: INFO
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: php-rand-crypto
+    pattern: rand()
+    message: PHP rand() not cryptographically secure - use random_int()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-mt-rand-crypto
+    pattern: mt_rand()
+    message: PHP mt_rand() not cryptographically secure - use random_int()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-substr-token
+    pattern: substr(md5($X), ...)
+    message: PHP weak token generation - use random_bytes()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-uniqid-token
+    pattern: uniqid()
+    message: PHP uniqid() is predictable - use random_bytes() for tokens
+    languages: [php]
+    severity: WARNING
+
+  - id: php-mcrypt-deprecated
+    pattern: mcrypt_encrypt(...)
+    message: PHP mcrypt is deprecated - use openssl_encrypt()
+    languages: [php]
+    severity: WARNING
+
+  - id: php-des-encryption
+    pattern: MCRYPT_DES
+    message: PHP DES encryption is weak - use AES-256
+    languages: [php]
+    severity: ERROR
+
+  - id: php-ecb-mode
+    pattern: MCRYPT_MODE_ECB
+    message: PHP ECB mode is insecure - use CBC or GCM
+    languages: [php]
+    severity: ERROR
+
+  # ============================================
+  # Information Disclosure
+  # ============================================
+
+  - id: php-phpinfo
+    pattern: phpinfo()
+    message: PHP phpinfo() exposes sensitive server configuration
+    languages: [php]
+    severity: WARNING
+
+  - id: php-error-reporting-all
+    pattern: error_reporting(E_ALL)
+    message: PHP verbose error reporting - disable in production
+    languages: [php]
+    severity: INFO
+
+  - id: php-display-errors-on
+    pattern: 'ini_set("display_errors", "1")'
+    message: PHP display_errors enabled - disable in production
+    languages: [php]
+    severity: WARNING
+
+  - id: php-var-dump-output
+    pattern: var_dump($X)
+    message: PHP var_dump() - remove debug output in production
+    languages: [php]
+    severity: INFO
+
+  - id: php-print-r-output
+    pattern: print_r($X)
+    message: PHP print_r() - remove debug output in production
+    languages: [php]
+    severity: INFO
+
+  # ============================================
+  # Taint Mode Rules - XSS
+  # ============================================
+
+  - id: php-xss-printf
+    mode: taint
+    message: PHP XSS vulnerability - user input in printf without sanitization
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+      - pattern: $_COOKIE
+    pattern-sinks:
+      - pattern: printf(...)
+      - pattern: vprintf(...)
+      - pattern: sprintf(...)
+    pattern-sanitizers:
+      - pattern: htmlspecialchars(...)
+      - pattern: htmlentities(...)
+
+  - id: php-xss-die-exit
+    mode: taint
+    message: PHP XSS vulnerability - user input in die/exit without sanitization
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: die(...)
+      - pattern: exit(...)
+    pattern-sanitizers:
+      - pattern: htmlspecialchars(...)
+      - pattern: htmlentities(...)
+
+  # ============================================
+  # Taint Mode Rules - SQL Injection
+  # ============================================
+
+  - id: php-taint-sqli-query
+    mode: taint
+    message: PHP SQL injection - user input in database query without parameterization
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+      - pattern: $_COOKIE
+    pattern-sinks:
+      - pattern: mysqli_query($CONN, $SINK)
+      - pattern: $PDO->query($SINK)
+      - pattern: $PDO->exec($SINK)
+      - pattern: $MYSQLI->query($SINK)
+      - pattern: mysql_query($SINK)
+      - pattern: pg_query($CONN, $SINK)
+      - pattern: pg_query($SINK)
+    pattern-sanitizers:
+      - pattern: mysqli_real_escape_string(...)
+      - pattern: $MYSQLI->real_escape_string(...)
+      - pattern: $PDO->quote(...)
+      - pattern: pg_escape_string(...)
+      - pattern: intval(...)
+      - pattern: (int)$X
+
+  - id: php-taint-sqli-sprintf
+    mode: taint
+    message: PHP SQL injection - user input in sprintf query string
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: sprintf($QUERY, ..., $SINK, ...)
+    pattern-sanitizers:
+      - pattern: mysqli_real_escape_string(...)
+      - pattern: intval(...)
+      - pattern: (int)$X
+
+  # ============================================
+  # Taint Mode Rules - File Operations
+  # ============================================
+
+  - id: php-taint-file-read
+    mode: taint
+    message: PHP file read with user input - potential path traversal or SSRF
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: file_get_contents($SINK)
+      - pattern: file($SINK)
+      - pattern: fopen($SINK, ...)
+      - pattern: readfile($SINK)
+      - pattern: file_exists($SINK)
+      - pattern: is_file($SINK)
+      - pattern: is_readable($SINK)
+      - pattern: is_writable($SINK)
+      - pattern: filemtime($SINK)
+      - pattern: filesize($SINK)
+    pattern-sanitizers:
+      - pattern: basename(...)
+      - pattern: realpath(...)
+
+  - id: php-taint-file-write
+    mode: taint
+    message: PHP file write with user input - potential arbitrary file write
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: file_put_contents($SINK, ...)
+      - pattern: fwrite($SINK, ...)
+      - pattern: fputs($SINK, ...)
+      - pattern: copy($SINK, ...)
+      - pattern: rename($SINK, ...)
+      - pattern: unlink($SINK)
+      - pattern: mkdir($SINK)
+      - pattern: rmdir($SINK)
+    pattern-sanitizers:
+      - pattern: basename(...)
+      - pattern: realpath(...)
+
+  - id: php-taint-include
+    mode: taint
+    message: PHP file inclusion with user input - potential LFI/RFI vulnerability
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: include($SINK)
+      - pattern: include_once($SINK)
+      - pattern: require($SINK)
+      - pattern: require_once($SINK)
+    pattern-sanitizers:
+      - pattern: basename(...)
+
+  # ============================================
+  # Taint Mode Rules - Command Injection
+  # ============================================
+
+  - id: php-taint-command-injection
+    mode: taint
+    message: PHP command injection - user input in shell command
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: shell_exec($SINK)
+      - pattern: exec($SINK)
+      - pattern: exec($SINK, ...)
+      - pattern: system($SINK)
+      - pattern: passthru($SINK)
+      - pattern: popen($SINK, ...)
+      - pattern: proc_open($SINK, ...)
+    pattern-sanitizers:
+      - pattern: escapeshellarg(...)
+      - pattern: escapeshellcmd(...)
+
+  # ============================================
+  # Taint Mode Rules - Open Redirect
+  # ============================================
+
+  - id: php-taint-open-redirect
+    mode: taint
+    message: PHP open redirect - user input in redirect location
+    languages: [php]
+    severity: WARNING
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: header($SINK)
+      - pattern: 'header("Location: " . $SINK)'
+
+  # ============================================
+  # Taint Mode Rules - Code Injection
+  # ============================================
+
+  - id: php-taint-code-injection
+    mode: taint
+    message: PHP code injection - user input in eval/assert
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: eval($SINK)
+      - pattern: assert($SINK)
+      - pattern: create_function($ARGS, $SINK)
+      - pattern: preg_replace($PATTERN, $SINK, ...)
+
+  # ============================================
+  # Taint Mode Rules - Mail Injection
+  # ============================================
+
+  - id: php-taint-mail-injection
+    mode: taint
+    message: PHP mail header injection - user input in mail headers
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: mail($SINK, ...)
+      - pattern: mail($TO, $SINK, ...)
+      - pattern: mail($TO, $SUBJECT, $BODY, $SINK)
+
+  # ============================================
+  # Taint Mode Rules - LDAP Injection
+  # ============================================
+
+  - id: php-taint-ldap-injection
+    mode: taint
+    message: PHP LDAP injection - user input in LDAP query
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: ldap_search($CONN, $BASE, $SINK)
+      - pattern: ldap_search($CONN, $BASE, $SINK, ...)
+
+  # ============================================
+  # Taint Mode Rules - XML/XPath Injection
+  # ============================================
+
+  - id: php-taint-xpath-injection
+    mode: taint
+    message: PHP XPath injection - user input in XPath query
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: $XPATH->query($SINK)
+      - pattern: $XPATH->evaluate($SINK)
+      - pattern: $DOM->query($SINK)
+
+  - id: php-taint-xxe
+    mode: taint
+    message: PHP XXE vulnerability - user input in XML parsing
+    languages: [php]
+    severity: ERROR
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+      - pattern: file_get_contents("php://input")
+    pattern-sinks:
+      - pattern: simplexml_load_string($SINK)
+      - pattern: new SimpleXMLElement($SINK)
+      - pattern: $DOM->loadXML($SINK)
+      - pattern: DOMDocument::loadXML($SINK)

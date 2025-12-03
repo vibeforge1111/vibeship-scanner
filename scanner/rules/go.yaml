@@ -1,0 +1,288 @@
+# Go Security Rules
+rules:
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: go-sql-query-concat
+    pattern: db.Query($Q + $INPUT)
+    message: Go SQL injection via concatenation - use parameterized queries
+    languages: [go]
+    severity: ERROR
+
+  - id: go-sql-exec-concat
+    pattern: db.Exec($Q + $INPUT)
+    message: Go SQL injection via concatenation - use parameterized queries
+    languages: [go]
+    severity: ERROR
+
+  - id: go-sql-queryrow-concat
+    pattern: db.QueryRow($Q + $INPUT)
+    message: Go SQL injection via concatenation - use parameterized queries
+    languages: [go]
+    severity: ERROR
+
+  - id: go-sql-prepare-concat
+    pattern: db.Prepare($Q + $INPUT)
+    message: Go SQL injection via concatenation - use parameterized queries
+    languages: [go]
+    severity: ERROR
+
+  - id: go-sql-sprintf
+    pattern: db.Query(fmt.Sprintf($Q, ...))
+    message: Go SQL injection via fmt.Sprintf - use parameterized queries
+    languages: [go]
+    severity: ERROR
+
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: go-exec-command
+    pattern: exec.Command($CMD, ...)
+    message: Go command execution - ensure input validation
+    languages: [go]
+    severity: WARNING
+
+  - id: go-exec-command-context
+    pattern: exec.CommandContext($CTX, $CMD, ...)
+    message: Go command execution - ensure input validation
+    languages: [go]
+    severity: WARNING
+
+  - id: go-os-exec
+    pattern: os.StartProcess($CMD, ...)
+    message: Go process execution - ensure input validation
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # XSS
+  # ============================================
+
+  - id: go-template-html
+    pattern: template.HTML($INPUT)
+    message: Go template.HTML bypasses escaping - XSS risk
+    languages: [go]
+    severity: ERROR
+
+  - id: go-template-js
+    pattern: template.JS($INPUT)
+    message: Go template.JS bypasses escaping - XSS risk
+    languages: [go]
+    severity: ERROR
+
+  - id: go-template-css
+    pattern: template.CSS($INPUT)
+    message: Go template.CSS bypasses escaping - XSS risk
+    languages: [go]
+    severity: WARNING
+
+  - id: go-template-url
+    pattern: template.URL($INPUT)
+    message: Go template.URL bypasses escaping - potential XSS/open redirect
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # TLS/SSL Issues
+  # ============================================
+
+  - id: go-tls-insecure
+    pattern: 'InsecureSkipVerify: true'
+    message: Go TLS verification disabled - MITM attack risk
+    languages: [go]
+    severity: ERROR
+
+  - id: go-tls-min-version
+    pattern: 'MinVersion: tls.VersionSSL30'
+    message: Go SSL 3.0 is insecure - use TLS 1.2+
+    languages: [go]
+    severity: ERROR
+
+  - id: go-tls-min-version-tls10
+    pattern: 'MinVersion: tls.VersionTLS10'
+    message: Go TLS 1.0 is deprecated - use TLS 1.2+
+    languages: [go]
+    severity: WARNING
+
+  - id: go-tls-min-version-tls11
+    pattern: 'MinVersion: tls.VersionTLS11'
+    message: Go TLS 1.1 is deprecated - use TLS 1.2+
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # YAML/Deserialization
+  # ============================================
+
+  - id: go-yaml-unmarshal
+    pattern: yaml.Unmarshal($DATA, ...)
+    message: Go YAML unmarshal - ensure safe parsing of untrusted data
+    languages: [go]
+    severity: WARNING
+
+  - id: go-json-unmarshal-interface
+    pattern: json.Unmarshal($DATA, &interface{})
+    message: Go JSON unmarshal to interface{} - type confusion risk
+    languages: [go]
+    severity: INFO
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: go-filepath-join-user
+    pattern: filepath.Join($BASE, $USER_INPUT)
+    message: Go filepath.Join with user input - path traversal risk
+    languages: [go]
+    severity: WARNING
+
+  - id: go-os-open-user
+    pattern: os.Open($USER_INPUT)
+    message: Go file open with user input - path traversal risk
+    languages: [go]
+    severity: WARNING
+
+  - id: go-ioutil-readfile-user
+    pattern: ioutil.ReadFile($USER_INPUT)
+    message: Go file read with user input - path traversal risk
+    languages: [go]
+    severity: WARNING
+
+  - id: go-os-readfile-user
+    pattern: os.ReadFile($USER_INPUT)
+    message: Go file read with user input - path traversal risk
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # SSRF
+  # ============================================
+
+  - id: go-http-get-user
+    pattern: http.Get($USER_INPUT)
+    message: Go HTTP request with user input - potential SSRF
+    languages: [go]
+    severity: WARNING
+
+  - id: go-http-post-user
+    pattern: http.Post($USER_INPUT, ...)
+    message: Go HTTP request with user input - potential SSRF
+    languages: [go]
+    severity: WARNING
+
+  - id: go-http-newrequest-user
+    pattern: http.NewRequest($METHOD, $USER_INPUT, ...)
+    message: Go HTTP request with user input - potential SSRF
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: go-md5-new
+    pattern: md5.New()
+    message: Go MD5 is weak - use SHA-256 or better
+    languages: [go]
+    severity: WARNING
+
+  - id: go-md5-sum
+    pattern: md5.Sum($X)
+    message: Go MD5 is weak - use SHA-256 or better
+    languages: [go]
+    severity: WARNING
+
+  - id: go-sha1-new
+    pattern: sha1.New()
+    message: Go SHA1 is weak - use SHA-256 or better
+    languages: [go]
+    severity: WARNING
+
+  - id: go-sha1-sum
+    pattern: sha1.Sum($X)
+    message: Go SHA1 is weak - use SHA-256 or better
+    languages: [go]
+    severity: WARNING
+
+  - id: go-des-cipher
+    pattern: des.NewCipher($KEY)
+    message: Go DES is weak - use AES
+    languages: [go]
+    severity: ERROR
+
+  - id: go-rand-intn
+    pattern: rand.Intn($X)
+    message: Go math/rand is not cryptographically secure - use crypto/rand
+    languages: [go]
+    severity: WARNING
+
+  - id: go-rand-int
+    pattern: rand.Int()
+    message: Go math/rand is not cryptographically secure - use crypto/rand
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # Error Handling
+  # ============================================
+
+  - id: go-ignored-error
+    pattern: $VAR, _ := $FUNC(...)
+    message: Go error ignored - handle errors properly
+    languages: [go]
+    severity: INFO
+
+  # ============================================
+  # Race Conditions
+  # ============================================
+
+  - id: go-goroutine-closure
+    pattern: |
+      for $VAR := range $ITER {
+        go func() {
+          ... $VAR ...
+        }()
+      }
+    message: Go closure captures loop variable - race condition risk
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: go-hardcoded-password
+    pattern: 'password := "..."'
+    message: Go hardcoded password detected
+    languages: [go]
+    severity: ERROR
+
+  - id: go-hardcoded-secret
+    pattern: 'secret := "..."'
+    message: Go hardcoded secret detected
+    languages: [go]
+    severity: ERROR
+
+  - id: go-hardcoded-apikey
+    pattern: 'apiKey := "..."'
+    message: Go hardcoded API key detected
+    languages: [go]
+    severity: ERROR
+
+  # ============================================
+  # JWT Security
+  # ============================================
+
+  - id: go-jwt-none-method
+    pattern: jwt.SigningMethodNone
+    message: Go JWT none algorithm - authentication bypass
+    languages: [go]
+    severity: ERROR
+
+  - id: go-jwt-parse-unverified
+    pattern: jwt.ParseUnverified($TOKEN, ...)
+    message: Go JWT parsed without verification
+    languages: [go]
+    severity: ERROR

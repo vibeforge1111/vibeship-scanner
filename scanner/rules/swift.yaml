@@ -1,0 +1,259 @@
+# Swift Security Rules
+rules:
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: swift-process-launch
+    pattern: Process().launchPath = $PATH
+    message: Swift process execution - command injection risk
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-process-arguments
+    pattern: $PROC.arguments = $ARGS
+    message: Swift process arguments - injection risk if user-controlled
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-shell-command
+    pattern: shell($CMD)
+    message: Swift shell command execution - injection risk
+    languages: [swift]
+    severity: ERROR
+
+  # ============================================
+  # Insecure Data Storage
+  # ============================================
+
+  - id: swift-userdefaults-sensitive
+    pattern: UserDefaults.standard.set($VALUE, forKey: $KEY)
+    message: Swift UserDefaults - not secure for sensitive data, use Keychain
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-nsuserdefaults-sensitive
+    pattern: NSUserDefaults.standardUserDefaults().setObject($VALUE, forKey: $KEY)
+    message: Swift NSUserDefaults - not secure for sensitive data
+    languages: [swift]
+    severity: WARNING
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: swift-md5
+    pattern: CC_MD5(...)
+    message: Swift MD5 is weak - use SHA-256 or better
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-sha1
+    pattern: CC_SHA1(...)
+    message: Swift SHA1 is deprecated - use SHA-256 or better
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-insecure-random
+    pattern: arc4random()
+    message: Swift arc4random - use SecRandomCopyBytes for crypto
+    languages: [swift]
+    severity: INFO
+
+  - id: swift-des
+    pattern: kCCAlgorithmDES
+    message: Swift DES is weak - use AES
+    languages: [swift]
+    severity: ERROR
+
+  - id: swift-3des
+    pattern: kCCAlgorithm3DES
+    message: Swift 3DES is deprecated - use AES
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-ecb-mode
+    pattern: kCCOptionECBMode
+    message: Swift ECB mode is insecure - use CBC or GCM
+    languages: [swift]
+    severity: ERROR
+
+  # ============================================
+  # SSL/TLS Issues
+  # ============================================
+
+  - id: swift-allow-invalid-certs
+    pattern: allowsInvalidSSLCertificate = true
+    message: Swift SSL certificate validation disabled
+    languages: [swift]
+    severity: ERROR
+
+  - id: swift-ssl-pinning-disabled
+    pattern: 'ServerTrustPolicy.disableEvaluation'
+    message: Swift SSL pinning disabled
+    languages: [swift]
+    severity: ERROR
+
+  - id: swift-ats-disabled
+    pattern: 'NSAppTransportSecurity'
+    message: Swift ATS configuration - ensure exceptions are justified
+    languages: [swift]
+    severity: INFO
+
+  - id: swift-ats-allow-arbitrary
+    pattern: 'NSAllowsArbitraryLoads'
+    message: Swift ATS allows arbitrary loads - security risk
+    languages: [swift]
+    severity: WARNING
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: swift-filemanager-contents
+    pattern: FileManager.default.contents(atPath: $PATH)
+    message: Swift file read - validate path for traversal
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-string-write
+    pattern: $STRING.write(toFile: $PATH, ...)
+    message: Swift file write - validate path for traversal
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-data-write
+    pattern: $DATA.write(to: $URL, ...)
+    message: Swift data write - validate destination
+    languages: [swift]
+    severity: WARNING
+
+  # ============================================
+  # URL/SSRF
+  # ============================================
+
+  - id: swift-url-user-input
+    pattern: URL(string: $USER_INPUT)
+    message: Swift URL from user input - potential SSRF
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-urlsession-request
+    pattern: URLSession.shared.dataTask(with: $URL, ...)
+    message: Swift URL request - validate URL for SSRF
+    languages: [swift]
+    severity: INFO
+
+  # ============================================
+  # iOS Specific
+  # ============================================
+
+  - id: swift-webview-js-enabled
+    pattern: $WEBVIEW.configuration.preferences.javaScriptEnabled = true
+    message: Swift WKWebView JavaScript enabled - XSS risk
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-uiwebview
+    pattern: UIWebView
+    message: Swift UIWebView is deprecated and insecure - use WKWebView
+    languages: [swift]
+    severity: ERROR
+
+  - id: swift-pasteboard-sensitive
+    pattern: UIPasteboard.general.string = $VALUE
+    message: Swift pasteboard - sensitive data may be accessible to other apps
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-open-url
+    pattern: UIApplication.shared.open($URL, ...)
+    message: Swift openURL - validate URL to prevent scheme hijacking
+    languages: [swift]
+    severity: WARNING
+
+  - id: swift-canopen-url
+    pattern: UIApplication.shared.canOpenURL($URL)
+    message: Swift canOpenURL - validate URL schemes
+    languages: [swift]
+    severity: INFO
+
+  # ============================================
+  # Biometric Authentication
+  # ============================================
+
+  - id: swift-localauth-fallback
+    pattern: 'LAPolicy.deviceOwnerAuthentication'
+    message: Swift LocalAuthentication allows passcode fallback - consider biometrics only
+    languages: [swift]
+    severity: INFO
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: swift-hardcoded-password
+    pattern: 'let password = "..."'
+    message: Swift hardcoded password detected
+    languages: [swift]
+    severity: ERROR
+
+  - id: swift-hardcoded-secret
+    pattern: 'let secret = "..."'
+    message: Swift hardcoded secret detected
+    languages: [swift]
+    severity: ERROR
+
+  - id: swift-hardcoded-apikey
+    pattern: 'let apiKey = "..."'
+    message: Swift hardcoded API key detected
+    languages: [swift]
+    severity: ERROR
+
+  - id: swift-hardcoded-token
+    pattern: 'let token = "..."'
+    message: Swift hardcoded token detected
+    languages: [swift]
+    severity: ERROR
+
+  # ============================================
+  # Logging Sensitive Data
+  # ============================================
+
+  - id: swift-nslog-sensitive
+    pattern: NSLog($FORMAT, ...)
+    message: Swift NSLog - avoid logging sensitive data
+    languages: [swift]
+    severity: INFO
+
+  - id: swift-print-debug
+    pattern: print(...)
+    message: Swift print - use os_log, avoid in production
+    languages: [swift]
+    severity: INFO
+
+  # ============================================
+  # Jailbreak Detection
+  # ============================================
+
+  - id: swift-jailbreak-check
+    pattern: FileManager.default.fileExists(atPath: "/Applications/Cydia.app")
+    message: Swift jailbreak detection - attackers can bypass
+    languages: [swift]
+    severity: INFO
+
+  # ============================================
+  # SQL Injection (SQLite)
+  # ============================================
+
+  - id: swift-sqlite-query-concat
+    pattern: sqlite3_exec($DB, $QUERY + $VAR, ...)
+    message: Swift SQLite query concatenation - SQL injection risk
+    languages: [swift]
+    severity: ERROR
+
+  - id: swift-sqlite-prepare-concat
+    pattern: sqlite3_prepare_v2($DB, $QUERY + $VAR, ...)
+    message: Swift SQLite prepare concatenation - SQL injection risk
+    languages: [swift]
+    severity: ERROR

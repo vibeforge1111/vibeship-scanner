@@ -1,0 +1,345 @@
+# Ruby Security Rules
+rules:
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: ruby-system-call
+    pattern: system($CMD)
+    message: Ruby system() - command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-exec-call
+    pattern: exec($CMD)
+    message: Ruby exec() - command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-backtick
+    pattern: '`$CMD`'
+    message: Ruby backtick execution - command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-spawn
+    pattern: spawn($CMD)
+    message: Ruby spawn() - command injection risk
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-io-popen
+    pattern: IO.popen($CMD)
+    message: Ruby IO.popen() - command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-open3
+    pattern: Open3.capture2($CMD)
+    message: Ruby Open3 - command injection risk
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-open3-capture3
+    pattern: Open3.capture3($CMD)
+    message: Ruby Open3 - command injection risk
+    languages: [ruby]
+    severity: WARNING
+
+  # ============================================
+  # Code Injection
+  # ============================================
+
+  - id: ruby-eval
+    pattern: eval($CODE)
+    message: Ruby eval() - code injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-instance-eval
+    pattern: instance_eval($CODE)
+    message: Ruby instance_eval() - code injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-class-eval
+    pattern: class_eval($CODE)
+    message: Ruby class_eval() - code injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-module-eval
+    pattern: module_eval($CODE)
+    message: Ruby module_eval() - code injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-send-dynamic
+    pattern: $OBJ.send(params[$X], ...)
+    message: Ruby dynamic send - code injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-constantize
+    pattern: params[$X].constantize
+    message: Ruby constantize - arbitrary class instantiation risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-constantize-safe
+    pattern: $X.constantize
+    message: Ruby constantize - ensure input is validated
+    languages: [ruby]
+    severity: WARNING
+
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: ruby-yaml-load
+    pattern: YAML.load($DATA)
+    message: Ruby YAML.load - insecure deserialization (use safe_load)
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-marshal-load
+    pattern: Marshal.load($DATA)
+    message: Ruby Marshal.load - insecure deserialization
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-marshal-restore
+    pattern: Marshal.restore($DATA)
+    message: Ruby Marshal.restore - insecure deserialization
+    languages: [ruby]
+    severity: ERROR
+
+  # ============================================
+  # Template Injection
+  # ============================================
+
+  - id: ruby-erb-render
+    pattern: ERB.new(params[$X]).result
+    message: Ruby ERB template injection
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-erb-new-user
+    pattern: ERB.new($USER_INPUT)
+    message: Ruby ERB with user input - template injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-render-inline
+    pattern: 'render inline: params[$X]'
+    message: Ruby Rails inline render - template injection
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-render-inline-var
+    pattern: 'render inline: $VAR'
+    message: Ruby Rails inline render - potential template injection
+    languages: [ruby]
+    severity: WARNING
+
+  # ============================================
+  # SSRF/Command Injection via open
+  # ============================================
+
+  - id: ruby-open-uri
+    pattern: open(params[$X])
+    message: Ruby open() with user input - SSRF/command injection risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-open-uri-var
+    pattern: open($URL)
+    message: Ruby open() - potential SSRF if URL is user-controlled
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-uri-open
+    pattern: URI.open($URL)
+    message: Ruby URI.open() - potential SSRF
+    languages: [ruby]
+    severity: WARNING
+
+  # ============================================
+  # Open Redirect
+  # ============================================
+
+  - id: ruby-redirect-to-params
+    pattern: redirect_to params[$X]
+    message: Ruby open redirect risk
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-redirect-to-var
+    pattern: redirect_to $URL
+    message: Ruby redirect - ensure URL is validated
+    languages: [ruby]
+    severity: INFO
+
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: ruby-find-by-sql
+    pattern: $MODEL.find_by_sql($QUERY)
+    message: Ruby find_by_sql - ensure parameterized queries
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-where-string
+    pattern: $MODEL.where($STRING)
+    message: Ruby where with string - use hash or array syntax
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-execute-sql
+    pattern: $CONN.execute($QUERY)
+    message: Ruby raw SQL execution - ensure parameterized
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-exec-query
+    pattern: ActiveRecord::Base.connection.execute($QUERY)
+    message: Ruby raw SQL execution - SQL injection risk
+    languages: [ruby]
+    severity: WARNING
+
+  # ============================================
+  # Mass Assignment
+  # ============================================
+
+  - id: ruby-permit-all
+    pattern: params.permit!
+    message: Ruby mass assignment - all parameters permitted
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-update-attributes
+    pattern: $MODEL.update_attributes(params[$X])
+    message: Ruby mass assignment - use strong parameters
+    languages: [ruby]
+    severity: WARNING
+
+  # ============================================
+  # Session Security
+  # ============================================
+
+  - id: ruby-session-secret-hardcoded
+    pattern: 'secret_key_base = "..."'
+    message: Ruby hardcoded secret key - use environment variables
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-cookie-store-secret
+    pattern: 'config.secret_key = "..."'
+    message: Ruby hardcoded secret key
+    languages: [ruby]
+    severity: ERROR
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: ruby-md5-digest
+    pattern: Digest::MD5.hexdigest($X)
+    message: Ruby MD5 is weak - use SHA-256 or better
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-sha1-digest
+    pattern: Digest::SHA1.hexdigest($X)
+    message: Ruby SHA1 is weak - use SHA-256 or better
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-random-security
+    pattern: rand()
+    message: Ruby rand() not cryptographically secure - use SecureRandom
+    languages: [ruby]
+    severity: WARNING
+
+  # ============================================
+  # File Operations
+  # ============================================
+
+  - id: ruby-file-read-user
+    pattern: File.read(params[$X])
+    message: Ruby file read with user input - path traversal risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-file-open-user
+    pattern: File.open(params[$X])
+    message: Ruby file open with user input - path traversal risk
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-send-file-user
+    pattern: send_file(params[$X])
+    message: Ruby send_file with user input - path traversal risk
+    languages: [ruby]
+    severity: ERROR
+
+  # ============================================
+  # XSS
+  # ============================================
+
+  - id: ruby-raw-output
+    pattern: raw($INPUT)
+    message: Ruby raw() bypasses HTML escaping - XSS risk
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-html-safe
+    pattern: $X.html_safe
+    message: Ruby html_safe bypasses HTML escaping - XSS risk
+    languages: [ruby]
+    severity: WARNING
+
+  # ============================================
+  # Taint Mode Rules
+  # ============================================
+
+  - id: ruby-taint-sql-injection
+    mode: taint
+    message: Ruby SQL injection - user input in SQL query without parameterization
+    languages: [ruby]
+    severity: ERROR
+    pattern-sources:
+      - pattern: params
+      - pattern: request.params
+    pattern-sinks:
+      - pattern: $MODEL.where($SINK)
+      - pattern: $MODEL.find_by_sql($SINK)
+      - pattern: $CONN.execute($SINK)
+      - pattern: ActiveRecord::Base.connection.execute($SINK)
+
+  - id: ruby-taint-command-injection
+    mode: taint
+    message: Ruby command injection - user input in shell command
+    languages: [ruby]
+    severity: ERROR
+    pattern-sources:
+      - pattern: params
+      - pattern: request.params
+    pattern-sinks:
+      - pattern: system($SINK)
+      - pattern: exec($SINK)
+      - pattern: Kernel.system($SINK)
+      - pattern: IO.popen($SINK)
+      - pattern: Open3.capture2($SINK)
+      - pattern: Open3.capture3($SINK)
+
+  - id: ruby-taint-open-redirect
+    mode: taint
+    message: Ruby open redirect - user input in redirect
+    languages: [ruby]
+    severity: WARNING
+    pattern-sources:
+      - pattern: params
+    pattern-sinks:
+      - pattern: redirect_to($SINK)

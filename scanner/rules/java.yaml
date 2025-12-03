@@ -1,0 +1,423 @@
+# Java Security Rules
+rules:
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: java-runtime-exec
+    pattern: Runtime.getRuntime().exec($CMD)
+    message: Java command execution - injection risk
+    languages: [java]
+    severity: ERROR
+
+  - id: java-processbuilder
+    pattern: new ProcessBuilder($CMD)
+    message: Java ProcessBuilder - command injection risk
+    languages: [java]
+    severity: WARNING
+
+  - id: java-processbuilder-command
+    pattern: $PB.command($CMD)
+    message: Java ProcessBuilder command - injection risk
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: java-statement-execute
+    pattern: $STMT.execute($QUERY)
+    message: Java SQL - use PreparedStatement instead
+    languages: [java]
+    severity: WARNING
+
+  - id: java-statement-executequery
+    pattern: $STMT.executeQuery($QUERY)
+    message: Java SQL - use PreparedStatement instead
+    languages: [java]
+    severity: WARNING
+
+  - id: java-statement-executeupdate
+    pattern: $STMT.executeUpdate($QUERY)
+    message: Java SQL - use PreparedStatement instead
+    languages: [java]
+    severity: WARNING
+
+  - id: java-sql-concat
+    pattern: '"SELECT " + $VAR'
+    message: Java SQL concatenation - SQL injection risk
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # XPath Injection
+  # ============================================
+
+  - id: java-xpath-compile
+    pattern: XPathFactory.newInstance().newXPath().compile($EXPR)
+    message: Java XPath injection risk
+    languages: [java]
+    severity: WARNING
+
+  - id: java-xpath-evaluate
+    pattern: $XPATH.evaluate($EXPR, ...)
+    message: Java XPath evaluation - injection risk if expression is user input
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: java-objectinputstream
+    pattern: new ObjectInputStream($STREAM).readObject()
+    message: Java insecure deserialization
+    languages: [java]
+    severity: ERROR
+
+  - id: java-objectinputstream-new
+    pattern: new ObjectInputStream(...)
+    message: Java ObjectInputStream - insecure deserialization vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-readobject
+    pattern: $X.readObject()
+    message: Java readObject() - insecure deserialization vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-xmldecoder
+    pattern: new XMLDecoder(...)
+    message: Java XMLDecoder - insecure deserialization vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-xstream
+    pattern: new XStream()
+    message: Java XStream without security configuration - insecure deserialization
+    languages: [java]
+    severity: ERROR
+
+  - id: java-snakeyaml
+    pattern: new Yaml()
+    message: Java SnakeYAML without safe constructor - insecure deserialization
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: java-crypto-ecb
+    pattern: 'Cipher.getInstance("AES/ECB/$PADDING")'
+    message: Java ECB mode is insecure - use GCM or CBC
+    languages: [java]
+    severity: ERROR
+
+  - id: java-crypto-des
+    pattern: 'Cipher.getInstance("DES")'
+    message: Java DES is weak - use AES
+    languages: [java]
+    severity: ERROR
+
+  - id: java-crypto-3des
+    pattern: 'Cipher.getInstance("DESede")'
+    message: Java 3DES is deprecated - use AES
+    languages: [java]
+    severity: WARNING
+
+  - id: java-random-security
+    pattern: new Random()
+    message: Java Random not secure - use SecureRandom
+    languages: [java]
+    severity: WARNING
+
+  - id: java-securerandom-seed
+    pattern: new SecureRandom($SEED)
+    message: Java SecureRandom with seed may be predictable
+    languages: [java]
+    severity: WARNING
+
+  - id: java-md5-hash
+    pattern: 'MessageDigest.getInstance("MD5")'
+    message: Java MD5 is weak for security purposes
+    languages: [java]
+    severity: WARNING
+
+  - id: java-sha1-hash
+    pattern: 'MessageDigest.getInstance("SHA-1")'
+    message: Java SHA-1 is deprecated for security
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # XXE (XML External Entity)
+  # ============================================
+
+  - id: java-xxe-documentbuilder
+    pattern: DocumentBuilderFactory.newInstance()
+    message: Java XML parser may be vulnerable to XXE - disable external entities
+    languages: [java]
+    severity: WARNING
+
+  - id: java-xxe-saxparser
+    pattern: SAXParserFactory.newInstance()
+    message: Java SAX parser may be vulnerable to XXE - disable external entities
+    languages: [java]
+    severity: WARNING
+
+  - id: java-xxe-xmlinputfactory
+    pattern: XMLInputFactory.newInstance()
+    message: Java StAX parser may be vulnerable to XXE - disable external entities
+    languages: [java]
+    severity: WARNING
+
+  - id: java-xxe-transformerfactory
+    pattern: TransformerFactory.newInstance()
+    message: Java Transformer may be vulnerable to XXE - disable external entities
+    languages: [java]
+    severity: WARNING
+
+  - id: java-xxe-xmlreader
+    pattern: XMLReaderFactory.createXMLReader()
+    message: Java XMLReader may be vulnerable to XXE - disable external entities
+    languages: [java]
+    severity: WARNING
+
+  - id: java-xxe-feature-disabled
+    pattern: $FACTORY.setFeature("http://apache.org/xml/features/disallow-doctype-decl", false)
+    message: XXE protection explicitly disabled
+    languages: [java]
+    severity: ERROR
+
+  - id: java-xxe-external-entities-enabled
+    pattern: $FACTORY.setFeature("http://xml.org/sax/features/external-general-entities", true)
+    message: External entities enabled - XXE vulnerability
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: java-path-traversal-file-new
+    pattern: new File($REQUEST)
+    message: Java File creation with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  - id: java-path-traversal-paths-get
+    pattern: Paths.get($REQUEST)
+    message: Java Paths.get() with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  - id: java-path-traversal-fileinputstream
+    pattern: new FileInputStream($REQUEST)
+    message: Java FileInputStream with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  - id: java-path-traversal-fileoutputstream
+    pattern: new FileOutputStream($REQUEST)
+    message: Java FileOutputStream with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  - id: java-path-traversal-filereader
+    pattern: new FileReader($REQUEST)
+    message: Java FileReader with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  - id: java-path-traversal-filewriter
+    pattern: new FileWriter($REQUEST)
+    message: Java FileWriter with user input - potential path traversal
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # JWT Security
+  # ============================================
+
+  - id: java-jwt-none-algorithm
+    pattern: '"alg":"none"'
+    message: JWT none algorithm - authentication bypass vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-jwt-algorithm-none
+    pattern: Algorithm.none()
+    message: Java JWT none algorithm - authentication bypass vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-jwt-weak-hmac
+    pattern: Algorithm.HMAC256($SECRET)
+    message: Java JWT - ensure HMAC secret is strong (256+ bits)
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # SSRF
+  # ============================================
+
+  - id: java-ssrf-url
+    pattern: new URL($USER_INPUT)
+    message: Java URL with user input - potential SSRF vulnerability
+    languages: [java]
+    severity: ERROR
+
+  - id: java-ssrf-httpurlconnection
+    pattern: $URL.openConnection()
+    message: Java HTTP connection - verify URL is validated against SSRF
+    languages: [java]
+    severity: WARNING
+
+  - id: java-ssrf-httpclient
+    pattern: HttpClients.createDefault()
+    message: Java HttpClient - ensure URLs are validated against SSRF
+    languages: [java]
+    severity: INFO
+
+  # ============================================
+  # LDAP Injection
+  # ============================================
+
+  - id: java-ldap-injection
+    pattern: $CTX.search($BASE, $FILTER, ...)
+    message: Java LDAP search - potential LDAP injection if filter contains user input
+    languages: [java]
+    severity: WARNING
+
+  - id: java-ldap-injection-lookup
+    pattern: $CTX.lookup($USER_INPUT)
+    message: Java LDAP lookup with user input - potential LDAP injection
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # JNDI Injection (Log4Shell style)
+  # ============================================
+
+  - id: java-jndi-injection
+    pattern: $CTX.lookup($INPUT)
+    message: JNDI lookup - potential JNDI injection (Log4Shell style attack)
+    languages: [java]
+    severity: ERROR
+
+  - id: java-jndi-initial-context
+    pattern: new InitialContext()
+    message: JNDI InitialContext - ensure lookup inputs are validated
+    languages: [java]
+    severity: WARNING
+
+  - id: java-jndi-ldap-url
+    pattern: '"ldap://..."'
+    message: LDAP URL in code - potential JNDI injection vector
+    languages: [java]
+    severity: ERROR
+
+  - id: java-jndi-rmi-url
+    pattern: '"rmi://..."'
+    message: RMI URL in code - potential JNDI injection vector
+    languages: [java]
+    severity: ERROR
+
+  # ============================================
+  # Spring Security
+  # ============================================
+
+  - id: java-spring-csrf-disabled
+    pattern: http.csrf().disable()
+    message: Spring Security CSRF protection disabled
+    languages: [java]
+    severity: ERROR
+
+  - id: java-spring-csrf-disabled-lambda
+    pattern: csrf(csrf -> csrf.disable())
+    message: Spring Security CSRF protection disabled
+    languages: [java]
+    severity: ERROR
+
+  - id: java-spring-permit-all
+    pattern: $X.permitAll()
+    message: Spring Security permitAll() - ensure this endpoint should be public
+    languages: [java]
+    severity: INFO
+
+  - id: java-spring-anonymous-access
+    pattern: $X.anonymous()
+    message: Spring Security anonymous access configured - verify this is intentional
+    languages: [java]
+    severity: WARNING
+
+  - id: java-spring-headers-disabled
+    pattern: $X.headers().disable()
+    message: Spring Security headers disabled - removes XSS and clickjacking protection
+    languages: [java]
+    severity: ERROR
+
+  - id: java-spring-frame-options-disabled
+    pattern: $X.frameOptions().disable()
+    message: Spring Security frame options disabled - clickjacking vulnerability
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # SSL/TLS Issues
+  # ============================================
+
+  - id: java-weak-ssl-context
+    pattern: 'SSLContext.getInstance("SSL")'
+    message: Java SSL context uses outdated protocol - use TLSv1.2 or higher
+    languages: [java]
+    severity: ERROR
+
+  - id: java-weak-tls-context
+    pattern: 'SSLContext.getInstance("TLS")'
+    message: Java TLS context - ensure TLSv1.2 or higher is used
+    languages: [java]
+    severity: WARNING
+
+  - id: java-trust-all-certs
+    pattern: X509TrustManager
+    message: Java X509TrustManager - ensure certificates are properly validated
+    languages: [java]
+    severity: WARNING
+
+  - id: java-hostname-verifier-disabled
+    pattern: HostnameVerifier
+    message: Java HostnameVerifier - ensure hostname verification is not disabled
+    languages: [java]
+    severity: WARNING
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: java-hardcoded-password-connection
+    pattern: DriverManager.getConnection($URL, $USER, $PASS)
+    message: Java database connection - ensure credentials are from environment variables
+    languages: [java]
+    severity: WARNING
+
+  - id: java-hardcoded-password-literal
+    pattern: DriverManager.getConnection($URL, $USER, "...")
+    message: Hardcoded password in database connection
+    languages: [java]
+    severity: ERROR
+
+  - id: java-hardcoded-password-properties
+    pattern: $PROPS.setProperty("password", "...")
+    message: Hardcoded password in Properties
+    languages: [java]
+    severity: ERROR
+
+  - id: java-setproperty-password
+    pattern: $X.setProperty("password", ...)
+    message: Potential hardcoded password in setProperty call
+    languages: [java]
+    severity: WARNING

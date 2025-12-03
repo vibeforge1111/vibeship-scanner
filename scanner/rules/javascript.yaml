@@ -1,0 +1,269 @@
+# JavaScript/TypeScript Security Rules
+rules:
+  # ============================================
+  # Code Injection
+  # ============================================
+
+  - id: js-eval-injection
+    pattern: eval(...)
+    message: Dangerous eval() call - potential code injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-new-function
+    pattern: new Function(...)
+    message: new Function() - potential code injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-settimeout-string
+    pattern: 'setTimeout("...", ...)'
+    message: setTimeout with string argument - code injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-setinterval-string
+    pattern: 'setInterval("...", ...)'
+    message: setInterval with string argument - code injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # ============================================
+  # XSS (Cross-Site Scripting)
+  # ============================================
+
+  - id: js-innerhtml-xss
+    pattern: $X.innerHTML = $Y
+    message: innerHTML assignment - potential XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-document-write
+    pattern: document.write(...)
+    message: document.write() usage - potential XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-dangerously-set-inner-html
+    pattern: dangerouslySetInnerHTML={...}
+    message: React dangerouslySetInnerHTML - XSS risk without proper sanitization
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: js-exec-call
+    pattern: exec(...)
+    message: Command execution detected - potential command injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-execsync-call
+    pattern: execSync(...)
+    message: Synchronous command execution - potential command injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-child-process-exec
+    pattern: child_process.exec(...)
+    message: child_process.exec() - potential command injection
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-require-child-process
+    pattern: 'require("child_process").exec($X)'
+    message: child_process.exec - command injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: js-fs-readfile-query
+    pattern: fs.readFile(req.query.$X, ...)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-fs-readfilesync-query
+    pattern: fs.readFileSync(req.query.$X)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-fs-readfile-body
+    pattern: fs.readFile(req.body.$X, ...)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-fs-readfilesync-body
+    pattern: fs.readFileSync(req.body.$X)
+    message: Reading file from user input - potential path traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # ============================================
+  # Open Redirect
+  # ============================================
+
+  - id: js-redirect-query
+    pattern: res.redirect(req.query.$X)
+    message: Redirect using user input - potential open redirect
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-redirect-body
+    pattern: res.redirect(req.body.$X)
+    message: Redirect using user input - potential open redirect
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: js-weak-hash-md5
+    pattern: 'crypto.createHash("md5")'
+    message: MD5 is a weak hash function - use SHA-256 or better
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-weak-hash-sha1
+    pattern: 'crypto.createHash("sha1")'
+    message: SHA1 is a weak hash function - use SHA-256 or better
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  - id: js-math-random
+    pattern: Math.random()
+    message: Math.random() is not cryptographically secure - use crypto.randomBytes()
+    languages: [javascript, typescript]
+    severity: INFO
+
+  # ============================================
+  # TLS/SSL Issues
+  # ============================================
+
+  - id: js-tls-reject-unauthorized
+    pattern: rejectUnauthorized = false
+    message: TLS certificate verification disabled - MITM attack risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # ============================================
+  # JWT Security
+  # ============================================
+
+  - id: js-jwt-none-algorithm
+    pattern: '"alg":"none"'
+    message: JWT none algorithm - authentication bypass vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-jwt-none-algorithm-alt
+    pattern: 'algorithm: "none"'
+    message: JWT none algorithm - authentication bypass vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-jwt-weak-secret
+    pattern: jwt.sign($PAYLOAD, "secret", ...)
+    message: JWT signed with weak/hardcoded secret
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-jwt-hardcoded-sign
+    pattern: 'jwt.sign($PAYLOAD, "...")'
+    message: Hardcoded JWT secret - use environment variables
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-jwt-hardcoded-verify
+    pattern: 'jwt.verify($TOKEN, "...")'
+    message: Hardcoded JWT secret - use environment variables
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-jwt-verify-disabled
+    pattern: 'verify: false'
+    message: JWT verification disabled - tokens will not be validated
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-jwt-no-expiry
+    pattern: jwt.sign($PAYLOAD, $SECRET)
+    message: JWT without expiration - consider adding expiresIn option
+    languages: [javascript, typescript]
+    severity: INFO
+
+  # ============================================
+  # NoSQL Injection
+  # ============================================
+
+  - id: js-mongodb-findone-body
+    pattern: '$DB.findOne({$FIELD: req.body.$X})'
+    message: MongoDB query with user input - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-mongodb-findone-query
+    pattern: '$DB.findOne({$FIELD: req.query.$X})'
+    message: MongoDB query with user input - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # ============================================
+  # SQL Injection (ORM)
+  # ============================================
+
+  - id: js-prisma-queryraw-unsafe
+    pattern: prisma.$queryRawUnsafe($QUERY)
+    message: Prisma unsafe raw query - SQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-prisma-executeraw-unsafe
+    pattern: prisma.$executeRawUnsafe($QUERY)
+    message: Prisma unsafe raw execute - SQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  - id: js-sequelize-query-raw
+    pattern: sequelize.query($Q, ...)
+    message: Raw SQL query - potential injection if not parameterized
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # ============================================
+  # Authentication Issues
+  # ============================================
+
+  - id: js-password-comparison
+    pattern: password === $VAR
+    message: Plaintext password comparison - use bcrypt.compare() instead
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # ============================================
+  # ReDoS (Regular Expression Denial of Service)
+  # ============================================
+
+  - id: js-dynamic-regex
+    pattern: new RegExp($PATTERN)
+    message: Dynamic regex with user input - potential ReDoS vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # ============================================
+  # Debug/Info Disclosure
+  # ============================================
+
+  - id: js-console-log
+    pattern: console.log(...)
+    message: Console.log statement found - remove in production
+    languages: [javascript, typescript]
+    severity: INFO

@@ -1,0 +1,281 @@
+# Rust Security Rules
+rules:
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: rust-command-arg
+    pattern: Command::new($CMD).arg($ARG)
+    message: Rust command execution - validate arguments
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-command-args
+    pattern: Command::new($CMD).args($ARGS)
+    message: Rust command execution - validate arguments
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-command-shell
+    pattern: Command::new("sh").arg("-c").arg($CMD)
+    message: Rust shell command - command injection risk
+    languages: [rust]
+    severity: ERROR
+
+  - id: rust-command-cmd
+    pattern: Command::new("cmd").arg("/C").arg($CMD)
+    message: Rust Windows shell command - command injection risk
+    languages: [rust]
+    severity: ERROR
+
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: rust-sql-format
+    pattern: format!("SELECT ... {} ...", $VAR)
+    message: Rust SQL with format! - SQL injection risk
+    languages: [rust]
+    severity: ERROR
+
+  - id: rust-sql-concat
+    pattern: '"SELECT ".to_string() + &$VAR'
+    message: Rust SQL concatenation - SQL injection risk
+    languages: [rust]
+    severity: ERROR
+
+  - id: rust-sqlx-query
+    pattern: sqlx::query($QUERY)
+    message: Rust SQLx query - use parameterized queries
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-diesel-sql
+    pattern: sql::<$TYPE>($QUERY)
+    message: Rust Diesel raw SQL - ensure parameterized
+    languages: [rust]
+    severity: WARNING
+
+  # ============================================
+  # Unsafe Code
+  # ============================================
+
+  - id: rust-unsafe-block
+    pattern: 'unsafe { ... }'
+    message: Rust unsafe block - review carefully for memory safety
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-unsafe-fn
+    pattern: unsafe fn $NAME(...)
+    message: Rust unsafe function - review carefully
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-raw-pointer-deref
+    pattern: '*$PTR'
+    message: Rust raw pointer dereference - memory safety risk
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-transmute
+    pattern: std::mem::transmute(...)
+    message: Rust transmute - type safety bypass, use carefully
+    languages: [rust]
+    severity: WARNING
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: rust-path-join-user
+    pattern: Path::new($BASE).join($USER_INPUT)
+    message: Rust path join with user input - traversal risk
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-file-open-user
+    pattern: File::open($USER_INPUT)
+    message: Rust file open with user input - traversal risk
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-file-create-user
+    pattern: File::create($USER_INPUT)
+    message: Rust file create with user input - traversal risk
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-fs-read-user
+    pattern: fs::read($USER_INPUT)
+    message: Rust fs::read with user input - traversal risk
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-fs-write-user
+    pattern: fs::write($USER_INPUT, ...)
+    message: Rust fs::write with user input - traversal risk
+    languages: [rust]
+    severity: WARNING
+
+  # ============================================
+  # SSRF
+  # ============================================
+
+  - id: rust-reqwest-get-user
+    pattern: reqwest::get($USER_INPUT)
+    message: Rust reqwest with user URL - potential SSRF
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-hyper-client-user
+    pattern: $CLIENT.get($USER_INPUT)
+    message: Rust HTTP client with user URL - potential SSRF
+    languages: [rust]
+    severity: WARNING
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: rust-md5
+    pattern: md5::compute(...)
+    message: Rust MD5 is weak - use SHA-256 or better
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-sha1
+    pattern: Sha1::new()
+    message: Rust SHA1 is weak - use SHA-256 or better
+    languages: [rust]
+    severity: WARNING
+
+  - id: rust-rand-thread
+    pattern: rand::thread_rng()
+    message: Rust thread_rng - use OsRng for cryptographic purposes
+    languages: [rust]
+    severity: INFO
+
+  # ============================================
+  # TLS/SSL Issues
+  # ============================================
+
+  - id: rust-danger-accept-invalid-certs
+    pattern: danger_accept_invalid_certs(true)
+    message: Rust TLS certificate validation disabled
+    languages: [rust]
+    severity: ERROR
+
+  - id: rust-danger-accept-invalid-hostnames
+    pattern: danger_accept_invalid_hostnames(true)
+    message: Rust TLS hostname verification disabled
+    languages: [rust]
+    severity: ERROR
+
+  - id: rust-native-tls-danger
+    pattern: TlsConnector::builder().danger_accept_invalid_certs(true)
+    message: Rust native-tls accepting invalid certs
+    languages: [rust]
+    severity: ERROR
+
+  # ============================================
+  # Deserialization
+  # ============================================
+
+  - id: rust-serde-deserialize-any
+    pattern: serde_json::from_str($INPUT)
+    message: Rust serde deserialization - validate untrusted input
+    languages: [rust]
+    severity: INFO
+
+  - id: rust-bincode-deserialize
+    pattern: bincode::deserialize($INPUT)
+    message: Rust bincode deserialization - validate untrusted input
+    languages: [rust]
+    severity: WARNING
+
+  # ============================================
+  # Panic/Unwrap Issues
+  # ============================================
+
+  - id: rust-unwrap
+    pattern: $RESULT.unwrap()
+    message: Rust unwrap() may panic - use proper error handling
+    languages: [rust]
+    severity: INFO
+
+  - id: rust-expect
+    pattern: $RESULT.expect($MSG)
+    message: Rust expect() may panic - use proper error handling
+    languages: [rust]
+    severity: INFO
+
+  - id: rust-panic
+    pattern: panic!(...)
+    message: Rust panic! - ensure this is intentional
+    languages: [rust]
+    severity: INFO
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: rust-hardcoded-password
+    pattern: 'let password = "..."'
+    message: Rust hardcoded password detected
+    languages: [rust]
+    severity: ERROR
+
+  - id: rust-hardcoded-secret
+    pattern: 'let secret = "..."'
+    message: Rust hardcoded secret detected
+    languages: [rust]
+    severity: ERROR
+
+  - id: rust-hardcoded-apikey
+    pattern: 'let api_key = "..."'
+    message: Rust hardcoded API key detected
+    languages: [rust]
+    severity: ERROR
+
+  - id: rust-const-password
+    pattern: 'const PASSWORD: &str = "..."'
+    message: Rust hardcoded password constant
+    languages: [rust]
+    severity: ERROR
+
+  # ============================================
+  # Debug/Logging
+  # ============================================
+
+  - id: rust-dbg-macro
+    pattern: dbg!(...)
+    message: Rust dbg! macro - remove in production
+    languages: [rust]
+    severity: INFO
+
+  - id: rust-println
+    pattern: println!(...)
+    message: Rust println! - use proper logging in production
+    languages: [rust]
+    severity: INFO
+
+  # ============================================
+  # WebAssembly Specific
+  # ============================================
+
+  - id: rust-wasm-eval
+    pattern: js_sys::eval($CODE)
+    message: Rust WASM eval - code injection risk
+    languages: [rust]
+    severity: ERROR
+
+  # ============================================
+  # Regex DoS
+  # ============================================
+
+  - id: rust-regex-untrusted
+    pattern: Regex::new($USER_INPUT)
+    message: Rust regex from user input - ReDoS risk
+    languages: [rust]
+    severity: WARNING

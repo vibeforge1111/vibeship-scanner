@@ -1,0 +1,359 @@
+# C# Security Rules
+rules:
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: csharp-sql-concat
+    pattern: $CMD.CommandText = $Q + $INPUT
+    message: C# SQL injection via concatenation - use parameterized queries
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-sql-string-format
+    pattern: $CMD.CommandText = string.Format($Q, ...)
+    message: C# SQL injection via string.Format - use parameterized queries
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-sql-interpolation
+    pattern: $CMD.CommandText = $"..."
+    message: C# SQL injection via string interpolation - use parameterized queries
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-sqlcommand-text
+    pattern: new SqlCommand($QUERY, ...)
+    message: C# SqlCommand - ensure parameterized queries
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-ef-rawsql
+    pattern: $DB.Database.ExecuteSqlRaw($QUERY, ...)
+    message: C# EF Core raw SQL - ensure parameterized
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-ef-fromsqlraw
+    pattern: $DB.FromSqlRaw($QUERY)
+    message: C# EF Core FromSqlRaw - ensure parameterized
+    languages: [csharp]
+    severity: WARNING
+
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: csharp-process-start
+    pattern: Process.Start($CMD)
+    message: C# command execution - injection risk
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-process-start-info
+    pattern: new ProcessStartInfo($CMD)
+    message: C# ProcessStartInfo - command injection risk
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-process-filename
+    pattern: $PSI.FileName = $CMD
+    message: C# process filename from variable - injection risk
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-process-arguments
+    pattern: $PSI.Arguments = $ARGS
+    message: C# process arguments from variable - injection risk
+    languages: [csharp]
+    severity: WARNING
+
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: csharp-binaryformatter
+    pattern: BinaryFormatter().Deserialize($STREAM)
+    message: C# BinaryFormatter deserialization is insecure
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-binaryformatter-new
+    pattern: new BinaryFormatter()
+    message: C# BinaryFormatter is insecure - do not use
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-javascriptserializer
+    pattern: new JavaScriptSerializer().Deserialize($DATA)
+    message: C# JavaScriptSerializer - use System.Text.Json instead
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-netdatacontract
+    pattern: new NetDataContractSerializer()
+    message: C# NetDataContractSerializer is insecure
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-losformatter
+    pattern: new LosFormatter()
+    message: C# LosFormatter is insecure
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-objectstateformatter
+    pattern: new ObjectStateFormatter()
+    message: C# ObjectStateFormatter is insecure
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-soapformatter
+    pattern: new SoapFormatter()
+    message: C# SoapFormatter is insecure
+    languages: [csharp]
+    severity: ERROR
+
+  # ============================================
+  # XXE (XML External Entity)
+  # ============================================
+
+  - id: csharp-xxe-xmlreader
+    pattern: XmlReader.Create($INPUT)
+    message: C# XXE risk - configure XmlReaderSettings
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-xxe-xmldocument
+    pattern: new XmlDocument()
+    message: C# XmlDocument - ensure DTD processing is disabled
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-xxe-xmltextreader
+    pattern: new XmlTextReader($INPUT)
+    message: C# XmlTextReader - XXE risk, use XmlReader with secure settings
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-xxe-dtd-processing
+    pattern: 'DtdProcessing = DtdProcessing.Parse'
+    message: C# DTD processing enabled - XXE vulnerability
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-xxe-prohibit-dtd
+    pattern: 'ProhibitDtd = false'
+    message: C# DTD not prohibited - XXE vulnerability
+    languages: [csharp]
+    severity: ERROR
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: csharp-path-combine-user
+    pattern: Path.Combine($BASE, $USER_INPUT)
+    message: C# Path.Combine with user input - path traversal risk
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-file-read-user
+    pattern: File.ReadAllText($USER_INPUT)
+    message: C# file read with user input - path traversal risk
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-file-write-user
+    pattern: File.WriteAllText($USER_INPUT, ...)
+    message: C# file write with user input - path traversal risk
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-filestream-user
+    pattern: new FileStream($USER_INPUT, ...)
+    message: C# FileStream with user input - path traversal risk
+    languages: [csharp]
+    severity: ERROR
+
+  # ============================================
+  # ReDoS
+  # ============================================
+
+  - id: csharp-regex-timeout
+    pattern: new Regex($PATTERN)
+    message: C# Regex without timeout - ReDoS risk
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-regex-match-timeout
+    pattern: Regex.Match($INPUT, $PATTERN)
+    message: C# Regex.Match - consider using timeout parameter
+    languages: [csharp]
+    severity: INFO
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: csharp-md5-create
+    pattern: MD5.Create()
+    message: C# MD5 is weak - use SHA-256 or better
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-sha1-create
+    pattern: SHA1.Create()
+    message: C# SHA1 is weak - use SHA-256 or better
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-des-create
+    pattern: DES.Create()
+    message: C# DES is weak - use AES
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-3des-create
+    pattern: TripleDES.Create()
+    message: C# 3DES is deprecated - use AES
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-random
+    pattern: new Random()
+    message: C# Random is not cryptographically secure - use RandomNumberGenerator
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-aes-ecb
+    pattern: 'CipherMode.ECB'
+    message: C# ECB mode is insecure - use CBC or GCM
+    languages: [csharp]
+    severity: ERROR
+
+  # ============================================
+  # SSL/TLS Issues
+  # ============================================
+
+  - id: csharp-ssl-callback-true
+    pattern: 'ServerCertificateValidationCallback = (...) => true'
+    message: C# SSL certificate validation disabled
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-ssl-protocols-old
+    pattern: 'SecurityProtocolType.Ssl3'
+    message: C# SSL3 is insecure - use TLS 1.2+
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-ssl-protocols-tls10
+    pattern: 'SecurityProtocolType.Tls'
+    message: C# TLS 1.0 is deprecated - use TLS 1.2+
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-ssl-protocols-tls11
+    pattern: 'SecurityProtocolType.Tls11'
+    message: C# TLS 1.1 is deprecated - use TLS 1.2+
+    languages: [csharp]
+    severity: WARNING
+
+  # ============================================
+  # LDAP Injection
+  # ============================================
+
+  - id: csharp-ldap-filter
+    pattern: $SEARCHER.Filter = $FILTER
+    message: C# LDAP filter - potential LDAP injection
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-ldap-path
+    pattern: new DirectoryEntry($PATH)
+    message: C# DirectoryEntry - validate path for LDAP injection
+    languages: [csharp]
+    severity: WARNING
+
+  # ============================================
+  # XSS
+  # ============================================
+
+  - id: csharp-razor-raw
+    pattern: Html.Raw($INPUT)
+    message: C# Html.Raw bypasses encoding - XSS risk
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-response-write
+    pattern: Response.Write($INPUT)
+    message: C# Response.Write - ensure output is encoded
+    languages: [csharp]
+    severity: WARNING
+
+  # ============================================
+  # Open Redirect
+  # ============================================
+
+  - id: csharp-redirect-user
+    pattern: Response.Redirect($URL)
+    message: C# redirect - validate URL to prevent open redirect
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-redirect-action
+    pattern: Redirect($URL)
+    message: C# MVC Redirect - validate URL to prevent open redirect
+    languages: [csharp]
+    severity: WARNING
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: csharp-hardcoded-password
+    pattern: 'password = "..."'
+    message: C# hardcoded password detected
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-hardcoded-connectionstring
+    pattern: 'connectionString = "..."'
+    message: C# hardcoded connection string - use configuration
+    languages: [csharp]
+    severity: ERROR
+
+  - id: csharp-sqlconnection-literal
+    pattern: new SqlConnection("...")
+    message: C# hardcoded connection string in SqlConnection
+    languages: [csharp]
+    severity: ERROR
+
+  # ============================================
+  # CSRF
+  # ============================================
+
+  - id: csharp-validateantiforgerytoken-missing
+    pattern: |
+      [HttpPost]
+      public $RETURN $METHOD(...)
+    message: C# HttpPost without ValidateAntiForgeryToken - CSRF risk
+    languages: [csharp]
+    severity: WARNING
+
+  # ============================================
+  # Session Security
+  # ============================================
+
+  - id: csharp-session-httponly-false
+    pattern: 'HttpOnly = false'
+    message: C# session cookie HttpOnly disabled
+    languages: [csharp]
+    severity: WARNING
+
+  - id: csharp-session-secure-false
+    pattern: 'Secure = false'
+    message: C# session cookie Secure flag disabled
+    languages: [csharp]
+    severity: WARNING

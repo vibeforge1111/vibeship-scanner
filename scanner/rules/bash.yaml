@@ -1,0 +1,277 @@
+# Shell/Bash Security Rules
+rules:
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: bash-eval
+    pattern: eval $VAR
+    message: Bash eval with variable - command injection risk
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-eval-string
+    pattern: eval "$VAR"
+    message: Bash eval with quoted variable - command injection risk
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-backtick-var
+    pattern: '`$VAR`'
+    message: Bash command substitution with variable - injection risk
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-subshell-var
+    pattern: '$($VAR)'
+    message: Bash subshell with variable - injection risk
+    languages: [bash]
+    severity: WARNING
+
+  # ============================================
+  # Unsafe Variable Expansion
+  # ============================================
+
+  - id: bash-unquoted-var
+    pattern: rm $VAR
+    message: Bash unquoted variable - word splitting/globbing risk
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-unquoted-path
+    pattern: cd $PATH
+    message: Bash unquoted path - may cause unexpected behavior
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-unquoted-file
+    pattern: cat $FILE
+    message: Bash unquoted file variable - quote to prevent issues
+    languages: [bash]
+    severity: INFO
+
+  # ============================================
+  # Insecure Temp Files
+  # ============================================
+
+  - id: bash-predictable-tmp
+    pattern: '/tmp/$NAME'
+    message: Bash predictable temp file - use mktemp instead
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-tmp-race
+    pattern: 'if [ ! -f /tmp/$FILE ]; then'
+    message: Bash temp file race condition - use mktemp
+    languages: [bash]
+    severity: WARNING
+
+  # ============================================
+  # Privilege Escalation
+  # ============================================
+
+  - id: bash-chmod-777
+    pattern: chmod 777 $FILE
+    message: Bash chmod 777 - world-writable files are security risk
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-chmod-666
+    pattern: chmod 666 $FILE
+    message: Bash chmod 666 - world-writable files are security risk
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-setuid
+    pattern: chmod u+s $FILE
+    message: Bash setuid bit - potential privilege escalation
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-setgid
+    pattern: chmod g+s $FILE
+    message: Bash setgid bit - potential privilege escalation
+    languages: [bash]
+    severity: WARNING
+
+  # ============================================
+  # Credential Exposure
+  # ============================================
+
+  - id: bash-password-cli
+    pattern: 'curl -u $USER:$PASS'
+    message: Bash password in command line - visible in process list
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-password-env
+    pattern: 'export PASSWORD='
+    message: Bash password in environment - may be logged
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-hardcoded-password
+    pattern: 'PASSWORD="..."'
+    message: Bash hardcoded password detected
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-hardcoded-apikey
+    pattern: 'API_KEY="..."'
+    message: Bash hardcoded API key detected
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-curl-password
+    pattern: 'curl --user $USER:$PASS'
+    message: Bash password in curl command - visible in process list
+    languages: [bash]
+    severity: ERROR
+
+  # ============================================
+  # Insecure Downloads
+  # ============================================
+
+  - id: bash-curl-insecure
+    pattern: curl -k $URL
+    message: Bash curl with -k ignores SSL verification
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-curl-insecure-long
+    pattern: curl --insecure $URL
+    message: Bash curl with --insecure ignores SSL verification
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-wget-no-check
+    pattern: wget --no-check-certificate $URL
+    message: Bash wget ignoring certificate verification
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-curl-pipe-bash
+    pattern: curl $URL | bash
+    message: Bash curl pipe to bash - insecure code execution
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-curl-pipe-sh
+    pattern: curl $URL | sh
+    message: Bash curl pipe to sh - insecure code execution
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-wget-pipe-bash
+    pattern: wget -O - $URL | bash
+    message: Bash wget pipe to bash - insecure code execution
+    languages: [bash]
+    severity: ERROR
+
+  # ============================================
+  # SQL Injection (mysql/psql clients)
+  # ============================================
+
+  - id: bash-mysql-query-var
+    pattern: mysql -e "$QUERY"
+    message: Bash mysql with variable query - SQL injection risk
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-psql-command-var
+    pattern: psql -c "$QUERY"
+    message: Bash psql with variable query - SQL injection risk
+    languages: [bash]
+    severity: WARNING
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: bash-cd-user-input
+    pattern: cd "$1"
+    message: Bash cd with user input - path traversal risk
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-source-user
+    pattern: source "$1"
+    message: Bash source with user input - code injection risk
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-dot-source-user
+    pattern: '. "$1"'
+    message: Bash dot source with user input - code injection risk
+    languages: [bash]
+    severity: ERROR
+
+  # ============================================
+  # Unsafe Redirections
+  # ============================================
+
+  - id: bash-redirect-stderr-null
+    pattern: '2>/dev/null'
+    message: Bash suppressing stderr - may hide errors
+    languages: [bash]
+    severity: INFO
+
+  - id: bash-redirect-all-null
+    pattern: '&>/dev/null'
+    message: Bash suppressing all output - may hide errors
+    languages: [bash]
+    severity: INFO
+
+  # ============================================
+  # Missing Error Handling
+  # ============================================
+
+  - id: bash-no-set-e
+    pattern: '#!/bin/bash'
+    message: Bash script - consider using 'set -e' for error handling
+    languages: [bash]
+    severity: INFO
+
+  - id: bash-no-pipefail
+    pattern: '#!/bin/bash'
+    message: Bash script - consider 'set -o pipefail' for pipeline errors
+    languages: [bash]
+    severity: INFO
+
+  # ============================================
+  # Debug Output
+  # ============================================
+
+  - id: bash-set-x
+    pattern: set -x
+    message: Bash debug mode enabled - may expose sensitive data in logs
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-echo-sensitive
+    pattern: echo "$PASSWORD"
+    message: Bash echoing password - may be logged
+    languages: [bash]
+    severity: WARNING
+
+  # ============================================
+  # Unsafe rm
+  # ============================================
+
+  - id: bash-rm-rf-root
+    pattern: rm -rf /
+    message: Bash rm -rf / - catastrophic data loss
+    languages: [bash]
+    severity: ERROR
+
+  - id: bash-rm-rf-star
+    pattern: rm -rf $VAR/*
+    message: Bash rm -rf with variable - validate before deletion
+    languages: [bash]
+    severity: WARNING
+
+  - id: bash-rm-rf-unquoted
+    pattern: rm -rf $VAR
+    message: Bash rm -rf unquoted variable - dangerous
+    languages: [bash]
+    severity: WARNING
