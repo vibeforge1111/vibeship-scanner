@@ -1058,6 +1058,22 @@ rules:
     languages: [python]
     severity: WARNING
 
+  # ReDoS - Nested group with quantifier like ([a-z]+)+ or (\w+)+
+  - id: py-redos-nested-group-plus
+    pattern-regex: "re\\.(search|match|findall)\\([rf]?[\"'][^\"']*\\([^)]+\\+\\)\\+[^\"']*[\"']"
+    message: ReDoS - nested quantifier pattern (group+)+ causes catastrophic backtracking
+    languages: [python]
+    severity: ERROR
+
+  # ReDoS - Email validation with nested quantifiers (VAmPI pattern)
+  - id: py-redos-email-validation
+    patterns:
+      - pattern: 're.search($PATTERN, $EMAIL)'
+      - pattern: 're.match($PATTERN, $EMAIL)'
+    message: Email regex validation - check for ReDoS vulnerable patterns like (a+)+
+    languages: [python]
+    severity: INFO
+
   # Debug/Info Disclosure - Exposing sensitive data
   - id: py-debug-password-response
     patterns:
