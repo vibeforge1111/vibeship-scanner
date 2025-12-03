@@ -124,13 +124,13 @@ rules:
   # ============================================
 
   - id: shared-api-v1-localhost
-    pattern-regex: 'http://localhost[^"\']*(/api/|/v[0-9]/)'
+    pattern-regex: "http://localhost[^\"']*(/api/|/v[0-9]/)"
     message: Local API endpoint hardcoded - use BASE_URL environment variable
     languages: [python, javascript, typescript, go, java, ruby, php]
     severity: WARNING
 
   - id: shared-graphql-localhost
-    pattern-regex: 'http://localhost[^"\']*(/graphql)'
+    pattern-regex: "http://localhost[^\"']*(/graphql)"
     message: Local GraphQL endpoint hardcoded
     languages: [python, javascript, typescript, go, java, ruby, php]
     severity: WARNING

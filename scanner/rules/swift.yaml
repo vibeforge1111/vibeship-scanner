@@ -27,13 +27,13 @@ rules:
   # ============================================
 
   - id: swift-userdefaults-sensitive
-    pattern: UserDefaults.standard.set($VALUE, forKey: $KEY)
+    pattern: 'UserDefaults.standard.set($VALUE, forKey: $KEY)'
     message: Swift UserDefaults - not secure for sensitive data, use Keychain
     languages: [swift]
     severity: WARNING
 
   - id: swift-nsuserdefaults-sensitive
-    pattern: NSUserDefaults.standardUserDefaults().setObject($VALUE, forKey: $KEY)
+    pattern: 'NSUserDefaults.standardUserDefaults().setObject($VALUE, forKey: $KEY)'
     message: Swift NSUserDefaults - not secure for sensitive data
     languages: [swift]
     severity: WARNING
@@ -111,19 +111,19 @@ rules:
   # ============================================
 
   - id: swift-filemanager-contents
-    pattern: FileManager.default.contents(atPath: $PATH)
+    pattern: 'FileManager.default.contents(atPath: $PATH)'
     message: Swift file read - validate path for traversal
     languages: [swift]
     severity: WARNING
 
   - id: swift-string-write
-    pattern: $STRING.write(toFile: $PATH, ...)
+    pattern: '$STRING.write(toFile: $PATH, ...)'
     message: Swift file write - validate path for traversal
     languages: [swift]
     severity: WARNING
 
   - id: swift-data-write
-    pattern: $DATA.write(to: $URL, ...)
+    pattern: '$DATA.write(to: $URL, ...)'
     message: Swift data write - validate destination
     languages: [swift]
     severity: WARNING
@@ -133,13 +133,13 @@ rules:
   # ============================================
 
   - id: swift-url-user-input
-    pattern: URL(string: $USER_INPUT)
+    pattern: 'URL(string: $USER_INPUT)'
     message: Swift URL from user input - potential SSRF
     languages: [swift]
     severity: WARNING
 
   - id: swift-urlsession-request
-    pattern: URLSession.shared.dataTask(with: $URL, ...)
+    pattern: 'URLSession.shared.dataTask(with: $URL, ...)'
     message: Swift URL request - validate URL for SSRF
     languages: [swift]
     severity: INFO
@@ -149,7 +149,7 @@ rules:
   # ============================================
 
   - id: swift-webview-js-enabled
-    pattern: $WEBVIEW.configuration.preferences.javaScriptEnabled = true
+    pattern: '$WEBVIEW.configuration.preferences.javaScriptEnabled = true'
     message: Swift WKWebView JavaScript enabled - XSS risk
     languages: [swift]
     severity: WARNING
@@ -161,13 +161,13 @@ rules:
     severity: ERROR
 
   - id: swift-pasteboard-sensitive
-    pattern: UIPasteboard.general.string = $VALUE
+    pattern: 'UIPasteboard.general.string = $VALUE'
     message: Swift pasteboard - sensitive data may be accessible to other apps
     languages: [swift]
     severity: WARNING
 
   - id: swift-open-url
-    pattern: UIApplication.shared.open($URL, ...)
+    pattern: 'UIApplication.shared.open($URL, ...)'
     message: Swift openURL - validate URL to prevent scheme hijacking
     languages: [swift]
     severity: WARNING
@@ -237,7 +237,7 @@ rules:
   # ============================================
 
   - id: swift-jailbreak-check
-    pattern: FileManager.default.fileExists(atPath: "/Applications/Cydia.app")
+    pattern: 'FileManager.default.fileExists(atPath: "/Applications/Cydia.app")'
     message: Swift jailbreak detection - attackers can bypass
     languages: [swift]
     severity: INFO

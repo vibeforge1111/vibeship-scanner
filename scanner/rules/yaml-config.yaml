@@ -96,7 +96,7 @@ rules:
     metadata:
       category: security
       cwe: "CWE-798: Use of Hard-coded Credentials"
-    pattern-regex: '(token|password|api_key|apikey|secret):\s*["\'][^$][^"\']{8,}'
+    pattern-regex: "(token|password|api_key|apikey|secret):\\s*[\"'][^$][^\"']{8,}"
 
   # ============================================
   # Kubernetes - Privileged Containers
@@ -211,8 +211,8 @@ rules:
       category: security
       cwe: "CWE-250: Execution with Unnecessary Privileges"
     patterns:
-      - pattern-regex: 'kind:\s*(Cluster)?Role\b'
-      - pattern-regex: 'resources:\s*\[\s*["\']?\*["\']?\s*\]'
+      - pattern-regex: "kind:\\s*(Cluster)?Role\\b"
+      - pattern-regex: "resources:\\s*\\[\\s*[\"']?\\*[\"']?\\s*\\]"
 
   # ============================================
   # Docker Compose - Security
@@ -273,7 +273,7 @@ rules:
     metadata:
       category: security
       cwe: "CWE-668: Exposure of Resource to Wrong Sphere"
-    pattern-regex: 'network_mode:\s*["\']?host["\']?'
+    pattern-regex: "network_mode:\\s*[\"']?host[\"']?"
 
   - id: docker-compose-port-binding-all
     message: >-
@@ -283,7 +283,7 @@ rules:
     metadata:
       category: security
       cwe: "CWE-668: Exposure of Resource to Wrong Sphere"
-    pattern-regex: 'ports:[\s\S]*?["\']?0\.0\.0\.0:'
+    pattern-regex: "ports:[\\s\\S]*?[\"']?0\\.0\\.0\\.0:"
 
   # ============================================
   # General YAML - Environment Variables
@@ -298,7 +298,7 @@ rules:
     metadata:
       category: security
       cwe: "CWE-798: Use of Hard-coded Credentials"
-    pattern-regex: '(password|passwd|pwd):\s*["\'][^$\{][^"\']{4,}'
+    pattern-regex: "(password|passwd|pwd):\\s*[\"'][^$\\{][^\"']{4,}"
 
   - id: yaml-hardcoded-api-key
     message: >-
@@ -309,7 +309,7 @@ rules:
     metadata:
       category: security
       cwe: "CWE-798: Use of Hard-coded Credentials"
-    pattern-regex: '(api_key|apikey|api-key):\s*["\'][a-zA-Z0-9]{16,}'
+    pattern-regex: "(api_key|apikey|api-key):\\s*[\"'][a-zA-Z0-9]{16,}"
 
   - id: yaml-debug-enabled
     message: >-

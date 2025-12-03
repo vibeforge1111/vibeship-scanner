@@ -44,7 +44,17 @@ LANGUAGE_RULES = {
     'Rust': 'rust.yaml',
     'Bash': 'bash.yaml',
     'Shell': 'bash.yaml',
+    'Solidity': 'solidity.yaml',
+    'YAML': 'yaml-config.yaml',
 }
+
+# Shared rules that apply to ALL scans regardless of language
+SHARED_RULES_DIR = RULES_DIR / '_shared'
+SHARED_RULES = [
+    'secrets.yaml',
+    'urls.yaml',
+    'comments.yaml',
+]
 
 
 def clone_repo(url: str, target_dir: str, branch: str = 'main') -> bool:
@@ -101,18 +111,47 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
         '.cs': 'C#',
         '.sh': 'Bash',
         '.bash': 'Bash',
+        '.sol': 'Solidity',
     }
+
+    # Files/directories that indicate YAML config scanning is needed
+    yaml_config_patterns = [
+        '.github/workflows',  # GitHub Actions
+        'kubernetes', 'k8s',  # Kubernetes
+        'docker-compose',     # Docker Compose
+        'helm',               # Helm charts
+    ]
 
     try:
         for root, dirs, filenames in os.walk(repo_dir):
+            # Get relative path for pattern matching
+            rel_root = os.path.relpath(root, repo_dir)
+
+            # Check for YAML config patterns in path
+            for pattern in yaml_config_patterns:
+                if pattern in rel_root or pattern in root:
+                    languages.add('YAML')
+                    break
+
+            # Check for docker-compose files
+            for filename in filenames:
+                if filename.startswith('docker-compose') and (filename.endswith('.yml') or filename.endswith('.yaml')):
+                    languages.add('YAML')
+
             # Skip hidden directories and common non-code folders
             dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'vendor', 'venv', '__pycache__', 'target', 'build', 'dist']]
+
             for filename in filenames:
                 ext = os.path.splitext(filename)[1].lower()
                 if ext in lang_extensions:
                     languages.add(lang_extensions[ext])
     except:
         pass
+
+    # Check for GitHub Actions specifically (since .github is hidden)
+    github_workflows = os.path.join(repo_dir, '.github', 'workflows')
+    if os.path.isdir(github_workflows):
+        languages.add('YAML')
 
     # Detect from package files (more reliable)
     if 'package.json' in files:
@@ -198,6 +237,14 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
     configs = []
     rule_files_used = []
 
+    # ALWAYS include shared rules (secrets, urls, comments) for all scans
+    if SHARED_RULES_DIR.exists():
+        for shared_rule in SHARED_RULES:
+            shared_path = SHARED_RULES_DIR / shared_rule
+            if shared_path.exists():
+                configs.extend(['-f', str(shared_path)])
+                rule_files_used.append(f'_shared/{shared_rule}')
+
     if detected_languages:
         # Get unique rule files for detected languages
         rule_files = set()
@@ -213,7 +260,8 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
                 rule_files_used.append(rule_file)
 
     # Fallback to old core.yaml and vibeship.yaml if no language-specific rules found
-    if not configs:
+    # (but only if we don't have shared rules either)
+    if len(configs) <= len(SHARED_RULES) * 2:  # Only shared rules or none
         core_rules = RULES_DIR / 'core.yaml'
         vibeship_rules = RULES_DIR / 'vibeship.yaml'
         if core_rules.exists():
