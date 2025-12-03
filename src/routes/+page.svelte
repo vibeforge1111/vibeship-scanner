@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
 
@@ -25,7 +25,7 @@
 		return () => clearInterval(interval);
 	});
 
-	onMount(async () => {
+	async function loadRecentScans() {
 		const storedIds = localStorage.getItem('vibeship-recent-scans');
 		if (storedIds) {
 			const ids = JSON.parse(storedIds) as string[];
@@ -37,10 +37,37 @@
 					.order('created_at', { ascending: false })
 					.limit(5);
 				if (data) {
-					recentScans = data;
+					// Sort by the order in localStorage (most recent first)
+					const sortedData = ids
+						.map(id => data.find(scan => scan.id === id))
+						.filter((scan): scan is typeof data[0] => scan !== undefined)
+						.slice(0, 5);
+					recentScans = sortedData;
 				}
 			}
 		}
+	}
+
+	// Refresh scans when navigating back to this page (e.g., after completing a scan)
+	afterNavigate(() => {
+		loadRecentScans();
+	});
+
+	onMount(async () => {
+		await loadRecentScans();
+
+		// Refresh scans when user returns to the tab
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === 'visible') {
+				loadRecentScans();
+			}
+		};
+
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+		};
 	});
 
 	function saveToRecent(scanId: string) {
@@ -295,7 +322,7 @@
 	<section class="cta">
 		<div class="cta-inner">
 			<h2>Ready to ship with confidence?</h2>
-			<p>Free. No signup required. Just vibes.</p>
+			<p>Free. No signup required.</p>
 			<button class="btn btn-glow btn-lg" onclick={() => document.querySelector<HTMLInputElement>('.scan-input')?.focus()}>
 				Scan Your Repo Now
 			</button>
@@ -506,30 +533,32 @@
 
 	.how-grid {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(3, 1fr);
 		gap: 2rem;
 	}
 
 	.how-step {
 		border-left: 1px solid var(--text-inverse-secondary);
-		padding-left: 1.5rem;
+		padding-left: 2rem;
 	}
 
 	.how-step-number {
-		font-size: 0.7rem;
+		font-size: 1rem;
+		font-weight: 600;
 		color: var(--text-inverse-secondary);
 		margin-bottom: 1.5rem;
+		font-family: 'JetBrains Mono', monospace;
 	}
 
 	.how-step h4 {
 		font-family: 'Instrument Serif', serif;
-		font-size: 1.25rem;
+		font-size: 1.5rem;
 		font-weight: 400;
 		margin-bottom: 1rem;
 	}
 
 	.how-step p {
-		font-size: 0.8rem;
+		font-size: 0.9rem;
 		color: var(--text-inverse-secondary);
 		line-height: 1.7;
 	}
