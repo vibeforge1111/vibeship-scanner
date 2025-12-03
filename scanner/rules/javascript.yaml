@@ -122,7 +122,7 @@ rules:
       tags: [vue, xss]
 
   - id: vue-render-raw
-    pattern: h('div', {innerHTML: $X})
+    pattern: "h('div', {innerHTML: $X})"
     message: Vue render function with innerHTML - XSS risk
     languages: [javascript, typescript]
     severity: ERROR
@@ -281,7 +281,7 @@ rules:
       tags: [node, injection]
 
   - id: node-spawn-shell
-    pattern: spawn($CMD, $ARGS, {shell: true})
+    pattern: "spawn($CMD, $ARGS, {shell: true})"
     message: spawn with shell=true - command injection risk
     languages: [javascript, typescript]
     severity: ERROR

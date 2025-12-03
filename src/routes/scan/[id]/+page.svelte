@@ -709,8 +709,7 @@
 	{:else if status === 'queued' || status === 'scanning'}
 		<div class="progress-container">
 			<h1>Scanning your repository...</h1>
-			<p class="progress-subtitle">This usually takes about 30 seconds</p>
-
+	
 			<div class="progress-steps">
 				{#each steps as step, i}
 					<div class="step" class:active={i === progress.stepNumber} class:complete={i < progress.stepNumber}>
@@ -1041,6 +1040,7 @@
 		padding: 8rem 2rem 4rem;
 		max-width: 1000px;
 		margin: 0 auto;
+		min-height: calc(100vh - 80px);
 	}
 
 	.error-container {
@@ -1077,17 +1077,12 @@
 		margin-bottom: 0.5rem;
 	}
 
-	.progress-subtitle {
-		color: var(--text-secondary);
-		margin-bottom: 4rem;
-	}
-
 	.progress-steps {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 		max-width: 400px;
-		margin: 0 auto 3rem;
+		margin: 2rem auto 3rem;
 		text-align: left;
 	}
 
