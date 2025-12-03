@@ -221,7 +221,7 @@
 			<div class="feature-card">
 				<div class="feature-icon">🔐</div>
 				<h3>Code Security</h3>
-				<p>SQL injection, XSS, insecure auth patterns, and 500+ vulnerability checks using Semgrep.</p>
+				<p>SQL injection, XSS, insecure auth patterns, and 750+ vulnerability checks using Semgrep.</p>
 			</div>
 			<div class="feature-card">
 				<div class="feature-icon">🔑</div>

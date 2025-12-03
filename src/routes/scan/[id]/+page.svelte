@@ -233,7 +233,7 @@
 		{ id: 'init', label: 'Initializing', icon: '⚡', details: 'Setting up secure scan environment' },
 		{ id: 'clone', label: 'Cloning repository', icon: '📥', details: 'Fetching source code from GitHub' },
 		{ id: 'detect', label: 'Detecting stack', icon: '🔍', details: 'Identifying languages and frameworks' },
-		{ id: 'sast', label: 'Scanning code', icon: '🛡️', details: 'Running 200+ security patterns' },
+		{ id: 'sast', label: 'Scanning code', icon: '🛡️', details: 'Running 750+ security patterns' },
 		{ id: 'deps', label: 'Checking dependencies', icon: '📦', details: 'Analyzing package vulnerabilities' },
 		{ id: 'secrets', label: 'Scanning for secrets', icon: '🔐', details: 'Detecting exposed credentials' },
 		{ id: 'score', label: 'Calculating score', icon: '📊', details: 'Generating security report' }
@@ -1165,30 +1165,28 @@
 
 	.security-fact {
 		margin: 2rem auto;
-		max-width: 600px;
-		padding: 1rem 1.5rem;
+		max-width: 700px;
+		padding: 1.5rem 2rem;
 		background: var(--bg-secondary);
 		border: 1px solid var(--border);
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: 0.5rem;
 		animation: factFade 0.5s ease;
 		text-align: center;
-		min-height: 60px;
+		min-height: 80px;
 	}
 
 	.fact-text {
-		font-size: 0.85rem;
+		font-size: 1.1rem;
 		color: var(--text-primary);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		line-height: 1.5;
+		white-space: normal;
+		line-height: 1.6;
 		font-weight: 500;
 	}
 
 	.fact-source {
-		font-size: 0.75rem;
+		font-size: 0.85rem;
 		color: var(--text-muted, #666);
 		opacity: 0.7;
 		font-style: italic;
