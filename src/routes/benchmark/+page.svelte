@@ -41,6 +41,20 @@
 		isAuthenticated = false;
 	}
 
+	function clearData() {
+		if (confirm('Clear all benchmark data? This will reset all scan results and history.')) {
+			localStorage.removeItem(STORAGE_KEY);
+			results = new Map();
+			history = [];
+			iteration = 0;
+			rulesAdded = 0;
+			overallCoverage = 0;
+			totalDetected = 0;
+			totalKnown = 0;
+			loadRepos();
+		}
+	}
+
 	type BenchmarkRepo = {
 		repo: string;
 		name: string;
@@ -91,12 +105,64 @@
 	let scanQueue = $state<string[]>([]);
 	let progressIntervals = new Map<string, ReturnType<typeof setInterval>>();
 
+	const STORAGE_KEY = 'benchmark_data';
+
+	function saveToStorage() {
+		const data = {
+			results: Array.from(results.entries()).map(([key, val]) => ({
+				...val,
+				status: val.status === 'scanning' ? 'pending' : val.status, // Reset scanning to pending
+				scanProgress: 0
+			})),
+			history,
+			iteration,
+			rulesAdded,
+			overallCoverage,
+			totalDetected,
+			totalKnown,
+			savedAt: new Date().toISOString()
+		};
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+	}
+
+	function loadFromStorage() {
+		try {
+			const stored = localStorage.getItem(STORAGE_KEY);
+			if (!stored) return false;
+
+			const data = JSON.parse(stored);
+
+			// Restore results
+			if (data.results && Array.isArray(data.results)) {
+				const restoredResults = new Map<string, RepoResult>();
+				data.results.forEach((r: RepoResult) => {
+					restoredResults.set(r.repo, r);
+				});
+				results = restoredResults;
+			}
+
+			// Restore other state
+			if (data.history) history = data.history;
+			if (data.iteration) iteration = data.iteration;
+			if (data.rulesAdded) rulesAdded = data.rulesAdded;
+			if (data.overallCoverage) overallCoverage = data.overallCoverage;
+			if (data.totalDetected) totalDetected = data.totalDetected;
+			if (data.totalKnown) totalKnown = data.totalKnown;
+
+			return true;
+		} catch (e) {
+			console.error('Failed to load from storage:', e);
+			return false;
+		}
+	}
+
 	async function loadRepos() {
 		try {
 			const res = await fetch(`${SCANNER_URL}/benchmark/repos`);
 			const data = await res.json();
 			repos = data.repos || [];
 
+			// Only add repos that don't exist yet (preserve stored results)
 			repos.forEach(repo => {
 				if (!results.has(repo.repo)) {
 					results.set(repo.repo, {
@@ -112,9 +178,15 @@
 						missed_vulns: [],
 						scanProgress: 0
 					});
+				} else {
+					// Update name/language from API but keep scan results
+					const existing = results.get(repo.repo)!;
+					existing.name = repo.name;
+					existing.language = repo.language;
 				}
 			});
 			results = new Map(results);
+			updateOverallCoverage();
 		} catch (e) {
 			console.error('Failed to load repos:', e);
 			error = 'Failed to load benchmark repos';
@@ -212,6 +284,7 @@
 		activeScans = new Set(activeScans);
 		results = new Map(results);
 		updateOverallCoverage();
+		saveToStorage();
 
 		// Process next in queue if exists
 		processQueue();
@@ -266,6 +339,7 @@
 			total_known: totalKnown,
 			rules_added: rulesAdded
 		}];
+		saveToStorage();
 
 		isRunning = false;
 	}
@@ -387,6 +461,7 @@
 				rules_added: h.rules_added || 0
 			}));
 		}
+		saveToStorage();
 	}
 
 	function updateOverallCoverage() {
@@ -446,6 +521,8 @@
 	}
 
 	onMount(() => {
+		// Load saved data first, then fetch repos
+		loadFromStorage();
 		loadRepos();
 	});
 
@@ -496,6 +573,7 @@
 				<p class="header-subtitle">Testing scanner accuracy against known vulnerable repositories</p>
 			</div>
 			<div class="header-right">
+				<button class="btn btn-small btn-ghost" onclick={clearData}>Clear Data</button>
 				<button class="btn btn-small btn-ghost" onclick={logout}>Logout</button>
 			</div>
 			<div class="header-actions">
