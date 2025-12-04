@@ -5,15 +5,17 @@ app = "vibeship-benchmark"
 primary_region = "iad"
 
 [build]
-  dockerfile = "../Dockerfile"
+  dockerfile = "../Dockerfile.benchmark"
 
 [env]
   TARGET_COVERAGE = "0.95"
-  MAX_ITERATIONS = "5"
+  MAX_ITERATIONS = "10"
   PYTHONUNBUFFERED = "1"
 
 # No HTTP service - this runs as a batch job
 # Trigger with: fly machine run --app vibeship-benchmark
 
-[processes]
-  benchmark = "python benchmark/auto_improve.py"
+[[vm]]
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 2
