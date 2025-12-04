@@ -185,6 +185,7 @@
 				status: val.status === 'scanning' ? 'pending' : val.status, // Reset scanning to pending
 				scanProgress: 0
 			})),
+			repos: repos, // Also save repos list
 			history,
 			iteration,
 			rulesAdded,
@@ -194,7 +195,7 @@
 			savedAt: new Date().toISOString()
 		};
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-		console.log('[Benchmark] Saved to storage:', results.size, 'results');
+		console.log('[Benchmark] Saved to storage:', results.size, 'results,', repos.length, 'repos');
 	}
 
 	function loadFromStorage(): boolean {
@@ -207,6 +208,12 @@
 
 			const data = JSON.parse(stored);
 			console.log('[Benchmark] Loading from storage:', data.savedAt);
+
+			// Restore repos list first (needed for display)
+			if (data.repos && Array.isArray(data.repos)) {
+				repos = data.repos;
+				console.log('[Benchmark] Restored', repos.length, 'repos');
+			}
 
 			// Restore results
 			if (data.results && Array.isArray(data.results)) {
