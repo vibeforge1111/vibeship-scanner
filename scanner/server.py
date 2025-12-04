@@ -319,6 +319,78 @@ def benchmark_single():
         }), 500
 
 
+# Store for background jobs
+benchmark_jobs = {}
+
+@app.route('/benchmark/auto-improve', methods=['POST'])
+def start_auto_improve():
+    """
+    Start the auto-improve loop in the background.
+    Returns a job ID to check progress.
+
+    POST /benchmark/auto-improve
+    Headers: X-Benchmark-Key: <secret>
+    Body: { "target_coverage": 0.95, "max_iterations": 5 }
+    """
+    provided_key = request.headers.get('X-Benchmark-Key', '')
+    if provided_key != BENCHMARK_SECRET:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.json or {}
+    target = data.get('target_coverage', 0.95)
+    max_iter = data.get('max_iterations', 5)
+
+    import uuid
+    job_id = str(uuid.uuid4())[:8]
+
+    def run_auto_improve(job_id, target, max_iter):
+        try:
+            import sys
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'benchmark'))
+            from auto_improve import AutoImprover
+
+            benchmark_jobs[job_id] = {
+                'status': 'running',
+                'started_at': datetime.now().isoformat(),
+                'progress': 'Starting...'
+            }
+
+            improver = AutoImprover(target_coverage=target, max_iterations=max_iter)
+            result = improver.run_until_target()
+
+            benchmark_jobs[job_id] = {
+                'status': 'complete',
+                'completed_at': datetime.now().isoformat(),
+                'result': result
+            }
+
+        except Exception as e:
+            import traceback
+            benchmark_jobs[job_id] = {
+                'status': 'failed',
+                'error': str(e),
+                'traceback': traceback.format_exc()
+            }
+
+    thread = threading.Thread(target=run_auto_improve, args=(job_id, target, max_iter))
+    thread.start()
+
+    return jsonify({
+        'status': 'started',
+        'job_id': job_id,
+        'message': 'Auto-improve loop started. Check /benchmark/job/<job_id> for progress.'
+    })
+
+
+@app.route('/benchmark/job/<job_id>', methods=['GET'])
+def get_job_status(job_id):
+    """Get status of a benchmark job"""
+    if job_id not in benchmark_jobs:
+        return jsonify({'error': 'Job not found'}), 404
+
+    return jsonify(benchmark_jobs[job_id])
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)

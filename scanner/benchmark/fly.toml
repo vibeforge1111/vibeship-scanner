@@ -1,0 +1,19 @@
+# Fly.io configuration for auto-improve benchmark runner
+# This runs as a one-off machine, not a web service
+
+app = "vibeship-benchmark"
+primary_region = "iad"
+
+[build]
+  dockerfile = "../Dockerfile"
+
+[env]
+  TARGET_COVERAGE = "0.95"
+  MAX_ITERATIONS = "5"
+  PYTHONUNBUFFERED = "1"
+
+# No HTTP service - this runs as a batch job
+# Trigger with: fly machine run --app vibeship-benchmark
+
+[processes]
+  benchmark = "python benchmark/auto_improve.py"
