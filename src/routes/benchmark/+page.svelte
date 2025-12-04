@@ -134,6 +134,7 @@
 	let progressIntervals = new Map<string, ReturnType<typeof setInterval>>();
 	let selectedRepo = $state<string | null>(null);
 	let expandedFindings = $state<Set<string>>(new Set());
+	let clickedScans = $state<Set<string>>(new Set()); // Track buttons that were just clicked
 
 	const STORAGE_KEY = 'benchmark_data';
 
@@ -306,6 +307,10 @@
 		const result = results.get(repoName);
 		if (!result || result.status === 'scanning') return;
 
+		// Immediately mark as clicked for visual feedback
+		clickedScans.add(repoName);
+		clickedScans = new Set(clickedScans);
+
 		result.status = 'scanning';
 		result.scanProgress = 0;
 		result.error = undefined;
@@ -387,6 +392,8 @@
 
 		activeScans.delete(repoName);
 		activeScans = new Set(activeScans);
+		clickedScans.delete(repoName);
+		clickedScans = new Set(clickedScans);
 		results = new Map(results);
 		updateOverallCoverage();
 		saveToStorage();
@@ -849,12 +856,22 @@
 							{/if}
 						</div>
 						<div class="col-actions">
+							{@const isClicked = clickedScans.has(repo.repo)}
+							{@const isScanning = result?.status === 'scanning'}
 							<button
-								class="btn btn-sm"
+								class="btn btn-sm {isClicked || isScanning ? 'btn-scanning' : ''}"
 								onclick={() => scanSingleRepo(repo.repo)}
-								disabled={result?.status === 'scanning'}
+								disabled={isClicked || isScanning}
 							>
-								{result?.status === 'scanning' ? 'Scanning...' : 'Scan'}
+								{#if isScanning}
+									<span class="btn-spinner"></span>
+									Scanning...
+								{:else if isClicked}
+									<span class="btn-spinner"></span>
+									Starting...
+								{:else}
+									Scan
+								{/if}
 							</button>
 							{#if result?.status === 'complete' && result.findings && result.findings.length > 0}
 								<button
@@ -1234,6 +1251,28 @@
 	.btn-sm {
 		padding: 0.5rem 1rem;
 		font-size: 0.8rem;
+	}
+
+	.btn-scanning {
+		background: var(--purple, #9d8cff);
+		border-color: var(--purple, #9d8cff);
+		color: white;
+	}
+
+	.btn-spinner {
+		display: inline-block;
+		width: 12px;
+		height: 12px;
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-top-color: white;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+		margin-right: 0.5rem;
+		vertical-align: middle;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
 	}
 
 	.btn-icon {
