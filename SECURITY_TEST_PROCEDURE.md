@@ -21,12 +21,14 @@ Work through each repository systematically. After scanning, document findings a
 
 | # | Repository | Language | Status | Findings | Notes |
 |---|------------|----------|--------|----------|-------|
-| 1 | [digininja/DVWA](https://github.com/digininja/DVWA) | PHP | ✅ Done | 18 high | Baseline test |
-| 2 | [juice-shop/juice-shop](https://github.com/juice-shop/juice-shop) | JS/Node | ⏳ Pending | - | Large, comprehensive |
+| 1 | [digininja/DVWA](https://github.com/digininja/DVWA) | PHP | ✅ Done | 151 | Baseline test, PHP rules |
+| 2 | [juice-shop/juice-shop](https://github.com/juice-shop/juice-shop) | JS/Node | ✅ Done | 931 | OWASP Top 10 coverage |
 | 3 | [OWASP/crAPI](https://github.com/OWASP/crAPI) | Python/JS | ✅ Done | 137 | API security focused |
 | 4 | [OWASP/NodeGoat](https://github.com/OWASP/NodeGoat) | JavaScript | ⏳ Pending | - | OWASP Top 10 for Node |
 | 5 | [WebGoat/WebGoat](https://github.com/WebGoat/WebGoat) | Java | ⏳ Pending | - | Java vulnerabilities |
 | 6 | [appsecco/dvna](https://github.com/appsecco/dvna) | JavaScript | ⏳ Pending | - | Node.js focused |
+| + | [trottomv/python-insecure-app](https://github.com/trottomv/python-insecure-app) | Python | ✅ Done | 8 | SSTI, SSRF, secrets |
+| + | [SirAppSec/vuln-node.js-express.js-app](https://github.com/SirAppSec/vuln-node.js-express.js-app) | JS/Node | ✅ Done | 15+ | SSTI, XSS, weak auth |
 
 ### Tier 2: Language-Specific
 
@@ -296,8 +298,118 @@ For each scan, check detection of:
 
 | Date | Scanner Version | Repos Tested | Notes |
 |------|-----------------|--------------|-------|
+| 2025-12-04 | ef26ba7 | python-insecure-app | New secret detection rules working |
+| 2025-12-04 | ed6c8bf | vuln-node.js-express.js-app | Added SSTI, XSS, weak auth rules |
 | 2025-12-02 | 310bd3d | DVWA | Added 35+ PHP rules, 151 findings |
 | 2025-12-02 | 67a8c5f | DVWA, crAPI | Initial baseline, 18 findings |
+
+---
+
+## python-insecure-app Results
+
+### Scan: 2025-12-04
+
+**Repository**: https://github.com/trottomv/python-insecure-app
+**Score**: 30/100, Grade F, Do Not Ship
+
+### Findings by Severity
+| Severity | Count |
+|----------|-------|
+| Critical | 2 |
+| High | 1 |
+| Medium | 2 |
+| Low | 0 |
+| Info | 3 |
+
+### Expected vs Detected
+
+| Vulnerability | Expected | Detected | Tool | Notes |
+|--------------|----------|----------|------|-------|
+| Hardcoded Secrets | Yes | ✅ | Gitleaks + Semgrep | SUPER_SECRET_TOKEN caught |
+| SSTI (Jinja2) | Yes | ✅ | Semgrep | main.py:41 |
+| SSRF | Yes | ✅ | Semgrep | main.py:31 |
+| Insecure Dependencies | Yes | ⚠️ | Trivy | Needs dependency scan |
+
+### Key Detections
+1. **Critical**: Generic Secret Assignment in `.env_temp:7` (Gitleaks)
+2. **Critical**: Generic Secret Assignment in `app/config.py:15` (Gitleaks) - SUPER_SECRET_TOKEN
+3. **High**: Jinja2 SSTI in `app/main.py:41`
+4. **Medium**: Hardcoded secret variable assignment `app/config.py:15` (Semgrep)
+5. **Medium**: SSRF potential in `app/main.py:31`
+
+### Improvements Made
+- Added `generic-secret-assignment` Gitleaks rule - working!
+- Added `py-secret-in-variable-name-regex` Semgrep rule - working!
+- Score correctly dropped from 85 to 30 after improvements
+
+---
+
+## vuln-node.js-express.js-app Results
+
+### Scan: 2025-12-04
+
+**Repository**: https://github.com/SirAppSec/vuln-node.js-express.js-app
+
+### Gaps Identified & Rules Added
+1. **SSTI (nunjucks.renderString)** - Added `nunjucks-ssti-regex` rule
+2. **XSS in redirects** - Added `xss-redirect-url-param-concat` rule
+3. **Weak password comparison** - Added `weak-password-compare-regex` rule
+
+---
+
+## Juice Shop Results
+
+### Scan: 2025-12-04
+
+**Repository**: https://github.com/juice-shop/juice-shop
+**Score**: 0/100, Grade F, Do Not Ship
+**Languages**: Bash, JavaScript, Python, Solidity, TypeScript, YAML
+**Framework**: Express
+
+### Findings by Severity
+| Severity | Count |
+|----------|-------|
+| Critical | 276 |
+| High | 72 |
+| Medium | 405 |
+| Low | 0 |
+| Info | 178 |
+| **Total** | **931** |
+
+### Detection Categories
+
+| Category | Found | Examples |
+|----------|-------|----------|
+| Hardcoded Secrets | ✅ 276+ | Generic secrets in components, config files |
+| Weak Crypto (MD5) | ✅ Yes | lib/insecurity.ts:43 |
+| RSA Private Keys | ✅ Yes | lib/insecurity.ts:23 |
+| Missing Auth on Routes | ✅ Many | PUT/DELETE routes in server.ts |
+| Insecure Randomness | ✅ Many | Math.random() usage throughout |
+| Curl piped to Bash | ✅ Yes | .github/workflows/ci.yml:326 |
+| Security Suppression Comments | ✅ Yes | Multiple eslint-disable |
+| AWS Secret Patterns | ✅ Yes | Multiple locations |
+| File Upload Issues | ✅ Some | Found 15 references |
+| Redirect Patterns | ✅ Some | 931 references to location/redirect |
+| JWT/Token Handling | ✅ Some | 12 references |
+| Captcha Issues | ✅ Some | routes/captcha.ts |
+
+### OWASP Top 10 Coverage
+- ✅ A01:2021 Broken Access Control - Missing auth on routes detected
+- ✅ A02:2021 Cryptographic Failures - MD5/weak crypto detected
+- ✅ A03:2021 Injection - Some patterns detected
+- ⚠️ A04:2021 Insecure Design - Runtime issue, needs DAST
+- ✅ A05:2021 Security Misconfiguration - Security suppression comments found
+- ✅ A06:2021 Vulnerable Components - Would need Trivy dependency scan
+- ⚠️ A07:2021 Auth Failures - Partial (weak password storage found)
+- ⚠️ A08:2021 Data Integrity Failures - Partial
+- ✅ A09:2021 Security Logging Failures - Debug patterns detected
+- ⚠️ A10:2021 SSRF - Limited detection
+
+### Notes
+- Excellent coverage of hardcoded secrets (Gitleaks rules working well)
+- Strong detection of cryptographic issues
+- Many findings in test/spec files (localhost:3000 hardcoded) - could consider excluding
+- 931 findings shows comprehensive detection for intentionally vulnerable app
 
 ---
 

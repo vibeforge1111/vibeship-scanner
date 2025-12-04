@@ -2370,3 +2370,206 @@ rules:
     metadata:
       tags: [crypto, auth]
 
+  # ============================================
+  # A04: Insecure Design Patterns
+  # ============================================
+
+  - id: no-rate-limit-login
+    pattern-regex: "app\\.(post|put)\\s*\\(\\s*['\"]/(login|auth|signin|authenticate)['\"]"
+    message: Login endpoint without visible rate limiting - add rate-limiter-flexible or express-rate-limit
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [a04, rate-limit, auth]
+
+  - id: no-rate-limit-password-reset
+    pattern-regex: "app\\.(post|put)\\s*\\(\\s*['\"]/(forgot|reset|password)[^'\"]*['\"]"
+    message: Password reset endpoint - ensure rate limiting is applied
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [a04, rate-limit]
+
+  - id: hardcoded-admin-bypass
+    patterns:
+      - pattern: 'if (user.role === "admin")'
+      - pattern: 'if (role === "admin")'
+      - pattern: 'user.isAdmin === true'
+    message: Hardcoded admin check - ensure proper RBAC implementation
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [a04, rbac]
+
+  # ============================================
+  # A07: Identification and Authentication Failures
+  # ============================================
+
+  - id: jwt-no-expiry
+    pattern: 'jwt.sign($PAYLOAD, $SECRET)'
+    message: JWT sign without expiresIn option - tokens should expire
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [a07, jwt, auth]
+
+  - id: jwt-long-expiry
+    pattern-regex: "expiresIn:\\s*['\"]\\d+d['\"]"
+    message: JWT with multi-day expiry - consider shorter token lifetimes
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [a07, jwt]
+
+  - id: session-no-expiry
+    pattern: 'session({secret: $SECRET})'
+    message: Session without maxAge/expires - sessions should timeout
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [a07, session]
+
+  - id: cookie-no-httponly
+    patterns:
+      - pattern: 'res.cookie($NAME, $VALUE)'
+      - pattern: 'res.cookie($NAME, $VALUE, {secure: true})'
+    message: Cookie without httpOnly flag - vulnerable to XSS theft
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [a07, cookie]
+
+  - id: password-min-length-weak
+    pattern-regex: "(password|pwd)\\.length\\s*(<|<=|>=|>)\\s*[1-7][^0-9]"
+    message: Weak password length requirement - use at least 8 characters
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [a07, password]
+
+  - id: no-account-lockout
+    pattern-regex: "failedAttempts|loginAttempts|attempts"
+    message: Failed login tracking found - ensure account lockout is implemented
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [a07, brute-force]
+
+  # ============================================
+  # A08: Software and Data Integrity Failures
+  # ============================================
+
+  - id: npm-install-no-lockfile
+    pattern-regex: "npm install(?!.*--frozen-lockfile)(?!.*--ci)"
+    message: npm install without lockfile integrity - use npm ci in CI/CD
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [a08, supply-chain]
+
+  - id: eval-json-parse
+    patterns:
+      - pattern: 'eval("(" + $DATA + ")")'
+      - pattern: 'eval($JSON_STRING)'
+    message: eval() for JSON parsing - use JSON.parse() instead
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [a08, deserialization]
+
+  - id: yaml-load-unsafe
+    patterns:
+      - pattern: 'yaml.load($DATA)'
+      - pattern: 'YAML.parse($DATA)'
+    message: YAML load may execute code - use yaml.safeLoad or safe schema
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [a08, deserialization]
+
+  - id: child-process-curl-pipe
+    pattern-regex: "exec\\(['\"]curl[^'\"]*\\|[^'\"]*['\"]"
+    message: curl piped to shell - download and verify before executing
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [a08, command-injection]
+
+  - id: script-integrity-missing
+    pattern-regex: "<script[^>]+src=['\"]https?://[^'\"]+['\"][^>]*>"
+    message: External script without integrity attribute - add SRI hash
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [a08, integrity]
+
+  # ============================================
+  # A10: Server-Side Request Forgery (SSRF)
+  # ============================================
+
+  - id: ssrf-url-constructor
+    patterns:
+      - pattern: 'new URL(req.body.$PARAM)'
+      - pattern: 'new URL(req.query.$PARAM)'
+      - pattern: 'new URL($USER_INPUT)'
+    message: URL constructed from user input - validate against SSRF
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [a10, ssrf]
+
+  - id: ssrf-got-request
+    patterns:
+      - pattern: 'got(req.body.$URL)'
+      - pattern: 'got(req.query.$URL)'
+      - pattern: 'got.get(req.body.$URL)'
+    message: got HTTP request with user URL - SSRF vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [a10, ssrf]
+
+  - id: ssrf-request-library
+    patterns:
+      - pattern: 'request(req.body.$URL)'
+      - pattern: 'request.get(req.query.$URL)'
+      - pattern: 'superagent.get(req.body.$URL)'
+    message: HTTP request with user-controlled URL - SSRF risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [a10, ssrf]
+
+  - id: ssrf-puppeteer-goto
+    patterns:
+      - pattern: 'page.goto(req.body.$URL)'
+      - pattern: 'page.goto(req.query.$URL)'
+      - pattern: 'browser.newPage().goto($USER_URL)'
+    message: Puppeteer goto with user URL - SSRF vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [a10, ssrf]
+
+  - id: ssrf-image-download
+    patterns:
+      - pattern: 'axios.get(req.body.imageUrl, {responseType: "arraybuffer"})'
+      - pattern: 'fetch(req.body.imageUrl)'
+      - pattern: 'download(req.body.$URL)'
+    message: Image/file download from user URL - validate against SSRF
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [a10, ssrf]
+
+  - id: ssrf-webhook-url
+    patterns:
+      - pattern: 'fetch(req.body.webhookUrl)'
+      - pattern: 'axios.post(req.body.callbackUrl, ...)'
+      - pattern: 'http.request(req.body.notifyUrl)'
+    message: Webhook/callback URL from user input - SSRF vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [a10, ssrf]
+
