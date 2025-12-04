@@ -2333,7 +2333,18 @@ rules:
       - pattern: 'res.send(req.body.$PARAM)'
       - pattern: 'res.send(req.params.$PARAM)'
       - pattern: 'res.send("<..." + req.query.$PARAM + "...")'
+      - pattern: 'res.send(`$X${req.query.$PARAM}$Y`)'
+      - pattern: 'res.send(`$X${req.body.$PARAM}$Y`)'
+      - pattern: 'res.send(`$X${req.params.$PARAM}$Y`)'
     message: Response with user input - XSS risk without encoding
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [xss]
+
+  - id: xss-res-send-template-literal-regex
+    pattern-regex: "res\\.send\\s*\\(\\s*`[^`]*\\$\\{[^}]*(req\\.(query|body|params)|user)"
+    message: res.send() with template literal containing user input - XSS vulnerability
     languages: [javascript, typescript]
     severity: ERROR
     metadata:
