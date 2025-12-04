@@ -18,13 +18,18 @@
 
 	async function loginWithGitHub() {
 		isLoggingIn = true;
-		const { error } = await supabase.auth.signInWithOAuth({
+		console.log('Starting GitHub OAuth...');
+		console.log('Supabase URL check:', supabase.supabaseUrl);
+
+		const { data, error } = await supabase.auth.signInWithOAuth({
 			provider: 'github',
 			options: {
-				redirectTo: `${window.location.origin}/auth/callback?next=/benchmark`,
-				skipBrowserRedirect: false
+				redirectTo: `${window.location.origin}/auth/callback?next=/benchmark`
 			}
 		});
+
+		console.log('OAuth result:', { data, error });
+
 		if (error) {
 			console.error('Login error:', error);
 			isLoggingIn = false;
