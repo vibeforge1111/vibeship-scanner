@@ -240,12 +240,24 @@
 		}
 	}
 
+	// Fallback repos in case API fails (CORS issues during local dev)
+	const FALLBACK_REPOS: BenchmarkRepo[] = [
+		{ repo: 'juice-shop/juice-shop', name: 'OWASP Juice Shop', language: 'javascript', vuln_count: 10 },
+		{ repo: 'OWASP/NodeGoat', name: 'OWASP NodeGoat', language: 'javascript', vuln_count: 9 },
+		{ repo: 'appsecco/dvna', name: 'Damn Vulnerable NodeJS Application', language: 'javascript', vuln_count: 7 },
+		{ repo: 'erev0s/VAmPI', name: 'Vulnerable API (VAmPI)', language: 'python', vuln_count: 7 },
+		{ repo: 'samoylenko/vulnerable-app-nodejs-express', name: 'Vulnerable Express App', language: 'javascript', vuln_count: 4 },
+		{ repo: 'digininja/DVWA', name: 'Damn Vulnerable Web Application', language: 'php', vuln_count: 7 },
+		{ repo: 'OWASP/crAPI', name: 'OWASP crAPI', language: 'python', vuln_count: 6 }
+	];
+
 	async function loadRepos() {
 		try {
 			console.log('[Benchmark] Fetching repos from API...');
 			const res = await fetch(`${SCANNER_URL}/benchmark/repos`);
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const data = await res.json();
-			repos = data.repos || [];
+			repos = data.repos || FALLBACK_REPOS;
 			console.log('[Benchmark] Got', repos.length, 'repos from API');
 
 			// Track how many we're preserving vs adding new
@@ -283,8 +295,29 @@
 			results = new Map(results);
 			updateOverallCoverage();
 		} catch (e) {
-			console.error('[Benchmark] Failed to load repos:', e);
-			error = 'Failed to load benchmark repos';
+			console.error('[Benchmark] Failed to load repos from API, using fallback:', e);
+			repos = FALLBACK_REPOS;
+
+			// Initialize results for fallback repos
+			repos.forEach(repo => {
+				if (!results.has(repo.repo)) {
+					results.set(repo.repo, {
+						repo: repo.repo,
+						name: repo.name,
+						language: repo.language,
+						status: 'pending',
+						coverage: 0,
+						detected: 0,
+						total: repo.vuln_count,
+						findingsCount: 0,
+						detected_vulns: [],
+						missed_vulns: [],
+						scanProgress: 0
+					});
+				}
+			});
+			results = new Map(results);
+			error = null; // Clear error since we have fallback
 		}
 	}
 
@@ -343,11 +376,11 @@
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
 
-			const res = await fetch(`${SCANNER_URL}/benchmark/scan-single`, {
+			// Use local proxy to avoid CORS issues
+			const res = await fetch('/api/benchmark/scan', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
-					'X-Benchmark-Key': BENCHMARK_SECRET
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({ repo: repoName }),
 				signal: controller.signal
@@ -913,11 +946,14 @@
 		</div>
 
 		<!-- Completed Reports Section -->
-		{@const completedRepos = repos.filter(r => {
+		{#if repos.filter(r => {
 			const res = results.get(r.repo);
 			return res?.status === 'complete' && res.findingsCount > 0;
-		})}
-		{#if completedRepos.length > 0}
+		}).length > 0}
+			{@const completedRepos = repos.filter(r => {
+				const res = results.get(r.repo);
+				return res?.status === 'complete' && res.findingsCount > 0;
+			})}
 			<div class="reports-section">
 				<h2>Completed Reports</h2>
 				<p class="reports-subtitle">Click any report to view detailed findings</p>

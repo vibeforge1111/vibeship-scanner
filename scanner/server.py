@@ -19,7 +19,7 @@ from scan import (
 )
 
 app = Flask(__name__)
-CORS(app, origins=['https://vibeship.co', 'https://www.vibeship.co', 'http://localhost:5173', 'http://localhost:3000'])
+CORS(app, origins=['https://vibeship.co', 'https://www.vibeship.co', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:3000'])
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
