@@ -22,6 +22,8 @@
 	let error = $state<string | null>(null);
 	let repoUrl = $state<string | null>(null);
 	let rescanning = $state(false);
+	let scanDuration = $state<number | null>(null);
+	let completedAt = $state<string | null>(null);
 	let channel: RealtimeChannel | null = null;
 
 	let displayScore = $state(0);
@@ -71,6 +73,22 @@
 	function getBadgeHtml(): string {
 		const grade = results?.grade || 'F';
 		return `<a href="${getScanUrl()}"><img src="https://img.shields.io/badge/vibeship-${grade}-${getGradeColor(grade)}" alt="Vibeship Security Score"></a>`;
+	}
+
+	function formatDuration(ms: number | null): string {
+		if (!ms) return '';
+		if (ms < 1000) return `${ms}ms`;
+		const seconds = Math.floor(ms / 1000);
+		if (seconds < 60) return `${seconds}s`;
+		const minutes = Math.floor(seconds / 60);
+		const remainingSeconds = seconds % 60;
+		return `${minutes}m ${remainingSeconds}s`;
+	}
+
+	function formatCompletedAt(dateStr: string | null): string {
+		if (!dateStr) return '';
+		const date = new Date(dateStr);
+		return date.toLocaleString();
 	}
 
 	function isUnhelpfulSnippet(code: string): boolean {
@@ -333,6 +351,8 @@
 					stack: data.detected_stack,
 					findings: data.findings || []
 				};
+				scanDuration = data.duration_ms;
+				completedAt = data.completed_at;
 			} else if (data.status === 'failed') {
 				error = data.error || 'Scan failed';
 			}
@@ -448,6 +468,8 @@
 							stack: data.detected_stack,
 							findings: data.findings || []
 						};
+						scanDuration = data.duration_ms;
+						completedAt = data.completed_at;
 						// Track scan completion
 						trackScanCompleted(repoUrl || '', {
 							totalFindings: data.findings?.length || 0,
@@ -813,6 +835,24 @@
 							</svg>
 							{repoUrl.replace('https://github.com/', '')}
 						</a>
+					{/if}
+					{#if scanDuration || completedAt}
+						<div class="scan-meta">
+							{#if scanDuration}
+								<span class="scan-duration">
+									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<circle cx="12" cy="12" r="10"/>
+										<polyline points="12 6 12 12 16 14"/>
+									</svg>
+									{formatDuration(scanDuration)}
+								</span>
+							{/if}
+							{#if completedAt}
+								<span class="scan-completed">
+									{formatCompletedAt(completedAt)}
+								</span>
+							{/if}
+						</div>
 					{/if}
 					<h2>Security Summary</h2>
 					<div class="summary-counts">
@@ -1375,6 +1415,33 @@
 
 	.repo-link svg {
 		flex-shrink: 0;
+	}
+
+	.scan-meta {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin-bottom: 1rem;
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+	}
+
+	.scan-duration {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.3rem 0.6rem;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+	}
+
+	.scan-duration svg {
+		opacity: 0.7;
+	}
+
+	.scan-completed {
+		opacity: 0.7;
 	}
 
 	.summary-section h2 {
