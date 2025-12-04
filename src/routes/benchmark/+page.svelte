@@ -898,12 +898,12 @@
 									Scan
 								{/if}
 							</button>
-							{#if result?.status === 'complete' && result.findings && result.findings.length > 0}
+							{#if result?.status === 'complete' && (result.findingsCount > 0 || (result.findings && result.findings.length > 0))}
 								<button
 									class="btn btn-sm btn-view"
 									onclick={() => selectedRepo = repo.repo}
 								>
-									View
+									Report
 								</button>
 							{/if}
 						</div>
@@ -911,6 +911,55 @@
 				{/each}
 			</div>
 		</div>
+
+		<!-- Completed Reports Section -->
+		{@const completedRepos = repos.filter(r => {
+			const res = results.get(r.repo);
+			return res?.status === 'complete' && res.findingsCount > 0;
+		})}
+		{#if completedRepos.length > 0}
+			<div class="reports-section">
+				<h2>Completed Reports</h2>
+				<p class="reports-subtitle">Click any report to view detailed findings</p>
+				<div class="reports-grid">
+					{#each completedRepos as repo}
+						{@const result = results.get(repo.repo)}
+						{#if result}
+							<button class="report-card" onclick={() => selectedRepo = repo.repo}>
+								<div class="report-header">
+									<span class="report-icon">{getLanguageIcon(repo.language)}</span>
+									<span class="report-name">{result.name}</span>
+								</div>
+								<div class="report-stats">
+									<div class="report-score {getGradeClass(getGradeFromScore(result.score || 0))}">
+										<span class="score-val">{result.score || 0}</span>
+										<span class="score-max">/100</span>
+									</div>
+									<div class="report-counts">
+										{#if result.finding_counts?.critical}
+											<span class="count-badge critical">{result.finding_counts.critical}C</span>
+										{/if}
+										{#if result.finding_counts?.high}
+											<span class="count-badge high">{result.finding_counts.high}H</span>
+										{/if}
+										{#if result.finding_counts?.medium}
+											<span class="count-badge medium">{result.finding_counts.medium}M</span>
+										{/if}
+										{#if result.finding_counts?.low}
+											<span class="count-badge low">{result.finding_counts.low}L</span>
+										{/if}
+									</div>
+								</div>
+								<div class="report-footer">
+									<span class="report-findings">{result.findingsCount} findings</span>
+									<span class="report-coverage {getCoverageClass(result.coverage)}">{result.coverage.toFixed(0)}% coverage</span>
+								</div>
+							</button>
+						{/if}
+					{/each}
+				</div>
+			</div>
+		{/if}
 
 		{#if history.length > 0}
 			<div class="history-section">
@@ -1435,6 +1484,132 @@
 	.coverage-good { color: var(--blue, #3b82f6); }
 	.coverage-fair { color: var(--orange, #f59e0b); }
 	.coverage-poor { color: var(--red, #ff6b6b); }
+
+	/* Reports Section */
+	.reports-section {
+		margin-bottom: 2rem;
+	}
+
+	.reports-section h2 {
+		font-family: 'Instrument Serif', serif;
+		font-size: 1.5rem;
+		font-weight: 400;
+		margin-bottom: 0.25rem;
+	}
+
+	.reports-subtitle {
+		color: var(--text-secondary, #888);
+		font-size: 0.9rem;
+		margin-bottom: 1rem;
+	}
+
+	.reports-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		gap: 1rem;
+	}
+
+	.report-card {
+		background: var(--bg-secondary, #111);
+		border: 1px solid var(--border, #333);
+		border-radius: 8px;
+		padding: 1.25rem;
+		cursor: pointer;
+		transition: all 0.2s;
+		text-align: left;
+		width: 100%;
+	}
+
+	.report-card:hover {
+		border-color: var(--purple, #9d8cff);
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	}
+
+	.report-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.report-icon {
+		font-size: 1.25rem;
+	}
+
+	.report-name {
+		font-weight: 500;
+		font-size: 1rem;
+		color: var(--text-primary, #fff);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.report-stats {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1rem;
+	}
+
+	.report-score {
+		display: flex;
+		align-items: baseline;
+		gap: 0.125rem;
+	}
+
+	.report-score .score-val {
+		font-family: 'Instrument Serif', serif;
+		font-size: 2rem;
+		line-height: 1;
+	}
+
+	.report-score .score-max {
+		font-size: 0.8rem;
+		color: var(--text-tertiary, #666);
+	}
+
+	.report-counts {
+		display: flex;
+		gap: 0.375rem;
+	}
+
+	.count-badge {
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.7rem;
+		font-weight: 600;
+	}
+
+	.count-badge.critical {
+		background: rgba(255, 77, 77, 0.2);
+		color: #ff4d4d;
+	}
+
+	.count-badge.high {
+		background: rgba(255, 107, 107, 0.2);
+		color: #ff6b6b;
+	}
+
+	.count-badge.medium {
+		background: rgba(255, 176, 32, 0.2);
+		color: #ffb020;
+	}
+
+	.count-badge.low {
+		background: rgba(59, 130, 246, 0.2);
+		color: #3b82f6;
+	}
+
+	.report-footer {
+		display: flex;
+		justify-content: space-between;
+		font-size: 0.8rem;
+		color: var(--text-secondary, #888);
+		padding-top: 0.75rem;
+		border-top: 1px solid var(--border, #333);
+	}
 
 	.progress-section {
 		margin-bottom: 2rem;
