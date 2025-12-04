@@ -899,12 +899,12 @@
 								{/if}
 							</button>
 							{#if result?.status === 'complete' && (result.findingsCount > 0 || (result.findings && result.findings.length > 0))}
-								<button
+								<a
 									class="btn btn-sm btn-view"
-									onclick={() => selectedRepo = repo.repo}
+									href="/benchmark/report/{encodeURIComponent(repo.repo)}"
 								>
 									Report
-								</button>
+								</a>
 							{/if}
 						</div>
 					</div>
@@ -925,7 +925,7 @@
 					{#each completedRepos as repo}
 						{@const result = results.get(repo.repo)}
 						{#if result}
-							<button class="report-card" onclick={() => selectedRepo = repo.repo}>
+							<a class="report-card" href="/benchmark/report/{encodeURIComponent(repo.repo)}">
 								<div class="report-header">
 									<span class="report-icon">{getLanguageIcon(repo.language)}</span>
 									<span class="report-name">{result.name}</span>
@@ -954,7 +954,7 @@
 									<span class="report-findings">{result.findingsCount} findings</span>
 									<span class="report-coverage {getCoverageClass(result.coverage)}">{result.coverage.toFixed(0)}% coverage</span>
 								</div>
-							</button>
+							</a>
 						{/if}
 					{/each}
 				</div>
@@ -1510,6 +1510,7 @@
 	}
 
 	.report-card {
+		display: block;
 		background: var(--bg-secondary, #111);
 		border: 1px solid var(--border, #333);
 		border-radius: 8px;
@@ -1517,7 +1518,8 @@
 		cursor: pointer;
 		transition: all 0.2s;
 		text-align: left;
-		width: 100%;
+		text-decoration: none;
+		color: inherit;
 	}
 
 	.report-card:hover {
