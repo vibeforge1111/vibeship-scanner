@@ -10,6 +10,7 @@ import tempfile
 import threading
 from datetime import datetime
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from supabase import create_client, Client
 
 from scan import (
@@ -18,6 +19,7 @@ from scan import (
 )
 
 app = Flask(__name__)
+CORS(app, origins=['https://vibeship.co', 'https://www.vibeship.co', 'http://localhost:5173', 'http://localhost:3000'])
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
