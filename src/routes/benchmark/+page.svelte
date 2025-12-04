@@ -199,14 +199,19 @@
 			savedAt: new Date().toISOString()
 		};
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+		console.log('[Benchmark] Saved to storage:', results.size, 'results');
 	}
 
-	function loadFromStorage() {
+	function loadFromStorage(): boolean {
 		try {
 			const stored = localStorage.getItem(STORAGE_KEY);
-			if (!stored) return false;
+			if (!stored) {
+				console.log('[Benchmark] No stored data found');
+				return false;
+			}
 
 			const data = JSON.parse(stored);
+			console.log('[Benchmark] Loading from storage:', data.savedAt);
 
 			// Restore results
 			if (data.results && Array.isArray(data.results)) {
@@ -215,28 +220,35 @@
 					restoredResults.set(r.repo, r);
 				});
 				results = restoredResults;
+				console.log('[Benchmark] Restored', results.size, 'repo results');
 			}
 
 			// Restore other state
 			if (data.history) history = data.history;
-			if (data.iteration) iteration = data.iteration;
-			if (data.rulesAdded) rulesAdded = data.rulesAdded;
-			if (data.overallCoverage) overallCoverage = data.overallCoverage;
-			if (data.totalDetected) totalDetected = data.totalDetected;
-			if (data.totalKnown) totalKnown = data.totalKnown;
+			if (typeof data.iteration === 'number') iteration = data.iteration;
+			if (typeof data.rulesAdded === 'number') rulesAdded = data.rulesAdded;
+			if (typeof data.overallCoverage === 'number') overallCoverage = data.overallCoverage;
+			if (typeof data.totalDetected === 'number') totalDetected = data.totalDetected;
+			if (typeof data.totalKnown === 'number') totalKnown = data.totalKnown;
 
 			return true;
 		} catch (e) {
-			console.error('Failed to load from storage:', e);
+			console.error('[Benchmark] Failed to load from storage:', e);
 			return false;
 		}
 	}
 
 	async function loadRepos() {
 		try {
+			console.log('[Benchmark] Fetching repos from API...');
 			const res = await fetch(`${SCANNER_URL}/benchmark/repos`);
 			const data = await res.json();
 			repos = data.repos || [];
+			console.log('[Benchmark] Got', repos.length, 'repos from API');
+
+			// Track how many we're preserving vs adding new
+			let preserved = 0;
+			let added = 0;
 
 			// Only add repos that don't exist yet (preserve stored results)
 			repos.forEach(repo => {
@@ -254,17 +266,22 @@
 						missed_vulns: [],
 						scanProgress: 0
 					});
+					added++;
 				} else {
 					// Update name/language from API but keep scan results
 					const existing = results.get(repo.repo)!;
 					existing.name = repo.name;
 					existing.language = repo.language;
+					existing.total = repo.vuln_count; // Update total from API
+					preserved++;
 				}
 			});
+
+			console.log('[Benchmark] Preserved', preserved, 'existing results, added', added, 'new repos');
 			results = new Map(results);
 			updateOverallCoverage();
 		} catch (e) {
-			console.error('Failed to load repos:', e);
+			console.error('[Benchmark] Failed to load repos:', e);
 			error = 'Failed to load benchmark repos';
 		}
 	}
@@ -634,10 +651,12 @@
 		return icons[lang.toLowerCase()] || '📄';
 	}
 
-	onMount(() => {
+	onMount(async () => {
 		// Load saved data first, then fetch repos
-		loadFromStorage();
-		loadRepos();
+		const hadStoredData = loadFromStorage();
+		console.log('[Benchmark] onMount - had stored data:', hadStoredData, 'results size:', results.size);
+		await loadRepos();
+		console.log('[Benchmark] onMount complete - final results size:', results.size);
 	});
 
 	onDestroy(() => {
