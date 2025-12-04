@@ -3,23 +3,33 @@
 
 	const SCANNER_URL = 'https://scanner-empty-field-5676.fly.dev';
 	const BENCHMARK_SECRET = 'vibeship-benchmark-2024';
-	const ACCESS_PASSWORD = 'magichappens';
+	// SHA-256 hash of the password (not the password itself)
+	const PASSWORD_HASH = '69b86692b84806ffc45e9d9b5fa44320';
 
 	let isAuthenticated = $state(false);
 	let password = $state('');
 	let loginError = $state('');
 
-	onMount(() => {
-		// Check if already authenticated via localStorage
+	// Simple hash function
+	async function hashPassword(pwd: string): Promise<string> {
+		const encoder = new TextEncoder();
+		const data = encoder.encode(pwd);
+		const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+		const hashArray = Array.from(new Uint8Array(hashBuffer));
+		return hashArray.slice(0, 16).map(b => b.toString(16).padStart(2, '0')).join('');
+	}
+
+	onMount(async () => {
 		const stored = localStorage.getItem('benchmark_auth');
-		if (stored === ACCESS_PASSWORD) {
+		if (stored === PASSWORD_HASH) {
 			isAuthenticated = true;
 		}
 	});
 
-	function login() {
-		if (password === ACCESS_PASSWORD) {
-			localStorage.setItem('benchmark_auth', password);
+	async function login() {
+		const hash = await hashPassword(password);
+		if (hash === PASSWORD_HASH) {
+			localStorage.setItem('benchmark_auth', hash);
 			isAuthenticated = true;
 			loginError = '';
 		} else {
