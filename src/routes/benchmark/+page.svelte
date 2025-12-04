@@ -1,8 +1,39 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { supabase } from '$lib/supabase';
 
 	const SCANNER_URL = 'https://scanner-empty-field-5676.fly.dev';
 	const BENCHMARK_SECRET = 'vibeship-benchmark-2024';
+
+	type PageData = {
+		authenticated: boolean;
+		user: { username: string; avatar: string } | null;
+		denied?: boolean;
+		username?: string;
+	};
+
+	let { data }: { data: PageData } = $props();
+
+	let isLoggingIn = $state(false);
+
+	async function loginWithGitHub() {
+		isLoggingIn = true;
+		const { error } = await supabase.auth.signInWithOAuth({
+			provider: 'github',
+			options: {
+				redirectTo: `${window.location.origin}/auth/callback?next=/benchmark`
+			}
+		});
+		if (error) {
+			console.error('Login error:', error);
+			isLoggingIn = false;
+		}
+	}
+
+	async function logout() {
+		await supabase.auth.signOut();
+		window.location.reload();
+	}
 
 	type BenchmarkRepo = {
 		repo: string;
@@ -290,11 +321,49 @@
 	<title>Benchmark Dashboard | Vibeship Scanner</title>
 </svelte:head>
 
-<div class="benchmark-page">
-	<div class="benchmark-header">
-		<div class="header-content">
-			<h1>Benchmark Dashboard</h1>
-			<p class="header-subtitle">Testing scanner accuracy against known vulnerable repositories</p>
+{#if !data.authenticated}
+	<div class="login-gate">
+		<div class="login-card">
+			<div class="login-icon">
+				<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+					<path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+				</svg>
+			</div>
+			<h2>Admin Access Required</h2>
+			<p class="login-description">This benchmark dashboard is restricted to authorized team members only.</p>
+			{#if data.denied}
+				<div class="denied-msg">
+					<span class="denied-icon">⚠️</span>
+					Access denied for @{data.username}. Contact admin for access.
+				</div>
+			{/if}
+			<button class="btn btn-github" onclick={loginWithGitHub} disabled={isLoggingIn}>
+				{#if isLoggingIn}
+					<span class="spinner"></span>
+					Connecting...
+				{:else}
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+						<path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+					</svg>
+					Sign in with GitHub
+				{/if}
+			</button>
+		</div>
+	</div>
+{:else}
+	<div class="benchmark-page">
+		<div class="benchmark-header">
+			<div class="header-content">
+				<h1>Benchmark Dashboard</h1>
+				<p class="header-subtitle">Testing scanner accuracy against known vulnerable repositories</p>
+			</div>
+			<div class="user-info">
+				{#if data.user?.avatar}
+					<img src={data.user.avatar} alt="" class="user-avatar" />
+				{/if}
+				<span class="user-name">@{data.user?.username}</span>
+				<button class="btn btn-small btn-ghost" onclick={logout}>Logout</button>
+			</div>
 		</div>
 		<div class="header-actions">
 			{#if isRunning}
@@ -467,9 +536,136 @@
 			</div>
 		</div>
 	{/if}
-</div>
+	</div>
+{/if}
 
 <style>
+	.login-gate {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: calc(100vh - 200px);
+		padding: 2rem;
+	}
+
+	.login-card {
+		background: var(--card-bg, #1a1a2e);
+		border: 1px solid var(--border-dim, #2a2a4a);
+		border-radius: 16px;
+		padding: 3rem;
+		text-align: center;
+		max-width: 400px;
+		width: 100%;
+	}
+
+	.login-icon {
+		color: var(--green, #00ff88);
+		margin-bottom: 1.5rem;
+	}
+
+	.login-card h2 {
+		color: var(--text, #fff);
+		font-size: 1.5rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.login-description {
+		color: var(--text-dim, #888);
+		margin-bottom: 2rem;
+		line-height: 1.5;
+	}
+
+	.denied-msg {
+		background: rgba(255, 100, 100, 0.1);
+		border: 1px solid rgba(255, 100, 100, 0.3);
+		border-radius: 8px;
+		padding: 0.75rem 1rem;
+		color: #ff6b6b;
+		margin-bottom: 1.5rem;
+		font-size: 0.9rem;
+	}
+
+	.denied-icon {
+		margin-right: 0.5rem;
+	}
+
+	.btn-github {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.75rem;
+		background: #24292e;
+		color: #fff;
+		border: 1px solid #444;
+		padding: 0.875rem 1.5rem;
+		border-radius: 8px;
+		font-size: 1rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s;
+		width: 100%;
+		justify-content: center;
+	}
+
+	.btn-github:hover:not(:disabled) {
+		background: #2f363d;
+		border-color: #666;
+	}
+
+	.btn-github:disabled {
+		opacity: 0.7;
+		cursor: not-allowed;
+	}
+
+	.spinner {
+		width: 18px;
+		height: 18px;
+		border: 2px solid transparent;
+		border-top-color: #fff;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+
+	.user-info {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		background: var(--card-bg, #1a1a2e);
+		border: 1px solid var(--border-dim, #2a2a4a);
+		border-radius: 8px;
+		padding: 0.5rem 1rem;
+	}
+
+	.user-avatar {
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+	}
+
+	.user-name {
+		color: var(--text, #fff);
+		font-size: 0.9rem;
+	}
+
+	.btn-small {
+		padding: 0.375rem 0.75rem;
+		font-size: 0.8rem;
+	}
+
+	.btn-ghost {
+		background: transparent;
+		border: 1px solid var(--border-dim, #2a2a4a);
+		color: var(--text-dim, #888);
+	}
+
+	.btn-ghost:hover {
+		border-color: var(--text-dim, #888);
+		color: var(--text, #fff);
+	}
+
 	.benchmark-page {
 		padding: 8rem 2rem 4rem;
 		max-width: 1200px;
