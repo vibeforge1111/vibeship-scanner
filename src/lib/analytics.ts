@@ -8,8 +8,9 @@ export function initAnalytics() {
   if (initialized || typeof window === 'undefined') return;
 
   amplitude.init(AMPLITUDE_API_KEY, {
+    identityStorage: 'localStorage',
     defaultTracking: {
-      sessions: true,
+      sessions: false,
       pageViews: true,
       formInteractions: false,
       fileDownloads: false

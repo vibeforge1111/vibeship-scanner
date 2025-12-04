@@ -4,7 +4,7 @@
 <div class="legal-page">
 	<div class="legal-content">
 		<h1>Privacy Policy</h1>
-		<p class="legal-updated">Last updated: December 3, 2025</p>
+		<p class="legal-updated">Last updated: December 4, 2025</p>
 
 		<section>
 			<h2>1. Introduction</h2>
@@ -89,8 +89,16 @@
 		</section>
 
 		<section>
-			<h2>8. Cookies and Tracking</h2>
-			<p>We use local storage to remember your recent scans. We may use analytics services that set cookies to help us understand how users interact with the Service.</p>
+			<h2>8. Analytics and Tracking</h2>
+			<p><strong>We do not use cookies.</strong> We use Amplitude for anonymous analytics, which stores a device identifier in your browser's local storage (not cookies). This helps us understand how users interact with the Service.</p>
+			<p>Data collected by Amplitude includes:</p>
+			<ul>
+				<li>Page views</li>
+				<li>Scan events (started, completed, failed)</li>
+				<li>Repository URLs scanned</li>
+				<li>Aggregate finding counts (not specific vulnerability details)</li>
+			</ul>
+			<p>This data is anonymous and cannot identify you personally. For more information, see <a href="https://amplitude.com/privacy" target="_blank" rel="noopener noreferrer">Amplitude's Privacy Policy</a>.</p>
 		</section>
 
 		<section>
