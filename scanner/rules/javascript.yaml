@@ -1817,7 +1817,7 @@ rules:
       tags: [xss, redirect]
 
   - id: xss-redirect-url-param-concat
-    pattern-regex: 'res\.redirect\s*\(\s*["\'][^"\']*\?\w+=["\']?\s*\+\s*\w+'
+    pattern-regex: "res\\.redirect\\s*\\(\\s*[\"'][^\"']*\\?\\w+=[\"']?\\s*\\+\\s*\\w+"
     message: Redirect URL with concatenated parameter - XSS/injection risk
     languages: [javascript, typescript]
     severity: WARNING
