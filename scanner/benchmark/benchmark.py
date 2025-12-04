@@ -86,23 +86,36 @@ class BenchmarkRunner:
 
     def match_finding_to_vuln(self, finding: Dict, vuln: Dict) -> bool:
         """Check if a finding matches a known vulnerability"""
+        # Get finding file as string
+        finding_file = finding.get("location", "") or finding.get("file", "")
+        if isinstance(finding_file, dict):
+            finding_file = str(finding_file)
+        finding_file = str(finding_file).lower()
+
         # Check file pattern match
         if vuln.get("file"):
-            finding_file = finding.get("location", "") or finding.get("file", "")
-            if vuln["file"].lower() not in finding_file.lower():
-                # File doesn't match, but check if pattern matches anyway
-                pass
+            vuln_file = vuln["file"].lower()
+            # File match is optional - if specified, check it
+            file_matches = vuln_file in finding_file
+        else:
+            file_matches = True  # No file constraint
 
         # Check pattern match in message or location
         pattern = vuln.get("pattern", "")
         if pattern:
             regex = re.compile(pattern, re.IGNORECASE)
-            message = finding.get("message", "")
-            location = finding.get("location", "")
-            rule_id = finding.get("rule_id", "") or finding.get("id", "")
+            message = str(finding.get("message", ""))
+            location = str(finding.get("location", ""))
+            rule_id = str(finding.get("rule_id", "") or finding.get("id", ""))
 
-            if regex.search(message) or regex.search(location) or regex.search(rule_id):
-                return True
+            pattern_matches = bool(
+                regex.search(message) or
+                regex.search(location) or
+                regex.search(rule_id)
+            )
+
+            # Return true if pattern matches (file match is optional bonus)
+            return pattern_matches
 
         return False
 
