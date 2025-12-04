@@ -364,8 +364,7 @@
 				<span class="user-name">@{data.user?.username}</span>
 				<button class="btn btn-small btn-ghost" onclick={logout}>Logout</button>
 			</div>
-		</div>
-		<div class="header-actions">
+			<div class="header-actions">
 			{#if isRunning}
 				<button class="btn btn-stop" onclick={stopBenchmark}>
 					<span class="btn-icon">⏹</span>
@@ -536,7 +535,7 @@
 			</div>
 		</div>
 	{/if}
-	</div>
+</div>
 {/if}
 
 <style>
