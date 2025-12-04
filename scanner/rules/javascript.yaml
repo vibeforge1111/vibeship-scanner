@@ -2174,6 +2174,49 @@ rules:
     metadata:
       tags: [sqli]
 
+  - id: sequelize-query-template-literal
+    pattern-regex: "sequelize\\.query\\s*\\(\\s*`[^`]*\\$\\{[^}]*req\\."
+    message: Sequelize query with template literal user input - SQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [sqli]
+
+  - id: sql-template-literal-injection
+    pattern-regex: "`SELECT[^`]*\\$\\{[^}]*(req\\.|user|input|param)"
+    message: SQL query with template literal interpolation - SQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [sqli]
+
+  - id: sql-string-concat-injection
+    pattern-regex: "['\"]SELECT[^'\"]*['\"]\\s*\\+\\s*(req\\.|user|input)"
+    message: SQL query with string concatenation - SQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [sqli]
+
+  - id: sql-where-interpolation
+    pattern-regex: "WHERE[^`'\"]*=\\s*['\"]?\\s*\\$\\{[^}]*(req\\.|user)"
+    message: SQL WHERE clause with user interpolation - SQL injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [sqli]
+
+  - id: models-sequelize-query-unsafe
+    patterns:
+      - pattern: 'models.sequelize.query(`...$REQ...`)'
+      - pattern: 'models.sequelize.query(`...${req.body.$FIELD}...`)'
+      - pattern: 'models.sequelize.query(`...${req.query.$FIELD}...`)'
+    message: Sequelize query with interpolated user input - SQL injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [sqli]
+
   # ============================================
   # User Enumeration
   # ============================================
@@ -2650,4 +2693,88 @@ rules:
     severity: ERROR
     metadata:
       tags: [a10, ssrf]
+
+  # ============================================
+  # SQL Injection - Template Literals & Sequelize
+  # ============================================
+
+  - id: sequelize-query-template-literal
+    pattern-regex: "sequelize\\.query\\s*\\(\\s*`[^`]*\\$\\{"
+    message: Sequelize query with template literal interpolation - SQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, sql-injection]
+
+  - id: sql-template-literal-select
+    pattern-regex: "`SELECT[^`]*\\$\\{[^}]*(req\\.|user|input|param|body|query)"
+    message: SQL SELECT with template literal user interpolation - SQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, sql-injection]
+
+  - id: sql-template-literal-where
+    pattern-regex: "`[^`]*WHERE[^`]*\\$\\{[^}]*(req\\.|user|input|param|body|query)"
+    message: SQL WHERE clause with template literal interpolation - SQL injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, sql-injection]
+
+  - id: sql-template-literal-insert
+    pattern-regex: "`INSERT[^`]*VALUES[^`]*\\$\\{[^}]*(req\\.|user|input|param|body|query)"
+    message: SQL INSERT with template literal user interpolation - SQL injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, sql-injection]
+
+  - id: sql-template-literal-update
+    pattern-regex: "`UPDATE[^`]*SET[^`]*\\$\\{[^}]*(req\\.|user|input|param|body|query)"
+    message: SQL UPDATE with template literal user interpolation - SQL injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, sql-injection]
+
+  - id: sql-template-literal-delete
+    pattern-regex: "`DELETE[^`]*WHERE[^`]*\\$\\{[^}]*(req\\.|user|input|param|body|query)"
+    message: SQL DELETE with template literal user interpolation - SQL injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, sql-injection]
+
+  - id: sql-string-concat-injection
+    pattern-regex: "['\"]SELECT[^'\"]*['\"]\\s*\\+\\s*(req\\.|user|input|param)"
+    message: SQL query with string concatenation of user input - SQL injection
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, sql-injection]
+
+  - id: models-sequelize-raw-query
+    pattern-regex: "models\\.sequelize\\.query\\s*\\(\\s*`"
+    message: Sequelize raw query with template literal - use parameterized queries
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, sql-injection]
+
+  - id: sequelize-literal-user-input
+    pattern-regex: "Sequelize\\.literal\\s*\\(\\s*[`'\"][^`'\"]*\\$\\{[^}]*(req\\.|user)"
+    message: Sequelize.literal with user input - SQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, sql-injection]
+
+  - id: typeorm-query-template-literal
+    pattern-regex: "(createQueryBuilder|query)\\s*\\(\\s*`[^`]*\\$\\{"
+    message: TypeORM query with template literal - use parameterized queries
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, sql-injection]
 
