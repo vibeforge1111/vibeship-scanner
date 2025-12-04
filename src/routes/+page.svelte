@@ -19,10 +19,27 @@
 	const tools = ['Claude Code', 'Cursor', 'Windsurf', 'Replit', 'GPT', 'Gemini'];
 	let currentToolIndex = $state(0);
 
+	const placeholders = [
+		'your-startup/next-big-thing',
+		'awesome-dev/side-project',
+		'vibe-coder/ship-it-fast-and-secure',
+		'founder/mvp-v1',
+		'builder/always-be-building',
+		'dev/agentic-saas'
+	];
+	let currentPlaceholderIndex = $state(0);
+
 	$effect(() => {
 		const interval = setInterval(() => {
 			currentToolIndex = (currentToolIndex + 1) % tools.length;
 		}, 2000);
+		return () => clearInterval(interval);
+	});
+
+	$effect(() => {
+		const interval = setInterval(() => {
+			currentPlaceholderIndex = (currentPlaceholderIndex + 1) % placeholders.length;
+		}, 15000);
 		return () => clearInterval(interval);
 	});
 
@@ -36,13 +53,13 @@
 					.select('id, target_url, score, grade, status, created_at')
 					.in('id', ids)
 					.order('created_at', { ascending: false })
-					.limit(5);
+					.limit(10);
 				if (data) {
 					// Sort by the order in localStorage (most recent first)
 					const sortedData = ids
 						.map(id => data.find(scan => scan.id === id))
 						.filter((scan): scan is typeof data[0] => scan !== undefined)
-						.slice(0, 5);
+						.slice(0, 10);
 					recentScans = sortedData;
 				}
 			}
@@ -190,7 +207,7 @@
 				<input
 					type="text"
 					class="scan-input"
-					placeholder="username/repo or https://github.com/username/repo"
+					placeholder={placeholders[currentPlaceholderIndex]}
 					bind:value={repoUrl}
 					disabled={loading}
 				/>
@@ -231,7 +248,12 @@
 									<span class="recent-grade {getGradeClass(scan.grade)}">{scan.grade}</span>
 									<span class="recent-score">{scan.score}</span>
 								{:else if scan.status === 'scanning' || scan.status === 'queued'}
-									<span class="recent-status">Scanning...</span>
+									<span class="recent-scanning">
+										<span class="scan-pulse"></span>
+										Scanning
+									</span>
+								{:else if scan.status === 'failed'}
+									<span class="recent-failed">Failed</span>
 								{:else}
 									<span class="recent-status">{scan.status}</span>
 								{/if}
@@ -431,15 +453,18 @@
 		flex: 1;
 		padding: 1rem 0;
 		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.85rem;
+		font-size: 1rem;
 		border: none;
 		background: transparent;
 		color: var(--text-primary);
 		outline: none;
+		-webkit-appearance: none;
+		border-radius: 0;
 	}
 
 	.scan-input::placeholder {
 		color: var(--text-tertiary);
+		transition: opacity 0.3s ease;
 	}
 
 	.scan-btn {
@@ -684,6 +709,8 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+		min-width: 140px;
+		justify-content: flex-end;
 	}
 
 	.recent-grade {
@@ -706,6 +733,8 @@
 		font-family: 'JetBrains Mono', monospace;
 		font-size: 0.8rem;
 		color: var(--text-secondary);
+		min-width: 24px;
+		text-align: right;
 	}
 
 	.recent-status {
@@ -713,9 +742,45 @@
 		color: var(--text-tertiary);
 	}
 
+	.recent-scanning {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.75rem;
+		color: var(--green-dim);
+		font-family: 'JetBrains Mono', monospace;
+	}
+
+	.scan-pulse {
+		width: 8px;
+		height: 8px;
+		background: var(--green-dim);
+		border-radius: 50%;
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% {
+			opacity: 1;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 0.4;
+			transform: scale(0.8);
+		}
+	}
+
+	.recent-failed {
+		font-size: 0.75rem;
+		color: var(--red);
+		font-family: 'JetBrains Mono', monospace;
+	}
+
 	.recent-time {
 		font-size: 0.7rem;
 		color: var(--text-tertiary);
+		min-width: 50px;
+		text-align: right;
 	}
 
 	@media (max-width: 1024px) {
@@ -748,6 +813,8 @@
 
 		.scan-btn {
 			border-left: none;
+			padding: 1rem;
+			font-size: 1rem;
 		}
 
 		.how-grid {
@@ -758,6 +825,31 @@
 		.how,
 		.cta {
 			padding: 4rem 1.5rem;
+		}
+
+		.recent-list {
+			max-width: 100%;
+		}
+
+		.recent-item {
+			padding: 0.75rem;
+		}
+
+		.recent-name {
+			font-size: 0.75rem;
+			max-width: 150px;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.recent-meta {
+			min-width: auto;
+			gap: 0.5rem;
+		}
+
+		.recent-time {
+			display: none;
 		}
 	}
 </style>

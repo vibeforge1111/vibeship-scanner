@@ -187,6 +187,138 @@ def start_scan():
 
     return jsonify({'status': 'started', 'scanId': scan_id})
 
+
+# ============================================
+# BENCHMARK ENDPOINT (Hidden - requires secret key)
+# ============================================
+
+BENCHMARK_SECRET = os.environ.get('BENCHMARK_SECRET', 'vibeship-benchmark-2024')
+
+@app.route('/benchmark', methods=['POST'])
+def run_benchmark():
+    """
+    Run the benchmark suite against known vulnerable repos.
+    Requires secret key for access.
+
+    POST /benchmark
+    Headers: X-Benchmark-Key: <secret>
+    Body: { "repos": ["owner/repo", ...], "target_coverage": 0.90 }
+    """
+    # Check secret key
+    provided_key = request.headers.get('X-Benchmark-Key', '')
+    if provided_key != BENCHMARK_SECRET:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.json or {}
+    repos = data.get('repos')  # None means all repos
+    target_coverage = data.get('target_coverage', 0.90)
+
+    try:
+        # Import benchmark module
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'benchmark'))
+        from benchmark import BenchmarkRunner
+
+        runner = BenchmarkRunner(target_coverage=target_coverage)
+        results = runner.run_full_benchmark(repos=repos)
+
+        # Generate gap report
+        gap_report = runner.generate_gap_report(results)
+
+        return jsonify({
+            'status': 'complete',
+            'overall_coverage': results['overall_coverage'],
+            'total_detected': results['total_detected'],
+            'total_missed': results['total_missed'],
+            'target_coverage': target_coverage,
+            'target_met': results['overall_coverage'] >= target_coverage,
+            'repos': {
+                repo: {
+                    'coverage': data.get('coverage', 0),
+                    'detected': data.get('detected_count', 0),
+                    'missed': data.get('missed_count', 0),
+                    'gaps': [g['id'] for g in data.get('missed', [])]
+                }
+                for repo, data in results.get('repos', {}).items()
+                if 'error' not in data
+            },
+            'all_gaps': results.get('all_gaps', []),
+            'gap_report': gap_report
+        })
+
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
+
+@app.route('/benchmark/repos', methods=['GET'])
+def list_benchmark_repos():
+    """List all available benchmark repos (no auth required)"""
+    try:
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'benchmark'))
+        from known_vulns import KNOWN_VULNERABILITIES
+
+        repos = []
+        for repo_name, repo_data in KNOWN_VULNERABILITIES.items():
+            repos.append({
+                'repo': repo_name,
+                'name': repo_data.get('name', repo_name),
+                'language': repo_data.get('language', 'unknown'),
+                'vuln_count': len(repo_data.get('vulns', []))
+            })
+
+        return jsonify({'repos': repos})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/benchmark/scan-single', methods=['POST'])
+def benchmark_single():
+    """
+    Benchmark a single repo and return detailed results.
+    Requires secret key for access.
+
+    POST /benchmark/scan-single
+    Headers: X-Benchmark-Key: <secret>
+    Body: { "repo": "owner/repo" }
+    """
+    # Check secret key
+    provided_key = request.headers.get('X-Benchmark-Key', '')
+    if provided_key != BENCHMARK_SECRET:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.json or {}
+    repo = data.get('repo')
+
+    if not repo:
+        return jsonify({'error': 'Missing repo parameter'}), 400
+
+    try:
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'benchmark'))
+        from benchmark import BenchmarkRunner
+
+        runner = BenchmarkRunner()
+        result = runner.run_single_repo(repo)
+
+        return jsonify({
+            'status': 'complete',
+            'result': result
+        })
+
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)

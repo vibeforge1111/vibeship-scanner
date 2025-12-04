@@ -25,6 +25,7 @@ RUN pip install -r requirements.txt
 COPY scan.py /scanner/scan.py
 COPY server.py /scanner/server.py
 COPY rules/ /scanner/rules/
+COPY benchmark/ /scanner/benchmark/
 COPY gitleaks.toml /scanner/gitleaks.toml
 
 ENV PYTHONUNBUFFERED=1
