@@ -659,6 +659,13 @@
 		return 'coverage-poor';
 	}
 
+	function getRulesetStatus(coverage: number): { text: string; class: string; icon: string } {
+		if (coverage >= 100) return { text: 'All Covered', class: 'ruleset-complete', icon: '✓' };
+		if (coverage >= 90) return { text: 'Nearly Complete', class: 'ruleset-good', icon: '◐' };
+		if (coverage >= 50) return { text: 'Needs Work', class: 'ruleset-partial', icon: '◔' };
+		return { text: 'Needs Rules', class: 'ruleset-missing', icon: '○' };
+	}
+
 	function getStatusIcon(status: string): string {
 		switch (status) {
 			case 'complete': return '✓';
@@ -799,21 +806,20 @@
 		{/if}
 
 		<div class="stats-grid">
-			<div class="stat-card stat-coverage">
-				<div class="stat-label">Overall Coverage</div>
-				<div class="stat-value {getCoverageClass(overallCoverage)}">
-					{overallCoverage.toFixed(1)}%
+			<div class="stat-card stat-ruleset">
+				<div class="stat-label">Ruleset Status</div>
+				<div class="stat-value {getRulesetStatus(overallCoverage).class}">
+					<span class="ruleset-icon">{getRulesetStatus(overallCoverage).icon}</span> {getRulesetStatus(overallCoverage).text}
 				</div>
-				<div class="stat-target">Target: {targetCoverage}%</div>
+				<div class="stat-detail">{totalDetected}/{totalKnown} vuln types covered</div>
 				<div class="coverage-bar">
 					<div class="coverage-fill {getCoverageClass(overallCoverage)}" style="width: {overallCoverage}%"></div>
-					<div class="coverage-target" style="left: {targetCoverage}%"></div>
 				</div>
 			</div>
 			<div class="stat-card">
-				<div class="stat-label">Vulns Detected</div>
-				<div class="stat-value">{totalDetected}/{totalKnown}</div>
-				<div class="stat-detail">{totalKnown - totalDetected} gaps remaining</div>
+				<div class="stat-label">Detection Gaps</div>
+				<div class="stat-value">{totalKnown - totalDetected}</div>
+				<div class="stat-detail">vuln types need new rules</div>
 			</div>
 			<div class="stat-card">
 				<div class="stat-label">Active Scans</div>
@@ -850,7 +856,7 @@
 					<span class="col-status">Status</span>
 					<span class="col-name">Repository</span>
 					<span class="col-lang">Language</span>
-					<span class="col-coverage">Coverage</span>
+					<span class="col-ruleset">Ruleset</span>
 					<span class="col-detected">Detected</span>
 					<span class="col-findings">Findings</span>
 					<span class="col-gaps">Gaps</span>
@@ -881,15 +887,18 @@
 						<div class="col-lang">
 							<span class="lang-badge">{getLanguageIcon(repo.language)} {repo.language}</span>
 						</div>
-						<div class="col-coverage">
+						<div class="col-ruleset">
 							{#if result?.status === 'scanning'}
 								<span class="scanning-dots">
 									<span class="dot"></span><span class="dot"></span><span class="dot"></span>
 								</span>
-							{:else}
-								<span class="coverage-value {getCoverageClass(result?.coverage || 0)}">
-									{(result?.coverage || 0).toFixed(0)}%
+							{:else if result?.status === 'complete'}
+								{@const status = getRulesetStatus(result?.coverage || 0)}
+								<span class="ruleset-badge {status.class}" title="{(result?.coverage || 0).toFixed(0)}% of known vulns detected">
+									{status.icon} {status.text}
 								</span>
+							{:else}
+								<span class="ruleset-badge ruleset-pending">—</span>
 							{/if}
 						</div>
 						<div class="col-detected">
@@ -1521,6 +1530,36 @@
 	.coverage-fair { color: var(--orange, #f59e0b); }
 	.coverage-poor { color: var(--red, #ff6b6b); }
 
+	/* Ruleset Status Styles */
+	.ruleset-complete { color: var(--green, #00c49a); }
+	.ruleset-good { color: var(--blue, #3b82f6); }
+	.ruleset-partial { color: var(--orange, #f59e0b); }
+	.ruleset-missing { color: var(--red, #ff6b6b); }
+	.ruleset-pending { color: var(--text-secondary, #888); }
+
+	.ruleset-icon {
+		font-size: 1.2em;
+		margin-right: 0.25rem;
+	}
+
+	.ruleset-badge {
+		font-size: 0.75rem;
+		font-weight: 500;
+		padding: 0.2rem 0.5rem;
+		border-radius: 4px;
+		background: rgba(255, 255, 255, 0.05);
+		white-space: nowrap;
+	}
+
+	.ruleset-badge.ruleset-complete { background: rgba(0, 196, 154, 0.15); }
+	.ruleset-badge.ruleset-good { background: rgba(59, 130, 246, 0.15); }
+	.ruleset-badge.ruleset-partial { background: rgba(245, 158, 11, 0.15); }
+	.ruleset-badge.ruleset-missing { background: rgba(255, 107, 107, 0.15); }
+
+	.col-ruleset {
+		min-width: 100px;
+	}
+
 	/* Reports Section */
 	.reports-section {
 		margin-bottom: 2rem;
@@ -1774,7 +1813,7 @@
 		min-width: 0;
 	}
 
-	.col-lang, .col-coverage, .col-detected, .col-findings, .col-gaps {
+	.col-lang, .col-ruleset, .col-detected, .col-findings, .col-gaps {
 		text-align: center;
 	}
 
