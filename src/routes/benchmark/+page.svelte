@@ -4,7 +4,7 @@
 	const SCANNER_URL = 'https://scanner-empty-field-5676.fly.dev';
 	const BENCHMARK_SECRET = 'vibeship-benchmark-2024';
 	const PASSWORD_HASH = '69b86692b84806ffc45e9d9b5fa44320';
-	const MAX_PARALLEL_SCANS = 3;
+	const MAX_PARALLEL_SCANS = 2; // Reduced to prevent overwhelming the server
 
 	let isAuthenticated = $state(false);
 	let password = $state('');
@@ -227,12 +227,13 @@
 		}
 	}
 
-	async function scanSingleRepo(repoName: string): Promise<void> {
+	async function scanSingleRepo(repoName: string, retryCount = 0): Promise<void> {
 		const result = results.get(repoName);
 		if (!result || result.status === 'scanning') return;
 
 		result.status = 'scanning';
 		result.scanProgress = 0;
+		result.error = undefined;
 		activeScans.add(repoName);
 		activeScans = new Set(activeScans);
 		results = new Map(results);
@@ -240,14 +241,24 @@
 		startProgressAnimation(repoName);
 
 		try {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+
 			const res = await fetch(`${SCANNER_URL}/benchmark/scan-single`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					'X-Benchmark-Key': BENCHMARK_SECRET
 				},
-				body: JSON.stringify({ repo: repoName })
+				body: JSON.stringify({ repo: repoName }),
+				signal: controller.signal
 			});
+
+			clearTimeout(timeoutId);
+
+			if (!res.ok) {
+				throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+			}
 
 			const data = await res.json();
 
@@ -273,10 +284,24 @@
 					result.improved_from = previousCoverage;
 				}
 			}
-		} catch (e) {
+		} catch (e: any) {
 			stopProgressAnimation(repoName);
+
+			// Retry on network errors (up to 2 retries)
+			if (retryCount < 2 && (e.name === 'TypeError' || e.name === 'AbortError')) {
+				console.log(`Retrying ${repoName} (attempt ${retryCount + 2}/3)...`);
+				activeScans.delete(repoName);
+				activeScans = new Set(activeScans);
+				result.status = 'pending';
+				results = new Map(results);
+
+				// Wait before retry with exponential backoff
+				await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+				return scanSingleRepo(repoName, retryCount + 1);
+			}
+
 			result.status = 'error';
-			result.error = String(e);
+			result.error = e.name === 'AbortError' ? 'Request timed out' : (e.message || String(e));
 			result.scanProgress = 0;
 		}
 
@@ -290,10 +315,12 @@
 		processQueue();
 	}
 
-	function processQueue() {
+	async function processQueue() {
 		while (scanQueue.length > 0 && activeScans.size < MAX_PARALLEL_SCANS) {
 			const nextRepo = scanQueue.shift();
 			if (nextRepo) {
+				// Add small delay between starting scans to prevent overwhelming the server
+				await new Promise(resolve => setTimeout(resolve, 500));
 				scanSingleRepo(nextRepo);
 			}
 		}
