@@ -778,83 +778,77 @@
 
 		<div class="repos-section">
 			<h2>Benchmark Repositories</h2>
-			<div class="repos-grid">
+			<div class="repos-table">
+				<div class="repos-header">
+					<span class="col-status">Status</span>
+					<span class="col-name">Repository</span>
+					<span class="col-lang">Language</span>
+					<span class="col-coverage">Coverage</span>
+					<span class="col-detected">Detected</span>
+					<span class="col-findings">Findings</span>
+					<span class="col-gaps">Gaps</span>
+					<span class="col-actions">Actions</span>
+				</div>
 				{#each repos as repo}
 					{@const result = results.get(repo.repo)}
-					<div class="repo-card {result?.status || 'pending'}" class:scanning={result?.status === 'scanning'}>
-						<div class="repo-header">
-							<div class="repo-status">
-								<span class="status-icon {result?.status || 'pending'}">
-									{getStatusIcon(result?.status || 'pending')}
-								</span>
-								<span class="repo-name">{repo.name}</span>
-							</div>
-							<span class="repo-language">
-								{getLanguageIcon(repo.language)} {repo.language}
+					<div class="repo-row {result?.status || 'pending'}" class:scanning={result?.status === 'scanning'}>
+						<div class="col-status">
+							<span class="status-icon {result?.status || 'pending'}">
+								{getStatusIcon(result?.status || 'pending')}
 							</span>
 						</div>
-
-						{#if result?.status === 'scanning'}
-							<div class="scan-progress-container">
-								<div class="scan-progress-bar">
-									<div class="scan-progress-fill" style="width: {result.scanProgress}%"></div>
+						<div class="col-name">
+							<span class="repo-name">{repo.name}</span>
+							{#if result?.status === 'scanning'}
+								<div class="row-progress">
+									<div class="row-progress-bar">
+										<div class="row-progress-fill" style="width: {result.scanProgress}%"></div>
+									</div>
+									<span class="row-progress-text">{result.scanProgress.toFixed(0)}%</span>
 								</div>
-								<div class="scan-progress-text">Scanning... {result.scanProgress.toFixed(0)}%</div>
-								<div class="scan-animation">
-									<div class="scan-dot"></div>
-									<div class="scan-dot"></div>
-									<div class="scan-dot"></div>
-								</div>
-							</div>
-						{:else}
-							<div class="repo-coverage">
-								<div class="coverage-ring {getCoverageClass(result?.coverage || 0)}">
-									<svg viewBox="0 0 36 36">
-										<path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-										<path class="ring-fill" stroke-dasharray="{result?.coverage || 0}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-									</svg>
-									<span class="coverage-text">{(result?.coverage || 0).toFixed(0)}%</span>
-								</div>
-							</div>
-
-							<div class="repo-stats">
-								<div class="repo-stat">
-									<span class="stat-num">{result?.detected || 0}/{result?.total || repo.vuln_count}</span>
-									<span class="stat-label">Detected</span>
-								</div>
-								<div class="repo-stat">
-									<span class="stat-num">{result?.findingsCount || 0}</span>
-									<span class="stat-label">Findings</span>
-								</div>
-							</div>
-						{/if}
-
-						{#if result?.improved_from}
-							<div class="improvement-badge">
-								<span class="improvement-icon">📈</span>
-								+{(result.coverage - result.improved_from).toFixed(1)}% from last run
-							</div>
-						{/if}
-
-						{#if result?.status === 'complete' && result.missed_vulns.length > 0}
-							<div class="missed-vulns">
-								<span class="missed-label">Gaps ({result.missed_vulns.length}):</span>
-								<div class="missed-list">
-									{#each result.missed_vulns.slice(0, 3) as vuln}
-										<span class="missed-tag">{vuln}</span>
-									{/each}
-									{#if result.missed_vulns.length > 3}
-										<span class="missed-more">+{result.missed_vulns.length - 3} more</span>
-									{/if}
-								</div>
-							</div>
-						{/if}
-
-						{#if result?.error}
-							<div class="repo-error">{result.error}</div>
-						{/if}
-
-						<div class="repo-actions">
+							{/if}
+							{#if result?.error}
+								<span class="row-error">{result.error}</span>
+							{/if}
+						</div>
+						<div class="col-lang">
+							<span class="lang-badge">{getLanguageIcon(repo.language)} {repo.language}</span>
+						</div>
+						<div class="col-coverage">
+							{#if result?.status === 'scanning'}
+								<span class="scanning-dots">
+									<span class="dot"></span><span class="dot"></span><span class="dot"></span>
+								</span>
+							{:else}
+								<span class="coverage-value {getCoverageClass(result?.coverage || 0)}">
+									{(result?.coverage || 0).toFixed(0)}%
+								</span>
+							{/if}
+						</div>
+						<div class="col-detected">
+							{#if result?.status !== 'scanning'}
+								<span class="detected-value">{result?.detected || 0}/{result?.total || repo.vuln_count}</span>
+							{:else}
+								<span class="placeholder">-</span>
+							{/if}
+						</div>
+						<div class="col-findings">
+							{#if result?.status !== 'scanning'}
+								<span class="findings-value">{result?.findingsCount || 0}</span>
+							{:else}
+								<span class="placeholder">-</span>
+							{/if}
+						</div>
+						<div class="col-gaps">
+							{#if result?.status === 'complete' && result.missed_vulns.length > 0}
+								<span class="gaps-count">{result.missed_vulns.length}</span>
+							{:else if result?.status === 'complete'}
+								<span class="gaps-none">0</span>
+							{:else}
+								<span class="placeholder">-</span>
+							{/if}
+						</div>
+						<div class="col-actions">
 							<button
 								class="btn btn-sm"
 								onclick={() => scanSingleRepo(repo.repo)}
@@ -867,7 +861,7 @@
 									class="btn btn-sm btn-view"
 									onclick={() => selectedRepo = repo.repo}
 								>
-									View Report
+									View
 								</button>
 							{/if}
 						</div>
@@ -1443,55 +1437,84 @@
 		margin-bottom: 1rem;
 	}
 
-	.repos-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: 1rem;
+	/* Table-based repo list */
+	.repos-table {
+		background: var(--bg-secondary, #111);
+		border: 1px solid var(--border, #333);
+		border-radius: 4px;
+		overflow: hidden;
 		margin-bottom: 2rem;
 	}
 
-	.repo-card {
-		background: var(--bg-secondary, #111);
-		border: 1px solid var(--border, #333);
-		padding: 1.25rem;
-		transition: all 0.2s;
-		border-radius: 4px;
-	}
-
-	.repo-card.scanning {
-		border-color: var(--purple, #9d8cff);
-		box-shadow: 0 0 20px rgba(157, 140, 255, 0.2);
-	}
-
-	.repo-card.complete {
-		border-color: rgba(0, 196, 154, 0.3);
-	}
-
-	.repo-card.error {
-		border-color: var(--red, #ff6b6b);
-	}
-
-	.repo-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 1rem;
-	}
-
-	.repo-status {
-		display: flex;
-		align-items: center;
+	.repos-header {
+		display: grid;
+		grid-template-columns: 60px 1fr 100px 90px 90px 80px 60px 140px;
+		padding: 0.75rem 1rem;
+		background: var(--bg-tertiary, #1a1a2e);
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--text-tertiary, #666);
+		font-weight: 600;
 		gap: 0.5rem;
 	}
 
+	.repo-row {
+		display: grid;
+		grid-template-columns: 60px 1fr 100px 90px 90px 80px 60px 140px;
+		padding: 0.875rem 1rem;
+		border-top: 1px solid var(--border, #333);
+		align-items: center;
+		gap: 0.5rem;
+		transition: background 0.15s;
+	}
+
+	.repo-row:hover {
+		background: var(--bg-tertiary, #1a1a2e);
+	}
+
+	.repo-row.scanning {
+		background: rgba(157, 140, 255, 0.05);
+	}
+
+	.repo-row.complete {
+		background: rgba(0, 196, 154, 0.03);
+	}
+
+	.repo-row.error {
+		background: rgba(255, 107, 107, 0.05);
+	}
+
+	.col-status {
+		display: flex;
+		justify-content: center;
+	}
+
+	.col-name {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.col-lang, .col-coverage, .col-detected, .col-findings, .col-gaps {
+		text-align: center;
+	}
+
+	.col-actions {
+		display: flex;
+		gap: 0.5rem;
+		justify-content: flex-end;
+	}
+
 	.status-icon {
-		width: 20px;
-		height: 20px;
+		width: 24px;
+		height: 24px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		border-radius: 50%;
-		font-size: 0.75rem;
+		font-size: 0.8rem;
 	}
 
 	.status-icon.pending { background: var(--bg-tertiary, #1a1a2e); color: var(--text-tertiary, #666); }
@@ -1506,69 +1529,99 @@
 
 	.repo-name {
 		font-weight: 500;
-	}
-
-	.repo-language {
-		font-size: 0.75rem;
-		color: var(--text-tertiary, #666);
-		background: var(--bg-tertiary, #1a1a2e);
-		padding: 0.25rem 0.5rem;
-		border-radius: 4px;
-	}
-
-	.scan-progress-container {
-		padding: 1.5rem 0;
-		text-align: center;
-	}
-
-	.scan-progress-bar {
-		height: 6px;
-		background: var(--bg-tertiary, #1a1a2e);
-		border-radius: 3px;
+		white-space: nowrap;
 		overflow: hidden;
-		margin-bottom: 0.75rem;
+		text-overflow: ellipsis;
 	}
 
-	.scan-progress-fill {
+	.lang-badge {
+		font-size: 0.75rem;
+		color: var(--text-secondary, #888);
+	}
+
+	.coverage-value {
+		font-weight: 600;
+		font-size: 0.95rem;
+	}
+
+	.detected-value, .findings-value {
+		font-size: 0.9rem;
+		color: var(--text-secondary, #888);
+	}
+
+	.gaps-count {
+		background: rgba(255, 107, 107, 0.15);
+		color: #ff6b6b;
+		padding: 0.2rem 0.5rem;
+		border-radius: 10px;
+		font-size: 0.8rem;
+		font-weight: 600;
+	}
+
+	.gaps-none {
+		color: var(--green, #00c49a);
+		font-weight: 500;
+	}
+
+	.placeholder {
+		color: var(--text-tertiary, #666);
+	}
+
+	.row-progress {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.row-progress-bar {
+		flex: 1;
+		height: 4px;
+		background: var(--bg-tertiary, #1a1a2e);
+		border-radius: 2px;
+		overflow: hidden;
+		max-width: 120px;
+	}
+
+	.row-progress-fill {
 		height: 100%;
 		background: linear-gradient(90deg, var(--purple, #9d8cff), var(--blue, #3b82f6));
 		transition: width 0.1s ease;
 	}
 
-	.scan-progress-text {
-		font-size: 0.85rem;
-		color: var(--text-secondary, #888);
-		margin-bottom: 0.5rem;
+	.row-progress-text {
+		font-size: 0.7rem;
+		color: var(--purple, #9d8cff);
+		min-width: 30px;
 	}
 
-	.scan-animation {
+	.row-error {
+		font-size: 0.75rem;
+		color: var(--red, #ff6b6b);
+	}
+
+	.scanning-dots {
 		display: flex;
+		gap: 3px;
 		justify-content: center;
-		gap: 0.25rem;
 	}
 
-	.scan-dot {
-		width: 6px;
-		height: 6px;
+	.scanning-dots .dot {
+		width: 5px;
+		height: 5px;
 		background: var(--purple, #9d8cff);
 		border-radius: 50%;
 		animation: scan-bounce 1.4s infinite ease-in-out both;
 	}
 
-	.scan-dot:nth-child(1) { animation-delay: -0.32s; }
-	.scan-dot:nth-child(2) { animation-delay: -0.16s; }
+	.scanning-dots .dot:nth-child(1) { animation-delay: -0.32s; }
+	.scanning-dots .dot:nth-child(2) { animation-delay: -0.16s; }
 
 	@keyframes scan-bounce {
 		0%, 80%, 100% { transform: scale(0); }
 		40% { transform: scale(1); }
 	}
 
-	.repo-coverage {
-		display: flex;
-		justify-content: center;
-		margin-bottom: 1rem;
-	}
-
+	/* Keep old ring styles for potential future use but unused now */
 	.coverage-ring {
 		position: relative;
 		width: 80px;
@@ -1595,7 +1648,7 @@
 		transition: stroke-dasharray 0.5s ease;
 	}
 
-	.coverage-text {
+	.coverage-text-ring {
 		position: absolute;
 		top: 50%;
 		left: 50%;
@@ -1738,6 +1791,21 @@
 		color: var(--green, #00c49a);
 	}
 
+	@media (max-width: 1024px) {
+		.repos-header, .repo-row {
+			grid-template-columns: 50px 1fr 80px 70px 60px 100px;
+		}
+
+		.col-detected, .col-gaps {
+			display: none;
+		}
+
+		.repos-header .col-detected,
+		.repos-header .col-gaps {
+			display: none;
+		}
+	}
+
 	@media (max-width: 768px) {
 		.benchmark-header {
 			flex-direction: column;
@@ -1755,8 +1823,29 @@
 			grid-template-columns: repeat(2, 1fr);
 		}
 
-		.repos-grid {
-			grid-template-columns: 1fr;
+		.repos-header, .repo-row {
+			grid-template-columns: 40px 1fr 70px 80px;
+		}
+
+		.col-lang, .col-detected, .col-findings, .col-gaps {
+			display: none;
+		}
+
+		.repos-header .col-lang,
+		.repos-header .col-detected,
+		.repos-header .col-findings,
+		.repos-header .col-gaps {
+			display: none;
+		}
+
+		.col-actions {
+			flex-direction: column;
+			gap: 0.25rem;
+		}
+
+		.col-actions .btn {
+			font-size: 0.7rem;
+			padding: 0.4rem 0.6rem;
 		}
 
 		.history-header, .history-row {
