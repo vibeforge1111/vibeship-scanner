@@ -408,6 +408,13 @@
 		}
 	}
 
+	function saveToRecent(newScanId: string) {
+		const stored = localStorage.getItem('vibeship-recent-scans');
+		let ids: string[] = stored ? JSON.parse(stored) : [];
+		ids = [newScanId, ...ids.filter(id => id !== newScanId)].slice(0, 10);
+		localStorage.setItem('vibeship-recent-scans', JSON.stringify(ids));
+	}
+
 	async function rescanRepo() {
 		if (!repoUrl || rescanning) return;
 		rescanning = true;
@@ -419,6 +426,7 @@
 			});
 			const data = await response.json();
 			if (data.scanId) {
+				saveToRecent(data.scanId);
 				window.location.href = `/scan/${data.scanId}`;
 			} else {
 				console.error('Rescan failed:', data);
@@ -738,10 +746,29 @@
 			{#if error.toLowerCase().includes('clone') || error.toLowerCase().includes('repository') || error.toLowerCase().includes('not found')}
 				<p>This repository couldn't be scanned. It may be private or doesn't exist.</p>
 				<p class="error-note">We can only scan public repositories.</p>
+			{:else if error.toLowerCase().includes('timeout') || error.toLowerCase().includes('timed out')}
+				<p>This scan took too long and was stopped.</p>
+				<p class="error-note">Large repositories may need more time. Try again - our scanner is getting faster!</p>
 			{:else}
 				<p>{error}</p>
 			{/if}
-			<a href="/" class="btn">Try Again</a>
+
+			<div class="error-actions">
+				{#if repoUrl}
+					<button class="btn btn-primary" onclick={rescanRepo} disabled={rescanning}>
+						{rescanning ? 'Starting new scan...' : 'Rescan This Repo'}
+					</button>
+				{/if}
+				<a href="/" class="btn btn-secondary">Scan Different Repo</a>
+			</div>
+
+			<div class="dev-notice">
+				<div class="dev-notice-icon">🚀</div>
+				<div class="dev-notice-content">
+					<strong>We're actively improving the scanner!</strong>
+					<p>We push updates frequently to add new vulnerability detection rules and improve performance. Occasionally, in-progress scans may be interrupted during deployments. Just hit rescan and you're good to go!</p>
+				</div>
+			</div>
 		</div>
 
 	{:else if status === 'queued' || status === 'scanning'}
@@ -1117,7 +1144,77 @@
 	.error-container .error-note {
 		font-size: 0.85rem;
 		color: var(--text-tertiary);
+		margin-bottom: 1.5rem;
+	}
+
+	.error-actions {
+		display: flex;
+		gap: 1rem;
+		justify-content: center;
 		margin-bottom: 2rem;
+	}
+
+	.error-actions .btn-primary {
+		background: var(--purple);
+		color: white;
+		border: none;
+		padding: 0.75rem 1.5rem;
+		cursor: pointer;
+		font-weight: 500;
+		transition: all 0.15s;
+	}
+
+	.error-actions .btn-primary:hover:not(:disabled) {
+		background: var(--purple-light);
+	}
+
+	.error-actions .btn-primary:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.error-actions .btn-secondary {
+		background: var(--bg-tertiary);
+		color: var(--text-primary);
+		border: 1px solid var(--border);
+		padding: 0.75rem 1.5rem;
+		text-decoration: none;
+		font-weight: 500;
+		transition: all 0.15s;
+	}
+
+	.error-actions .btn-secondary:hover {
+		border-color: var(--text-primary);
+	}
+
+	.dev-notice {
+		max-width: 500px;
+		margin: 0 auto;
+		padding: 1.25rem;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-left: 3px solid var(--purple);
+		text-align: left;
+		display: flex;
+		gap: 1rem;
+	}
+
+	.dev-notice-icon {
+		font-size: 1.5rem;
+		flex-shrink: 0;
+	}
+
+	.dev-notice-content strong {
+		display: block;
+		color: var(--text-primary);
+		margin-bottom: 0.5rem;
+	}
+
+	.dev-notice-content p {
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+		margin: 0;
+		line-height: 1.5;
 	}
 
 	.progress-container {
