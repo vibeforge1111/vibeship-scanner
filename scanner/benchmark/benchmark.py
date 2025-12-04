@@ -25,7 +25,10 @@ from typing import Dict, List, Tuple, Optional
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from known_vulns import KNOWN_VULNERABILITIES, get_repo_vulns, get_all_repos
-from scan import run_scan  # Import our existing scan function
+from scan import (
+    clone_repo, detect_stack, run_opengrep, run_trivy, run_gitleaks,
+    deduplicate_findings, calculate_score
+)
 
 
 class BenchmarkRunner:
@@ -54,15 +57,28 @@ class BenchmarkRunner:
             with tempfile.TemporaryDirectory() as temp_dir:
                 # Clone the repo
                 clone_path = os.path.join(temp_dir, "repo")
-                subprocess.run(
-                    ["git", "clone", "--depth", "1", repo_url, clone_path],
-                    capture_output=True,
-                    timeout=120
-                )
 
-                # Run our scan
-                results = run_scan(clone_path)
-                return results
+                if not clone_repo(repo_url, clone_path):
+                    return {"findings": [], "error": "Failed to clone"}
+
+                # Detect stack
+                stack = detect_stack(clone_path)
+                languages = stack.get('languages', [])
+
+                # Run all scanners
+                opengrep_findings = run_opengrep(clone_path, languages)
+                trivy_findings = run_trivy(clone_path)
+                gitleaks_findings = run_gitleaks(clone_path)
+
+                # Combine and dedupe
+                all_findings = opengrep_findings + trivy_findings + gitleaks_findings
+                all_findings = deduplicate_findings(all_findings)
+
+                return {
+                    "findings": all_findings,
+                    "stack": stack,
+                    "score": calculate_score(all_findings)
+                }
 
         except Exception as e:
             self.log(f"Error scanning {repo_url}: {e}")
