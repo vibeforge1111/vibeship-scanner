@@ -3,14 +3,13 @@
 
 	const SCANNER_URL = 'https://scanner-empty-field-5676.fly.dev';
 	const BENCHMARK_SECRET = 'vibeship-benchmark-2024';
-	// SHA-256 hash of the password (not the password itself)
 	const PASSWORD_HASH = '69b86692b84806ffc45e9d9b5fa44320';
+	const MAX_PARALLEL_SCANS = 3;
 
 	let isAuthenticated = $state(false);
 	let password = $state('');
 	let loginError = $state('');
 
-	// Simple hash function
 	async function hashPassword(pwd: string): Promise<string> {
 		const encoder = new TextEncoder();
 		const data = encoder.encode(pwd);
@@ -62,6 +61,8 @@
 		missed_vulns: string[];
 		error?: string;
 		improved_from?: number;
+		scanProgress: number;
+		scanStartTime?: number;
 	};
 
 	type BenchmarkHistory = {
@@ -77,16 +78,18 @@
 	let overallCoverage = $state(0);
 	let targetCoverage = $state(95);
 	let isRunning = $state(false);
-	let currentRepo = $state<string | null>(null);
+	let activeScans = $state<Set<string>>(new Set());
 	let iteration = $state(0);
 	let history = $state<BenchmarkHistory[]>([]);
-	let autoRefresh = $state(true);
-	let refreshInterval: ReturnType<typeof setInterval> | null = null;
 	let error = $state<string | null>(null);
 	let jobId = $state<string | null>(null);
 	let rulesAdded = $state(0);
 	let totalDetected = $state(0);
 	let totalKnown = $state(0);
+	let autoImproveStatus = $state<string | null>(null);
+	let autoImproveProgress = $state(0);
+	let scanQueue = $state<string[]>([]);
+	let progressIntervals = new Map<string, ReturnType<typeof setInterval>>();
 
 	async function loadRepos() {
 		try {
@@ -94,7 +97,6 @@
 			const data = await res.json();
 			repos = data.repos || [];
 
-			// Initialize results map
 			repos.forEach(repo => {
 				if (!results.has(repo.repo)) {
 					results.set(repo.repo, {
@@ -107,7 +109,8 @@
 						total: repo.vuln_count,
 						findings: 0,
 						detected_vulns: [],
-						missed_vulns: []
+						missed_vulns: [],
+						scanProgress: 0
 					});
 				}
 			});
@@ -118,13 +121,51 @@
 		}
 	}
 
-	async function scanSingleRepo(repoName: string) {
+	function startProgressAnimation(repoName: string) {
 		const result = results.get(repoName);
 		if (!result) return;
 
+		result.scanStartTime = Date.now();
+		result.scanProgress = 0;
+
+		// Animate progress from 0 to 90 over ~60 seconds
+		const interval = setInterval(() => {
+			const r = results.get(repoName);
+			if (!r || r.status !== 'scanning') {
+				clearInterval(interval);
+				progressIntervals.delete(repoName);
+				return;
+			}
+
+			// Logarithmic progress - fast at start, slows down
+			const elapsed = Date.now() - (r.scanStartTime || Date.now());
+			const targetProgress = Math.min(90, 90 * (1 - Math.exp(-elapsed / 30000)));
+			r.scanProgress = targetProgress;
+			results = new Map(results);
+		}, 100);
+
+		progressIntervals.set(repoName, interval);
+	}
+
+	function stopProgressAnimation(repoName: string) {
+		const interval = progressIntervals.get(repoName);
+		if (interval) {
+			clearInterval(interval);
+			progressIntervals.delete(repoName);
+		}
+	}
+
+	async function scanSingleRepo(repoName: string): Promise<void> {
+		const result = results.get(repoName);
+		if (!result || result.status === 'scanning') return;
+
 		result.status = 'scanning';
+		result.scanProgress = 0;
+		activeScans.add(repoName);
+		activeScans = new Set(activeScans);
 		results = new Map(results);
-		currentRepo = repoName;
+
+		startProgressAnimation(repoName);
 
 		try {
 			const res = await fetch(`${SCANNER_URL}/benchmark/scan-single`, {
@@ -138,9 +179,12 @@
 
 			const data = await res.json();
 
+			stopProgressAnimation(repoName);
+
 			if (data.error) {
 				result.status = 'error';
 				result.error = data.error;
+				result.scanProgress = 0;
 			} else if (data.result) {
 				const r = data.result;
 				const previousCoverage = result.coverage;
@@ -151,19 +195,36 @@
 				result.findings = r.total_findings || 0;
 				result.detected_vulns = (r.detected || []).map((v: any) => v.id);
 				result.missed_vulns = (r.missed || []).map((v: any) => v.id);
+				result.scanProgress = 100;
 
 				if (previousCoverage > 0 && result.coverage > previousCoverage) {
 					result.improved_from = previousCoverage;
 				}
 			}
 		} catch (e) {
+			stopProgressAnimation(repoName);
 			result.status = 'error';
 			result.error = String(e);
+			result.scanProgress = 0;
 		}
 
+		activeScans.delete(repoName);
+		activeScans = new Set(activeScans);
 		results = new Map(results);
-		currentRepo = null;
 		updateOverallCoverage();
+
+		// Process next in queue if exists
+		processQueue();
+	}
+
+	function processQueue() {
+		while (scanQueue.length > 0 && activeScans.size < MAX_PARALLEL_SCANS) {
+			const nextRepo = scanQueue.shift();
+			if (nextRepo) {
+				scanSingleRepo(nextRepo);
+			}
+		}
+		scanQueue = [...scanQueue];
 	}
 
 	async function runFullBenchmark() {
@@ -171,10 +232,31 @@
 		iteration++;
 		error = null;
 
-		for (const repo of repos) {
-			if (!isRunning) break;
-			await scanSingleRepo(repo.repo);
-		}
+		// Reset all results to pending
+		repos.forEach(repo => {
+			const result = results.get(repo.repo);
+			if (result) {
+				result.status = 'pending';
+				result.scanProgress = 0;
+			}
+		});
+		results = new Map(results);
+
+		// Queue all repos
+		scanQueue = repos.map(r => r.repo);
+
+		// Start initial batch
+		processQueue();
+
+		// Wait for all scans to complete
+		await new Promise<void>((resolve) => {
+			const checkInterval = setInterval(() => {
+				if (activeScans.size === 0 && scanQueue.length === 0) {
+					clearInterval(checkInterval);
+					resolve();
+				}
+			}, 500);
+		});
 
 		// Save to history
 		history = [...history, {
@@ -188,9 +270,26 @@
 		isRunning = false;
 	}
 
+	async function scanAllParallel() {
+		isRunning = true;
+		error = null;
+
+		// Start all scans simultaneously (up to MAX_PARALLEL_SCANS)
+		const reposToScan = repos.filter(r => {
+			const result = results.get(r.repo);
+			return result?.status !== 'scanning';
+		});
+
+		// Queue them all
+		scanQueue = reposToScan.map(r => r.repo);
+		processQueue();
+	}
+
 	async function startAutoImprove() {
 		isRunning = true;
 		error = null;
+		autoImproveStatus = 'Starting auto-improve...';
+		autoImproveProgress = 5;
 
 		try {
 			const res = await fetch(`${SCANNER_URL}/benchmark/auto-improve`, {
@@ -208,13 +307,17 @@
 			const data = await res.json();
 			if (data.job_id) {
 				jobId = data.job_id;
+				autoImproveStatus = 'Job started, analyzing gaps...';
+				autoImproveProgress = 15;
 				pollJobStatus();
 			} else if (data.error) {
 				error = data.error;
+				autoImproveStatus = null;
 				isRunning = false;
 			}
 		} catch (e) {
 			error = String(e);
+			autoImproveStatus = null;
 			isRunning = false;
 		}
 	}
@@ -228,19 +331,30 @@
 
 			if (data.status === 'complete') {
 				isRunning = false;
+				autoImproveStatus = 'Complete!';
+				autoImproveProgress = 100;
 				if (data.result) {
 					processAutoImproveResult(data.result);
 				}
+				setTimeout(() => {
+					autoImproveStatus = null;
+					autoImproveProgress = 0;
+				}, 3000);
 			} else if (data.status === 'failed') {
 				isRunning = false;
 				error = data.error || 'Job failed';
+				autoImproveStatus = null;
+				autoImproveProgress = 0;
 			} else if (data.status === 'running') {
-				// Keep polling
-				setTimeout(pollJobStatus, 5000);
+				// Update progress message
+				if (data.progress) {
+					autoImproveStatus = data.progress;
+				}
+				autoImproveProgress = Math.min(90, autoImproveProgress + 5);
+				setTimeout(pollJobStatus, 3000);
 			}
 		} catch (e) {
-			// Job might not exist yet, keep trying
-			setTimeout(pollJobStatus, 5000);
+			setTimeout(pollJobStatus, 3000);
 		}
 	}
 
@@ -256,9 +370,13 @@
 					existing.detected = repoData.detected || 0;
 					existing.findings = repoData.findings || 0;
 					existing.status = 'complete';
+					existing.scanProgress = 100;
 				}
 			}
 			results = new Map(results);
+		}
+		if (result.rules_added) {
+			rulesAdded += result.rules_added;
 		}
 		if (result.history) {
 			history = result.history.map((h: any) => ({
@@ -274,7 +392,6 @@
 	function updateOverallCoverage() {
 		let detected = 0;
 		let total = 0;
-		let added = 0;
 
 		results.forEach(r => {
 			if (r.status === 'complete') {
@@ -290,7 +407,8 @@
 
 	function stopBenchmark() {
 		isRunning = false;
-		currentRepo = null;
+		scanQueue = [];
+		// Note: active scans will complete but no new ones will start
 	}
 
 	function getCoverageClass(coverage: number): string {
@@ -313,14 +431,27 @@
 		return new Date(ts).toLocaleString();
 	}
 
+	function getLanguageIcon(lang: string): string {
+		const icons: Record<string, string> = {
+			javascript: '🟨',
+			typescript: '🔷',
+			python: '🐍',
+			php: '🐘',
+			java: '☕',
+			ruby: '💎',
+			go: '🔵',
+			rust: '🦀'
+		};
+		return icons[lang.toLowerCase()] || '📄';
+	}
+
 	onMount(() => {
 		loadRepos();
 	});
 
 	onDestroy(() => {
-		if (refreshInterval) {
-			clearInterval(refreshInterval);
-		}
+		progressIntervals.forEach(interval => clearInterval(interval));
+		progressIntervals.clear();
 	});
 </script>
 
@@ -368,177 +499,214 @@
 				<button class="btn btn-small btn-ghost" onclick={logout}>Logout</button>
 			</div>
 			<div class="header-actions">
-			{#if isRunning}
-				<button class="btn btn-stop" onclick={stopBenchmark}>
-					<span class="btn-icon">⏹</span>
-					Stop
-				</button>
-			{:else}
-				<button class="btn btn-primary" onclick={runFullBenchmark}>
-					<span class="btn-icon">▶</span>
-					Run Benchmark
-				</button>
-				<button class="btn btn-glow" onclick={startAutoImprove}>
-					<span class="btn-icon">🔄</span>
-					Auto-Improve
-				</button>
-			{/if}
-		</div>
-	</div>
-
-	{#if error}
-		<div class="error-banner">
-			<span class="error-icon">⚠️</span>
-			<span>{error}</span>
-			<button class="error-dismiss" onclick={() => error = null}>×</button>
-		</div>
-	{/if}
-
-	<div class="stats-grid">
-		<div class="stat-card stat-coverage">
-			<div class="stat-label">Overall Coverage</div>
-			<div class="stat-value {getCoverageClass(overallCoverage)}">
-				{overallCoverage.toFixed(1)}%
-			</div>
-			<div class="stat-target">Target: {targetCoverage}%</div>
-			<div class="coverage-bar">
-				<div class="coverage-fill" style="width: {overallCoverage}%"></div>
-				<div class="coverage-target" style="left: {targetCoverage}%"></div>
+				{#if isRunning}
+					<button class="btn btn-stop" onclick={stopBenchmark}>
+						<span class="btn-icon">⏹</span>
+						Stop
+					</button>
+					<span class="running-indicator">
+						<span class="pulse-dot"></span>
+						{activeScans.size} scanning, {scanQueue.length} queued
+					</span>
+				{:else}
+					<button class="btn btn-primary" onclick={runFullBenchmark}>
+						<span class="btn-icon">▶</span>
+						Run All Sequential
+					</button>
+					<button class="btn btn-secondary" onclick={scanAllParallel}>
+						<span class="btn-icon">⚡</span>
+						Run All Parallel
+					</button>
+					<button class="btn btn-glow" onclick={startAutoImprove}>
+						<span class="btn-icon">🔄</span>
+						Auto-Improve
+					</button>
+				{/if}
 			</div>
 		</div>
-		<div class="stat-card">
-			<div class="stat-label">Vulns Detected</div>
-			<div class="stat-value">{totalDetected}/{totalKnown}</div>
-			<div class="stat-detail">{totalKnown - totalDetected} gaps remaining</div>
-		</div>
-		<div class="stat-card">
-			<div class="stat-label">Iteration</div>
-			<div class="stat-value">{iteration}</div>
-			<div class="stat-detail">{history.length} runs recorded</div>
-		</div>
-		<div class="stat-card">
-			<div class="stat-label">Rules Added</div>
-			<div class="stat-value">{rulesAdded}</div>
-			<div class="stat-detail">Auto-generated</div>
-		</div>
-	</div>
 
-	{#if history.length > 1}
-		<div class="progress-section">
-			<h2>Progress Over Time</h2>
-			<div class="progress-chart">
-				{#each history as h, i}
-					<div class="progress-bar-container">
-						<div class="progress-bar {getCoverageClass(h.overall_coverage)}" style="height: {h.overall_coverage}%">
-							<span class="progress-label">{h.overall_coverage.toFixed(0)}%</span>
-						</div>
-						<span class="progress-iteration">#{i + 1}</span>
-					</div>
-				{/each}
+		{#if error}
+			<div class="error-banner">
+				<span class="error-icon">⚠️</span>
+				<span>{error}</span>
+				<button class="error-dismiss" onclick={() => error = null}>×</button>
+			</div>
+		{/if}
+
+		{#if autoImproveStatus}
+			<div class="auto-improve-banner">
+				<div class="auto-improve-header">
+					<span class="auto-improve-icon">🤖</span>
+					<span class="auto-improve-title">Auto-Improve Running</span>
+				</div>
+				<p class="auto-improve-status">{autoImproveStatus}</p>
+				<div class="auto-improve-progress">
+					<div class="auto-improve-fill" style="width: {autoImproveProgress}%"></div>
+				</div>
+			</div>
+		{/if}
+
+		<div class="stats-grid">
+			<div class="stat-card stat-coverage">
+				<div class="stat-label">Overall Coverage</div>
+				<div class="stat-value {getCoverageClass(overallCoverage)}">
+					{overallCoverage.toFixed(1)}%
+				</div>
+				<div class="stat-target">Target: {targetCoverage}%</div>
+				<div class="coverage-bar">
+					<div class="coverage-fill {getCoverageClass(overallCoverage)}" style="width: {overallCoverage}%"></div>
+					<div class="coverage-target" style="left: {targetCoverage}%"></div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-label">Vulns Detected</div>
+				<div class="stat-value">{totalDetected}/{totalKnown}</div>
+				<div class="stat-detail">{totalKnown - totalDetected} gaps remaining</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-label">Active Scans</div>
+				<div class="stat-value">{activeScans.size}</div>
+				<div class="stat-detail">{scanQueue.length} in queue</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-label">Rules Added</div>
+				<div class="stat-value">{rulesAdded}</div>
+				<div class="stat-detail">Auto-generated</div>
 			</div>
 		</div>
-	{/if}
 
-	<div class="repos-section">
-		<h2>Benchmark Repositories</h2>
-		<div class="repos-grid">
-			{#each repos as repo}
-				{@const result = results.get(repo.repo)}
-				<div class="repo-card {result?.status || 'pending'}" class:scanning={currentRepo === repo.repo}>
-					<div class="repo-header">
-						<div class="repo-status">
-							<span class="status-icon {result?.status || 'pending'}">
-								{getStatusIcon(result?.status || 'pending')}
-							</span>
-							<span class="repo-name">{repo.name}</span>
-						</div>
-						<span class="repo-language">{repo.language}</span>
-					</div>
-
-					<div class="repo-coverage">
-						<div class="coverage-ring {getCoverageClass(result?.coverage || 0)}">
-							<svg viewBox="0 0 36 36">
-								<path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-								<path class="ring-fill" stroke-dasharray="{result?.coverage || 0}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-							</svg>
-							<span class="coverage-text">{(result?.coverage || 0).toFixed(0)}%</span>
-						</div>
-					</div>
-
-					<div class="repo-stats">
-						<div class="repo-stat">
-							<span class="stat-num">{result?.detected || 0}/{result?.total || repo.vuln_count}</span>
-							<span class="stat-label">Detected</span>
-						</div>
-						<div class="repo-stat">
-							<span class="stat-num">{result?.findings || 0}</span>
-							<span class="stat-label">Findings</span>
-						</div>
-					</div>
-
-					{#if result?.improved_from}
-						<div class="improvement-badge">
-							<span class="improvement-icon">📈</span>
-							+{(result.coverage - result.improved_from).toFixed(1)}% from last run
-						</div>
-					{/if}
-
-					{#if result?.status === 'complete' && result.missed_vulns.length > 0}
-						<div class="missed-vulns">
-							<span class="missed-label">Gaps ({result.missed_vulns.length}):</span>
-							<div class="missed-list">
-								{#each result.missed_vulns.slice(0, 3) as vuln}
-									<span class="missed-tag">{vuln}</span>
-								{/each}
-								{#if result.missed_vulns.length > 3}
-									<span class="missed-more">+{result.missed_vulns.length - 3} more</span>
-								{/if}
+		{#if history.length > 1}
+			<div class="progress-section">
+				<h2>Progress Over Time</h2>
+				<div class="progress-chart">
+					{#each history as h, i}
+						<div class="progress-bar-container">
+							<div class="progress-bar {getCoverageClass(h.overall_coverage)}" style="height: {h.overall_coverage}%">
+								<span class="progress-label">{h.overall_coverage.toFixed(0)}%</span>
 							</div>
+							<span class="progress-iteration">#{i + 1}</span>
 						</div>
-					{/if}
-
-					{#if result?.error}
-						<div class="repo-error">{result.error}</div>
-					{/if}
-
-					<div class="repo-actions">
-						<button
-							class="btn btn-sm"
-							onclick={() => scanSingleRepo(repo.repo)}
-							disabled={isRunning}
-						>
-							{currentRepo === repo.repo ? 'Scanning...' : 'Scan'}
-						</button>
-					</div>
+					{/each}
 				</div>
-			{/each}
-		</div>
-	</div>
+			</div>
+		{/if}
 
-	{#if history.length > 0}
-		<div class="history-section">
-			<h2>Run History</h2>
-			<div class="history-table">
-				<div class="history-header">
-					<span>Run</span>
-					<span>Time</span>
-					<span>Coverage</span>
-					<span>Detected</span>
-					<span>Rules Added</span>
-				</div>
-				{#each [...history].reverse() as h, i}
-					<div class="history-row">
-						<span class="run-number">#{history.length - i}</span>
-						<span class="run-time">{formatTimestamp(h.timestamp)}</span>
-						<span class="run-coverage {getCoverageClass(h.overall_coverage)}">{h.overall_coverage.toFixed(1)}%</span>
-						<span class="run-detected">{h.total_detected}/{h.total_known}</span>
-						<span class="run-rules">{h.rules_added > 0 ? `+${h.rules_added}` : '-'}</span>
+		<div class="repos-section">
+			<h2>Benchmark Repositories</h2>
+			<div class="repos-grid">
+				{#each repos as repo}
+					{@const result = results.get(repo.repo)}
+					<div class="repo-card {result?.status || 'pending'}" class:scanning={result?.status === 'scanning'}>
+						<div class="repo-header">
+							<div class="repo-status">
+								<span class="status-icon {result?.status || 'pending'}">
+									{getStatusIcon(result?.status || 'pending')}
+								</span>
+								<span class="repo-name">{repo.name}</span>
+							</div>
+							<span class="repo-language">
+								{getLanguageIcon(repo.language)} {repo.language}
+							</span>
+						</div>
+
+						{#if result?.status === 'scanning'}
+							<div class="scan-progress-container">
+								<div class="scan-progress-bar">
+									<div class="scan-progress-fill" style="width: {result.scanProgress}%"></div>
+								</div>
+								<div class="scan-progress-text">Scanning... {result.scanProgress.toFixed(0)}%</div>
+								<div class="scan-animation">
+									<div class="scan-dot"></div>
+									<div class="scan-dot"></div>
+									<div class="scan-dot"></div>
+								</div>
+							</div>
+						{:else}
+							<div class="repo-coverage">
+								<div class="coverage-ring {getCoverageClass(result?.coverage || 0)}">
+									<svg viewBox="0 0 36 36">
+										<path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+										<path class="ring-fill" stroke-dasharray="{result?.coverage || 0}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+									</svg>
+									<span class="coverage-text">{(result?.coverage || 0).toFixed(0)}%</span>
+								</div>
+							</div>
+
+							<div class="repo-stats">
+								<div class="repo-stat">
+									<span class="stat-num">{result?.detected || 0}/{result?.total || repo.vuln_count}</span>
+									<span class="stat-label">Detected</span>
+								</div>
+								<div class="repo-stat">
+									<span class="stat-num">{result?.findings || 0}</span>
+									<span class="stat-label">Findings</span>
+								</div>
+							</div>
+						{/if}
+
+						{#if result?.improved_from}
+							<div class="improvement-badge">
+								<span class="improvement-icon">📈</span>
+								+{(result.coverage - result.improved_from).toFixed(1)}% from last run
+							</div>
+						{/if}
+
+						{#if result?.status === 'complete' && result.missed_vulns.length > 0}
+							<div class="missed-vulns">
+								<span class="missed-label">Gaps ({result.missed_vulns.length}):</span>
+								<div class="missed-list">
+									{#each result.missed_vulns.slice(0, 3) as vuln}
+										<span class="missed-tag">{vuln}</span>
+									{/each}
+									{#if result.missed_vulns.length > 3}
+										<span class="missed-more">+{result.missed_vulns.length - 3} more</span>
+									{/if}
+								</div>
+							</div>
+						{/if}
+
+						{#if result?.error}
+							<div class="repo-error">{result.error}</div>
+						{/if}
+
+						<div class="repo-actions">
+							<button
+								class="btn btn-sm"
+								onclick={() => scanSingleRepo(repo.repo)}
+								disabled={result?.status === 'scanning'}
+							>
+								{result?.status === 'scanning' ? 'Scanning...' : 'Scan'}
+							</button>
+						</div>
 					</div>
 				{/each}
 			</div>
 		</div>
-	{/if}
-</div>
+
+		{#if history.length > 0}
+			<div class="history-section">
+				<h2>Run History</h2>
+				<div class="history-table">
+					<div class="history-header">
+						<span>Run</span>
+						<span>Time</span>
+						<span>Coverage</span>
+						<span>Detected</span>
+						<span>Rules Added</span>
+					</div>
+					{#each [...history].reverse() as h, i}
+						<div class="history-row">
+							<span class="run-number">#{history.length - i}</span>
+							<span class="run-time">{formatTimestamp(h.timestamp)}</span>
+							<span class="run-coverage {getCoverageClass(h.overall_coverage)}">{h.overall_coverage.toFixed(1)}%</span>
+							<span class="run-detected">{h.total_detected}/{h.total_known}</span>
+							<span class="run-rules">{h.rules_added > 0 ? `+${h.rules_added}` : '-'}</span>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
+	</div>
 {/if}
 
 <style>
@@ -591,83 +759,6 @@
 		margin-right: 0.5rem;
 	}
 
-	.btn-github {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.75rem;
-		background: #24292e;
-		color: #fff;
-		border: 1px solid #444;
-		padding: 0.875rem 1.5rem;
-		border-radius: 8px;
-		font-size: 1rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.2s;
-		width: 100%;
-		justify-content: center;
-	}
-
-	.btn-github:hover:not(:disabled) {
-		background: #2f363d;
-		border-color: #666;
-	}
-
-	.btn-github:disabled {
-		opacity: 0.7;
-		cursor: not-allowed;
-	}
-
-	.spinner {
-		width: 18px;
-		height: 18px;
-		border: 2px solid transparent;
-		border-top-color: #fff;
-		border-radius: 50%;
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
-
-	.user-info {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		background: var(--card-bg, #1a1a2e);
-		border: 1px solid var(--border-dim, #2a2a4a);
-		border-radius: 8px;
-		padding: 0.5rem 1rem;
-	}
-
-	.user-avatar {
-		width: 28px;
-		height: 28px;
-		border-radius: 50%;
-	}
-
-	.user-name {
-		color: var(--text, #fff);
-		font-size: 0.9rem;
-	}
-
-	.btn-small {
-		padding: 0.375rem 0.75rem;
-		font-size: 0.8rem;
-	}
-
-	.btn-ghost {
-		background: transparent;
-		border: 1px solid var(--border-dim, #2a2a4a);
-		color: var(--text-dim, #888);
-	}
-
-	.btn-ghost:hover {
-		border-color: var(--text-dim, #888);
-		color: var(--text, #fff);
-	}
-
 	.password-input {
 		width: 100%;
 		padding: 0.875rem 1rem;
@@ -694,6 +785,22 @@
 		gap: 0.5rem;
 	}
 
+	.btn-small {
+		padding: 0.375rem 0.75rem;
+		font-size: 0.8rem;
+	}
+
+	.btn-ghost {
+		background: transparent;
+		border: 1px solid var(--border-dim, #2a2a4a);
+		color: var(--text-dim, #888);
+	}
+
+	.btn-ghost:hover {
+		border-color: var(--text-dim, #888);
+		color: var(--text, #fff);
+	}
+
 	.benchmark-page {
 		padding: 8rem 2rem 4rem;
 		max-width: 1200px;
@@ -703,10 +810,11 @@
 
 	.benchmark-header {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: space-between;
 		align-items: flex-start;
 		margin-bottom: 2rem;
-		gap: 2rem;
+		gap: 1rem;
 	}
 
 	.header-content h1 {
@@ -724,6 +832,29 @@
 	.header-actions {
 		display: flex;
 		gap: 0.75rem;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+
+	.running-indicator {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+	}
+
+	.pulse-dot {
+		width: 8px;
+		height: 8px;
+		background: var(--green);
+		border-radius: 50%;
+		animation: pulse-dot 1.5s infinite;
+	}
+
+	@keyframes pulse-dot {
+		0%, 100% { opacity: 1; transform: scale(1); }
+		50% { opacity: 0.5; transform: scale(1.2); }
 	}
 
 	.btn {
@@ -738,6 +869,7 @@
 		font-size: 0.9rem;
 		font-weight: 500;
 		transition: all 0.15s;
+		border-radius: 4px;
 	}
 
 	.btn:hover:not(:disabled) {
@@ -750,20 +882,25 @@
 	}
 
 	.btn-primary {
-		background: var(--purple);
-		border-color: var(--purple);
+		background: var(--purple, #9d8cff);
+		border-color: var(--purple, #9d8cff);
 		color: white;
 	}
 
 	.btn-primary:hover:not(:disabled) {
-		background: var(--purple-light);
-		border-color: var(--purple-light);
+		filter: brightness(1.1);
+	}
+
+	.btn-secondary {
+		background: var(--blue, #3b82f6);
+		border-color: var(--blue, #3b82f6);
+		color: white;
 	}
 
 	.btn-glow {
-		background: var(--green);
-		border-color: var(--green);
-		color: var(--bg-primary);
+		background: var(--green, #00c49a);
+		border-color: var(--green, #00c49a);
+		color: var(--bg-primary, #0a0a1a);
 		box-shadow: 0 0 20px rgba(0, 196, 154, 0.3);
 	}
 
@@ -772,8 +909,8 @@
 	}
 
 	.btn-stop {
-		background: var(--red);
-		border-color: var(--red);
+		background: var(--red, #ff6b6b);
+		border-color: var(--red, #ff6b6b);
 		color: white;
 	}
 
@@ -792,18 +929,62 @@
 		gap: 0.75rem;
 		padding: 1rem;
 		background: rgba(255, 107, 107, 0.1);
-		border: 1px solid var(--red);
+		border: 1px solid var(--red, #ff6b6b);
 		margin-bottom: 2rem;
-		color: var(--red);
+		color: var(--red, #ff6b6b);
+		border-radius: 4px;
 	}
 
 	.error-dismiss {
 		margin-left: auto;
 		background: none;
 		border: none;
-		color: var(--red);
+		color: var(--red, #ff6b6b);
 		cursor: pointer;
 		font-size: 1.25rem;
+	}
+
+	.auto-improve-banner {
+		background: linear-gradient(135deg, rgba(0, 196, 154, 0.1), rgba(59, 130, 246, 0.1));
+		border: 1px solid var(--green, #00c49a);
+		border-radius: 8px;
+		padding: 1.5rem;
+		margin-bottom: 2rem;
+	}
+
+	.auto-improve-header {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.auto-improve-icon {
+		font-size: 1.5rem;
+	}
+
+	.auto-improve-title {
+		font-size: 1.1rem;
+		font-weight: 600;
+		color: var(--green, #00c49a);
+	}
+
+	.auto-improve-status {
+		color: var(--text-secondary);
+		margin-bottom: 1rem;
+	}
+
+	.auto-improve-progress {
+		height: 6px;
+		background: var(--bg-tertiary, #1a1a2e);
+		border-radius: 3px;
+		overflow: hidden;
+	}
+
+	.auto-improve-fill {
+		height: 100%;
+		background: linear-gradient(90deg, var(--green, #00c49a), var(--blue, #3b82f6));
+		transition: width 0.5s ease;
 	}
 
 	.stats-grid {
@@ -814,16 +995,17 @@
 	}
 
 	.stat-card {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--bg-secondary, #111);
+		border: 1px solid var(--border, #333);
 		padding: 1.5rem;
+		border-radius: 4px;
 	}
 
 	.stat-label {
 		font-size: 0.75rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--text-tertiary);
+		color: var(--text-tertiary, #666);
 		margin-bottom: 0.5rem;
 	}
 
@@ -837,41 +1019,48 @@
 
 	.stat-detail, .stat-target {
 		font-size: 0.8rem;
-		color: var(--text-secondary);
+		color: var(--text-secondary, #888);
 	}
 
 	.coverage-bar {
 		position: relative;
 		height: 4px;
-		background: var(--bg-tertiary);
+		background: var(--bg-tertiary, #1a1a2e);
 		margin-top: 1rem;
 		overflow: visible;
+		border-radius: 2px;
 	}
 
 	.coverage-fill {
 		height: 100%;
-		background: var(--green);
 		transition: width 0.5s ease;
+		border-radius: 2px;
 	}
+
+	.coverage-fill.coverage-excellent { background: var(--green, #00c49a); }
+	.coverage-fill.coverage-good { background: var(--blue, #3b82f6); }
+	.coverage-fill.coverage-fair { background: var(--orange, #f59e0b); }
+	.coverage-fill.coverage-poor { background: var(--red, #ff6b6b); }
 
 	.coverage-target {
 		position: absolute;
 		top: -4px;
 		width: 2px;
 		height: 12px;
-		background: var(--text-primary);
+		background: var(--text-primary, #fff);
 	}
 
-	.coverage-excellent { color: var(--green); }
-	.coverage-good { color: var(--blue); }
-	.coverage-fair { color: var(--orange); }
-	.coverage-poor { color: var(--red); }
+	.coverage-excellent { color: var(--green, #00c49a); }
+	.coverage-good { color: var(--blue, #3b82f6); }
+	.coverage-fair { color: var(--orange, #f59e0b); }
+	.coverage-poor { color: var(--red, #ff6b6b); }
 
 	.progress-section {
 		margin-bottom: 2rem;
 		padding: 1.5rem;
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--bg-secondary, #111);
+		border: 1px solid var(--border, #333);
+		border-radius: 4px;
 	}
 
 	.progress-section h2 {
@@ -903,23 +1092,24 @@
 		align-items: flex-end;
 		justify-content: center;
 		transition: height 0.3s ease;
+		border-radius: 2px 2px 0 0;
 	}
 
-	.progress-bar.coverage-excellent { background: var(--green); }
-	.progress-bar.coverage-good { background: var(--blue); }
-	.progress-bar.coverage-fair { background: var(--orange); }
-	.progress-bar.coverage-poor { background: var(--red); }
+	.progress-bar.coverage-excellent { background: var(--green, #00c49a); }
+	.progress-bar.coverage-good { background: var(--blue, #3b82f6); }
+	.progress-bar.coverage-fair { background: var(--orange, #f59e0b); }
+	.progress-bar.coverage-poor { background: var(--red, #ff6b6b); }
 
 	.progress-label {
 		font-size: 0.7rem;
-		color: var(--bg-primary);
+		color: var(--bg-primary, #0a0a1a);
 		font-weight: 600;
 		padding: 0.25rem;
 	}
 
 	.progress-iteration {
 		font-size: 0.7rem;
-		color: var(--text-tertiary);
+		color: var(--text-tertiary, #666);
 		margin-top: 0.5rem;
 	}
 
@@ -938,23 +1128,24 @@
 	}
 
 	.repo-card {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--bg-secondary, #111);
+		border: 1px solid var(--border, #333);
 		padding: 1.25rem;
 		transition: all 0.2s;
+		border-radius: 4px;
 	}
 
 	.repo-card.scanning {
-		border-color: var(--purple);
+		border-color: var(--purple, #9d8cff);
 		box-shadow: 0 0 20px rgba(157, 140, 255, 0.2);
 	}
 
 	.repo-card.complete {
-		border-color: var(--green-dim);
+		border-color: rgba(0, 196, 154, 0.3);
 	}
 
 	.repo-card.error {
-		border-color: var(--red);
+		border-color: var(--red, #ff6b6b);
 	}
 
 	.repo-header {
@@ -980,10 +1171,10 @@
 		font-size: 0.75rem;
 	}
 
-	.status-icon.pending { background: var(--bg-tertiary); color: var(--text-tertiary); }
-	.status-icon.scanning { background: var(--purple); color: white; animation: pulse 1s infinite; }
-	.status-icon.complete { background: var(--green); color: var(--bg-primary); }
-	.status-icon.error { background: var(--red); color: white; }
+	.status-icon.pending { background: var(--bg-tertiary, #1a1a2e); color: var(--text-tertiary, #666); }
+	.status-icon.scanning { background: var(--purple, #9d8cff); color: white; animation: pulse 1s infinite; }
+	.status-icon.complete { background: var(--green, #00c49a); color: var(--bg-primary, #0a0a1a); }
+	.status-icon.error { background: var(--red, #ff6b6b); color: white; }
 
 	@keyframes pulse {
 		0%, 100% { opacity: 1; }
@@ -996,9 +1187,57 @@
 
 	.repo-language {
 		font-size: 0.75rem;
-		color: var(--text-tertiary);
-		background: var(--bg-tertiary);
+		color: var(--text-tertiary, #666);
+		background: var(--bg-tertiary, #1a1a2e);
 		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+	}
+
+	.scan-progress-container {
+		padding: 1.5rem 0;
+		text-align: center;
+	}
+
+	.scan-progress-bar {
+		height: 6px;
+		background: var(--bg-tertiary, #1a1a2e);
+		border-radius: 3px;
+		overflow: hidden;
+		margin-bottom: 0.75rem;
+	}
+
+	.scan-progress-fill {
+		height: 100%;
+		background: linear-gradient(90deg, var(--purple, #9d8cff), var(--blue, #3b82f6));
+		transition: width 0.1s ease;
+	}
+
+	.scan-progress-text {
+		font-size: 0.85rem;
+		color: var(--text-secondary, #888);
+		margin-bottom: 0.5rem;
+	}
+
+	.scan-animation {
+		display: flex;
+		justify-content: center;
+		gap: 0.25rem;
+	}
+
+	.scan-dot {
+		width: 6px;
+		height: 6px;
+		background: var(--purple, #9d8cff);
+		border-radius: 50%;
+		animation: scan-bounce 1.4s infinite ease-in-out both;
+	}
+
+	.scan-dot:nth-child(1) { animation-delay: -0.32s; }
+	.scan-dot:nth-child(2) { animation-delay: -0.16s; }
+
+	@keyframes scan-bounce {
+		0%, 80%, 100% { transform: scale(0); }
+		40% { transform: scale(1); }
 	}
 
 	.repo-coverage {
@@ -1021,7 +1260,7 @@
 
 	.ring-bg {
 		fill: none;
-		stroke: var(--bg-tertiary);
+		stroke: var(--bg-tertiary, #1a1a2e);
 		stroke-width: 3;
 	}
 
@@ -1047,8 +1286,8 @@
 		justify-content: space-around;
 		margin-bottom: 1rem;
 		padding: 0.75rem 0;
-		border-top: 1px solid var(--border);
-		border-bottom: 1px solid var(--border);
+		border-top: 1px solid var(--border, #333);
+		border-bottom: 1px solid var(--border, #333);
 	}
 
 	.repo-stat {
@@ -1063,7 +1302,7 @@
 
 	.repo-stat .stat-label {
 		font-size: 0.7rem;
-		color: var(--text-tertiary);
+		color: var(--text-tertiary, #666);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 	}
@@ -1075,10 +1314,11 @@
 		gap: 0.5rem;
 		padding: 0.5rem;
 		background: rgba(0, 196, 154, 0.1);
-		border: 1px solid var(--green-dim);
-		color: var(--green);
+		border: 1px solid rgba(0, 196, 154, 0.3);
+		color: var(--green, #00c49a);
 		font-size: 0.8rem;
 		margin-bottom: 1rem;
+		border-radius: 4px;
 	}
 
 	.missed-vulns {
@@ -1087,7 +1327,7 @@
 
 	.missed-label {
 		font-size: 0.75rem;
-		color: var(--text-tertiary);
+		color: var(--text-tertiary, #666);
 		display: block;
 		margin-bottom: 0.5rem;
 	}
@@ -1102,22 +1342,24 @@
 		font-size: 0.7rem;
 		padding: 0.2rem 0.5rem;
 		background: rgba(255, 107, 107, 0.1);
-		border: 1px solid var(--red);
-		color: var(--red);
+		border: 1px solid var(--red, #ff6b6b);
+		color: var(--red, #ff6b6b);
+		border-radius: 2px;
 	}
 
 	.missed-more {
 		font-size: 0.7rem;
-		color: var(--text-tertiary);
+		color: var(--text-tertiary, #666);
 		padding: 0.2rem 0.5rem;
 	}
 
 	.repo-error {
 		font-size: 0.8rem;
-		color: var(--red);
+		color: var(--red, #ff6b6b);
 		margin-bottom: 1rem;
 		padding: 0.5rem;
 		background: rgba(255, 107, 107, 0.1);
+		border-radius: 4px;
 	}
 
 	.repo-actions {
@@ -1130,8 +1372,10 @@
 	}
 
 	.history-table {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--bg-secondary, #111);
+		border: 1px solid var(--border, #333);
+		border-radius: 4px;
+		overflow: hidden;
 	}
 
 	.history-header, .history-row {
@@ -1142,16 +1386,16 @@
 	}
 
 	.history-header {
-		background: var(--bg-tertiary);
+		background: var(--bg-tertiary, #1a1a2e);
 		font-size: 0.75rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--text-tertiary);
+		color: var(--text-tertiary, #666);
 		font-weight: 500;
 	}
 
 	.history-row {
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--border, #333);
 	}
 
 	.run-number {
@@ -1160,7 +1404,7 @@
 
 	.run-time {
 		font-size: 0.85rem;
-		color: var(--text-secondary);
+		color: var(--text-secondary, #888);
 	}
 
 	.run-coverage {
@@ -1168,7 +1412,7 @@
 	}
 
 	.run-rules {
-		color: var(--green);
+		color: var(--green, #00c49a);
 	}
 
 	@media (max-width: 768px) {
