@@ -24,7 +24,7 @@ Work through each repository systematically. After scanning, document findings a
 | 1 | [digininja/DVWA](https://github.com/digininja/DVWA) | PHP | ✅ Done | 151 | Baseline test, PHP rules |
 | 2 | [juice-shop/juice-shop](https://github.com/juice-shop/juice-shop) | JS/Node | ✅ Done | 931 | OWASP Top 10 coverage |
 | 3 | [OWASP/crAPI](https://github.com/OWASP/crAPI) | Python/JS | ✅ Done | 137 | API security focused |
-| 4 | [OWASP/NodeGoat](https://github.com/OWASP/NodeGoat) | JavaScript | ⏳ Pending | - | OWASP Top 10 for Node |
+| 4 | [OWASP/NodeGoat](https://github.com/OWASP/NodeGoat) | JavaScript | ✅ Done | 93 | OWASP Top 10, deps |
 | 5 | [WebGoat/WebGoat](https://github.com/WebGoat/WebGoat) | Java | ⏳ Pending | - | Java vulnerabilities |
 | 6 | [appsecco/dvna](https://github.com/appsecco/dvna) | JavaScript | ⏳ Pending | - | Node.js focused |
 | + | [trottomv/python-insecure-app](https://github.com/trottomv/python-insecure-app) | Python | ✅ Done | 8 | SSTI, SSRF, secrets |
@@ -410,6 +410,65 @@ For each scan, check detection of:
 - Strong detection of cryptographic issues
 - Many findings in test/spec files (localhost:3000 hardcoded) - could consider excluding
 - 931 findings shows comprehensive detection for intentionally vulnerable app
+
+---
+
+## NodeGoat Results
+
+### Scan: 2025-12-04
+
+**Repository**: https://github.com/OWASP/NodeGoat
+**Score**: 0/100, Grade F, Do Not Ship
+**Languages**: JavaScript, YAML
+**Frameworks**: Express, MongoDB
+
+### Findings by Severity
+| Severity | Count |
+|----------|-------|
+| Critical | 25 |
+| High | 30 |
+| Medium | 22 |
+| Low | 8 |
+| Info | 8 |
+| **Total** | **93** |
+
+### Detection Categories
+
+| Category | Found | Examples |
+|----------|-------|----------|
+| Command Injection | ✅ Yes | Gruntfile.js:165 - exec() |
+| Eval Injection | ✅ Yes | app/routes/contributions.js:32-34 |
+| Open Redirect | ✅ Yes | app/routes/index.js:72 |
+| Insecure Randomness | ✅ Yes | Math.random() in user-dao.js |
+| Hardcoded Secrets | ✅ 18+ | config/env/*.js, server.js |
+| Private Key Exposed | ✅ Yes | Gitleaks detection |
+| Missing Helmet | ✅ Yes | server.js:15 |
+| Vulnerable Dependencies | ✅ 15+ | bson, body-parser, braces, cookie, debug |
+
+### Vulnerable Dependencies Detected (Trivy)
+| Package | Severity | Issue |
+|---------|----------|-------|
+| bson | CRITICAL | Deserialization/Code injection |
+| body-parser | HIGH | DoS vulnerability |
+| braces | HIGH | Input limit bypass |
+| debug | HIGH | Vulnerability + ReDoS |
+| cookie | LOW | Out of bounds characters |
+| brace-expansion | LOW | ReDoS |
+
+### OWASP Top 10 Coverage
+- ✅ A01 Broken Access Control - Open redirect detected
+- ✅ A02 Cryptographic Failures - Insecure randomness detected
+- ✅ A03 Injection - eval(), command injection detected
+- ✅ A05 Security Misconfiguration - Missing helmet detected
+- ✅ A06 Vulnerable Components - 15+ dependency vulns via Trivy
+- ✅ A07 Auth Failures - Hardcoded secrets in config
+- ⚠️ A04, A08, A09, A10 - Partial/needs runtime testing
+
+### Notes
+- Strong dependency vulnerability detection via Trivy
+- Gitleaks catching secrets in config files effectively
+- New rules catching eval injection patterns
+- MongoDB/Express framework correctly identified
 
 ---
 

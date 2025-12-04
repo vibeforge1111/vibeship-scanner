@@ -548,6 +548,84 @@ rules:
     metadata:
       tags: [core, injection]
 
+  - id: js-mongodb-where-regex
+    pattern-regex: "\\$where\\s*:"
+    message: MongoDB $where operator detected - server-side JavaScript injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, nosql-injection]
+
+  - id: js-nosql-operator-injection
+    pattern-regex: "req\\.(body|query|params)\\.[^\\s]+\\s*\\[\\s*['\"]\\$"
+    message: NoSQL operator from user input - injection risk ($gt, $ne, $regex)
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, nosql-injection]
+
+  - id: js-mongodb-query-user-input
+    patterns:
+      - pattern: '$COLL.find(req.body)'
+      - pattern: '$COLL.find(req.query)'
+      - pattern: '$COLL.findOne(req.body)'
+      - pattern: '$COLL.findOne(req.query)'
+    message: MongoDB query with raw user input - NoSQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, nosql-injection]
+
+  - id: js-mongoose-query-user-input
+    patterns:
+      - pattern: '$MODEL.find(req.body)'
+      - pattern: '$MODEL.findOne(req.body)'
+      - pattern: '$MODEL.findOneAndUpdate(req.body, ...)'
+      - pattern: '$MODEL.updateMany(req.body, ...)'
+    message: Mongoose query with raw user input - NoSQL injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, nosql-injection]
+
+  # ============================================
+  # Log Injection / CRLF
+  # ============================================
+
+  - id: js-log-injection
+    patterns:
+      - pattern: 'console.log($MSG + req.body.$PARAM)'
+      - pattern: 'console.log($MSG + req.query.$PARAM)'
+      - pattern: 'logger.info($MSG + req.body.$PARAM)'
+      - pattern: 'logger.info($MSG + req.query.$PARAM)'
+    message: Log message with unsanitized user input - log injection risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [log-injection]
+
+  - id: js-log-injection-template
+    patterns:
+      - pattern: 'console.log(`${req.body.$PARAM}`)'
+      - pattern: 'console.log(`${req.query.$PARAM}`)'
+      - pattern: 'logger.info(`${req.body.$PARAM}`)'
+    message: User input in log template - log injection/CRLF risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [log-injection]
+
+  - id: js-crlf-header-injection
+    patterns:
+      - pattern: 'res.setHeader($NAME, req.query.$VALUE)'
+      - pattern: 'res.setHeader($NAME, req.body.$VALUE)'
+      - pattern: 'res.set($NAME, req.query.$VALUE)'
+    message: HTTP header from user input - CRLF/header injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [crlf, header-injection]
+
   - id: js-drizzle-raw
     pattern: sql.raw($QUERY)
     message: Drizzle raw SQL - injection risk if query contains user input
