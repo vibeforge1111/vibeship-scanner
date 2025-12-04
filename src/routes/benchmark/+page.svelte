@@ -18,12 +18,7 @@
 		return hashArray.slice(0, 16).map(b => b.toString(16).padStart(2, '0')).join('');
 	}
 
-	onMount(async () => {
-		const stored = localStorage.getItem('benchmark_auth');
-		if (stored === PASSWORD_HASH) {
-			isAuthenticated = true;
-		}
-	});
+	// Auth check moved to main onMount below
 
 	async function login() {
 		const hash = await hashPassword(password);
@@ -652,6 +647,12 @@
 	}
 
 	onMount(async () => {
+		// Check authentication first
+		const authStored = localStorage.getItem('benchmark_auth');
+		if (authStored === PASSWORD_HASH) {
+			isAuthenticated = true;
+		}
+
 		// Load saved data first, then fetch repos
 		const hadStoredData = loadFromStorage();
 		console.log('[Benchmark] onMount - had stored data:', hadStoredData, 'results size:', results.size);
