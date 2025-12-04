@@ -1739,6 +1739,30 @@ rules:
     metadata:
       tags: [ssti, rce]
 
+  - id: nunjucks-ssti-variable
+    patterns:
+      - pattern: |
+          $MSG = req.query.$PARAM
+          ...
+          nunjucks.renderString($MSG)
+      - pattern: |
+          $MSG = req.body.$PARAM
+          ...
+          nunjucks.renderString($MSG)
+    message: Variable from user input passed to nunjucks.renderString - SSTI/RCE
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [ssti, rce]
+
+  - id: nunjucks-ssti-regex
+    pattern-regex: "nunjucks\\.renderString\\s*\\("
+    message: nunjucks.renderString usage - ensure input is not user-controlled (SSTI risk)
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [ssti]
+
   - id: pug-render-user-input
     patterns:
       - pattern: pug.render($USER_INPUT)
@@ -1787,6 +1811,14 @@ rules:
       - pattern: 'res.redirect(`${$BASE}${req.query.$PARAM}`)'
       - pattern: 'res.redirect(`...${$USER_INPUT}...`)'
     message: Redirect with template literal user input - XSS/open redirect risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [xss, redirect]
+
+  - id: xss-redirect-url-param-concat
+    pattern-regex: 'res\.redirect\s*\(\s*["\'][^"\']*\?\w+=["\']?\s*\+\s*\w+'
+    message: Redirect URL with concatenated parameter - XSS/injection risk
     languages: [javascript, typescript]
     severity: WARNING
     metadata:
@@ -1875,6 +1907,8 @@ rules:
       - pattern: '$INPUT == $USER.password'
       - pattern: 'password == user.password'
       - pattern: 'user.password == password'
+      - pattern: '$VAR[0].password == $INPUT'
+      - pattern: '$INPUT == $VAR[0].password'
     message: Plaintext password comparison - use bcrypt.compare()
     languages: [javascript, typescript]
     severity: ERROR
@@ -1885,9 +1919,20 @@ rules:
     patterns:
       - pattern: 'md5($PASSWORD) == $USER.password'
       - pattern: '$USER.password == md5($PASSWORD)'
+      - pattern: 'md5($VAR.password) == $INPUT'
+      - pattern: '$INPUT == md5($VAR.password)'
+      - pattern: 'md5($VAR[0].password) == $INPUT'
     message: MD5 password comparison - use bcrypt instead
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [auth, crypto]
+
+  - id: weak-password-compare-regex
+    pattern-regex: "\\.(password)\\s*==\\s*\\w+|\\w+\\s*==\\s*\\w+\\.password"
+    message: Direct password comparison detected - use bcrypt.compare() for secure comparison
+    languages: [javascript, typescript]
+    severity: WARNING
     metadata:
       tags: [auth, crypto]
 
