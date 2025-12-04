@@ -251,6 +251,15 @@ class BenchmarkRunner:
             suggestion = self.generate_rule_suggestion(vuln, code, language)
             suggestions.append(suggestion)
 
+        # Calculate score and grade like the main scan
+        score = calculate_score(findings)
+
+        # Count findings by severity
+        finding_counts = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0}
+        for f in findings:
+            sev = f.get('severity', 'info')
+            finding_counts[sev] = finding_counts.get(sev, 0) + 1
+
         return {
             "repo": repo_name,
             "name": repo_data.get("name", repo_name),
@@ -260,7 +269,12 @@ class BenchmarkRunner:
             "missed_count": len(missed),
             "detected": detected,
             "missed": missed,
-            "suggestions": suggestions
+            "suggestions": suggestions,
+            # Add full findings data like the main scan page
+            "findings": findings,
+            "score": score,
+            "finding_counts": finding_counts,
+            "stack": scan_results.get("stack", {})
         }
 
     def run_full_benchmark(self, repos: List[str] = None) -> Dict:

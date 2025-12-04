@@ -62,6 +62,29 @@
 		vuln_count: number;
 	};
 
+	type Finding = {
+		id: string;
+		ruleId: string;
+		severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
+		category: string;
+		title: string;
+		description?: string;
+		location: {
+			file: string;
+			line: number;
+			column?: number;
+		};
+		snippet?: {
+			code: string;
+			highlightLines?: number[];
+		};
+		fix?: {
+			available: boolean;
+			template?: string;
+		};
+		references?: string[];
+	};
+
 	type RepoResult = {
 		repo: string;
 		name: string;
@@ -70,13 +93,18 @@
 		coverage: number;
 		detected: number;
 		total: number;
-		findings: number;
+		findingsCount: number;
 		detected_vulns: string[];
 		missed_vulns: string[];
 		error?: string;
 		improved_from?: number;
 		scanProgress: number;
 		scanStartTime?: number;
+		// Full findings data like the main scan page
+		findings?: Finding[];
+		score?: number;
+		finding_counts?: { critical: number; high: number; medium: number; low: number; info: number };
+		stack?: { languages: string[]; frameworks: string[] };
 	};
 
 	type BenchmarkHistory = {
@@ -104,8 +132,55 @@
 	let autoImproveProgress = $state(0);
 	let scanQueue = $state<string[]>([]);
 	let progressIntervals = new Map<string, ReturnType<typeof setInterval>>();
+	let selectedRepo = $state<string | null>(null);
+	let expandedFindings = $state<Set<string>>(new Set());
 
 	const STORAGE_KEY = 'benchmark_data';
+
+	function getSeverityClass(severity: string): string {
+		const classes: Record<string, string> = {
+			critical: 'severity-critical',
+			high: 'severity-high',
+			medium: 'severity-medium',
+			low: 'severity-low',
+			info: 'severity-info'
+		};
+		return classes[severity] || '';
+	}
+
+	function getGradeFromScore(score: number): string {
+		if (score >= 90) return 'A';
+		if (score >= 80) return 'B';
+		if (score >= 70) return 'C';
+		if (score >= 60) return 'D';
+		return 'F';
+	}
+
+	function getGradeClass(grade: string): string {
+		const classes: Record<string, string> = {
+			A: 'grade-a',
+			B: 'grade-b',
+			C: 'grade-c',
+			D: 'grade-d',
+			F: 'grade-f'
+		};
+		return classes[grade] || '';
+	}
+
+	function toggleFinding(id: string) {
+		if (expandedFindings.has(id)) {
+			expandedFindings.delete(id);
+			expandedFindings = new Set(expandedFindings);
+		} else {
+			expandedFindings.add(id);
+			expandedFindings = new Set(expandedFindings);
+		}
+	}
+
+	function closeModal() {
+		selectedRepo = null;
+		expandedFindings = new Set();
+	}
 
 	function saveToStorage() {
 		const data = {
@@ -173,7 +248,7 @@
 						coverage: 0,
 						detected: 0,
 						total: repo.vuln_count,
-						findings: 0,
+						findingsCount: 0,
 						detected_vulns: [],
 						missed_vulns: [],
 						scanProgress: 0
@@ -275,10 +350,15 @@
 				result.coverage = (r.coverage || 0) * 100;
 				result.detected = r.detected_count || 0;
 				result.total = (r.detected_count || 0) + (r.missed_count || 0);
-				result.findings = r.total_findings || 0;
+				result.findingsCount = r.total_findings || 0;
 				result.detected_vulns = (r.detected || []).map((v: any) => v.id);
 				result.missed_vulns = (r.missed || []).map((v: any) => v.id);
 				result.scanProgress = 100;
+				// Store full findings data for detailed view
+				result.findings = r.findings || [];
+				result.score = r.score;
+				result.finding_counts = r.finding_counts;
+				result.stack = r.stack;
 
 				if (previousCoverage > 0 && result.coverage > previousCoverage) {
 					result.improved_from = previousCoverage;
@@ -469,7 +549,7 @@
 				if (existing) {
 					existing.coverage = (repoData.coverage || 0) * 100;
 					existing.detected = repoData.detected || 0;
-					existing.findings = repoData.findings || 0;
+					existing.findingsCount = repoData.findings || 0;
 					existing.status = 'complete';
 					existing.scanProgress = 100;
 				}
@@ -743,7 +823,7 @@
 									<span class="stat-label">Detected</span>
 								</div>
 								<div class="repo-stat">
-									<span class="stat-num">{result?.findings || 0}</span>
+									<span class="stat-num">{result?.findingsCount || 0}</span>
 									<span class="stat-label">Findings</span>
 								</div>
 							</div>
@@ -782,6 +862,14 @@
 							>
 								{result?.status === 'scanning' ? 'Scanning...' : 'Scan'}
 							</button>
+							{#if result?.status === 'complete' && result.findings && result.findings.length > 0}
+								<button
+									class="btn btn-sm btn-view"
+									onclick={() => selectedRepo = repo.repo}
+								>
+									View Report
+								</button>
+							{/if}
 						</div>
 					</div>
 				{/each}
@@ -810,6 +898,136 @@
 					{/each}
 				</div>
 			</div>
+		{/if}
+
+		<!-- Findings Modal -->
+		{#if selectedRepo}
+			{@const selectedResult = results.get(selectedRepo)}
+			{#if selectedResult}
+				<div class="modal-overlay" onclick={closeModal}>
+					<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+						<div class="modal-header">
+							<div class="modal-title-section">
+								<h2>{selectedResult.name}</h2>
+								<a href="https://github.com/{selectedRepo}" target="_blank" rel="noopener noreferrer" class="repo-link-modal">
+									github.com/{selectedRepo}
+								</a>
+							</div>
+							<button class="modal-close" onclick={closeModal}>×</button>
+						</div>
+
+						<div class="modal-score-section">
+							<div class="score-circle-modal {getGradeClass(getGradeFromScore(selectedResult.score || 0))}">
+								<span class="score-number">{selectedResult.score || 0}</span>
+								<span class="score-label">/ 100</span>
+							</div>
+							<div class="score-details">
+								<div class="summary-counts">
+									{#if selectedResult.finding_counts?.critical}
+										<span class="count severity-critical">{selectedResult.finding_counts.critical} Critical</span>
+									{/if}
+									{#if selectedResult.finding_counts?.high}
+										<span class="count severity-high">{selectedResult.finding_counts.high} High</span>
+									{/if}
+									{#if selectedResult.finding_counts?.medium}
+										<span class="count severity-medium">{selectedResult.finding_counts.medium} Medium</span>
+									{/if}
+									{#if selectedResult.finding_counts?.low}
+										<span class="count severity-low">{selectedResult.finding_counts.low} Low</span>
+									{/if}
+									{#if selectedResult.finding_counts?.info}
+										<span class="count severity-info">{selectedResult.finding_counts.info} Info</span>
+									{/if}
+								</div>
+								{#if selectedResult.stack?.languages?.length}
+									<div class="stack-info-modal">
+										<span class="stack-label">Languages:</span>
+										<span class="stack-value">{selectedResult.stack.languages.join(', ')}</span>
+									</div>
+								{/if}
+								{#if selectedResult.stack?.frameworks?.length}
+									<div class="stack-info-modal">
+										<span class="stack-label">Frameworks:</span>
+										<span class="stack-value">{selectedResult.stack.frameworks.join(', ')}</span>
+									</div>
+								{/if}
+							</div>
+						</div>
+
+						<div class="modal-coverage-section">
+							<div class="coverage-stat">
+								<span class="coverage-label">Benchmark Coverage</span>
+								<span class="coverage-value {getCoverageClass(selectedResult.coverage)}">{selectedResult.coverage.toFixed(1)}%</span>
+							</div>
+							<div class="coverage-stat">
+								<span class="coverage-label">Known Vulns Detected</span>
+								<span class="coverage-value">{selectedResult.detected}/{selectedResult.total}</span>
+							</div>
+						</div>
+
+						{#if selectedResult.missed_vulns.length > 0}
+							<div class="gaps-section">
+								<h3>Detection Gaps ({selectedResult.missed_vulns.length})</h3>
+								<div class="gaps-list">
+									{#each selectedResult.missed_vulns as gap}
+										<span class="gap-tag">{gap}</span>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						<div class="findings-section-modal">
+							<h3>All Findings ({selectedResult.findings?.length || 0})</h3>
+							<div class="findings-list">
+								{#each selectedResult.findings || [] as finding, i}
+									{@const findingId = finding.id || `finding-${i}`}
+									{@const isExpanded = expandedFindings.has(findingId)}
+									<div class="finding-card" class:expanded={isExpanded}>
+										<button class="finding-toggle" onclick={() => toggleFinding(findingId)}>
+											<div class="finding-header">
+												<span class="severity-badge {getSeverityClass(finding.severity)}">
+													{finding.severity.toUpperCase()}
+												</span>
+												<span class="finding-category">{finding.category}</span>
+												<span class="finding-chevron" class:rotated={isExpanded}>▼</span>
+											</div>
+											<h4 class="finding-title">{finding.title}</h4>
+										</button>
+
+										{#if isExpanded}
+											<div class="finding-details">
+												{#if finding.location?.file}
+													<div class="finding-location">
+														<span class="location-label">Location:</span>
+														<code>{finding.location.file}{finding.location.line ? `:${finding.location.line}` : ''}</code>
+													</div>
+												{/if}
+
+												{#if finding.snippet?.code}
+													<div class="finding-snippet">
+														<pre><code>{finding.snippet.code}</code></pre>
+													</div>
+												{/if}
+
+												{#if finding.description}
+													<p class="finding-description">{finding.description}</p>
+												{/if}
+
+												{#if finding.fix?.available && finding.fix?.template}
+													<div class="finding-fix">
+														<span class="fix-label">Suggested Fix:</span>
+														<pre><code>{finding.fix.template}</code></pre>
+													</div>
+												{/if}
+											</div>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						</div>
+					</div>
+				</div>
+			{/if}
 		{/if}
 	</div>
 {/if}
@@ -1551,5 +1769,355 @@
 		.history-row span:nth-child(5) {
 			display: none;
 		}
+	}
+
+	/* View Report Button */
+	.btn-view {
+		background: transparent;
+		border-color: var(--purple, #9d8cff);
+		color: var(--purple, #9d8cff);
+	}
+
+	.btn-view:hover:not(:disabled) {
+		background: rgba(157, 140, 255, 0.1);
+	}
+
+	/* Modal Styles */
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.8);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+		padding: 2rem;
+		overflow-y: auto;
+	}
+
+	.modal-content {
+		background: var(--bg-primary, #0a0a1a);
+		border: 1px solid var(--border, #333);
+		border-radius: 8px;
+		max-width: 900px;
+		width: 100%;
+		max-height: 90vh;
+		overflow-y: auto;
+		position: relative;
+	}
+
+	.modal-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		padding: 1.5rem;
+		border-bottom: 1px solid var(--border, #333);
+		position: sticky;
+		top: 0;
+		background: var(--bg-primary, #0a0a1a);
+		z-index: 10;
+	}
+
+	.modal-title-section h2 {
+		font-family: 'Instrument Serif', serif;
+		font-size: 1.5rem;
+		margin-bottom: 0.25rem;
+	}
+
+	.repo-link-modal {
+		font-size: 0.85rem;
+		color: var(--text-secondary, #888);
+		text-decoration: none;
+	}
+
+	.repo-link-modal:hover {
+		color: var(--purple, #9d8cff);
+	}
+
+	.modal-close {
+		background: none;
+		border: none;
+		color: var(--text-secondary, #888);
+		font-size: 2rem;
+		cursor: pointer;
+		line-height: 1;
+		padding: 0;
+	}
+
+	.modal-close:hover {
+		color: var(--text-primary, #fff);
+	}
+
+	.modal-score-section {
+		display: flex;
+		gap: 2rem;
+		padding: 1.5rem;
+		border-bottom: 1px solid var(--border, #333);
+		align-items: center;
+	}
+
+	.score-circle-modal {
+		width: 100px;
+		height: 100px;
+		border-radius: 50%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		border: 3px solid currentColor;
+		flex-shrink: 0;
+	}
+
+	.score-circle-modal .score-number {
+		font-family: 'Instrument Serif', serif;
+		font-size: 2rem;
+		line-height: 1;
+	}
+
+	.score-circle-modal .score-label {
+		font-size: 0.7rem;
+		color: var(--text-secondary, #888);
+	}
+
+	.grade-a { color: var(--green, #00c49a); border-color: var(--green, #00c49a); }
+	.grade-b { color: #84cc16; border-color: #84cc16; }
+	.grade-c { color: var(--orange, #f59e0b); border-color: var(--orange, #f59e0b); }
+	.grade-d { color: #f97316; border-color: #f97316; }
+	.grade-f { color: var(--red, #ff6b6b); border-color: var(--red, #ff6b6b); }
+
+	.score-details {
+		flex: 1;
+	}
+
+	.summary-counts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.count {
+		padding: 0.375rem 0.75rem;
+		border-radius: 4px;
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+
+	.severity-critical { background: rgba(255, 77, 77, 0.15); color: #ff4d4d; }
+	.severity-high { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+	.severity-medium { background: rgba(255, 176, 32, 0.15); color: #ffb020; }
+	.severity-low { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+	.severity-info { background: rgba(136, 136, 136, 0.15); color: #888; }
+
+	.stack-info-modal {
+		font-size: 0.85rem;
+		color: var(--text-secondary, #888);
+		margin-bottom: 0.25rem;
+	}
+
+	.stack-label {
+		color: var(--text-tertiary, #666);
+	}
+
+	.modal-coverage-section {
+		display: flex;
+		gap: 2rem;
+		padding: 1rem 1.5rem;
+		background: var(--bg-secondary, #111);
+	}
+
+	.coverage-stat {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.coverage-label {
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--text-tertiary, #666);
+	}
+
+	.coverage-value {
+		font-size: 1.5rem;
+		font-weight: 600;
+	}
+
+	.gaps-section {
+		padding: 1.5rem;
+		border-bottom: 1px solid var(--border, #333);
+	}
+
+	.gaps-section h3 {
+		font-size: 1rem;
+		margin-bottom: 0.75rem;
+		color: var(--red, #ff6b6b);
+	}
+
+	.gaps-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.gap-tag {
+		background: rgba(255, 107, 107, 0.15);
+		color: #ff6b6b;
+		padding: 0.375rem 0.75rem;
+		border-radius: 4px;
+		font-size: 0.8rem;
+		font-family: monospace;
+	}
+
+	.findings-section-modal {
+		padding: 1.5rem;
+	}
+
+	.findings-section-modal h3 {
+		font-size: 1rem;
+		margin-bottom: 1rem;
+	}
+
+	.findings-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.finding-card {
+		background: var(--bg-secondary, #111);
+		border: 1px solid var(--border, #333);
+		border-radius: 4px;
+		overflow: hidden;
+	}
+
+	.finding-card.expanded {
+		border-color: var(--purple, #9d8cff);
+	}
+
+	.finding-toggle {
+		width: 100%;
+		padding: 1rem;
+		background: none;
+		border: none;
+		color: var(--text-primary, #fff);
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.finding-toggle:hover {
+		background: var(--bg-tertiary, #1a1a2e);
+	}
+
+	.finding-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.severity-badge {
+		padding: 0.25rem 0.5rem;
+		border-radius: 3px;
+		font-size: 0.7rem;
+		font-weight: 600;
+	}
+
+	.finding-category {
+		font-size: 0.75rem;
+		color: var(--text-tertiary, #666);
+		text-transform: uppercase;
+	}
+
+	.finding-chevron {
+		margin-left: auto;
+		font-size: 0.75rem;
+		color: var(--text-tertiary, #666);
+		transition: transform 0.2s;
+	}
+
+	.finding-chevron.rotated {
+		transform: rotate(180deg);
+	}
+
+	.finding-title {
+		font-size: 0.95rem;
+		font-weight: 500;
+		margin: 0;
+	}
+
+	.finding-details {
+		padding: 0 1rem 1rem;
+		border-top: 1px solid var(--border, #333);
+	}
+
+	.finding-location {
+		margin-top: 1rem;
+		font-size: 0.85rem;
+	}
+
+	.location-label {
+		color: var(--text-tertiary, #666);
+		margin-right: 0.5rem;
+	}
+
+	.finding-location code {
+		background: var(--bg-tertiary, #1a1a2e);
+		padding: 0.25rem 0.5rem;
+		border-radius: 3px;
+		font-size: 0.8rem;
+	}
+
+	.finding-snippet {
+		margin-top: 1rem;
+		background: var(--bg-tertiary, #1a1a2e);
+		border-radius: 4px;
+		overflow-x: auto;
+	}
+
+	.finding-snippet pre {
+		margin: 0;
+		padding: 1rem;
+	}
+
+	.finding-snippet code {
+		font-size: 0.8rem;
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+
+	.finding-description {
+		margin-top: 1rem;
+		font-size: 0.9rem;
+		color: var(--text-secondary, #888);
+		line-height: 1.5;
+	}
+
+	.finding-fix {
+		margin-top: 1rem;
+		padding: 1rem;
+		background: rgba(0, 196, 154, 0.1);
+		border: 1px solid rgba(0, 196, 154, 0.3);
+		border-radius: 4px;
+	}
+
+	.fix-label {
+		display: block;
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		color: var(--green, #00c49a);
+		margin-bottom: 0.5rem;
+	}
+
+	.finding-fix pre {
+		margin: 0;
+	}
+
+	.finding-fix code {
+		font-size: 0.8rem;
+		color: var(--text-primary, #fff);
 	}
 </style>
