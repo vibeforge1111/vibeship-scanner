@@ -384,6 +384,33 @@ rules:
     languages: [python]
     severity: ERROR
 
+  - id: py-hardcoded-secret-uppercase
+    patterns:
+      - pattern: 'SECRET = "..."'
+      - pattern: 'SECRET_KEY = "..."'
+      - pattern: 'API_SECRET = "..."'
+      - pattern: 'APP_SECRET = "..."'
+    message: Hardcoded secret detected - use environment variables
+    languages: [python]
+    severity: ERROR
+
+  - id: py-hardcoded-token
+    patterns:
+      - pattern: 'TOKEN = "..."'
+      - pattern: 'token = "..."'
+      - pattern: 'API_TOKEN = "..."'
+      - pattern: 'ACCESS_TOKEN = "..."'
+      - pattern: 'AUTH_TOKEN = "..."'
+    message: Hardcoded token detected - use environment variables
+    languages: [python]
+    severity: ERROR
+
+  - id: py-secret-in-variable-name-regex
+    pattern-regex: "(?i)(SECRET|TOKEN|PASSWORD|CREDENTIAL|API_KEY)\\s*=\\s*[\"'][^\"']{4,}[\"']"
+    message: Potential hardcoded secret in variable assignment - use environment variables
+    languages: [python]
+    severity: WARNING
+
   # ============================================
   # Debug/Info Disclosure
   # ============================================

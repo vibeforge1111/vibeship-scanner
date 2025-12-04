@@ -251,6 +251,18 @@ description = "OpenRouter API Key"
 regex = '''sk-or-v1-[a-f0-9]{64}'''
 keywords = ["openrouter", "sk-or"]
 
+[[rules]]
+id = "generic-secret-assignment"
+description = "Generic Secret Assignment in Config"
+regex = '''(?i)(SECRET|TOKEN|PASSWORD|CREDENTIAL|API_KEY)\s*[:=]\s*['\"]?[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]{8,}['\"]?'''
+keywords = ["SECRET", "TOKEN", "PASSWORD", "CREDENTIAL", "API_KEY"]
+
+[[rules]]
+id = "env-file-secret"
+description = "Secret in Environment File"
+regex = '''(?i)^(SECRET|TOKEN|PASSWORD|API_KEY|PRIVATE_KEY|AUTH)[A-Z_]*\s*=\s*[^\s]{4,}'''
+path = '''\.env'''
+
 [allowlist]
 description = "Global allowlist"
 paths = [
