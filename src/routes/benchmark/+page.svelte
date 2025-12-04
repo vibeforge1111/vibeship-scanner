@@ -3,7 +3,7 @@
 
 	const SCANNER_URL = 'https://scanner-empty-field-5676.fly.dev';
 	const BENCHMARK_SECRET = 'vibeship-benchmark-2024';
-	const ACCESS_PASSWORD = 'vibeship-admin-2024';
+	const ACCESS_PASSWORD = 'magichappens';
 
 	let isAuthenticated = $state(false);
 	let password = $state('');
