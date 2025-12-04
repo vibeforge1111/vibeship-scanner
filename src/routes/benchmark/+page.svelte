@@ -130,6 +130,8 @@
 	let selectedRepo = $state<string | null>(null);
 	let expandedFindings = $state<Set<string>>(new Set());
 	let clickedScans = $state<Set<string>>(new Set()); // Track buttons that were just clicked
+	let showGapSummary = $state(false);
+	let gapSummaryData = $state<Array<{ repo: string; repoName: string; vulnId: string; description: string }>>([]);
 
 	const STORAGE_KEY = 'benchmark_data';
 
@@ -526,52 +528,110 @@
 	}
 
 	async function startAutoImprove() {
-		isRunning = true;
+		// Auto-improve now runs locally:
+		// 1. Scan all repos sequentially
+		// 2. Show real-time progress per repo
+		// 3. After scans, show gap analysis summary
+		// 4. The gaps tell us what rules need to be added
+
 		error = null;
-		autoImproveStatus = 'Starting auto-improve...';
-		autoImproveProgress = 5;
+		autoImproveStatus = 'Starting auto-improve scan...';
+		autoImproveProgress = 0;
+		isRunning = true;
+		showGapSummary = false;
+		gapSummaryData = [];
 
-		try {
-			const res = await fetch(`${SCANNER_URL}/benchmark/auto-improve`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-Benchmark-Key': BENCHMARK_SECRET
-				},
-				body: JSON.stringify({
-					target_coverage: targetCoverage / 100,
-					max_iterations: 10
-				})
-			});
+		const reposToScan = repos.filter(r => {
+			const result = results.get(r.repo);
+			return result?.status !== 'scanning';
+		});
 
-			const data = await res.json();
-			if (data.job_id) {
-				jobId = data.job_id;
-				autoImproveStatus = 'Job started, analyzing gaps...';
-				autoImproveProgress = 15;
-				pollJobStatus();
-			} else if (data.error) {
-				error = data.error;
-				autoImproveStatus = null;
-				isRunning = false;
+		const totalRepos = reposToScan.length;
+		let completedRepos = 0;
+		let allGaps: Array<{ repo: string; repoName: string; vulnId: string; description: string }> = [];
+
+		autoImproveStatus = `Scanning ${totalRepos} repos to identify gaps...`;
+
+		for (const repo of reposToScan) {
+			// Update progress message
+			autoImproveStatus = `Scanning ${repo.name} (${completedRepos + 1}/${totalRepos})...`;
+			autoImproveProgress = Math.round((completedRepos / totalRepos) * 80);
+
+			// Scan this repo
+			await scanSingleRepo(repo.repo);
+
+			// After scan completes, collect gaps
+			const result = results.get(repo.repo);
+			if (result?.status === 'complete' && result.missed_vulns?.length > 0) {
+				for (const vulnId of result.missed_vulns) {
+					allGaps.push({
+						repo: repo.repo,
+						repoName: repo.name,
+						vulnId,
+						description: `Missing detection for ${vulnId}`
+					});
+				}
 			}
-		} catch (e) {
-			error = String(e);
-			autoImproveStatus = null;
-			isRunning = false;
+
+			completedRepos++;
+
+			// Small delay between repos to not overwhelm server
+			await new Promise(resolve => setTimeout(resolve, 500));
 		}
+
+		// All scans complete - show summary
+		autoImproveProgress = 90;
+		updateOverallCoverage();
+
+		// Calculate total gaps
+		const totalGaps = allGaps.length;
+		const completedWithGaps = repos.filter(r => {
+			const result = results.get(r.repo);
+			return result?.status === 'complete' && (result.missed_vulns?.length || 0) > 0;
+		}).length;
+
+		if (totalGaps === 0) {
+			autoImproveStatus = '✓ All vulnerabilities covered! No gaps found.';
+		} else {
+			autoImproveStatus = `Found ${totalGaps} detection gaps across ${completedWithGaps} repos.`;
+			// Store gaps and show summary
+			gapSummaryData = allGaps;
+			showGapSummary = true;
+		}
+
+		autoImproveProgress = 100;
+		saveToStorage();
+		isRunning = false;
+
+		// Clear the banner after a delay, but keep gap summary visible
+		setTimeout(() => {
+			if (autoImproveProgress === 100) {
+				autoImproveStatus = null;
+				autoImproveProgress = 0;
+			}
+		}, 5000);
 	}
 
 	async function pollJobStatus() {
 		if (!jobId) return;
 
 		try {
-			const res = await fetch(`${SCANNER_URL}/benchmark/job/${jobId}`);
+			// Use local proxy to avoid CORS issues
+			const res = await fetch(`/api/benchmark/job/${jobId}`);
+
+			if (!res.ok) {
+				// Job endpoint failed - retry
+				console.log(`[Auto-Improve] Poll failed with ${res.status}, retrying...`);
+				setTimeout(pollJobStatus, 3000);
+				return;
+			}
+
 			const data = await res.json();
+			console.log('[Auto-Improve] Job status:', data);
 
 			if (data.status === 'complete') {
 				isRunning = false;
-				autoImproveStatus = 'Complete!';
+				autoImproveStatus = '✓ Auto-improve complete!';
 				autoImproveProgress = 100;
 				if (data.result) {
 					processAutoImproveResult(data.result);
@@ -579,21 +639,36 @@
 				setTimeout(() => {
 					autoImproveStatus = null;
 					autoImproveProgress = 0;
-				}, 3000);
+					jobId = null;
+				}, 5000);
 			} else if (data.status === 'failed') {
 				isRunning = false;
-				error = data.error || 'Job failed';
+				error = `Auto-improve failed: ${data.error || 'Unknown error'}`;
 				autoImproveStatus = null;
 				autoImproveProgress = 0;
+				jobId = null;
 			} else if (data.status === 'running') {
-				// Update progress message
+				// Update progress message - show server progress or increment
 				if (data.progress) {
-					autoImproveStatus = data.progress;
+					autoImproveStatus = `Running: ${data.progress}`;
+				} else {
+					autoImproveStatus = `Job ${jobId} running... (checking server)`;
 				}
-				autoImproveProgress = Math.min(90, autoImproveProgress + 5);
-				setTimeout(pollJobStatus, 3000);
+				// Slowly increment progress while running
+				autoImproveProgress = Math.min(90, autoImproveProgress + 2);
+				setTimeout(pollJobStatus, 2000);
+			} else if (data.error === 'Job not found') {
+				// Job may have completed or not started yet
+				console.log('[Auto-Improve] Job not found, might be starting...');
+				setTimeout(pollJobStatus, 2000);
+			} else {
+				// Unknown status - keep polling
+				console.log('[Auto-Improve] Unknown status:', data);
+				setTimeout(pollJobStatus, 2000);
 			}
 		} catch (e) {
+			console.error('[Auto-Improve] Poll error:', e);
+			// Network error - keep trying
 			setTimeout(pollJobStatus, 3000);
 		}
 	}
@@ -650,6 +725,15 @@
 		isRunning = false;
 		scanQueue = [];
 		// Note: active scans will complete but no new ones will start
+	}
+
+	function cancelAutoImprove() {
+		// Cancel the auto-improve process
+		isRunning = false;
+		autoImproveStatus = null;
+		autoImproveProgress = 0;
+		jobId = null;
+		// Note: The background job on the server will continue, but we stop polling
 	}
 
 	function getCoverageClass(coverage: number): string {
@@ -758,7 +842,16 @@
 				<button class="btn btn-small btn-ghost" onclick={logout}>Logout</button>
 			</div>
 			<div class="header-actions">
-				{#if isRunning}
+				{#if autoImproveStatus}
+					<button class="btn btn-stop" onclick={cancelAutoImprove}>
+						<span class="btn-icon">⏹</span>
+						Cancel Auto-Improve
+					</button>
+					<span class="running-indicator">
+						<span class="pulse-dot pulse-green"></span>
+						Auto-improving...
+					</span>
+				{:else if isRunning}
 					<button class="btn btn-stop" onclick={stopBenchmark}>
 						<span class="btn-icon">⏹</span>
 						Stop
@@ -801,6 +894,39 @@
 				<p class="auto-improve-status">{autoImproveStatus}</p>
 				<div class="auto-improve-progress">
 					<div class="auto-improve-fill" style="width: {autoImproveProgress}%"></div>
+				</div>
+			</div>
+		{/if}
+
+		{#if showGapSummary && gapSummaryData.length > 0}
+			<div class="gap-summary-banner">
+				<div class="gap-summary-header">
+					<span class="gap-icon">🔍</span>
+					<span class="gap-title">Detection Gaps Found</span>
+					<button class="gap-dismiss" onclick={() => showGapSummary = false}>×</button>
+				</div>
+				<p class="gap-summary-description">
+					These vulnerabilities are documented in the repos but our scanner didn't detect them.
+					New Semgrep rules need to be added to catch these patterns.
+				</p>
+				<div class="gap-list">
+					{#each Object.entries(gapSummaryData.reduce((acc, gap) => {
+						if (!acc[gap.repoName]) acc[gap.repoName] = [];
+						acc[gap.repoName].push(gap.vulnId);
+						return acc;
+					}, {} as Record<string, string[]>)) as [repoName, vulns]}
+						<div class="gap-repo-group">
+							<span class="gap-repo-name">{repoName}</span>
+							<div class="gap-vuln-tags">
+								{#each vulns as vulnId}
+									<span class="gap-vuln-tag">{vulnId}</span>
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
+				<div class="gap-summary-footer">
+					<span class="gap-total">{gapSummaryData.length} total gaps need Semgrep rules</span>
 				</div>
 			</div>
 		{/if}
@@ -1300,9 +1426,13 @@
 	.pulse-dot {
 		width: 8px;
 		height: 8px;
-		background: var(--green);
+		background: var(--purple, #9d8cff);
 		border-radius: 50%;
 		animation: pulse-dot 1.5s infinite;
+	}
+
+	.pulse-dot.pulse-green {
+		background: var(--green, #00c49a);
 	}
 
 	@keyframes pulse-dot {
@@ -1460,6 +1590,103 @@
 		height: 100%;
 		background: linear-gradient(90deg, var(--green, #00c49a), var(--blue, #3b82f6));
 		transition: width 0.5s ease;
+	}
+
+	/* Gap Summary Banner */
+	.gap-summary-banner {
+		background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(255, 176, 32, 0.1));
+		border: 1px solid var(--red, #ff6b6b);
+		border-radius: 8px;
+		padding: 1.5rem;
+		margin-bottom: 2rem;
+	}
+
+	.gap-summary-header {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.gap-icon {
+		font-size: 1.5rem;
+	}
+
+	.gap-title {
+		font-size: 1.1rem;
+		font-weight: 600;
+		color: var(--red, #ff6b6b);
+		flex: 1;
+	}
+
+	.gap-dismiss {
+		background: none;
+		border: none;
+		color: var(--text-secondary, #888);
+		font-size: 1.5rem;
+		cursor: pointer;
+		line-height: 1;
+		padding: 0;
+	}
+
+	.gap-dismiss:hover {
+		color: var(--text-primary, #fff);
+	}
+
+	.gap-summary-description {
+		color: var(--text-secondary, #888);
+		margin-bottom: 1rem;
+		font-size: 0.9rem;
+		line-height: 1.5;
+	}
+
+	.gap-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-bottom: 1rem;
+	}
+
+	.gap-repo-group {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.75rem;
+		background: var(--bg-secondary, #111);
+		border-radius: 4px;
+	}
+
+	.gap-repo-name {
+		font-weight: 500;
+		color: var(--text-primary, #fff);
+		min-width: 180px;
+	}
+
+	.gap-vuln-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.375rem;
+	}
+
+	.gap-vuln-tag {
+		background: rgba(255, 107, 107, 0.2);
+		color: #ff6b6b;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		font-family: monospace;
+	}
+
+	.gap-summary-footer {
+		padding-top: 1rem;
+		border-top: 1px solid var(--border, #333);
+	}
+
+	.gap-total {
+		font-size: 0.85rem;
+		color: var(--red, #ff6b6b);
+		font-weight: 500;
 	}
 
 	.stats-grid {
