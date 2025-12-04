@@ -23,6 +23,7 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
+    "@amplitude/analytics-browser": "^2.31.3",
     "@supabase/supabase-js": "^2.39.0"
   }
 }

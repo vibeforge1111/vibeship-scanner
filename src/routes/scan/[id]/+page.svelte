@@ -7,6 +7,7 @@
 	import { getFixTemplate, type FixTemplate } from '$lib/fixTemplates';
 	import { getCWEFromRuleId, getCVSSColor, getCVSSLabel, type CWEInfo } from '$lib/cweDatabase';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
+	import { trackPageView, trackScanCompleted, trackScanResultsViewed } from '$lib/analytics';
 
 	let scanId = $derived($page.params.id);
 	let status = $state<'queued' | 'scanning' | 'complete' | 'failed'>('queued');
@@ -410,8 +411,14 @@
 	}
 
 	onMount(async () => {
+		trackPageView('Scan Results', { scan_id: scanId });
 		await fetchScan();
 		await fetchProgress();
+
+		// Track scan results if already complete
+		if (status === 'complete' && results) {
+			trackScanResultsViewed(scanId, repoUrl || '', results.findings?.length || 0);
+		}
 
 		if (status === 'queued' || status === 'scanning') {
 			scanStartTime = new Date();
@@ -441,6 +448,15 @@
 							stack: data.detected_stack,
 							findings: data.findings || []
 						};
+						// Track scan completion
+						trackScanCompleted(repoUrl || '', {
+							totalFindings: data.findings?.length || 0,
+							criticalCount: data.finding_counts?.critical || 0,
+							highCount: data.finding_counts?.high || 0,
+							mediumCount: data.finding_counts?.medium || 0,
+							lowCount: data.finding_counts?.low || 0
+						});
+						trackScanResultsViewed(scanId, repoUrl || '', data.findings?.length || 0);
 					} else if (data.status === 'failed') {
 						error = data.error || 'Scan failed';
 					}

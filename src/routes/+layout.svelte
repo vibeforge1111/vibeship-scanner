@@ -1,5 +1,12 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { initAnalytics } from '$lib/analytics';
+
 	let { children } = $props();
+
+	onMount(() => {
+		initAnalytics();
+	});
 </script>
 
 <nav class="navbar">
