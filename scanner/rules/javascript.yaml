@@ -615,6 +615,28 @@ rules:
     metadata:
       tags: [log-injection]
 
+  - id: js-log-injection-comma
+    patterns:
+      - pattern: 'console.log($MSG, $USER_INPUT)'
+      - pattern: 'console.error($MSG, $USER_INPUT)'
+      - pattern: 'console.warn($MSG, $USER_INPUT)'
+      - pattern: 'logger.info($MSG, $USER_INPUT)'
+      - pattern: 'logger.error($MSG, $USER_INPUT)'
+      - pattern: 'logger.warn($MSG, $USER_INPUT)'
+    message: User variable logged directly - sanitize to prevent log injection/CRLF attacks
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [log-injection]
+
+  - id: js-log-user-input-regex
+    pattern-regex: "console\\.(log|error|warn)\\s*\\([^)]*\\b(userName|username|user|email|password|input|query|param)\\b"
+    message: Logging user-controlled variable - potential log injection if input contains newlines
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [log-injection]
+
   - id: js-crlf-header-injection
     patterns:
       - pattern: 'res.setHeader($NAME, req.query.$VALUE)'
