@@ -856,17 +856,15 @@
 							{/if}
 						</div>
 						<div class="col-actions">
-							{@const isClicked = clickedScans.has(repo.repo)}
-							{@const isScanning = result?.status === 'scanning'}
 							<button
-								class="btn btn-sm {isClicked || isScanning ? 'btn-scanning' : ''}"
+								class="btn btn-sm {clickedScans.has(repo.repo) || result?.status === 'scanning' ? 'btn-scanning' : ''}"
 								onclick={() => scanSingleRepo(repo.repo)}
-								disabled={isClicked || isScanning}
+								disabled={clickedScans.has(repo.repo) || result?.status === 'scanning'}
 							>
-								{#if isScanning}
+								{#if result?.status === 'scanning'}
 									<span class="btn-spinner"></span>
 									Scanning...
-								{:else if isClicked}
+								{:else if clickedScans.has(repo.repo)}
 									<span class="btn-spinner"></span>
 									Starting...
 								{:else}
