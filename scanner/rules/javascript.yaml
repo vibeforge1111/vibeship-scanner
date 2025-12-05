@@ -308,6 +308,33 @@ rules:
     metadata:
       tags: [node, path-traversal]
 
+  - id: node-path-traversal-concat
+    patterns:
+      - pattern: fs.readFileSync($PATH + $VAR)
+      - pattern: fs.readFileSync($PATH + $VAR, ...)
+      - pattern: fs.readFile($PATH + $VAR, ...)
+      - pattern: fs.createReadStream($PATH + $VAR)
+      - pattern: fs.createReadStream($PATH + $VAR, ...)
+      - pattern: fs.existsSync($PATH + $VAR)
+      - pattern: fs.statSync($PATH + $VAR)
+    message: File operation with string concatenation - potential path traversal vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [node, path-traversal]
+
+  - id: node-path-traversal-template
+    patterns:
+      - pattern: 'fs.readFileSync(`${...}${$VAR}...`)'
+      - pattern: 'fs.readFileSync(`${...}${$VAR}...`, ...)'
+      - pattern: 'fs.readFile(`${...}${$VAR}...`, ...)'
+      - pattern: 'fs.createReadStream(`${...}${$VAR}...`)'
+    message: File operation with template literal - potential path traversal if variable is user-controlled
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [node, path-traversal]
+
   - id: node-path-join-user
     pattern: path.join($BASE, req.$X.$Y)
     message: path.join with user input - validate to prevent traversal
@@ -315,6 +342,320 @@ rules:
     severity: WARNING
     metadata:
       tags: [node, path-traversal]
+
+  - id: node-path-join-variable
+    patterns:
+      - pattern: path.join($BASE, $VAR)
+      - pattern: path.resolve($BASE, $VAR)
+    message: path.join/resolve with variable - validate to prevent directory traversal
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [node, path-traversal]
+
+  - id: express-sendfile-variable
+    patterns:
+      - pattern: res.sendFile($PATH + $VAR)
+      - pattern: res.sendFile($PATH + $VAR, ...)
+      - pattern: 'res.sendFile(`${...}${$VAR}...`)'
+      - pattern: res.download($PATH + $VAR)
+      - pattern: res.download($PATH + $VAR, ...)
+    message: Express sendFile/download with variable path - potential path traversal
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, path-traversal]
+
+  - id: express-sendfile-path-resolve
+    patterns:
+      - pattern: res.sendFile(path.resolve(...))
+      - pattern: res.sendFile(path.resolve(...), ...)
+      - pattern: res.sendFile(path.join(...))
+      - pattern: res.sendFile(path.join(...), ...)
+    message: Express sendFile with path.resolve/join - potential path traversal if any argument is user-controlled
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, path-traversal]
+
+  - id: node-serialize-unserialize
+    patterns:
+      - pattern: serialize.unserialize(...)
+      - pattern: $X.unserialize(...)
+    message: node-serialize unserialize() is vulnerable to RCE - never use with untrusted data
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [node, deserialization, rce]
+
+  - id: js-yaml-load-unsafe
+    patterns:
+      - pattern: yaml.load($DATA)
+      - pattern: jsyaml.load($DATA)
+      - pattern: YAML.load($DATA)
+    message: js-yaml load() can execute code - use safeLoad() or {schema:SAFE_SCHEMA}
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [node, deserialization]
+
+  - id: json-parse-reviver
+    pattern: JSON.parse($DATA, $REVIVER)
+    message: JSON.parse with reviver function - ensure reviver doesn't introduce vulnerabilities
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [node, deserialization]
+
+  - id: node-fs-write-traversal
+    patterns:
+      - pattern: fs.writeFileSync($PATH + $VAR, ...)
+      - pattern: fs.writeFile($PATH + $VAR, ...)
+      - pattern: fs.createWriteStream($PATH + $VAR)
+      - pattern: fs.createWriteStream($PATH + $VAR, ...)
+      - pattern: 'fs.createWriteStream(`${...}${$VAR}...`)'
+      - pattern: 'fs.createWriteStream(`${...}${$VAR}...`, ...)'
+    message: File write with variable path - potential path traversal for arbitrary file write
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [node, path-traversal]
+
+  - id: node-fs-unlink-traversal
+    patterns:
+      - pattern: fs.unlinkSync($PATH + $VAR)
+      - pattern: fs.unlink($PATH + $VAR, ...)
+      - pattern: fs.rmSync($PATH + $VAR)
+      - pattern: fs.rmSync($PATH + $VAR, ...)
+    message: File deletion with variable path - potential path traversal for arbitrary file deletion
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [node, path-traversal]
+
+  # ============================================
+  # Open Redirect
+  # ============================================
+
+  - id: express-redirect-user-input
+    patterns:
+      - pattern: res.redirect(req.$X)
+      - pattern: res.redirect(req.$X.$Y)
+      - pattern: res.redirect($URL)
+    message: Redirect with potentially user-controlled URL - validate against allowlist to prevent open redirect
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, redirect]
+
+  - id: express-redirect-query-param
+    patterns:
+      - pattern: res.redirect(req.query.$PARAM)
+      - pattern: res.redirect(req.body.$PARAM)
+      - pattern: res.redirect(req.params.$PARAM)
+    message: Open redirect vulnerability - user input directly used in redirect
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [express, redirect]
+
+  - id: window-location-user-input
+    patterns:
+      - pattern: window.location = $VAR
+      - pattern: window.location.href = $VAR
+      - pattern: location.href = $VAR
+      - pattern: location.assign($VAR)
+      - pattern: location.replace($VAR)
+    message: Client-side redirect with variable - potential open redirect if user-controlled
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [browser, redirect]
+
+  # ============================================
+  # CSRF Protection
+  # ============================================
+
+  - id: express-no-csrf-post
+    patterns:
+      - pattern: app.post($PATH, $HANDLER)
+      - pattern: router.post($PATH, $HANDLER)
+    message: POST route without explicit CSRF middleware - ensure CSRF protection is applied
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [express, csrf]
+
+  - id: express-csrf-disabled
+    patterns:
+      - pattern: 'csrf: false'
+      - pattern: 'csrfProtection: false'
+    message: CSRF protection explicitly disabled - verify this is intentional
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, csrf]
+
+  # ============================================
+  # Insecure Cookies
+  # ============================================
+
+  - id: cookie-no-httponly
+    patterns:
+      - pattern: 'res.cookie($NAME, $VAL, {httpOnly: false, ...})'
+      - pattern: 'res.cookie($NAME, $VAL, {..., httpOnly: false})'
+    message: Cookie without httpOnly flag - vulnerable to XSS cookie theft
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, cookie]
+
+  - id: cookie-no-secure
+    patterns:
+      - pattern: 'res.cookie($NAME, $VAL, {secure: false, ...})'
+      - pattern: 'res.cookie($NAME, $VAL, {..., secure: false})'
+    message: Cookie without secure flag - sent over HTTP, vulnerable to interception
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, cookie]
+
+  - id: session-cookie-insecure
+    patterns:
+      - pattern: 'cookie: {secure: false}'
+      - pattern: 'cookie: {httpOnly: false}'
+    message: Session cookie with insecure settings
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, session]
+
+  # ============================================
+  # Additional Path Traversal Patterns
+  # ============================================
+
+  - id: express-static-user-path
+    patterns:
+      - pattern: express.static($PATH)
+      - pattern: express.static(path.join(...))
+      - pattern: express.static(path.resolve(...))
+    message: Express static file serving - ensure path is not user-controlled
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [express, path-traversal]
+
+  - id: fs-readfile-user-input
+    patterns:
+      - pattern: fs.readFileSync(req.$X)
+      - pattern: fs.readFileSync(req.$X.$Y)
+      - pattern: fs.readFile(req.$X, ...)
+      - pattern: fs.readFile(req.$X.$Y, ...)
+    message: Reading file with user-controlled path - path traversal vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [node, path-traversal]
+
+  - id: path-normalize-bypass
+    pattern: path.normalize($VAR)
+    message: path.normalize alone does not prevent traversal - validate path is within allowed directory
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [node, path-traversal]
+
+  # ============================================
+  # Header Injection
+  # ============================================
+
+  - id: header-injection
+    patterns:
+      - pattern: res.setHeader($NAME, req.$X)
+      - pattern: res.setHeader($NAME, req.$X.$Y)
+      - pattern: res.set($NAME, req.$X)
+    message: HTTP header set from user input - potential header injection
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [express, injection]
+
+  # ============================================
+  # Timing Attacks
+  # ============================================
+
+  - id: timing-safe-compare
+    patterns:
+      - pattern: $TOKEN === req.$X
+      - pattern: req.$X === $TOKEN
+      - pattern: $SECRET === $INPUT
+    message: Direct string comparison - use crypto.timingSafeEqual for secrets to prevent timing attacks
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [crypto, timing]
+
+  # ============================================
+  # Denial of Service
+  # ============================================
+
+  - id: regex-dos
+    patterns:
+      - pattern: new RegExp(req.$X)
+      - pattern: new RegExp(req.$X.$Y)
+      - pattern: $STR.match(new RegExp($VAR))
+      - pattern: $STR.replace(new RegExp($VAR), ...)
+    message: Regex with user input - potential ReDoS vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [dos, regex]
+
+  - id: json-parse-large
+    pattern: JSON.parse(req.body)
+    message: Parsing raw request body - ensure body size limits are enforced
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [dos]
+
+  # ============================================
+  # Information Disclosure
+  # ============================================
+
+  - id: stack-trace-exposed
+    patterns:
+      - pattern: res.send(err.stack)
+      - pattern: res.json({...})
+    message: Stack trace exposed to client - information disclosure
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [info-disclosure]
+
+  - id: verbose-error
+    patterns:
+      - pattern: 'res.status(500).send(err)'
+      - pattern: 'res.status(500).json(err)'
+    message: Full error object sent to client - may leak sensitive information
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [info-disclosure]
+
+  # ============================================
+  # Insecure Randomness
+  # ============================================
+
+  - id: uuid-v1-predictable
+    patterns:
+      - pattern: uuid.v1()
+      - pattern: uuidv1()
+    message: UUID v1 is time-based and predictable - use v4 for security-sensitive IDs
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [crypto]
 
   # ============================================
   # Express.js Security
@@ -668,6 +1009,19 @@ rules:
     metadata:
       tags: [core, ssrf]
 
+  - id: js-fetch-variable-url
+    patterns:
+      - pattern: fetch($URL)
+      - pattern: fetch($URL, ...)
+      - pattern-not: 'fetch("...")'
+      - pattern-not: "fetch('...')"
+      - pattern-not: 'fetch(`...`)'
+    message: Fetch with variable URL - potential SSRF if URL is user-controlled
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, ssrf]
+
   - id: js-axios-user-input
     pattern: axios.get(req.$X.$Y)
     message: Axios GET with user-controlled URL - SSRF risk
@@ -676,11 +1030,82 @@ rules:
     metadata:
       tags: [core, ssrf]
 
+  - id: js-axios-variable-url
+    patterns:
+      - pattern: axios.get($URL)
+      - pattern: axios.post($URL, ...)
+      - pattern: axios.put($URL, ...)
+      - pattern: axios.delete($URL)
+      - pattern: axios($CONFIG)
+    message: Axios request with variable URL - potential SSRF if URL is user-controlled
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, ssrf]
+
   - id: js-axios-post-user-input
     pattern: axios.post(req.$X.$Y, ...)
     message: Axios POST with user-controlled URL - SSRF risk
     languages: [javascript, typescript]
     severity: ERROR
+    metadata:
+      tags: [core, ssrf]
+
+  - id: js-http-get-variable
+    patterns:
+      - pattern: http.get($URL, ...)
+      - pattern: https.get($URL, ...)
+      - pattern: http.request($URL, ...)
+      - pattern: https.request($URL, ...)
+    message: HTTP request with variable URL - potential SSRF vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, ssrf]
+
+  - id: js-request-variable-url
+    patterns:
+      - pattern: request($URL)
+      - pattern: request($URL, ...)
+      - pattern: request.get($URL)
+      - pattern: request.post($URL, ...)
+    message: Request library with variable URL - potential SSRF if user-controlled
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, ssrf]
+
+  - id: js-got-variable-url
+    patterns:
+      - pattern: got($URL)
+      - pattern: got($URL, ...)
+      - pattern: got.get($URL)
+      - pattern: got.post($URL, ...)
+    message: Got library request with variable URL - potential SSRF
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, ssrf]
+
+  - id: js-needle-variable-url
+    patterns:
+      - pattern: needle($METHOD, $URL, ...)
+      - pattern: needle.get($URL, ...)
+      - pattern: needle.post($URL, ...)
+    message: Needle library request with variable URL - potential SSRF
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, ssrf]
+
+  - id: js-superagent-variable-url
+    patterns:
+      - pattern: superagent.get($URL)
+      - pattern: superagent.post($URL)
+      - pattern: superagent($METHOD, $URL)
+    message: Superagent request with variable URL - potential SSRF
+    languages: [javascript, typescript]
+    severity: WARNING
     metadata:
       tags: [core, ssrf]
 
@@ -707,6 +1132,100 @@ rules:
   - id: js-object-assign-user
     pattern: Object.assign($TARGET, req.$X)
     message: Object.assign with user input - prototype pollution risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-proto-access
+    patterns:
+      - pattern: $OBJ.__proto__
+      - pattern: $OBJ["__proto__"]
+      - pattern: "$OBJ['__proto__']"
+    message: Direct __proto__ access - potential prototype pollution vector
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-constructor-prototype
+    patterns:
+      - pattern: $OBJ.constructor.prototype
+      - pattern: $OBJ["constructor"]["prototype"]
+    message: Constructor prototype access - potential prototype pollution
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-bracket-notation-user-key
+    patterns:
+      - pattern: $OBJ[req.$X.$Y]
+      - pattern: $OBJ[req.$X.$Y] = $VAL
+    message: Bracket notation with user-controlled key - prototype pollution risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-recursive-merge
+    patterns:
+      - pattern: 'function $FUNC($A, $B) { ... for (...) { ... $A[$KEY] = ... } ... }'
+    message: Recursive merge function may be vulnerable to prototype pollution
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-lodash-set
+    patterns:
+      - pattern: '_.set($OBJ, $PATH, $VAL)'
+      - pattern: '_.setWith($OBJ, $PATH, $VAL, ...)'
+    message: lodash set with dynamic path - potential prototype pollution
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-lodash-zipobjectdeep
+    pattern: '_.zipObjectDeep($KEYS, $VALS)'
+    message: lodash zipObjectDeep can cause prototype pollution with user-controlled keys
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-deep-extend
+    patterns:
+      - pattern: deepExtend($TARGET, $SRC)
+      - pattern: extend(true, $TARGET, $SRC)
+      - pattern: jQuery.extend(true, $TARGET, $SRC)
+      - pattern: '$.extend(true, $TARGET, $SRC)'
+    message: Deep extend/merge operation - potential prototype pollution if source is user-controlled
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-object-setprototypeof
+    pattern: Object.setPrototypeOf($OBJ, $PROTO)
+    message: Object.setPrototypeOf can modify prototype chain - verify source is trusted
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-reflect-set
+    pattern: Reflect.set($TARGET, $KEY, $VAL)
+    message: Reflect.set with dynamic key - potential prototype pollution if key is user-controlled
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [core, prototype-pollution]
+
+  - id: js-object-defineproperty-dynamic
+    pattern: Object.defineProperty($OBJ, $KEY, $DESC)
+    message: Object.defineProperty with dynamic key - verify key is not user-controlled
     languages: [javascript, typescript]
     severity: WARNING
     metadata:
@@ -2810,4 +3329,842 @@ rules:
     severity: ERROR
     metadata:
       tags: [core, sql-injection]
+
+  # ============================================
+  # DVNA-Specific Vulnerabilities
+  # ============================================
+
+  # DVNA: node-serialize RCE
+  - id: node-serialize-unserialize
+    patterns:
+      - pattern: serialize.unserialize(...)
+      - pattern: require("node-serialize").unserialize(...)
+      - pattern: 'require("node-serialize")'
+    message: node-serialize unserialize() is vulnerable to RCE - never use with untrusted data
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [deserialization, rce, dvna]
+
+  # DVNA: mathjs eval
+  - id: mathjs-eval-user-input
+    patterns:
+      - pattern: math.eval(req.$PARAM)
+      - pattern: math.eval(req.$PARAM.$FIELD)
+      - pattern: math.evaluate(req.$PARAM)
+      - pattern: math.evaluate(req.$PARAM.$FIELD)
+    message: Code injection - mathjs eval with request input
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [injection, code-injection, dvna]
+
+  # DVNA: libxmljs XXE
+  - id: libxmljs-xxe-noent
+    patterns:
+      - pattern: 'libxmljs.parseXml($DATA, {noent: true})'
+      - pattern: 'libxmljs.parseXmlString($DATA, {noent: true})'
+      - pattern: 'parseXml($DATA, {noent: true, ...})'
+    message: XXE vulnerability - libxmljs with noent:true enables external entity processing
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [xxe, dvna]
+
+  - id: xml-parser-external-entities
+    patterns:
+      - pattern: '{noent: true}'
+      - pattern: '{dtdload: true}'
+      - pattern: '{dtdvalid: true}'
+    message: XML external entity processing enabled - potential XXE vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [xxe]
+
+  # DVNA: Direct password comparison (without bcrypt)
+  - id: direct-password-comparison
+    patterns:
+      - pattern: 'if ($USER.password === $INPUT)'
+      - pattern: 'if ($USER.password == $INPUT)'
+      - pattern: 'if ($INPUT === $USER.password)'
+      - pattern: 'if ($INPUT == $USER.password)'
+      - pattern: 'password === user.password'
+      - pattern: 'password == user.password'
+      - pattern: 'user.password === password'
+      - pattern: 'user.password == password'
+    message: Direct password comparison detected - use bcrypt.compare() for secure comparison
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [authentication, password]
+
+  # DVNA: Open redirect patterns
+  - id: express-redirect-param
+    patterns:
+      - pattern: 'res.redirect(req.query.$PARAM)'
+      - pattern: 'res.redirect(req.body.$PARAM)'
+      - pattern: 'res.redirect(req.params.$PARAM)'
+      - pattern: 'res.redirect(req.query.next)'
+      - pattern: 'res.redirect(req.query.url)'
+      - pattern: 'res.redirect(req.query.redirect)'
+      - pattern: 'res.redirect(req.query.returnUrl)'
+      - pattern: 'res.redirect(req.query.return_url)'
+    message: Open redirect vulnerability - validate redirect URL against whitelist
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [redirect, open-redirect, dvna]
+
+  - id: redirect-user-controlled
+    patterns:
+      - pattern: 'res.redirect($URL)'
+      - pattern: 'res.location($URL)'
+    message: Redirect using user input - potential open redirect
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [redirect]
+
+  # ============================================
+  # IDOR/BOLA (Broken Object Level Authorization)
+  # ============================================
+
+  - id: express-idor-param-lookup
+    patterns:
+      - pattern: '$MODEL.findById(req.params.$ID)'
+      - pattern: '$MODEL.findByPk(req.params.$ID)'
+      - pattern: '$MODEL.findOne({where: {id: req.params.$ID}})'
+      - pattern: 'User.findById(req.params.id)'
+      - pattern: 'User.findByPk(req.params.id)'
+    message: IDOR - object lookup by URL parameter without authorization check
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, bola, authorization]
+
+  - id: express-idor-update
+    patterns:
+      - pattern: '$MODEL.findByIdAndUpdate(req.params.$ID, ...)'
+      - pattern: '$MODEL.updateOne({_id: req.params.$ID}, ...)'
+      - pattern: '$MODEL.update({...}, {where: {id: req.params.$ID}})'
+    message: IDOR - updating object by URL param without ownership verification
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, bola, authorization]
+
+  - id: express-idor-delete
+    patterns:
+      - pattern: '$MODEL.findByIdAndDelete(req.params.$ID)'
+      - pattern: '$MODEL.deleteOne({_id: req.params.$ID})'
+      - pattern: '$MODEL.destroy({where: {id: req.params.$ID}})'
+    message: IDOR - deleting object by URL param without ownership check
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [idor, bola, authorization]
+
+  # ============================================
+  # Session Security
+  # ============================================
+
+  - id: session-no-maxage
+    patterns:
+      - pattern: 'session({secret: $SECRET})'
+      - pattern: 'session({..., cookie: {}})'
+    message: Session without maxAge/expires - sessions should timeout
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [session, authentication]
+
+  - id: session-insecure-cookie
+    patterns:
+      - pattern: 'cookie: {secure: false}'
+      - pattern: 'cookie: {..., secure: false, ...}'
+    message: Session cookie not secure - enable secure flag for HTTPS
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [session, cookie]
+
+  - id: session-no-httponly
+    patterns:
+      - pattern: 'cookie: {httpOnly: false}'
+      - pattern: 'cookie: {..., httpOnly: false, ...}'
+    message: Session cookie not httpOnly - vulnerable to XSS theft
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [session, cookie]
+
+  # ============================================
+  # Rate Limiting / Brute Force
+  # ============================================
+
+  - id: express-login-no-rate-limit
+    pattern-regex: "app\\.(post|put)\\s*\\(['\"].*login"
+    message: Login endpoint - consider adding rate limiting to prevent brute force
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [rate-limiting, authentication]
+
+  - id: express-register-no-rate-limit
+    pattern-regex: "app\\.(post|put)\\s*\\(['\"].*register"
+    message: Registration endpoint - consider adding rate limiting
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [rate-limiting]
+
+  - id: express-password-reset-no-rate-limit
+    pattern-regex: "app\\.(post|put)\\s*\\(['\"].*password|reset|forgot"
+    message: Password reset endpoint - add rate limiting to prevent abuse
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [rate-limiting, authentication]
+
+  # ============================================
+  # Broken Access Control Patterns
+  # ============================================
+
+  - id: admin-route-no-auth-check
+    pattern-regex: "app\\.(get|post|put|delete)\\s*\\(['\"].*/admin"
+    message: Admin route detected - ensure proper authorization middleware
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [authorization, admin]
+
+  - id: api-route-no-auth
+    patterns:
+      - pattern: |
+          app.$METHOD($PATH, ($REQ, $RES) => {
+            ...
+            $MODEL.find(...)
+            ...
+          })
+    message: API route without authentication middleware - verify auth is enforced
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [authorization]
+
+  - id: role-from-user-input
+    patterns:
+      - pattern: 'if (req.body.role === "admin")'
+      - pattern: 'if (req.query.admin)'
+      - pattern: 'if (req.body.isAdmin)'
+      - pattern: 'if (req.body.is_admin)'
+      - pattern: 'user.role = req.body.role'
+      - pattern: 'user.admin = req.body.admin'
+    message: Role/admin check from user input - privilege escalation vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [authorization, privilege-escalation]
+
+  # ============================================
+  # Information Disclosure
+  # ============================================
+
+  - id: express-error-stack-trace
+    patterns:
+      - pattern: 'res.send(err.stack)'
+      - pattern: 'res.json({..., stack: err.stack, ...})'
+      - pattern: 'res.json({error: err.message, stack: err.stack})'
+    message: Stack trace in response - information disclosure vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [info-disclosure]
+
+  - id: express-verbose-error
+    patterns:
+      - pattern: 'res.status(500).send(err)'
+      - pattern: 'res.status(500).json(err)'
+      - pattern: 'res.send(error.message)'
+    message: Verbose error response - may leak sensitive information
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [info-disclosure]
+
+  # ============================================
+  # User Enumeration
+  # ============================================
+
+  - id: user-enumeration-error
+    patterns:
+      - pattern: 'res.json({error: "User not found"})'
+      - pattern: 'res.json({error: "Invalid username"})'
+      - pattern: 'res.json({message: "User does not exist"})'
+      - pattern: '"Username not found"'
+      - pattern: '"Invalid password"'
+    message: User enumeration - error message reveals if user exists
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [enumeration, authentication]
+
+  # ============================================
+  # Session Fixation
+  # ============================================
+
+  - id: session-fixation-no-regenerate
+    patterns:
+      - pattern: |
+          req.session.user = $USER
+      - pattern: |
+          req.session.userId = $ID
+      - pattern: |
+          req.session.authenticated = true
+    message: Session fixation - regenerate session ID after authentication (use req.session.regenerate())
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-384"
+      tags: [session, authentication, fixation]
+
+  - id: session-no-regenerate-on-login
+    pattern-regex: "(login|authenticate|signin).*\\{[\\s\\S]*?req\\.session\\.[a-zA-Z]+\\s*="
+    message: Login without session regeneration - potential session fixation vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-384"
+      tags: [session, authentication]
+
+  - id: session-id-from-user-input
+    patterns:
+      - pattern: 'req.session.id = req.body.$ID'
+      - pattern: 'req.session.id = req.query.$ID'
+      - pattern: 'req.session.id = req.params.$ID'
+      - pattern: 'req.sessionID = req.$SOURCE.$PARAM'
+    message: Session ID from user input - session fixation vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-384"
+      tags: [session, fixation]
+
+  # ============================================
+  # Credentials in URLs
+  # ============================================
+
+  - id: credentials-in-url
+    patterns:
+      - pattern-regex: 'https?://[^:]+:[^@]+@'
+      - pattern-regex: "password=['\"]?[^'\"\\s&]+"
+      - pattern-regex: "apikey=['\"]?[^'\"\\s&]+"
+      - pattern-regex: "api_key=['\"]?[^'\"\\s&]+"
+      - pattern-regex: "token=['\"]?[^'\"\\s&]+"
+      - pattern-regex: "secret=['\"]?[^'\"\\s&]+"
+    message: Credentials in URL - sensitive data exposed in URL string
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-598"
+      tags: [secrets, credentials, url]
+
+  - id: basic-auth-in-url
+    pattern-regex: "https?://[a-zA-Z0-9_]+:[a-zA-Z0-9_!@#$%^&*]+@"
+    message: Basic auth credentials in URL - credentials visible in logs and browser history
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-598"
+      tags: [credentials, authentication]
+
+  - id: password-in-query-string
+    patterns:
+      - pattern: 'req.query.password'
+      - pattern: 'req.query.passwd'
+      - pattern: 'req.query.pwd'
+      - pattern: 'req.query.secret'
+      - pattern: 'req.query.token'
+      - pattern: 'req.query.apiKey'
+      - pattern: 'req.query.api_key'
+    message: Sensitive data in query string - use POST body or headers instead
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-598"
+      tags: [credentials, query-string]
+
+  # ============================================
+  # CSRF Protection
+  # ============================================
+
+  - id: express-no-csrf-protection
+    patterns:
+      - pattern: |
+          app.post($PATH, ($REQ, $RES) => {
+            ...
+          })
+    message: POST endpoint without CSRF middleware - verify CSRF protection is enabled
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf, authentication]
+
+  - id: csrf-token-in-url
+    patterns:
+      - pattern: 'req.query.csrf'
+      - pattern: 'req.query._csrf'
+      - pattern: 'req.query.csrfToken'
+    message: CSRF token in URL query - tokens should be in headers or POST body
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf]
+
+  - id: form-missing-csrf-field
+    pattern-regex: "<form[^>]*method=['\"]post['\"][^>]*>(?:(?!csrf|_token|authenticity_token)[\\s\\S])*?</form>"
+    message: Form POST without CSRF token field
+    languages: [html]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf, form]
+
+  - id: cookie-without-samesite
+    patterns:
+      - pattern: 'res.cookie($NAME, $VALUE)'
+      - pattern: 'res.cookie($NAME, $VALUE, {...})'
+    message: Cookie set without SameSite attribute - potential CSRF vulnerability
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf, cookie]
+
+  # ============================================
+  # Debug Code / Development Artifacts
+  # ============================================
+
+  - id: debug-endpoint-exposed
+    patterns:
+      - pattern-regex: "app\\.(get|post|all)\\s*\\(['\"].*(debug|test|dev|admin/debug)"
+      - pattern-regex: "router\\.(get|post|all)\\s*\\(['\"].*(debug|test|dev)"
+    message: Debug/test endpoint exposed - remove before production
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [debug, development]
+
+  - id: console-log-sensitive
+    patterns:
+      - pattern: 'console.log(..., password, ...)'
+      - pattern: 'console.log(..., req.body.password, ...)'
+      - pattern: 'console.log(..., user.password, ...)'
+      - pattern: 'console.log(..., token, ...)'
+      - pattern: 'console.log(..., secret, ...)'
+      - pattern: 'console.log(..., apiKey, ...)'
+    message: Sensitive data in console.log - remove debug logging
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [debug, logging, secrets]
+
+  - id: debugger-statement
+    pattern: 'debugger'
+    message: Debugger statement - remove before production
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [debug]
+
+  - id: todo-fixme-security
+    pattern-regex: "(TODO|FIXME|HACK|XXX).*?(security|auth|password|token|secret|vulnerability|insecure)"
+    message: Security-related TODO/FIXME found - address before production
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [debug, todo]
+
+  - id: development-only-code
+    patterns:
+      - pattern: 'if (process.env.NODE_ENV !== "production")'
+      - pattern: 'if (process.env.NODE_ENV === "development")'
+      - pattern: "if (process.env.NODE_ENV === 'dev')"
+    message: Development-only code block - verify security implications in production
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [debug, development]
+
+  - id: express-dev-error-handler
+    patterns:
+      - pattern: 'app.use(errorhandler())'
+      - pattern: "require('errorhandler')"
+    message: Development error handler - exposes stack traces, disable in production
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [debug, error-handling]
+
+  # ============================================
+  # Mass Assignment
+  # ============================================
+
+  - id: express-mass-assignment
+    patterns:
+      - pattern: '$MODEL.create(req.body)'
+      - pattern: '$MODEL.update(req.body)'
+      - pattern: '$MODEL.findByIdAndUpdate($ID, req.body)'
+      - pattern: '$MODEL.findOneAndUpdate($QUERY, req.body)'
+      - pattern: 'new $MODEL(req.body)'
+      - pattern: 'Object.assign($OBJ, req.body)'
+      - pattern: '{...$OBJ, ...req.body}'
+    message: Mass assignment - directly using req.body allows attackers to set any field
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment, injection]
+
+  - id: sequelize-mass-assignment
+    patterns:
+      - pattern: '$MODEL.create(req.body)'
+      - pattern: '$MODEL.update(req.body, ...)'
+      - pattern: '$MODEL.bulkCreate(req.body)'
+      - pattern: '$INSTANCE.update(req.body)'
+    message: Sequelize mass assignment - use allowlist of permitted fields
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment, sequelize]
+
+  - id: mongoose-mass-assignment
+    patterns:
+      - pattern: '$MODEL.findByIdAndUpdate($ID, req.body)'
+      - pattern: '$MODEL.updateOne($QUERY, req.body)'
+      - pattern: '$MODEL.updateMany($QUERY, req.body)'
+      - pattern: '$INSTANCE.set(req.body)'
+    message: Mongoose mass assignment - use $set with specific fields
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment, mongoose]
+
+  - id: user-role-mass-assignment
+    patterns:
+      - pattern: 'user.role = req.body.role'
+      - pattern: 'user.isAdmin = req.body.isAdmin'
+      - pattern: 'user.admin = req.body.admin'
+      - pattern: 'user.permissions = req.body.permissions'
+    message: Privilege escalation via mass assignment - never allow role/admin from user input
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment, privilege-escalation]
+
+  # ============================================
+  # Path Traversal Enhanced
+  # ============================================
+
+  - id: path-traversal-fs-operations
+    patterns:
+      - pattern: 'fs.readFile(req.params.$PATH, ...)'
+      - pattern: 'fs.readFile(req.query.$PATH, ...)'
+      - pattern: 'fs.readFile(req.body.$PATH, ...)'
+      - pattern: 'fs.readFileSync(req.params.$PATH, ...)'
+      - pattern: 'fs.readFileSync(req.query.$PATH, ...)'
+      - pattern: 'fs.writeFile(req.params.$PATH, ...)'
+      - pattern: 'fs.writeFile(req.query.$PATH, ...)'
+      - pattern: 'fs.unlink(req.params.$PATH, ...)'
+      - pattern: 'fs.unlink(req.query.$PATH, ...)'
+    message: Path traversal - user input in file system operation
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, file-access]
+
+  - id: path-traversal-sendfile
+    patterns:
+      - pattern: 'res.sendFile(req.params.$FILE)'
+      - pattern: 'res.sendFile(req.query.$FILE)'
+      - pattern: 'res.sendFile(req.body.$FILE)'
+      - pattern: 'res.download(req.params.$FILE)'
+      - pattern: 'res.download(req.query.$FILE)'
+    message: Path traversal in file download - validate and sanitize file path
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, file-download]
+
+  - id: path-traversal-concat
+    patterns:
+      - pattern: 'path.join($BASE, req.params.$PATH)'
+      - pattern: 'path.join($BASE, req.query.$PATH)'
+      - pattern: 'path.resolve($BASE, req.params.$PATH)'
+      - pattern: '$BASE + "/" + req.params.$PATH'
+      - pattern: '$BASE + req.params.$PATH'
+      - pattern: '`${$BASE}/${req.params.$PATH}`'
+    message: Path traversal - concatenating user input to file path
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal]
+
+  - id: path-traversal-no-normalize
+    pattern-regex: "(?<!path\\.normalize\\()(?<!path\\.basename\\()req\\.(params|query|body)\\.[a-zA-Z]+.*\\.(readFile|writeFile|unlink|access|stat)"
+    message: File operation with user input - use path.normalize() and validate path
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal]
+
+  # ============================================
+  # PII Leakage / Excessive Data Exposure
+  # ============================================
+
+  - id: pii-in-logs
+    patterns:
+      - pattern: 'console.log(..., email, ...)'
+      - pattern: 'console.log(..., user.email, ...)'
+      - pattern: 'console.log(..., ssn, ...)'
+      - pattern: 'console.log(..., creditCard, ...)'
+      - pattern: 'console.log(..., phoneNumber, ...)'
+      - pattern: 'logger.info(..., user, ...)'
+      - pattern: 'logger.debug(..., user, ...)'
+    message: PII in logs - avoid logging personal identifiable information
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+      tags: [pii, logging, privacy]
+
+  - id: excessive-data-exposure-user
+    patterns:
+      - pattern: 'res.json(user)'
+      - pattern: 'res.send(user)'
+      - pattern: 'res.json(users)'
+      - pattern: 'res.json({user: user})'
+    message: Excessive data exposure - return only necessary user fields, exclude password/sensitive data
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [data-exposure, api]
+
+  - id: password-in-response
+    patterns:
+      - pattern: 'res.json({..., password: $PWD, ...})'
+      - pattern: 'res.send({..., password: $PWD, ...})'
+      - pattern: 'res.json({..., hash: $HASH, ...})'
+      - pattern: 'res.json({..., passwordHash: $HASH, ...})'
+    message: Password/hash in API response - never expose credentials
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-200"
+      tags: [data-exposure, password]
+
+  - id: token-in-response-body
+    patterns:
+      - pattern: 'res.json({..., refreshToken: $TOKEN, ...})'
+      - pattern: 'res.json({..., apiKey: $KEY, ...})'
+      - pattern: 'res.json({..., secretKey: $KEY, ...})'
+    message: Sensitive token in response body - consider secure alternatives
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [data-exposure, token]
+
+  - id: find-without-select
+    patterns:
+      - pattern: '$MODEL.find($QUERY).then(...)'
+      - pattern: '$MODEL.findOne($QUERY).then(...)'
+      - pattern: 'await $MODEL.find($QUERY)'
+      - pattern: 'await $MODEL.findOne($QUERY)'
+    message: Database query without field selection - may expose sensitive fields
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [data-exposure, database]
+
+  # ============================================
+  # Stored XSS Patterns
+  # ============================================
+
+  - id: stored-xss-db-to-html
+    patterns:
+      - pattern: 'res.send($DATA.content)'
+      - pattern: 'res.send($DATA.body)'
+      - pattern: 'res.send($DATA.html)'
+      - pattern: 'res.send($DATA.message)'
+    message: Stored XSS - database content rendered without escaping
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, stored-xss]
+
+  - id: innerhtml-db-content
+    patterns:
+      - pattern: '$ELEM.innerHTML = $DATA'
+      - pattern: 'document.getElementById($ID).innerHTML = $DATA'
+      - pattern: '$ELEM.outerHTML = $DATA'
+    message: DOM XSS - innerHTML with dynamic data, use textContent or sanitize
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, dom-xss]
+
+  - id: template-literal-html
+    pattern-regex: "res\\.send\\s*\\(\\s*`<[^`]*\\$\\{[^}]+\\}[^`]*`\\s*\\)"
+    message: Template literal with HTML - ensure user data is escaped
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss]
+
+  # ============================================
+  # Insecure Randomness
+  # ============================================
+
+  - id: math-random-security
+    patterns:
+      - pattern: 'Math.random()'
+    message: Math.random() is not cryptographically secure - use crypto.randomBytes() for security
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-330"
+      tags: [randomness, crypto]
+
+  - id: weak-token-generation
+    patterns:
+      - pattern: 'Math.random().toString(36)'
+      - pattern: 'Date.now().toString(36)'
+      - pattern: 'new Date().getTime().toString()'
+    message: Weak token generation - use crypto.randomBytes() for secure tokens
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-330"
+      tags: [randomness, token]
+
+  - id: uuid-v1-predictable
+    patterns:
+      - pattern: 'uuid.v1()'
+      - pattern: "require('uuid').v1()"
+      - pattern: 'uuidv1()'
+    message: UUID v1 is time-based and predictable - use v4 for security-sensitive contexts
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-330"
+      tags: [randomness, uuid]
+
+  # ============================================
+  # Weak Password / OTP Handling
+  # ============================================
+
+  - id: weak-otp-generation
+    patterns:
+      - pattern: 'Math.floor(Math.random() * $MAX)'
+      - pattern: 'Math.random() * 1000000'
+      - pattern: "String(Math.random()).substring(2, $LEN)"
+    message: Weak OTP generation - use cryptographically secure random numbers
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-330"
+      tags: [otp, randomness]
+
+  - id: short-otp
+    pattern-regex: "otp.*=.*\\d{1,5}[^\\d]"
+    message: OTP too short - use at least 6 digits for security
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [otp]
+
+  - id: otp-no-expiry
+    patterns:
+      - pattern: 'user.otp = $OTP'
+      - pattern: '$USER.verificationCode = $CODE'
+    message: OTP stored without expiry time - implement OTP expiration
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [otp, authentication]
+
+  # ============================================
+  # Insufficient Logging / Audit
+  # ============================================
+
+  - id: login-no-logging
+    pattern-regex: "app\\.(post|put)\\s*\\(['\"].*(login|auth|signin).*\\{[\\s\\S]{0,500}\\}"
+    message: Authentication endpoint - ensure login attempts are logged for security audit
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-778"
+      tags: [logging, authentication]
+
+  - id: admin-action-no-logging
+    pattern-regex: "app\\.(post|put|delete)\\s*\\(['\"].*/admin.*\\{[\\s\\S]{0,300}(?!log)[\\s\\S]{0,200}\\}"
+    message: Admin action without logging - audit critical operations
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-778"
+      tags: [logging, admin]
+
+  # ============================================
+  # Business Logic Vulnerabilities
+  # ============================================
+
+  - id: negative-quantity-check
+    patterns:
+      - pattern: 'if ($QTY > 0)'
+      - pattern: 'quantity > 0'
+    message: Quantity check - ensure negative values are also rejected
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [business-logic]
+
+  - id: price-from-client
+    patterns:
+      - pattern: 'req.body.price'
+      - pattern: 'req.body.amount'
+      - pattern: 'req.body.total'
+      - pattern: 'req.body.discount'
+    message: Price/amount from client input - always calculate on server side
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [business-logic, price-manipulation]
+
+  - id: coupon-no-validation
+    patterns:
+      - pattern: 'req.body.coupon'
+      - pattern: 'req.body.discount_code'
+      - pattern: 'req.body.promo'
+    message: Coupon/discount from user input - validate against server-side rules
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [business-logic]
 
