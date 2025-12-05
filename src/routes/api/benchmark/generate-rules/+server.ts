@@ -1,11 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import Anthropic from '@anthropic-ai/sdk';
 import { ANTHROPIC_API_KEY } from '$env/static/private';
-
-const anthropic = new Anthropic({
-	apiKey: ANTHROPIC_API_KEY
-});
 
 interface Gap {
 	repo: string;
@@ -33,6 +28,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (gaps.length === 0) {
 			return json({ rules: [], message: 'No gaps to process' });
 		}
+
+		// Dynamic import to avoid Vite SSR issues
+		const Anthropic = (await import('@anthropic-ai/sdk')).default;
+		const anthropic = new Anthropic({
+			apiKey: ANTHROPIC_API_KEY
+		});
 
 		// Group gaps by language for efficient rule generation
 		const gapsByLanguage: Record<string, Gap[]> = {};
@@ -101,10 +102,10 @@ Generate rules for all ${langGaps.length} vulnerabilities listed above.`;
 				});
 
 				// Extract the text response
-				const textContent = response.content.find((c) => c.type === 'text');
+				const textContent = response.content.find((c: { type: string }) => c.type === 'text');
 				if (textContent && textContent.type === 'text') {
 					// Parse the JSON from the response
-					const jsonMatch = textContent.text.match(/\[[\s\S]*\]/);
+					const jsonMatch = (textContent as { type: 'text'; text: string }).text.match(/\[[\s\S]*\]/);
 					if (jsonMatch) {
 						const rules = JSON.parse(jsonMatch[0]);
 						for (const rule of rules) {

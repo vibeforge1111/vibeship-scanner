@@ -139,6 +139,8 @@
 	let generatedRules = $state<Array<{ id: string; yaml: string; language: string; vulnId: string; confidence: string }>>([]);
 	let showGeneratedRules = $state(false);
 	let autoImprovePhase = $state<'idle' | 'scanning' | 'generating' | 'deploying' | 'verifying'>('idle');
+	let selectedReposForImprove = $state<Set<string>>(new Set()); // Selected repos for auto-improve
+	let showRepoSelector = $state(false); // Toggle repo selection modal
 
 	const STORAGE_KEY = 'benchmark_data';
 
@@ -534,9 +536,39 @@
 		processQueue();
 	}
 
+	function toggleRepoSelection(repoId: string) {
+		if (selectedReposForImprove.has(repoId)) {
+			selectedReposForImprove.delete(repoId);
+		} else {
+			selectedReposForImprove.add(repoId);
+		}
+		selectedReposForImprove = new Set(selectedReposForImprove);
+	}
+
+	function selectAllRepos() {
+		selectedReposForImprove = new Set(repos.map(r => r.repo));
+	}
+
+	function deselectAllRepos() {
+		selectedReposForImprove = new Set();
+	}
+
+	function openRepoSelector() {
+		showRepoSelector = true;
+	}
+
+	function closeRepoSelector() {
+		showRepoSelector = false;
+	}
+
+	function startAutoImproveWithSelection() {
+		showRepoSelector = false;
+		startAutoImprove();
+	}
+
 	async function startAutoImprove() {
 		// Full auto-improve loop:
-		// 1. Scan all repos sequentially
+		// 1. Scan selected repos (or all if none selected) sequentially
 		// 2. Identify gaps
 		// 3. Generate rules via Claude API
 		// 4. Deploy rules to scanner
@@ -554,9 +586,12 @@
 		generatedRules = [];
 		showGeneratedRules = false;
 
+		// Use selected repos or all repos if none selected
 		const reposToScan = repos.filter(r => {
 			const result = results.get(r.repo);
-			return result?.status !== 'scanning';
+			const isNotScanning = result?.status !== 'scanning';
+			const isSelected = selectedReposForImprove.size === 0 || selectedReposForImprove.has(r.repo);
+			return isNotScanning && isSelected;
 		});
 
 		// Main auto-improve loop
@@ -1144,7 +1179,7 @@ Steps:
 						<span class="btn-icon">⚡</span>
 						Run All Parallel
 					</button>
-					<button class="btn btn-glow" onclick={startAutoImprove}>
+					<button class="btn btn-glow" onclick={openRepoSelector}>
 						<span class="btn-icon">🔄</span>
 						Auto-Improve
 					</button>
@@ -1460,6 +1495,72 @@ Steps:
 							<span class="run-rules">{h.rules_added > 0 ? `+${h.rules_added}` : '-'}</span>
 						</div>
 					{/each}
+				</div>
+			</div>
+		{/if}
+
+		<!-- Repo Selector Modal for Auto-Improve -->
+		{#if showRepoSelector}
+			<div class="modal-overlay" onclick={closeRepoSelector}>
+				<div class="modal-content repo-selector-modal" onclick={(e) => e.stopPropagation()}>
+					<div class="modal-header">
+						<div class="modal-title-section">
+							<h2>🔄 Auto-Improve Settings</h2>
+							<p class="modal-subtitle">Select repositories to include in the auto-improve loop</p>
+						</div>
+						<button class="modal-close" onclick={closeRepoSelector}>×</button>
+					</div>
+
+					<div class="repo-selector-content">
+						<div class="selector-actions">
+							<button class="btn btn-small btn-ghost" onclick={selectAllRepos}>Select All</button>
+							<button class="btn btn-small btn-ghost" onclick={deselectAllRepos}>Deselect All</button>
+							<span class="selection-count">
+								{selectedReposForImprove.size === 0 ? 'All repos' : `${selectedReposForImprove.size} selected`}
+							</span>
+						</div>
+
+						<div class="repo-checklist">
+							{#each repos as repo}
+								<label class="repo-checkbox-item" class:selected={selectedReposForImprove.has(repo.repo)}>
+									<input
+										type="checkbox"
+										checked={selectedReposForImprove.has(repo.repo)}
+										onchange={() => toggleRepoSelection(repo.repo)}
+									/>
+									<div class="repo-checkbox-info">
+										<span class="repo-checkbox-name">{repo.name}</span>
+										<span class="repo-checkbox-meta">
+											<span class="lang-tag">{repo.language}</span>
+											<span class="vuln-count">{repo.vuln_count} vulns</span>
+										</span>
+									</div>
+									{#if results.get(repo.repo)?.coverage !== undefined}
+										<span class="repo-checkbox-coverage" class:low={results.get(repo.repo)!.coverage < 50} class:medium={results.get(repo.repo)!.coverage >= 50 && results.get(repo.repo)!.coverage < 80} class:high={results.get(repo.repo)!.coverage >= 80}>
+											{results.get(repo.repo)!.coverage.toFixed(0)}%
+										</span>
+									{/if}
+								</label>
+							{/each}
+						</div>
+
+						<div class="selector-footer">
+							<p class="selector-hint">
+								{#if selectedReposForImprove.size === 0}
+									<strong>No selection</strong> = All {repos.length} repos will be scanned
+								{:else}
+									<strong>{selectedReposForImprove.size}</strong> repo{selectedReposForImprove.size !== 1 ? 's' : ''} will be scanned
+								{/if}
+							</p>
+							<div class="selector-buttons">
+								<button class="btn btn-secondary" onclick={closeRepoSelector}>Cancel</button>
+								<button class="btn btn-glow" onclick={startAutoImproveWithSelection}>
+									<span class="btn-icon">🚀</span>
+									Start Auto-Improve
+								</button>
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		{/if}
@@ -3154,5 +3255,152 @@ Steps:
 	.finding-fix code {
 		font-size: 0.8rem;
 		color: var(--text-primary, #fff);
+	}
+
+	/* Repo Selector Modal Styles */
+	.repo-selector-modal {
+		max-width: 600px;
+		max-height: 80vh;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.modal-subtitle {
+		color: var(--text-dim, #888);
+		font-size: 0.9rem;
+		margin-top: 0.5rem;
+	}
+
+	.repo-selector-content {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		overflow: hidden;
+	}
+
+	.selector-actions {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 1px solid var(--border-dim, #2a2a4a);
+	}
+
+	.selection-count {
+		margin-left: auto;
+		color: var(--green, #00ff88);
+		font-size: 0.9rem;
+		font-weight: 500;
+	}
+
+	.repo-checklist {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		max-height: 350px;
+		overflow-y: auto;
+		padding-right: 0.5rem;
+	}
+
+	.repo-checkbox-item {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 0.75rem 1rem;
+		background: var(--card-bg, #1a1a2e);
+		border: 1px solid var(--border-dim, #2a2a4a);
+		border-radius: 8px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.repo-checkbox-item:hover {
+		border-color: var(--green, #00ff88);
+		background: rgba(0, 255, 136, 0.05);
+	}
+
+	.repo-checkbox-item.selected {
+		border-color: var(--green, #00ff88);
+		background: rgba(0, 255, 136, 0.1);
+	}
+
+	.repo-checkbox-item input[type="checkbox"] {
+		width: 18px;
+		height: 18px;
+		accent-color: var(--green, #00ff88);
+		cursor: pointer;
+	}
+
+	.repo-checkbox-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.repo-checkbox-name {
+		font-weight: 500;
+		color: var(--text, #fff);
+	}
+
+	.repo-checkbox-meta {
+		display: flex;
+		gap: 0.75rem;
+		font-size: 0.8rem;
+	}
+
+	.repo-checkbox-meta .lang-tag {
+		color: var(--blue, #60a5fa);
+	}
+
+	.repo-checkbox-meta .vuln-count {
+		color: var(--text-dim, #888);
+	}
+
+	.repo-checkbox-coverage {
+		font-weight: 600;
+		font-size: 0.9rem;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+	}
+
+	.repo-checkbox-coverage.low {
+		background: rgba(255, 100, 100, 0.2);
+		color: #ff6b6b;
+	}
+
+	.repo-checkbox-coverage.medium {
+		background: rgba(255, 193, 7, 0.2);
+		color: #ffc107;
+	}
+
+	.repo-checkbox-coverage.high {
+		background: rgba(0, 255, 136, 0.2);
+		color: #00ff88;
+	}
+
+	.selector-footer {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--border-dim, #2a2a4a);
+	}
+
+	.selector-hint {
+		color: var(--text-dim, #888);
+		font-size: 0.9rem;
+		text-align: center;
+	}
+
+	.selector-hint strong {
+		color: var(--green, #00ff88);
+	}
+
+	.selector-buttons {
+		display: flex;
+		justify-content: flex-end;
+		gap: 1rem;
 	}
 </style>

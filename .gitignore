@@ -44,3 +44,4 @@ vite.config.ts.timestamp-*
 vibeship-ref/
 scanner/semgrep-rules-reference/
 scanner/rules/opengrep/
+nul
