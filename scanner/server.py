@@ -393,6 +393,142 @@ def get_job_status(job_id):
     return jsonify(benchmark_jobs[job_id])
 
 
+@app.route('/benchmark/add-rules', methods=['POST'])
+def add_rules():
+    """
+    Add generated rules to the scanner's YAML files.
+    This allows the auto-improve loop to deploy rules without manual intervention.
+
+    POST /benchmark/add-rules
+    Headers: X-Benchmark-Key: <secret>
+    Body: {
+        "rules": [
+            { "id": "rule-id", "yaml": "full yaml content", "language": "javascript" }
+        ]
+    }
+    """
+    provided_key = request.headers.get('X-Benchmark-Key', '')
+    if provided_key != BENCHMARK_SECRET:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.json or {}
+    rules = data.get('rules', [])
+
+    if not rules:
+        return jsonify({'error': 'No rules provided'}), 400
+
+    import yaml as pyyaml
+    import subprocess
+
+    rules_dir = os.path.join(os.path.dirname(__file__), 'rules')
+
+    # Language to file mapping
+    file_map = {
+        'javascript': 'javascript.yaml',
+        'typescript': 'javascript.yaml',
+        'python': 'python.yaml',
+        'php': 'php.yaml',
+        'java': 'java.yaml',
+        'go': 'go.yaml',
+        'ruby': 'ruby.yaml',
+        'rust': 'rust.yaml',
+        'csharp': 'csharp.yaml',
+    }
+
+    added = []
+    failed = []
+    skipped = []
+
+    for rule in rules:
+        rule_id = rule.get('id', 'unknown')
+        rule_yaml = rule.get('yaml', '')
+        language = rule.get('language', 'javascript').lower()
+
+        if not rule_yaml:
+            failed.append({'id': rule_id, 'error': 'No YAML content'})
+            continue
+
+        # Determine target file
+        target_file = file_map.get(language, 'javascript.yaml')
+        filepath = os.path.join(rules_dir, target_file)
+
+        try:
+            # Parse the rule YAML to extract the rule object
+            parsed = pyyaml.safe_load(rule_yaml)
+
+            # Handle both formats: { rules: [...] } or just the rule object
+            if isinstance(parsed, dict) and 'rules' in parsed:
+                new_rules = parsed['rules']
+            elif isinstance(parsed, dict) and 'id' in parsed:
+                new_rules = [parsed]
+            elif isinstance(parsed, list):
+                new_rules = parsed
+            else:
+                failed.append({'id': rule_id, 'error': 'Invalid YAML structure'})
+                continue
+
+            # Load existing rules file
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = pyyaml.safe_load(f)
+
+            if not content or 'rules' not in content:
+                content = {'rules': []}
+
+            # Check for duplicates and add new rules
+            existing_ids = {r.get('id') for r in content['rules']}
+
+            for new_rule in new_rules:
+                new_id = new_rule.get('id', rule_id)
+                if new_id in existing_ids:
+                    skipped.append({'id': new_id, 'reason': 'Already exists'})
+                    continue
+
+                content['rules'].append(new_rule)
+                added.append({'id': new_id, 'file': target_file})
+                existing_ids.add(new_id)
+
+            # Write back
+            with open(filepath, 'w', encoding='utf-8') as f:
+                pyyaml.dump(content, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+        except Exception as e:
+            failed.append({'id': rule_id, 'error': str(e)})
+
+    # Validate the modified files with semgrep
+    validation_results = []
+    validated_files = set(r['file'] for r in added)
+
+    for filename in validated_files:
+        filepath = os.path.join(rules_dir, filename)
+        try:
+            result = subprocess.run(
+                ['semgrep', '--validate', '--config', filepath],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            validation_results.append({
+                'file': filename,
+                'valid': result.returncode == 0,
+                'output': result.stderr if result.returncode != 0 else 'OK'
+            })
+        except Exception as e:
+            validation_results.append({
+                'file': filename,
+                'valid': False,
+                'output': str(e)
+            })
+
+    return jsonify({
+        'status': 'complete',
+        'added': added,
+        'skipped': skipped,
+        'failed': failed,
+        'validation': validation_results,
+        'summary': f'Added {len(added)} rules, skipped {len(skipped)}, failed {len(failed)}'
+    })
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 
-	const SCANNER_URL = 'https://scanner-empty-field-5676.fly.dev';
+	const SCANNER_URL = 'https://vibeship-benchmark.fly.dev';
 	const BENCHMARK_SECRET = 'vibeship-benchmark-2024';
 	const PASSWORD_HASH = '69b86692b84806ffc45e9d9b5fa44320';
 	const MAX_PARALLEL_SCANS = 2; // Reduced to prevent overwhelming the server
@@ -132,6 +132,13 @@
 	let clickedScans = $state<Set<string>>(new Set()); // Track buttons that were just clicked
 	let showGapSummary = $state(false);
 	let gapSummaryData = $state<Array<{ repo: string; repoName: string; vulnId: string; description: string }>>([]);
+
+	// Auto-improve loop state
+	let autoImproveIteration = $state(0);
+	let autoImproveMaxIterations = $state(10);
+	let generatedRules = $state<Array<{ id: string; yaml: string; language: string; vulnId: string; confidence: string }>>([]);
+	let showGeneratedRules = $state(false);
+	let autoImprovePhase = $state<'idle' | 'scanning' | 'generating' | 'deploying' | 'verifying'>('idle');
 
 	const STORAGE_KEY = 'benchmark_data';
 
@@ -528,88 +535,218 @@
 	}
 
 	async function startAutoImprove() {
-		// Auto-improve now runs locally:
+		// Full auto-improve loop:
 		// 1. Scan all repos sequentially
-		// 2. Show real-time progress per repo
-		// 3. After scans, show gap analysis summary
-		// 4. The gaps tell us what rules need to be added
+		// 2. Identify gaps
+		// 3. Generate rules via Claude API
+		// 4. Deploy rules to scanner
+		// 5. Re-scan to verify
+		// 6. Repeat until target coverage (95%) or max iterations
 
 		error = null;
-		autoImproveStatus = 'Starting auto-improve scan...';
+		autoImproveStatus = 'Starting auto-improve loop...';
 		autoImproveProgress = 0;
+		autoImproveIteration = 0;
+		autoImprovePhase = 'scanning';
 		isRunning = true;
 		showGapSummary = false;
 		gapSummaryData = [];
+		generatedRules = [];
+		showGeneratedRules = false;
 
 		const reposToScan = repos.filter(r => {
 			const result = results.get(r.repo);
 			return result?.status !== 'scanning';
 		});
 
-		const totalRepos = reposToScan.length;
-		let completedRepos = 0;
-		let allGaps: Array<{ repo: string; repoName: string; vulnId: string; description: string }> = [];
+		// Main auto-improve loop
+		while (autoImproveIteration < autoImproveMaxIterations && isRunning) {
+			autoImproveIteration++;
 
-		autoImproveStatus = `Scanning ${totalRepos} repos to identify gaps...`;
+			// ========== PHASE 1: SCAN ALL REPOS ==========
+			autoImprovePhase = 'scanning';
+			autoImproveStatus = `Iteration ${autoImproveIteration}: Scanning ${reposToScan.length} repos...`;
 
-		for (const repo of reposToScan) {
-			// Update progress message
-			autoImproveStatus = `Scanning ${repo.name} (${completedRepos + 1}/${totalRepos})...`;
-			autoImproveProgress = Math.round((completedRepos / totalRepos) * 80);
+			let allGaps: Array<{ repo: string; repoName: string; vulnId: string; vulnType?: string; description: string; language: string }> = [];
 
-			// Scan this repo
-			await scanSingleRepo(repo.repo);
+			for (let i = 0; i < reposToScan.length; i++) {
+				const repo = reposToScan[i];
+				if (!isRunning) break;
 
-			// After scan completes, collect gaps
-			const result = results.get(repo.repo);
-			if (result?.status === 'complete' && result.missed_vulns?.length > 0) {
-				for (const vulnId of result.missed_vulns) {
-					allGaps.push({
-						repo: repo.repo,
-						repoName: repo.name,
-						vulnId,
-						description: `Missing detection for ${vulnId}`
-					});
+				autoImproveStatus = `Iteration ${autoImproveIteration}: Scanning ${repo.name} (${i + 1}/${reposToScan.length})...`;
+				autoImproveProgress = Math.round((i / reposToScan.length) * 30);
+
+				await scanSingleRepo(repo.repo);
+
+				// Collect gaps from this repo
+				const result = results.get(repo.repo);
+				if (result?.status === 'complete' && result.missed_vulns?.length > 0) {
+					for (const vulnId of result.missed_vulns) {
+						allGaps.push({
+							repo: repo.repo,
+							repoName: repo.name,
+							vulnId,
+							description: `Missing detection for ${vulnId}`,
+							language: repo.language || 'javascript'
+						});
+					}
 				}
+
+				await new Promise(resolve => setTimeout(resolve, 300));
 			}
 
-			completedRepos++;
+			updateOverallCoverage();
+			gapSummaryData = allGaps;
 
-			// Small delay between repos to not overwhelm server
-			await new Promise(resolve => setTimeout(resolve, 500));
+			// Check if target coverage reached
+			if (overallCoverage >= targetCoverage) {
+				autoImproveStatus = `✓ Target coverage reached! ${overallCoverage.toFixed(1)}% >= ${targetCoverage}%`;
+				autoImproveProgress = 100;
+				autoImprovePhase = 'idle';
+				break;
+			}
+
+			// No gaps? We're done
+			if (allGaps.length === 0) {
+				autoImproveStatus = `✓ No gaps found! Coverage: ${overallCoverage.toFixed(1)}%`;
+				autoImproveProgress = 100;
+				autoImprovePhase = 'idle';
+				break;
+			}
+
+			// ========== PHASE 2: GENERATE RULES ==========
+			autoImprovePhase = 'generating';
+			autoImproveStatus = `Iteration ${autoImproveIteration}: Generating rules for ${allGaps.length} gaps...`;
+			autoImproveProgress = 35;
+
+			try {
+				const generateRes = await fetch('/api/benchmark/generate-rules', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ gaps: allGaps })
+				});
+
+				const generateData = await generateRes.json();
+
+				if (generateData.error) {
+					error = `Rule generation failed: ${generateData.error}`;
+					autoImproveStatus = `⚠️ Rule generation failed: ${generateData.error}`;
+					showGapSummary = true; // Show gaps for manual handling
+					break;
+				}
+
+				generatedRules = generateData.rules || [];
+
+				if (generatedRules.length === 0) {
+					autoImproveStatus = `⚠️ No rules generated. Manual intervention needed.`;
+					showGapSummary = true;
+					break;
+				}
+
+				autoImproveStatus = `Iteration ${autoImproveIteration}: Generated ${generatedRules.length} rules`;
+				autoImproveProgress = 50;
+
+			} catch (e) {
+				error = `Rule generation error: ${e}`;
+				autoImproveStatus = `⚠️ Rule generation error`;
+				showGapSummary = true;
+				break;
+			}
+
+			// ========== PHASE 3: DEPLOY RULES ==========
+			autoImprovePhase = 'deploying';
+			autoImproveStatus = `Iteration ${autoImproveIteration}: Deploying ${generatedRules.length} rules to scanner...`;
+			autoImproveProgress = 60;
+
+			try {
+				const deployRes = await fetch('/api/benchmark/add-rules', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ rules: generatedRules })
+				});
+
+				const deployData = await deployRes.json();
+
+				if (deployData.error) {
+					error = `Rule deployment failed: ${deployData.error}`;
+					autoImproveStatus = `⚠️ Deployment failed: ${deployData.error}`;
+					showGeneratedRules = true; // Show rules for manual handling
+					break;
+				}
+
+				const addedCount = deployData.added?.length || 0;
+				const skippedCount = deployData.skipped?.length || 0;
+				const failedCount = deployData.failed?.length || 0;
+
+				rulesAdded += addedCount;
+
+				// Check validation results
+				const invalidFiles = (deployData.validation || []).filter((v: any) => !v.valid);
+				if (invalidFiles.length > 0) {
+					console.warn('Some rules failed validation:', invalidFiles);
+				}
+
+				autoImproveStatus = `Iteration ${autoImproveIteration}: Deployed ${addedCount} rules (${skippedCount} skipped, ${failedCount} failed)`;
+				autoImproveProgress = 75;
+
+				if (addedCount === 0) {
+					autoImproveStatus = `⚠️ No new rules added. May have reached limit of auto-generation.`;
+					showGapSummary = true;
+					break;
+				}
+
+			} catch (e) {
+				error = `Rule deployment error: ${e}`;
+				autoImproveStatus = `⚠️ Deployment error`;
+				showGeneratedRules = true;
+				break;
+			}
+
+			// ========== PHASE 4: VERIFY (will re-scan in next iteration) ==========
+			autoImprovePhase = 'verifying';
+			autoImproveStatus = `Iteration ${autoImproveIteration}: Rules deployed! Preparing verification scan...`;
+			autoImproveProgress = 85;
+
+			// Save progress
+			saveToStorage();
+
+			// Add to history
+			history = [...history, {
+				timestamp: new Date().toISOString(),
+				overall_coverage: overallCoverage,
+				total_detected: totalDetected,
+				total_known: totalKnown,
+				rules_added: rulesAdded
+			}];
+
+			// Brief pause before next iteration
+			await new Promise(resolve => setTimeout(resolve, 2000));
+
+			// Reset for next iteration - will re-scan to verify improvements
+			autoImproveStatus = `Iteration ${autoImproveIteration} complete. Starting verification...`;
 		}
 
-		// All scans complete - show summary
-		autoImproveProgress = 90;
-		updateOverallCoverage();
+		// Loop complete
+		autoImproveProgress = 100;
+		autoImprovePhase = 'idle';
+		isRunning = false;
+		saveToStorage();
 
-		// Calculate total gaps
-		const totalGaps = allGaps.length;
-		const completedWithGaps = repos.filter(r => {
-			const result = results.get(r.repo);
-			return result?.status === 'complete' && (result.missed_vulns?.length || 0) > 0;
-		}).length;
-
-		if (totalGaps === 0) {
-			autoImproveStatus = '✓ All vulnerabilities covered! No gaps found.';
-		} else {
-			autoImproveStatus = `Found ${totalGaps} detection gaps across ${completedWithGaps} repos.`;
-			// Store gaps and show summary
-			gapSummaryData = allGaps;
+		// Final status message
+		if (overallCoverage >= targetCoverage) {
+			autoImproveStatus = `🎉 Auto-improve complete! ${overallCoverage.toFixed(1)}% coverage achieved in ${autoImproveIteration} iteration(s).`;
+		} else if (autoImproveIteration >= autoImproveMaxIterations) {
+			autoImproveStatus = `⚠️ Max iterations reached. Coverage: ${overallCoverage.toFixed(1)}% (target: ${targetCoverage}%)`;
 			showGapSummary = true;
 		}
 
-		autoImproveProgress = 100;
-		saveToStorage();
-		isRunning = false;
-
-		// Clear the banner after a delay, but keep gap summary visible
+		// Keep status visible longer for completion
 		setTimeout(() => {
-			if (autoImproveProgress === 100) {
+			if (!isRunning && autoImproveProgress === 100) {
 				autoImproveStatus = null;
 				autoImproveProgress = 0;
 			}
-		}, 5000);
+		}, 10000);
 	}
 
 	async function pollJobStatus() {
@@ -732,8 +869,146 @@
 		isRunning = false;
 		autoImproveStatus = null;
 		autoImproveProgress = 0;
+		autoImprovePhase = 'idle';
 		jobId = null;
 		// Note: The background job on the server will continue, but we stop polling
+	}
+
+	async function generateAndDeployRules() {
+		// Manual trigger: generate rules for current gaps and deploy them
+		if (gapSummaryData.length === 0) {
+			error = 'No gaps to process';
+			return;
+		}
+
+		isRunning = true;
+		autoImproveStatus = 'Generating rules for gaps...';
+		autoImproveProgress = 10;
+		autoImprovePhase = 'generating';
+
+		try {
+			// Convert gaps to the format expected by the API
+			const gaps = gapSummaryData.map(gap => ({
+				repo: gap.repo,
+				repoName: gap.repoName,
+				vulnId: gap.vulnId,
+				description: gap.description,
+				language: repos.find(r => r.repo === gap.repo)?.language || 'javascript'
+			}));
+
+			// Generate rules
+			autoImproveStatus = `Generating rules for ${gaps.length} gaps...`;
+			autoImproveProgress = 30;
+
+			const generateRes = await fetch('/api/benchmark/generate-rules', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ gaps })
+			});
+
+			const generateData = await generateRes.json();
+
+			if (generateData.error) {
+				error = `Rule generation failed: ${generateData.error}`;
+				autoImproveStatus = null;
+				isRunning = false;
+				autoImprovePhase = 'idle';
+				return;
+			}
+
+			generatedRules = generateData.rules || [];
+
+			if (generatedRules.length === 0) {
+				error = 'No rules were generated';
+				autoImproveStatus = null;
+				isRunning = false;
+				autoImprovePhase = 'idle';
+				return;
+			}
+
+			autoImproveStatus = `Generated ${generatedRules.length} rules. Deploying...`;
+			autoImproveProgress = 60;
+			autoImprovePhase = 'deploying';
+
+			// Deploy rules
+			const deployRes = await fetch('/api/benchmark/add-rules', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ rules: generatedRules })
+			});
+
+			const deployData = await deployRes.json();
+
+			if (deployData.error) {
+				error = `Deployment failed: ${deployData.error}`;
+				autoImproveStatus = null;
+				isRunning = false;
+				autoImprovePhase = 'idle';
+				return;
+			}
+
+			const addedCount = deployData.added?.length || 0;
+			rulesAdded += addedCount;
+
+			autoImproveStatus = `✓ Deployed ${addedCount} rules! Re-scan to verify.`;
+			autoImproveProgress = 100;
+			autoImprovePhase = 'idle';
+
+			// Hide gap summary since we addressed them
+			if (addedCount > 0) {
+				showGapSummary = false;
+			}
+
+			saveToStorage();
+
+		} catch (e) {
+			error = `Error: ${e}`;
+			autoImproveStatus = null;
+			autoImprovePhase = 'idle';
+		}
+
+		isRunning = false;
+
+		// Clear status after delay
+		setTimeout(() => {
+			if (autoImproveProgress === 100) {
+				autoImproveStatus = null;
+				autoImproveProgress = 0;
+			}
+		}, 5000);
+	}
+
+	function copyGapsForClaude() {
+		// Format gaps as a command for Claude Code
+		const gapsByRepo: Record<string, string[]> = {};
+		for (const gap of gapSummaryData) {
+			if (!gapsByRepo[gap.repoName]) gapsByRepo[gap.repoName] = [];
+			gapsByRepo[gap.repoName].push(gap.vulnId);
+		}
+
+		const gapText = Object.entries(gapsByRepo)
+			.map(([repo, vulns]) => `${repo}: ${vulns.join(', ')}`)
+			.join('\n');
+
+		const prompt = `Please run the auto-improve loop for these detection gaps and generate Semgrep rules:
+
+${gapText}
+
+Total gaps: ${gapSummaryData.length}
+
+Steps:
+1. Generate Semgrep rules for each gap
+2. Add rules to scanner/rules/*.yaml files
+3. Deploy scanner to Fly.io
+4. Trigger re-scan to verify improvement`;
+
+		navigator.clipboard.writeText(prompt).then(() => {
+			alert('Gaps copied! Paste this in Claude Code to run auto-improve.');
+		}).catch(() => {
+			// Fallback - show in console
+			console.log('Copy this to Claude Code:\n\n' + prompt);
+			alert('Check console for the gaps to copy to Claude Code.');
+		});
 	}
 
 	function getCoverageClass(coverage: number): string {
@@ -889,12 +1164,35 @@
 			<div class="auto-improve-banner">
 				<div class="auto-improve-header">
 					<span class="auto-improve-icon">🤖</span>
-					<span class="auto-improve-title">Auto-Improve Running</span>
+					<span class="auto-improve-title">Auto-Improve Loop</span>
+					{#if autoImproveIteration > 0}
+						<span class="iteration-badge">Iteration {autoImproveIteration}/{autoImproveMaxIterations}</span>
+					{/if}
+				</div>
+				<div class="auto-improve-phases">
+					<span class="phase-step" class:active={autoImprovePhase === 'scanning'} class:complete={autoImprovePhase !== 'idle' && autoImprovePhase !== 'scanning'}>
+						1. Scan
+					</span>
+					<span class="phase-arrow">→</span>
+					<span class="phase-step" class:active={autoImprovePhase === 'generating'} class:complete={['deploying', 'verifying'].includes(autoImprovePhase)}>
+						2. Generate
+					</span>
+					<span class="phase-arrow">→</span>
+					<span class="phase-step" class:active={autoImprovePhase === 'deploying'} class:complete={autoImprovePhase === 'verifying'}>
+						3. Deploy
+					</span>
+					<span class="phase-arrow">→</span>
+					<span class="phase-step" class:active={autoImprovePhase === 'verifying'}>
+						4. Verify
+					</span>
 				</div>
 				<p class="auto-improve-status">{autoImproveStatus}</p>
 				<div class="auto-improve-progress">
 					<div class="auto-improve-fill" style="width: {autoImproveProgress}%"></div>
 				</div>
+				{#if rulesAdded > 0}
+					<p class="rules-added-count">📝 {rulesAdded} rules added this session</p>
+				{/if}
 			</div>
 		{/if}
 
@@ -902,12 +1200,12 @@
 			<div class="gap-summary-banner">
 				<div class="gap-summary-header">
 					<span class="gap-icon">🔍</span>
-					<span class="gap-title">Detection Gaps Found</span>
+					<span class="gap-title">Detection Gaps Found - Ready for Rule Generation</span>
 					<button class="gap-dismiss" onclick={() => showGapSummary = false}>×</button>
 				</div>
 				<p class="gap-summary-description">
 					These vulnerabilities are documented in the repos but our scanner didn't detect them.
-					New Semgrep rules need to be added to catch these patterns.
+					<strong>Run the auto-improve command in Claude Code</strong> to generate new Semgrep rules for these gaps.
 				</p>
 				<div class="gap-list">
 					{#each Object.entries(gapSummaryData.reduce((acc, gap) => {
@@ -927,6 +1225,16 @@
 				</div>
 				<div class="gap-summary-footer">
 					<span class="gap-total">{gapSummaryData.length} total gaps need Semgrep rules</span>
+					<div class="gap-actions">
+						<button class="btn btn-generate-auto" onclick={generateAndDeployRules} disabled={isRunning}>
+							<span class="btn-icon">⚡</span>
+							Generate & Deploy Rules
+						</button>
+						<button class="btn btn-generate" onclick={copyGapsForClaude}>
+							<span class="btn-icon">📋</span>
+							Copy for Manual
+						</button>
+					</div>
 				</div>
 			</div>
 		{/if}
@@ -1592,6 +1900,77 @@
 		transition: width 0.5s ease;
 	}
 
+	.iteration-badge {
+		background: var(--purple, #9d8cff);
+		color: white;
+		padding: 0.25rem 0.75rem;
+		border-radius: 999px;
+		font-size: 0.8rem;
+		font-weight: 500;
+		margin-left: auto;
+	}
+
+	.auto-improve-phases {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.phase-step {
+		padding: 0.35rem 0.75rem;
+		border-radius: 4px;
+		font-size: 0.8rem;
+		background: var(--bg-tertiary, #1a1a2e);
+		color: var(--text-tertiary, #666);
+		transition: all 0.3s;
+	}
+
+	.phase-step.active {
+		background: var(--green, #00c49a);
+		color: white;
+		font-weight: 600;
+	}
+
+	.phase-step.complete {
+		background: rgba(0, 196, 154, 0.2);
+		color: var(--green, #00c49a);
+	}
+
+	.phase-arrow {
+		color: var(--text-tertiary, #666);
+		font-size: 0.8rem;
+	}
+
+	.rules-added-count {
+		margin-top: 0.75rem;
+		font-size: 0.9rem;
+		color: var(--green, #00c49a);
+	}
+
+	.gap-actions {
+		display: flex;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.btn-generate-auto {
+		background: linear-gradient(135deg, var(--green, #00c49a), var(--blue, #3b82f6));
+		border: none;
+		color: white;
+		font-weight: 600;
+	}
+
+	.btn-generate-auto:hover:not(:disabled) {
+		filter: brightness(1.1);
+	}
+
+	.btn-generate-auto:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
 	/* Gap Summary Banner */
 	.gap-summary-banner {
 		background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(255, 176, 32, 0.1));
@@ -1681,12 +2060,36 @@
 	.gap-summary-footer {
 		padding-top: 1rem;
 		border-top: 1px solid var(--border, #333);
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 1rem;
 	}
 
 	.gap-total {
 		font-size: 0.85rem;
 		color: var(--red, #ff6b6b);
 		font-weight: 500;
+	}
+
+	.btn-generate {
+		background: linear-gradient(135deg, #9d8cff, #6366f1);
+		color: white;
+		border: none;
+		padding: 0.5rem 1rem;
+		border-radius: 6px;
+		font-weight: 500;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		transition: all 0.2s ease;
+	}
+
+	.btn-generate:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(157, 140, 255, 0.4);
 	}
 
 	.stats-grid {

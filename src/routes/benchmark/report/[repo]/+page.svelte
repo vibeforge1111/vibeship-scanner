@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
-	const SCANNER_URL = 'https://scanner-empty-field-5676.fly.dev';
+	const SCANNER_URL = 'https://vibeship-benchmark.fly.dev';
 	const BENCHMARK_SECRET = 'vibeship-benchmark-2024';
 	const PASSWORD_HASH = '69b86692b84806ffc45e9d9b5fa44320';
 

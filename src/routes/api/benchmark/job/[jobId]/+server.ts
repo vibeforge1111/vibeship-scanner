@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-const SCANNER_URL = 'https://scanner-empty-field-5676.fly.dev';
+const SCANNER_URL = 'https://vibeship-benchmark.fly.dev';
 
 export const GET: RequestHandler = async ({ params }) => {
 	try {

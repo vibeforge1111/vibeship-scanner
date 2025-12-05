@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-const SCANNER_URL = 'https://scanner-empty-field-5676.fly.dev';
+const SCANNER_URL = 'https://vibeship-benchmark.fly.dev';
 const BENCHMARK_SECRET = 'vibeship-benchmark-2024';
 
 export const POST: RequestHandler = async ({ request }) => {
