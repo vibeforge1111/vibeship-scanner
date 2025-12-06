@@ -84,6 +84,12 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
                 clone_url += '.git'
             print("[Clone] Using authenticated clone for private repo", file=sys.stderr, flush=True)
 
+        # For logging, mask the token in the URL
+        log_url = clone_url
+        if github_token:
+            log_url = clone_url.replace(github_token, 'TOKEN_HIDDEN')
+        print(f"[Clone] Running: git clone --depth 1 --branch {branch} {log_url}", file=sys.stderr, flush=True)
+
         result = subprocess.run(
             ['git', 'clone', '--depth', '1', '--branch', branch, clone_url, target_dir],
             capture_output=True,
@@ -91,14 +97,28 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
             timeout=120
         )
         if result.returncode != 0:
-            print(f"Clone with branch failed, trying default: {result.stderr}", file=sys.stderr)
+            # Mask token in error output
+            stderr = result.stderr
+            if github_token:
+                stderr = stderr.replace(github_token, 'TOKEN_HIDDEN')
+            print(f"[Clone] Branch clone failed (code {result.returncode}): {stderr}", file=sys.stderr, flush=True)
+
+            print(f"[Clone] Retrying without branch specification...", file=sys.stderr, flush=True)
             result = subprocess.run(
                 ['git', 'clone', '--depth', '1', clone_url, target_dir],
                 capture_output=True,
                 text=True,
                 timeout=120
             )
-        return result.returncode == 0
+            if result.returncode != 0:
+                stderr = result.stderr
+                if github_token:
+                    stderr = stderr.replace(github_token, 'TOKEN_HIDDEN')
+                print(f"[Clone] Default clone also failed (code {result.returncode}): {stderr}", file=sys.stderr, flush=True)
+
+        success = result.returncode == 0
+        print(f"[Clone] Result: {'SUCCESS' if success else 'FAILED'}", file=sys.stderr, flush=True)
+        return success
     except subprocess.TimeoutExpired:
         print("Clone timeout", file=sys.stderr)
         return False
