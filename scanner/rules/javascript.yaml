@@ -5283,3 +5283,101 @@ rules:
       cwe: "CWE-79"
       tags: [xss, markdown, nodegoat]
 
+  # ============================================
+  # A2: Additional Authentication Weaknesses
+  # ============================================
+
+  # No password length/complexity validation
+  - id: password-no-length-check
+    patterns:
+      - pattern-regex: "password\\s*&&\\s*password\\.length\\s*[<>=]\\s*[0-5]"
+      - pattern-regex: "password\\.length\\s*[<>]=?\\s*[0-5]\\s*\\)"
+    message: Weak password length requirement (should be at least 8 characters)
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-521"
+      tags: [auth, password, nodegoat]
+
+  # No account lockout after failed attempts
+  - id: login-no-lockout
+    patterns:
+      - pattern: |
+          if ($USER.password !== $INPUT) {
+            ...
+            return $CALLBACK($ERR);
+          }
+      - pattern: |
+          if (!$BCRYPT.compare(...)) {
+            ...
+            return $CALLBACK($ERR);
+          }
+    message: Login failure without account lockout - add lockout after N failed attempts
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-307"
+      tags: [auth, brute-force, nodegoat]
+
+  # ============================================
+  # A5: Security Misconfiguration - HTTPS
+  # ============================================
+
+  # HTTP server without HTTPS redirect
+  - id: http-no-https-redirect
+    patterns:
+      - pattern: |
+          http.createServer($APP)
+      - pattern: |
+          app.listen($PORT)
+    message: HTTP server - ensure HTTPS is enforced in production (use helmet HSTS)
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-319"
+      tags: [https, tls, nodegoat]
+
+  # Missing HSTS header
+  - id: missing-hsts-header
+    patterns:
+      - pattern-regex: "helmet\\(\\{[^}]*hsts:\\s*false"
+      - pattern-regex: "helmet\\.hsts\\(\\{\\s*\\}\\)"
+    message: HSTS disabled or misconfigured - enable Strict-Transport-Security header
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-319"
+      tags: [https, headers, nodegoat]
+
+  # ============================================
+  # A6: Sensitive Data - Password in Logs
+  # ============================================
+
+  # Logging password field
+  - id: password-in-logs
+    patterns:
+      - pattern: |
+          console.log(..., $X.password, ...)
+      - pattern: |
+          logger.$LEVEL(..., password, ...)
+      - pattern-regex: "console\\.(log|error|warn|info)\\([^)]*password"
+    message: Password may be logged - never log sensitive credentials
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, password, nodegoat]
+
+  # ============================================
+  # A7: Missing Function Level Access - Benefits
+  # ============================================
+
+  # Benefits/admin route without isAdmin middleware
+  - id: benefits-route-no-admin-check
+    pattern-regex: "router\\.(get|post)\\(['\"]/?benefits['\"].*isLoggedIn(?!.*isAdmin)"
+    message: Benefits route may lack admin authorization check
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-285"
+      tags: [authorization, nodegoat]
