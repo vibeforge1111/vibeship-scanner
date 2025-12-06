@@ -9,6 +9,8 @@ interface AuthState {
 	loading: boolean;
 }
 
+const GITHUB_TOKEN_KEY = 'vibeship_github_token';
+
 function createAuthStore() {
 	const { subscribe, set, update } = writable<AuthState>({
 		user: null,
@@ -24,7 +26,17 @@ function createAuthStore() {
 			const { data: { session } } = await supabase.auth.getSession();
 
 			if (session) {
-				const githubToken = session.provider_token || null;
+				// Try to get token from session first, then fall back to localStorage
+				let githubToken = session.provider_token || null;
+
+				if (githubToken) {
+					// New token from OAuth - store it
+					localStorage.setItem(GITHUB_TOKEN_KEY, githubToken);
+				} else {
+					// Try to retrieve stored token
+					githubToken = localStorage.getItem(GITHUB_TOKEN_KEY);
+				}
+
 				set({
 					user: session.user,
 					session,
@@ -32,6 +44,8 @@ function createAuthStore() {
 					loading: false
 				});
 			} else {
+				// No session - clear stored token
+				localStorage.removeItem(GITHUB_TOKEN_KEY);
 				set({
 					user: null,
 					session: null,
@@ -43,7 +57,16 @@ function createAuthStore() {
 			// Listen for auth changes
 			supabase.auth.onAuthStateChange(async (event, session) => {
 				if (session) {
-					const githubToken = session.provider_token || null;
+					let githubToken = session.provider_token || null;
+
+					if (githubToken) {
+						// New token from OAuth - store it
+						localStorage.setItem(GITHUB_TOKEN_KEY, githubToken);
+					} else {
+						// Try to retrieve stored token
+						githubToken = localStorage.getItem(GITHUB_TOKEN_KEY);
+					}
+
 					set({
 						user: session.user,
 						session,
@@ -51,6 +74,8 @@ function createAuthStore() {
 						loading: false
 					});
 				} else {
+					// Signed out - clear stored token
+					localStorage.removeItem(GITHUB_TOKEN_KEY);
 					set({
 						user: null,
 						session: null,
@@ -82,6 +107,8 @@ function createAuthStore() {
 				console.error('Sign out error:', error);
 				throw error;
 			}
+			// Clear stored GitHub token
+			localStorage.removeItem(GITHUB_TOKEN_KEY);
 			set({
 				user: null,
 				session: null,

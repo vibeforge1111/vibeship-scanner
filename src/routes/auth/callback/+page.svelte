@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { supabase } from '$lib/supabase';
+	import { auth } from '$lib/stores/auth';
 
 	let message = $state('Completing sign in...');
 
@@ -18,11 +19,13 @@
 
 		if (data.session) {
 			message = 'Sign in successful! Redirecting...';
-			// Store the GitHub token if needed for later use
+			// Store the GitHub token for private repo cloning
 			if (data.session.provider_token) {
-				// Token is available in the session, will be used for private repo cloning
-				console.log('GitHub token received');
+				localStorage.setItem('vibeship_github_token', data.session.provider_token);
+				console.log('GitHub token stored');
 			}
+			// Initialize auth store to pick up the new session
+			await auth.initialize();
 			setTimeout(() => goto('/'), 500);
 		} else {
 			message = 'No session found. Redirecting...';
