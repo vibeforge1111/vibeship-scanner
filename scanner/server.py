@@ -53,7 +53,7 @@ def update_progress(supabase: Client, scan_id: str, step: str, message: str, per
 def update_scan(supabase: Client, scan_id: str, data: dict):
     supabase.table('scans').update(data).eq('id', scan_id).execute()
 
-def run_scan(scan_id: str, repo_url: str, branch: str):
+def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None):
     """Run the full scan pipeline"""
     supabase = get_supabase()
     start_time = datetime.now()
@@ -66,7 +66,7 @@ def run_scan(scan_id: str, repo_url: str, branch: str):
             repo_dir = os.path.join(temp_dir, 'repo')
 
             update_progress(supabase, scan_id, 'clone', 'Cloning repository...', 15)
-            if not clone_repo(repo_url, repo_dir, branch):
+            if not clone_repo(repo_url, repo_dir, branch, github_token):
                 update_scan(supabase, scan_id, {
                     'status': 'failed',
                     'error_message': 'Failed to clone repository'
@@ -235,11 +235,12 @@ def start_scan():
     scan_id = data.get('scanId')
     repo_url = data.get('repoUrl')
     branch = data.get('branch', 'main')
+    github_token = data.get('githubToken')
 
     if not scan_id or not repo_url:
         return jsonify({'error': 'Missing scanId or repoUrl'}), 400
 
-    thread = threading.Thread(target=run_scan, args=(scan_id, repo_url, branch))
+    thread = threading.Thread(target=run_scan, args=(scan_id, repo_url, branch, github_token))
     thread.start()
 
     return jsonify({'status': 'started', 'scanId': scan_id})

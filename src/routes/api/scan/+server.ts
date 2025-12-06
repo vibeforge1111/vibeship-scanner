@@ -38,7 +38,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			);
 		}
 
-		const { url: rawUrl } = await request.json();
+		const { url: rawUrl, githubToken } = await request.json();
 
 		if (!rawUrl) {
 			return json({ error: 'url_required', message: 'Repository URL is required' }, { status: 400 });
@@ -69,15 +69,17 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		const scanId = crypto.randomUUID();
 		const urlHash = hashUrl(url);
 
+		const isPrivate = !!githubToken;
+
 		const scanRecord = {
 			id: scanId,
 			target_type: parsed.type,
 			target_url: url,
 			target_url_hash: urlHash,
 			target_branch: 'main',
-			is_private: false,
+			is_private: isPrivate,
 			status: 'queued' as const,
-			is_public: true,
+			is_public: !isPrivate,
 			session_id: clientIp
 		};
 
@@ -97,7 +99,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 				body: JSON.stringify({
 					scanId,
 					repoUrl: url,
-					branch: 'main'
+					branch: 'main',
+					githubToken: githubToken || undefined
 				})
 			}).catch(err => console.error('Scanner trigger error:', err));
 		}

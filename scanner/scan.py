@@ -66,11 +66,25 @@ ALWAYS_LOAD_RULES = [
 ]
 
 
-def clone_repo(url: str, target_dir: str, branch: str = 'main') -> bool:
-    """Clone a git repository (shallow clone for speed)"""
+def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: str = None) -> bool:
+    """Clone a git repository (shallow clone for speed)
+
+    For private repos, uses the GitHub token for authentication.
+    URL format with token: https://oauth2:TOKEN@github.com/owner/repo.git
+    """
     try:
+        clone_url = url
+
+        # If we have a GitHub token, inject it into the URL for authenticated cloning
+        if github_token and 'github.com' in url:
+            # Convert https://github.com/owner/repo to https://oauth2:TOKEN@github.com/owner/repo.git
+            clone_url = url.replace('https://github.com/', f'https://oauth2:{github_token}@github.com/')
+            if not clone_url.endswith('.git'):
+                clone_url += '.git'
+            print("Using authenticated clone for private repo", file=sys.stderr)
+
         result = subprocess.run(
-            ['git', 'clone', '--depth', '1', '--branch', branch, url, target_dir],
+            ['git', 'clone', '--depth', '1', '--branch', branch, clone_url, target_dir],
             capture_output=True,
             text=True,
             timeout=120
@@ -78,7 +92,7 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main') -> bool:
         if result.returncode != 0:
             print(f"Clone with branch failed, trying default: {result.stderr}", file=sys.stderr)
             result = subprocess.run(
-                ['git', 'clone', '--depth', '1', url, target_dir],
+                ['git', 'clone', '--depth', '1', clone_url, target_dir],
                 capture_output=True,
                 text=True,
                 timeout=120
