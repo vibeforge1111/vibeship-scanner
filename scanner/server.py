@@ -237,6 +237,8 @@ def start_scan():
     branch = data.get('branch', 'main')
     github_token = data.get('githubToken')
 
+    print(f"[Scanner] Received scan request: scanId={scan_id}, repo={repo_url}, hasToken={bool(github_token)}", flush=True)
+
     if not scan_id or not repo_url:
         return jsonify({'error': 'Missing scanId or repoUrl'}), 400
 

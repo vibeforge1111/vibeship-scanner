@@ -74,6 +74,7 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
     """
     try:
         clone_url = url
+        print(f"[Clone] Starting clone: url={url}, hasToken={bool(github_token)}", file=sys.stderr, flush=True)
 
         # If we have a GitHub token, inject it into the URL for authenticated cloning
         if github_token and 'github.com' in url:
@@ -81,7 +82,7 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
             clone_url = url.replace('https://github.com/', f'https://oauth2:{github_token}@github.com/')
             if not clone_url.endswith('.git'):
                 clone_url += '.git'
-            print("Using authenticated clone for private repo", file=sys.stderr)
+            print("[Clone] Using authenticated clone for private repo", file=sys.stderr, flush=True)
 
         result = subprocess.run(
             ['git', 'clone', '--depth', '1', '--branch', branch, clone_url, target_dir],
