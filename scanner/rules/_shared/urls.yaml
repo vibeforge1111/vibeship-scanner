@@ -140,11 +140,7 @@ rules:
   # ============================================
 
   - id: shared-db-localhost
-    patterns:
-      - pattern: 'host = "localhost"'
-      - pattern: 'host: "localhost"'
-      - pattern: '"host": "localhost"'
-      - pattern: 'DB_HOST=localhost'
+    pattern-regex: '(host\s*[=:]\s*["\''"]localhost["\''"]|DB_HOST\s*=\s*localhost)'
     message: Database host set to localhost - use environment variables
     languages: [python, javascript, typescript, go, java, ruby, php]
     severity: WARNING

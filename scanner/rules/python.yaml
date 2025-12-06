@@ -732,9 +732,7 @@ rules:
     severity: WARNING
 
   - id: py-role-check-user-input
-    patterns:
-      - pattern: 'if request.json.get("role") == "admin"'
-      - pattern: 'if request.args.get("is_admin")'
+    pattern-regex: 'request\.(json|args|form)\.get\(["\''](role|is_admin|admin)["\'']\)'
     message: Admin check from user input - authorization bypass risk
     languages: [python]
     severity: ERROR

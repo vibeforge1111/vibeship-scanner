@@ -86,7 +86,7 @@ rules:
       tags: [react, xss]
 
   - id: react-href-javascript
-    pattern: 'href={"javascript:$X"}'
+    pattern-regex: 'href\s*=\s*[{"\''"]javascript:'
     message: "React javascript: URL in href - XSS vulnerability"
     languages: [javascript, typescript]
     severity: ERROR
@@ -218,7 +218,7 @@ rules:
   # ============================================
 
   - id: sveltekit-html-injection
-    pattern: '{@html $X}'
+    pattern-regex: '\{@html\s+\S+'
     message: SvelteKit @html - XSS risk if content is user-controlled
     languages: [javascript, typescript]
     severity: ERROR
@@ -1268,7 +1268,7 @@ rules:
   # ============================================
 
   - id: ts-any-type
-    pattern: ': any'
+    pattern-regex: ':\s*any\b'
     message: TypeScript any type bypasses type safety - consider strict typing
     languages: [typescript]
     severity: INFO
@@ -1276,7 +1276,7 @@ rules:
       tags: [typescript, type-safety]
 
   - id: ts-type-assertion-any
-    pattern: 'as any'
+    pattern-regex: '\bas\s+any\b'
     message: Type assertion to any - bypasses type checking
     languages: [typescript]
     severity: INFO
@@ -1344,7 +1344,7 @@ rules:
       tags: [firebase, secrets]
 
   - id: firebase-security-rules-disabled
-    pattern: '.write": true'
+    pattern-regex: '"\\.write"\\s*:\\s*true'
     message: Firebase security rules allow all writes - restrict in production
     languages: [javascript, typescript]
     severity: ERROR
@@ -2114,9 +2114,7 @@ rules:
       tags: [ejs, xss, template]
 
   - id: pug-render-unescaped
-    patterns:
-      - pattern: '!{$VAR}'
-      - pattern: '!= $VAR'
+    pattern-regex: '!\s*[{=]\s*\w+'
     message: Pug unescaped output - XSS risk if variable contains user input
     languages: [javascript, typescript]
     severity: WARNING
@@ -4259,12 +4257,7 @@ rules:
 
   # Session without secure cookie settings
   - id: express-session-no-secure
-    pattern: |
-      session({
-        ...
-        cookie: { ..., secure: false, ... }
-        ...
-      })
+    pattern-regex: 'session\s*\([^)]*secure\s*:\s*false'
     message: Session cookie without secure flag - vulnerable to MITM on HTTP
     languages: [javascript, typescript]
     severity: WARNING
@@ -4379,9 +4372,18 @@ rules:
   - id: express-debug-production
     patterns:
       - pattern: "app.set('env', 'development')"
-      - pattern: 'DEBUG=*'
       - pattern: 'debug: true'
     message: Debug mode enabled - disable in production
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-489"
+      tags: [config, debug]
+
+  # DEBUG environment variable pattern (regex-based)
+  - id: debug-env-wildcard
+    pattern-regex: 'DEBUG\s*=\s*\*'
+    message: DEBUG=* enables all debug output - disable in production
     languages: [javascript, typescript]
     severity: WARNING
     metadata:
