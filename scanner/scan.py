@@ -389,6 +389,22 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
 
     print(f"Using rule files: {', '.join(rule_files_used)}", file=sys.stderr)
 
+    # Count rules in each file for debugging
+    total_rules = 0
+    for rule_file in rule_files_used:
+        rule_path = RULES_DIR / rule_file if not rule_file.startswith('_shared/') else SHARED_RULES_DIR / rule_file.replace('_shared/', '')
+        if rule_path.exists():
+            try:
+                import yaml
+                with open(rule_path) as f:
+                    content = yaml.safe_load(f)
+                    rule_count = len(content.get('rules', []))
+                    total_rules += rule_count
+                    print(f"  - {rule_file}: {rule_count} rules", file=sys.stderr)
+            except Exception as e:
+                print(f"  - {rule_file}: ERROR reading - {e}", file=sys.stderr)
+    print(f"Total rules loaded: {total_rules}", file=sys.stderr)
+
     # Opengrep uses similar syntax: opengrep scan -f rules --json target
     cmd = ['opengrep', 'scan', '--json'] + configs + [repo_dir]
 
@@ -413,7 +429,14 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
             try:
                 data = json.loads(result.stdout)
                 results = data.get('results', [])
+                errors = data.get('errors', [])
                 print(f"Opengrep raw results: {len(results)}", file=sys.stderr)
+
+                # Log any rule errors (patterns that failed to compile/match)
+                if errors:
+                    print(f"Opengrep rule errors: {len(errors)}", file=sys.stderr)
+                    for err in errors[:10]:  # Show first 10 errors
+                        print(f"  - Rule error: {err}", file=sys.stderr)
 
                 for item in results:
                     severity = SEVERITY_MAP.get(
