@@ -416,7 +416,12 @@
 	}
 
 	async function rescanRepo() {
-		if (!repoUrl || rescanning) return;
+		if (!repoUrl) {
+			console.error('Rescan failed: No repo URL available');
+			return;
+		}
+		if (rescanning) return;
+
 		rescanning = true;
 		try {
 			const response = await fetch('/api/scan', {
@@ -430,10 +435,12 @@
 				window.location.href = `/scan/${data.scanId}`;
 			} else {
 				console.error('Rescan failed:', data);
+				alert(`Rescan failed: ${data.message || 'Unknown error'}`);
 				rescanning = false;
 			}
 		} catch (e) {
 			console.error('Rescan error:', e);
+			alert('Failed to start rescan. Please try again.');
 			rescanning = false;
 		}
 	}
@@ -463,32 +470,27 @@
 					table: 'scans',
 					filter: `id=eq.${scanId}`
 				},
-				(payload) => {
+				async (payload) => {
 					const data = payload.new;
 					status = data.status;
 
 					if (data.status === 'complete') {
-						results = {
-							score: data.score,
-							grade: data.grade,
-							shipStatus: data.ship_status,
-							summary: data.finding_counts,
-							stack: data.detected_stack,
-							findings: data.findings || []
-						};
-						scanDuration = data.duration_ms;
-						completedAt = data.completed_at;
+						// Re-fetch scan data to get complete findings
+						// Supabase realtime payloads may truncate large JSON fields
+						await fetchScan();
 						// Track scan completion
-						trackScanCompleted(repoUrl || '', {
-							totalFindings: data.findings?.length || 0,
-							criticalCount: data.finding_counts?.critical || 0,
-							highCount: data.finding_counts?.high || 0,
-							mediumCount: data.finding_counts?.medium || 0,
-							lowCount: data.finding_counts?.low || 0
-						});
-						trackScanResultsViewed(scanId, repoUrl || '', data.findings?.length || 0);
+						if (results) {
+							trackScanCompleted(repoUrl || '', {
+								totalFindings: results.findings?.length || 0,
+								criticalCount: results.summary?.critical || 0,
+								highCount: results.summary?.high || 0,
+								mediumCount: results.summary?.medium || 0,
+								lowCount: results.summary?.low || 0
+							});
+							trackScanResultsViewed(scanId, repoUrl || '', results.findings?.length || 0);
+						}
 					} else if (data.status === 'failed') {
-						error = data.error || 'Scan failed';
+						error = data.error_message || data.error || 'Scan failed';
 					}
 				}
 			)
@@ -830,13 +832,14 @@
 			{/if}
 
 			<div class="results-header">
-				<div class="top-actions" class:revealed={revealStage >= 1}>
-					<button class="action-btn" onclick={() => copyToClipboard(getScanUrl(), 'link')}>
+				<div class="top-actions" class:revealed={showResults}>
+					<button class="action-btn action-btn-primary" onclick={rescanRepo} disabled={rescanning || !repoUrl}>
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-							<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+							<path d="M23 4v6h-6"/>
+							<path d="M1 20v-6h6"/>
+							<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
 						</svg>
-						{copied === 'link' ? 'Copied!' : 'Copy Link'}
+						{rescanning ? 'Starting...' : 'Rescan'}
 					</button>
 					<button class="action-btn" onclick={shareTwitter}>
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -1393,11 +1396,14 @@
 		opacity: 0;
 		transform: translateY(-10px);
 		transition: opacity 0.3s ease, transform 0.3s ease;
+		pointer-events: none;
+		z-index: 10;
 	}
 
 	.top-actions.revealed {
 		opacity: 1;
 		transform: translateY(0);
+		pointer-events: auto;
 	}
 
 	.action-btn {
@@ -1424,6 +1430,22 @@
 
 	.action-btn svg {
 		flex-shrink: 0;
+	}
+
+	.action-btn-primary {
+		background: var(--green, #00c49a);
+		border-color: var(--green, #00c49a);
+		color: #000;
+	}
+
+	.action-btn-primary:hover {
+		background: #00a883;
+		border-color: #00a883;
+	}
+
+	.action-btn-primary:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
 	}
 
 	.top-badge-embed {

@@ -5668,3 +5668,762 @@ rules:
     severity: WARNING
     metadata:
       tags: [nft, web3]
+
+  # ============================================
+  # INSECURE DESERIALIZATION (CWE-502)
+  # ============================================
+
+  # node-serialize deserialization (CVE-2017-5941)
+  - id: node-serialize-unserialize
+    pattern-regex: "require\\s*\\(\\s*['\"]node-serialize['\"]\\s*\\)"
+    message: "node-serialize library is vulnerable to RCE via deserialization - use safe alternatives"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021"
+      tags: [deserialization, rce, juice-shop]
+
+  - id: unserialize-call
+    pattern-regex: "\\.unserialize\\s*\\("
+    message: "Insecure deserialization - unserialize() can execute arbitrary code"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization, rce]
+
+  # serialize-javascript eval
+  - id: serialize-to-js-eval
+    pattern-regex: "eval\\s*\\(\\s*serialize\\s*\\("
+    message: "Dangerous pattern - serialized data passed to eval can lead to RCE"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization, rce]
+
+  # JSON.parse with user input (potential prototype pollution via __proto__)
+  - id: json-parse-user-input
+    pattern: JSON.parse(req.$PARAM)
+    message: "JSON.parse with user input - sanitize to prevent prototype pollution"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization, prototype-pollution]
+
+  - id: json-parse-body
+    pattern: JSON.parse(req.body)
+    message: "JSON.parse on request body - use body-parser middleware instead"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  # YAML deserialization (yaml.load is unsafe)
+  - id: yaml-load-unsafe
+    pattern-regex: "yaml\\.load\\s*\\([^)]+\\)"
+    message: "yaml.load is unsafe - use yaml.safeLoad or js-yaml with safe schema"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization, rce]
+
+  # vm module eval patterns
+  - id: vm-runinnewcontext-user
+    pattern-regex: "vm\\.(?:runInNewContext|runInThisContext|runInContext)\\s*\\([^)]*(?:req\\.|user|input)"
+    message: "VM execution with user input - potential sandbox escape"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization, rce, sandbox-escape]
+
+  # Function constructor with user input
+  - id: function-constructor-user-input
+    pattern-regex: "new\\s+Function\\s*\\([^)]*(?:req\\.|user|input|body)"
+    message: "Function constructor with user input enables code injection"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [code-injection, rce]
+
+  # ============================================
+  # SECURITY MISCONFIGURATION (OWASP A05:2021)
+  # ============================================
+
+  # Debug mode enabled
+  - id: debug-mode-enabled
+    pattern-regex: "(?:DEBUG|debug)\\s*[=:]\\s*(?:true|1|['\"]true['\"])"
+    message: "Debug mode enabled - disable in production"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      owasp: "A05:2021"
+      tags: [misconfiguration, debug, juice-shop]
+
+  # NODE_ENV not production
+  - id: node-env-development
+    pattern-regex: "NODE_ENV\\s*[!=]==?\\s*['\"](?:development|dev|test)['\"]"
+    message: "Code checking for non-production environment - ensure proper env handling"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [misconfiguration, environment]
+
+  # Verbose error messages
+  - id: verbose-error-response
+    pattern-regex: "res\\.(?:json|send)\\s*\\([^)]*(?:err\\.message|err\\.stack|error\\.message)"
+    message: "Verbose error details in response - may leak sensitive information"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      owasp: "A05:2021"
+      tags: [misconfiguration, information-disclosure]
+
+  # Default credentials
+  - id: default-admin-password
+    pattern-regex: "(?:password|passwd|pwd)\\s*[=:]\\s*['\"](?:admin|password|123456|default|changeme)['\"]"
+    message: "Default or weak password detected - use strong, unique credentials"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A05:2021"
+      tags: [misconfiguration, credentials, juice-shop]
+
+  # CORS Allow All Origins
+  - id: cors-allow-all
+    pattern-regex: "Access-Control-Allow-Origin['\"]?\\s*[,:]\\s*['\"]\\*['\"]"
+    message: "CORS allows all origins - restrict to trusted domains"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      owasp: "A05:2021"
+      tags: [misconfiguration, cors]
+
+  - id: cors-origin-star
+    pattern: "cors({ origin: '*' })"
+    message: "CORS middleware allows all origins - restrict to trusted domains"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [misconfiguration, cors]
+
+  - id: cors-credentials-true-star
+    pattern-regex: "cors\\s*\\(\\s*\\{[^}]*credentials\\s*:\\s*true[^}]*origin\\s*:\\s*['\"]?\\*"
+    message: "CORS with credentials and wildcard origin is a security risk"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [misconfiguration, cors]
+
+  # Missing security headers
+  - id: missing-helmet
+    pattern-regex: "app\\.use\\s*\\(\\s*express\\.static"
+    message: "Express static serving without helmet - consider adding security headers"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      owasp: "A05:2021"
+      tags: [misconfiguration, headers]
+
+  # X-Powered-By header not disabled
+  - id: xpoweredby-enabled
+    pattern-regex: "app\\.(?:enable|set)\\s*\\([^)]*['\"]x-powered-by['\"]"
+    message: "X-Powered-By header enabled - consider disabling to hide framework"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [misconfiguration, fingerprinting]
+
+  # HTTP instead of HTTPS redirect
+  - id: http-not-https
+    pattern-regex: "(?:redirect|location)\\s*[=:]\\s*['\"]http://"
+    message: "HTTP redirect detected - use HTTPS for secure connections"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      owasp: "A05:2021"
+      tags: [misconfiguration, transport]
+
+  # TLS/SSL disabled or weak
+  - id: ssl-verify-disabled
+    pattern-regex: "rejectUnauthorized\\s*:\\s*false"
+    message: "SSL certificate verification disabled - vulnerable to MITM attacks"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      owasp: "A05:2021"
+      tags: [misconfiguration, tls]
+
+  # Session config without secure flags
+  - id: session-insecure-cookie
+    pattern-regex: "session\\s*\\([^)]*(?:secure\\s*:\\s*false|httpOnly\\s*:\\s*false)"
+    message: "Insecure session cookie configuration - enable secure and httpOnly"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      owasp: "A05:2021"
+      cwe: "CWE-614"
+      tags: [misconfiguration, session]
+
+  # GraphQL introspection enabled
+  - id: graphql-introspection-enabled
+    pattern-regex: "introspection\\s*:\\s*true"
+    message: "GraphQL introspection enabled - disable in production"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      owasp: "A05:2021"
+      tags: [misconfiguration, graphql]
+
+  # Express trust proxy misconfiguration
+  - id: trust-proxy-true
+    pattern-regex: "app\\.set\\s*\\([^)]*['\"]trust proxy['\"]\\s*,\\s*true"
+    message: "trust proxy set to true - be specific about proxy configuration"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [misconfiguration, proxy]
+
+  # ============================================
+  # SECURITY THROUGH OBSCURITY / HIDDEN FILES
+  # ============================================
+
+  # Backup file extensions in routes
+  - id: backup-file-served
+    pattern-regex: "\\.(bak|backup|old|orig|copy|tmp|temp|swp|save)\\b"
+    message: "Backup file reference detected - ensure not publicly accessible"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      owasp: "A05:2021"
+      tags: [obscurity, backup, juice-shop]
+
+  # .git directory exposure
+  - id: git-directory-served
+    pattern-regex: "(?:sendFile|static|serve).*\\.git"
+    message: ".git directory may be exposed - exclude from static serving"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-538"
+      tags: [obscurity, source-exposure]
+
+  # Serving hidden dot files
+  - id: dotfiles-served
+    pattern-regex: "dotfiles\\s*:\\s*['\"]allow['\"]"
+    message: "Hidden dotfiles serving enabled - may expose sensitive config"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [obscurity, configuration]
+
+  # robots.txt disallow patterns (info disclosure)
+  - id: robots-txt-sensitive
+    pattern-regex: "Disallow:\\s*/(?:admin|api|backup|config|db|private|secret)"
+    message: "robots.txt may reveal sensitive paths - consider honeypot instead"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [obscurity, information-disclosure]
+
+  # Source map files in production
+  - id: sourcemap-production
+    pattern-regex: "(?:sourceMap|sourceMaps)\\s*:\\s*true"
+    message: "Source maps enabled - disable in production to protect source code"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [obscurity, source-exposure]
+
+  # Hidden admin routes
+  - id: hidden-admin-route
+    pattern-regex: "(?:app|router)\\.(?:get|post|put|delete)\\s*\\([^)]*['\"]/?(?:_admin|__admin|.admin|secret-admin|backdoor)"
+    message: "Hidden admin route detected - use proper authentication instead"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [obscurity, authentication, juice-shop]
+
+  # Debug endpoints
+  - id: debug-endpoint
+    pattern-regex: "(?:app|router)\\.(?:get|post)\\s*\\([^)]*['\"]/?(?:debug|_debug|__debug|test-|dev-)"
+    message: "Debug endpoint detected - remove in production"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [obscurity, debug]
+
+  # Metrics endpoints without auth
+  - id: metrics-endpoint-exposed
+    pattern-regex: "(?:app|router)\\.get\\s*\\([^)]*['\"]/?(?:metrics|health|status|info)['\"]"
+    message: "Metrics/status endpoint - ensure proper access control"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [obscurity, information-disclosure]
+
+  # Swagger/API docs in production
+  - id: swagger-docs-exposed
+    pattern-regex: "(?:swagger-ui|openapi|api-docs).*(?:app|router)\\.(?:use|get)"
+    message: "API documentation exposed - consider restricting access in production"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [obscurity, documentation]
+
+  # Hidden file download routes
+  - id: hidden-download-route
+    pattern-regex: "download.*\\.(?:sql|db|sqlite|dump|log|conf|cfg|ini)"
+    message: "Sensitive file download endpoint - ensure proper authorization"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-538"
+      tags: [obscurity, data-exposure]
+
+  # FTP credentials in code
+  - id: ftp-credentials-exposed
+    pattern-regex: "ftp://[^:]+:[^@]+@"
+    message: "FTP credentials in code - use environment variables"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [obscurity, credentials]
+
+  # Prometheus metrics without auth
+  - id: prometheus-metrics-open
+    pattern-regex: "(?:promClient|prom-client).*\\.(?:register|metrics)"
+    message: "Prometheus metrics endpoint - ensure access is restricted"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [obscurity, metrics]
+
+  # Actuator endpoints (Spring Boot style)
+  - id: actuator-style-endpoints
+    pattern-regex: "(?:app|router)\\.(?:get|use)\\s*\\([^)]*['\"]/?(?:actuator|env|configprops|mappings)['\"]"
+    message: "Actuator-style endpoint exposed - restrict access"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [obscurity, information-disclosure]
+
+  # Version endpoint disclosure
+  - id: version-endpoint
+    pattern-regex: "(?:app|router)\\.get\\s*\\([^)]*['\"]/?version['\"]"
+    message: "Version endpoint exposed - may aid attackers in identifying vulnerabilities"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [obscurity, fingerprinting]
+
+  # Temporary file paths
+  - id: temp-file-paths
+    pattern-regex: "(?:path|fs).*(?:/tmp/|/temp/|\\\\temp\\\\|\\\\tmp\\\\)"
+    message: "Temporary file path usage - ensure proper cleanup and permissions"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [obscurity, filesystem]
+
+  # Config file endpoints
+  - id: config-file-endpoint
+    pattern-regex: "sendFile.*(?:config|settings|env).*\\.(?:json|yml|yaml|xml|ini)"
+    message: "Config file served via endpoint - ensure no sensitive data"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [obscurity, configuration]
+
+  # Package.json exposure
+  - id: package-json-exposed
+    pattern-regex: "(?:sendFile|static).*package\\.json"
+    message: "package.json may be exposed - reveals dependencies and versions"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [obscurity, information-disclosure]
+
+  # .env file served
+  - id: env-file-exposed
+    pattern-regex: "(?:sendFile|static).*\\.env"
+    message: ".env file accessible - contains sensitive environment variables"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-538"
+      tags: [obscurity, secrets]
+
+  # ============================================
+  # XXE - XML External Entity Injection
+  # ============================================
+
+  # libxmljs without safe parsing
+  - id: libxmljs-xxe-external-entities
+    patterns:
+      - pattern: libxml.parseXml($XML, ...)
+      - pattern: libxml.parseXmlString($XML, ...)
+      - pattern: libxmljs.parseXml($XML, ...)
+      - pattern: libxmljs.parseXmlString($XML, ...)
+    message: "libxmljs XML parsing may be vulnerable to XXE. Disable external entities with {noent: false, nonet: true}"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2021"
+      tags: [xxe, injection]
+
+  # xml2js with external entities enabled
+  - id: xml2js-xxe-vulnerable
+    pattern-regex: "xml2js\\.parseString.*(?:externals|entities).*true"
+    message: "xml2js with external entities enabled - vulnerable to XXE attacks"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, injection]
+
+  # DOMParser without sanitization
+  - id: domparser-xxe-risk
+    patterns:
+      - pattern: new DOMParser().parseFromString($XML, "text/xml")
+      - pattern: new DOMParser().parseFromString($XML, "application/xml")
+    message: "DOMParser XML parsing may be vulnerable to XXE in certain environments"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe]
+
+  # sax parser vulnerable config
+  - id: sax-parser-xxe
+    pattern-regex: "sax\\.(?:parser|createStream).*(?:strict.*false|entities)"
+    message: "SAX parser configuration may be vulnerable to XXE"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe]
+
+  # xmldom parsing
+  - id: xmldom-xxe-vulnerable
+    patterns:
+      - pattern: new DOMParser().parseFromString($XML, ...)
+      - pattern: xmldom.DOMParser().parseFromString($XML, ...)
+    message: "xmldom parsing without proper XXE protection"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe]
+
+  # fast-xml-parser without entity disabled
+  - id: fast-xml-parser-xxe
+    pattern-regex: "new XMLParser\\(.*(?:processEntities|allowBooleanAttributes).*true"
+    message: "fast-xml-parser with entity processing enabled may be vulnerable to XXE"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe]
+
+  # ============================================
+  # CSRF - Cross-Site Request Forgery
+  # ============================================
+
+  # Missing CSRF protection on state-changing routes
+  - id: express-post-no-csrf
+    pattern-regex: "app\\.(?:post|put|delete|patch)\\(['\"][^'\"]+['\"]\\s*,\\s*(?:async\\s*)?(?:\\(|function)"
+    message: "State-changing route without CSRF protection. Consider using csurf or lusca middleware"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
+      owasp: "A01:2021"
+      tags: [csrf, authentication]
+
+  # CSRF protection disabled
+  - id: csrf-protection-disabled
+    pattern-regex: "(?:csurf|csrf).*(?:ignore|disabled|false)"
+    message: "CSRF protection appears to be disabled or bypassed"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf]
+
+  # Cookie without SameSite attribute
+  - id: cookie-no-samesite
+    pattern-regex: "res\\.cookie\\([^)]+\\)(?!.*sameSite)"
+    message: "Cookie set without SameSite attribute - may be vulnerable to CSRF"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf, cookies]
+
+  # SameSite None without Secure
+  - id: cookie-samesite-none-insecure
+    pattern-regex: "sameSite.*['\"]?none['\"]?(?!.*secure.*true)"
+    message: "SameSite=None cookie without Secure flag - browsers will reject this cookie"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-614"
+      tags: [csrf, cookies]
+
+  # Missing CSRF token in forms
+  - id: form-missing-csrf-token
+    pattern-regex: "<form[^>]*method=['\"]?post['\"]?[^>]*>(?!.*csrf|.*_token|.*xsrf)"
+    message: "Form POST without CSRF token field"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf]
+
+  # CORS with credentials but no origin check
+  - id: cors-credentials-any-origin
+    pattern-regex: "credentials.*true.*origin.*['\"]\\*['\"]|origin.*['\"]\\*['\"].*credentials.*true"
+    message: "CORS allowing credentials from any origin - CSRF risk"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-346"
+      tags: [csrf, cors]
+
+  # ============================================
+  # Unvalidated Redirects and Forwards
+  # ============================================
+
+  # Direct redirect from user input
+  - id: redirect-user-input
+    patterns:
+      - pattern: res.redirect($INPUT)
+      - pattern: res.redirect(req.query.$PARAM)
+      - pattern: res.redirect(req.body.$PARAM)
+      - pattern: res.redirect(req.params.$PARAM)
+    message: "Redirect using user-controlled input - vulnerable to open redirect attacks"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A01:2021"
+      tags: [redirect, injection]
+
+  # Window.location from user input
+  - id: window-location-user-input
+    pattern-regex: "(?:window\\.)?location(?:\\.href)?\\s*=\\s*(?:req\\.|params\\.|query\\.|input|url|redirect|next|return)"
+    message: "Setting window.location from potentially user-controlled value - open redirect risk"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect, xss]
+
+  # Redirect URL from query parameter
+  - id: redirect-url-query-param
+    pattern-regex: "redirect.*(?:req\\.query|req\\.params|searchParams|URLSearchParams)"
+    message: "Redirect URL sourced from query parameters without validation"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect]
+
+  # Unvalidated URL in response header
+  - id: location-header-user-input
+    patterns:
+      - pattern: res.setHeader("Location", $URL)
+      - pattern: res.set("Location", $URL)
+      - pattern: res.header("Location", $URL)
+    message: "Location header set with potentially user-controlled URL"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect]
+
+  # URL redirect validation bypass patterns
+  - id: redirect-validation-bypass
+    pattern-regex: "(?:startsWith|indexOf|includes).*(?:http|//|\\\\)"
+    message: "Redirect URL validation may be bypassable (e.g., //evil.com, http://evil.com)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect, validation]
+
+  # Next.js router push from user input
+  - id: nextjs-router-push-user-input
+    patterns:
+      - pattern: router.push($URL)
+      - pattern: Router.push($URL)
+    message: "Next.js router.push may be using user-controlled URL - validate before redirecting"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect, nextjs]
+
+  # React Router navigate with user input
+  - id: react-router-navigate-user-input
+    patterns:
+      - pattern: navigate($URL)
+      - pattern: useNavigate()($URL)
+    message: "React Router navigate with potentially user-controlled URL"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect, react]
+
+  # Helmet redirect
+  - id: helmet-redirect-user-input
+    pattern-regex: "contentSecurityPolicy.*reportUri"
+    message: "Helmet CSP reportUri may contain user-controlled URL"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect, csp]
+
+  # ============================================
+  # Prototype Pollution (Extended)
+  # ============================================
+
+  # Lodash merge with user input
+  - id: lodash-merge-prototype-pollution
+    patterns:
+      - pattern: _.merge($TARGET, $INPUT)
+      - pattern: lodash.merge($TARGET, $INPUT)
+      - pattern: _.defaultsDeep($TARGET, $INPUT)
+    message: "Lodash merge/defaultsDeep with user input - vulnerable to prototype pollution"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution]
+
+  # Object.assign with req.body
+  - id: object-assign-prototype-pollution
+    patterns:
+      - pattern: Object.assign($TARGET, req.body)
+      - pattern: Object.assign($TARGET, req.query)
+      - pattern: Object.assign({...}, req.body)
+    message: "Object.assign with user input - may be vulnerable to prototype pollution"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution]
+
+  # Spread operator with user input
+  - id: spread-operator-prototype-pollution
+    patterns:
+      - pattern: "{...$OBJ, ...req.body}"
+      - pattern: "{...$OBJ, ...req.query}"
+    message: "Spread operator with user input - potential prototype pollution vector"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution]
+
+  # Deep clone/copy without prototype protection
+  - id: deep-clone-prototype-pollution
+    pattern-regex: "(?:deepClone|deepCopy|deepMerge|deepExtend)\\([^)]*(?:req\\.|input|data|body)"
+    message: "Deep clone/merge with user input - verify prototype pollution protection"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution]
+
+  # ============================================
+  # SSRF - Server-Side Request Forgery (Extended)
+  # ============================================
+
+  # Axios with user-controlled URL
+  - id: axios-ssrf-user-url
+    patterns:
+      - pattern: axios.get($URL)
+      - pattern: axios.post($URL, ...)
+      - pattern: 'axios.request({..., url: $URL, ...})'
+      - pattern: 'axios({..., url: $URL, ...})'
+    message: "Axios request with potentially user-controlled URL - SSRF risk"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021"
+      tags: [ssrf]
+
+  # fetch with user URL
+  - id: fetch-ssrf-user-url
+    patterns:
+      - pattern: fetch($URL)
+      - pattern: fetch($URL, ...)
+    message: "Fetch API with potentially user-controlled URL - validate to prevent SSRF"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  # Node request module SSRF
+  - id: request-module-ssrf
+    patterns:
+      - pattern: request($URL, ...)
+      - pattern: request.get($URL, ...)
+      - pattern: request.post($URL, ...)
+    message: "Request module with potentially user-controlled URL - SSRF risk"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  # got library SSRF
+  - id: got-ssrf-user-url
+    patterns:
+      - pattern: got($URL)
+      - pattern: got.get($URL)
+      - pattern: got.post($URL, ...)
+    message: "Got HTTP client with potentially user-controlled URL - SSRF risk"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  # Puppeteer/Playwright SSRF
+  - id: headless-browser-ssrf
+    patterns:
+      - pattern: page.goto($URL)
+      - pattern: page.goto($URL, ...)
+      - pattern: browser.newPage().goto($URL)
+    message: "Headless browser navigation with user URL - high-impact SSRF risk"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf, puppeteer]
+
+  # DNS rebinding via URL
+  - id: dns-rebinding-risk
+    pattern-regex: "(?:localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|internal|private).*(?:whitelist|allow|valid)"
+    message: "Localhost/internal URL validation may be vulnerable to DNS rebinding attacks"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf, dns-rebinding]

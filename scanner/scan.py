@@ -647,6 +647,137 @@ def run_gitleaks(repo_dir: str) -> List[Dict[str, Any]]:
     return findings
 
 
+def run_retirejs(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run npm audit to detect vulnerable JavaScript dependencies"""
+    findings = []
+
+    # Check for package.json and package-lock.json
+    package_json = os.path.join(repo_dir, 'package.json')
+    package_lock = os.path.join(repo_dir, 'package-lock.json')
+
+    if not os.path.exists(package_json):
+        print("No package.json found, skipping npm audit", file=sys.stderr)
+        return findings
+
+    # If no package-lock.json exists, try to generate one (non-installing)
+    if not os.path.exists(package_lock):
+        print("No package-lock.json found, attempting to generate...", file=sys.stderr)
+        try:
+            # Use npm install --package-lock-only to generate lock file without installing
+            gen_result = subprocess.run(
+                ['npm', 'install', '--package-lock-only', '--ignore-scripts'],
+                cwd=repo_dir,
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            if gen_result.returncode != 0:
+                print(f"Could not generate package-lock.json: {gen_result.stderr[:200]}", file=sys.stderr)
+        except Exception as e:
+            print(f"Error generating package-lock.json: {e}", file=sys.stderr)
+
+    # Run npm audit
+    cmd = ['npm', 'audit', '--json']
+
+    try:
+        print(f"Running npm audit in {repo_dir}", file=sys.stderr)
+        result = subprocess.run(
+            cmd,
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            timeout=180
+        )
+
+        # npm audit exits non-zero if vulnerabilities found, which is expected
+        output = result.stdout if result.stdout else result.stderr
+
+        if output and output.strip():
+            try:
+                data = json.loads(output)
+
+                # npm audit JSON format has "vulnerabilities" object
+                vulnerabilities = data.get('vulnerabilities', {})
+
+                for pkg_name, vuln_info in vulnerabilities.items():
+                    severity_raw = vuln_info.get('severity', 'moderate').lower()
+                    if severity_raw == 'critical':
+                        severity = 'critical'
+                    elif severity_raw == 'high':
+                        severity = 'high'
+                    elif severity_raw in ['moderate', 'medium']:
+                        severity = 'medium'
+                    else:
+                        severity = 'low'
+
+                    via = vuln_info.get('via', [])
+                    # 'via' can be strings or objects
+                    cve_list = []
+                    descriptions = []
+                    urls = []
+
+                    for v in via:
+                        if isinstance(v, dict):
+                            if 'url' in v:
+                                urls.append(v['url'])
+                            if 'title' in v:
+                                descriptions.append(v['title'])
+                            # Extract CVE from URL if present
+                            url = v.get('url', '')
+                            if 'CVE-' in url:
+                                import re
+                                cve_match = re.search(r'CVE-\d{4}-\d+', url)
+                                if cve_match:
+                                    cve_list.append(cve_match.group())
+                        elif isinstance(v, str):
+                            descriptions.append(f"Vulnerable dependency: {v}")
+
+                    cve_str = cve_list[0] if cve_list else ''
+                    description = descriptions[0] if descriptions else f"Vulnerable npm package: {pkg_name}"
+
+                    version_range = vuln_info.get('range', 'unknown')
+                    fix_available = vuln_info.get('fixAvailable', False)
+
+                    findings.append({
+                        'id': hashlib.md5(f"npm-{pkg_name}:{version_range}:{cve_str}".encode()).hexdigest()[:12],
+                        'ruleId': f"npm-audit-{cve_str}" if cve_str else f"npm-audit-{pkg_name}",
+                        'severity': severity,
+                        'category': 'dependencies',
+                        'title': f"Vulnerable npm package: {pkg_name}" + (f" ({cve_str})" if cve_str else ""),
+                        'description': description,
+                        'cwe': vuln_info.get('cwe', ['CWE-1035'])[0] if isinstance(vuln_info.get('cwe'), list) else 'CWE-1035',
+                        'location': {
+                            'file': 'package.json',
+                            'line': 0
+                        },
+                        'fix': {
+                            'available': bool(fix_available),
+                            'template': f"Run 'npm audit fix' or update {pkg_name} to a patched version"
+                        },
+                        'references': urls[:3]
+                    })
+
+                # Also check metadata for summary
+                metadata = data.get('metadata', {})
+                vulns_meta = metadata.get('vulnerabilities', {})
+                total_vulns = sum(vulns_meta.values()) if vulns_meta else len(vulnerabilities)
+                print(f"npm audit found {total_vulns} vulnerable packages", file=sys.stderr)
+
+            except json.JSONDecodeError as e:
+                print(f"npm audit JSON parse error: {e}", file=sys.stderr)
+                print(f"Output preview: {output[:500]}", file=sys.stderr)
+
+    except subprocess.TimeoutExpired:
+        print("npm audit timeout after 180s", file=sys.stderr)
+    except FileNotFoundError:
+        print("npm not installed, skipping npm audit", file=sys.stderr)
+    except Exception as e:
+        print(f"npm audit error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    print(f"npm audit returned {len(findings)} findings", file=sys.stderr)
+    return findings
+
+
 def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Remove duplicates - same issue at same file:line.
@@ -760,9 +891,10 @@ def main():
         opengrep_findings = []
         trivy_findings = []
         gitleaks_findings = []
+        retirejs_findings = []
         scanner_times = {}  # Track individual scanner times
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=4) as executor:
             # Submit all scanner jobs with their start times
             scanner_start_times = {}
             futures = {}
@@ -771,6 +903,7 @@ def main():
                 ('opengrep', run_opengrep, (repo_dir, stack.get('languages', []))),
                 ('trivy', run_trivy, (repo_dir,)),
                 ('gitleaks', run_gitleaks, (repo_dir,)),
+                ('retirejs', run_retirejs, (repo_dir,)),
             ]:
                 scanner_start_times[scanner_name] = datetime.now()
                 future = executor.submit(scanner_func, *args)
@@ -789,6 +922,8 @@ def main():
                         trivy_findings = result
                     elif scanner_name == 'gitleaks':
                         gitleaks_findings = result
+                    elif scanner_name == 'retirejs':
+                        retirejs_findings = result
                     print(f"{scanner_name} completed in {scanner_times[scanner_name]}ms with {len(result)} findings", file=sys.stderr)
                 except Exception as e:
                     print(f"{scanner_name} failed in {scanner_times[scanner_name]}ms: {e}", file=sys.stderr)
@@ -797,7 +932,7 @@ def main():
         timing['scanners'] = scanner_times
         print(f"All scans completed in {timing['scan']}ms (parallel)", file=sys.stderr)
 
-        all_findings = opengrep_findings + trivy_findings + gitleaks_findings
+        all_findings = opengrep_findings + trivy_findings + gitleaks_findings + retirejs_findings
         print(f"Total raw findings: {len(all_findings)}", file=sys.stderr)
 
         # Deduplicate findings (multiple rules can flag same line)

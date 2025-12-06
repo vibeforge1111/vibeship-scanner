@@ -6,7 +6,12 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     wget \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Retire.js for JavaScript library vulnerability scanning
+RUN npm install -g retire
 
 # Install Opengrep (LGPL fork of Semgrep - avoids commercial licensing issues)
 RUN curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash \
