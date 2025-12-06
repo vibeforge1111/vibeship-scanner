@@ -449,6 +449,53 @@ rules:
     languages: [python]
     severity: ERROR
 
+  - id: py-fastapi-debug-mode
+    patterns:
+      - pattern: 'uvicorn.run(..., debug=True, ...)'
+      - pattern: 'uvicorn.run(..., reload=True, ...)'
+      - pattern: 'app.run(debug=True)'
+    message: FastAPI/Uvicorn debug/reload enabled - disable in production
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-489"
+      tags: [fastapi, debug]
+
+  - id: py-fastapi-debug-variable
+    pattern-regex: "debug\\s*=\\s*(True|config\\.DEBUG|settings\\.DEBUG)"
+    message: Debug mode may be enabled - ensure disabled in production
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [fastapi, debug]
+
+  - id: py-fastapi-no-auth-endpoint
+    patterns:
+      - pattern: |
+          @app.get($PATH)
+          def $FUNC():
+              ...
+              return $DB.query($MODEL).all()
+      - pattern: |
+          @app.get($PATH)
+          async def $FUNC():
+              ...
+              return $DB.query($MODEL).all()
+    message: FastAPI endpoint returns all records - ensure authentication is required
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-862"
+      tags: [fastapi, auth]
+
+  - id: py-fastapi-response-model-expose
+    pattern: '@app.$METHOD($PATH, response_model=list[$MODEL])'
+    message: FastAPI returns list of models - ensure sensitive fields are excluded
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [fastapi, data-exposure]
+
   # ============================================
   # Server-Side Template Injection (SSTI)
   # ============================================

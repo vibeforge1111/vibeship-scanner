@@ -5115,3 +5115,171 @@ rules:
       cwe: "CWE-311"
       tags: [sensitive-data, nodegoat]
 
+  # ============================================
+  # A2: Broken Authentication (Additional Rules)
+  # ============================================
+
+  # Plain text password storage - should use bcrypt/argon2
+  - id: password-plain-text-storage
+    patterns:
+      - pattern: |
+          $USER.password = $INPUT
+      - pattern: |
+          password: $REQ.body.password
+      - pattern: |
+          $OBJ.password = req.body.password
+    message: Password may be stored without hashing - use bcrypt.hash() or argon2
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      cvss: "9.8"
+      fix_id: password-hashing
+      tags: [auth, password, nodegoat]
+
+  # Password comparison without bcrypt.compare
+  - id: password-comparison-plain
+    patterns:
+      - pattern: |
+          if ($USER.password === $INPUT) { ... }
+      - pattern: |
+          if ($USER.password == $INPUT) { ... }
+      - pattern: |
+          $USER.password === req.body.password
+      - pattern: |
+          password === $INPUT
+    message: Password compared directly without bcrypt.compare() - timing attack risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-208"
+      tags: [auth, password, nodegoat]
+
+  # Credential enumeration via different error messages
+  - id: credential-enumeration-username
+    pattern-regex: "Invalid username|User not found|No such user|Username does not exist"
+    message: Credential enumeration - use generic "Invalid username or password" message
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-204"
+      tags: [auth, enumeration, nodegoat]
+
+  - id: credential-enumeration-password
+    pattern-regex: "Invalid password|Wrong password|Incorrect password|Password incorrect"
+    message: Credential enumeration - use generic "Invalid username or password" message
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-204"
+      tags: [auth, enumeration, nodegoat]
+
+  # ============================================
+  # A6: Sensitive Data Exposure (Additional Rules)
+  # ============================================
+
+  # Missing autocomplete off on sensitive forms
+  - id: form-missing-autocomplete-off
+    pattern-regex: '<input[^>]*type=.?(password|ssn|credit)[^>]*>'
+    message: Sensitive form field - consider adding autocomplete="off" to prevent browser autofill
+    languages: [html, javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [sensitive-data, forms, nodegoat]
+
+  # Missing cache-control on sensitive responses
+  - id: missing-cache-control-sensitive
+    patterns:
+      - pattern: |
+          res.render($TEMPLATE, { ..., ssn: $X, ... })
+      - pattern: |
+          res.render($TEMPLATE, { ..., password: $X, ... })
+      - pattern: |
+          res.render($TEMPLATE, { ..., creditCard: $X, ... })
+    message: Sensitive data in response - add Cache-Control no-store header
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-525"
+      tags: [sensitive-data, caching, nodegoat]
+
+  # ============================================
+  # A7: Missing Function Level Access Control
+  # ============================================
+
+  # Route with isLoggedIn but no role check
+  - id: route-missing-authorization
+    patterns:
+      - pattern: |
+          app.get($PATH, isLoggedIn, function($REQ, $RES) { ... })
+      - pattern: |
+          app.post($PATH, isLoggedIn, function($REQ, $RES) { ... })
+      - pattern: |
+          router.get($PATH, isLoggedIn, $HANDLER)
+      - pattern: |
+          router.post($PATH, isLoggedIn, $HANDLER)
+    message: Route has authentication but may lack authorization check - verify role-based access
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-285"
+      tags: [authorization, access-control, nodegoat]
+
+  # Accessing admin routes without isAdmin check
+  - id: admin-route-no-check
+    patterns:
+      - pattern-regex: '(admin|benefit|manage|settings)["\''"]\\s*,\\s*(isLoggedIn|authenticate)\\s*,'
+    message: Admin/privileged route may lack proper authorization middleware
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-285"
+      tags: [authorization, admin, nodegoat]
+
+  # ============================================
+  # Swig Template XSS (NodeGoat uses Swig)
+  # ============================================
+
+  - id: swig-unescaped-output
+    patterns:
+      - pattern-regex: '\\{\\{\\s*\\|\\s*raw\\s*\\}\\}'
+      - pattern-regex: "swig\\.setFilter\\(['\"]raw['\"]"
+    message: Swig raw filter bypasses escaping - XSS vulnerability if user input
+    languages: [javascript, typescript, html]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, swig, template, nodegoat]
+
+  - id: swig-autoescape-disabled
+    patterns:
+      - pattern: |
+          swig.setDefaults({ autoescape: false })
+      - pattern-regex: "autoescape:\\s*false"
+    message: Swig autoescape disabled - all output vulnerable to XSS
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, swig, nodegoat]
+
+  # ============================================
+  # A9: Vulnerable marked library (NodeGoat specific)
+  # ============================================
+
+  - id: marked-xss-vulnerability
+    patterns:
+      - pattern: |
+          marked($INPUT)
+      - pattern: |
+          marked.parse($INPUT)
+      - pattern: |
+          marked($INPUT, { sanitize: false })
+    message: Marked library parsing - verify version is patched for XSS (CVE-2016-10531)
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, markdown, nodegoat]
+
