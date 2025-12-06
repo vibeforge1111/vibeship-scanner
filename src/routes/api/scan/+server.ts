@@ -40,6 +40,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
 		const { url: rawUrl, githubToken } = await request.json();
 
+		console.log('Scan request received, hasGithubToken:', !!githubToken);
+
 		if (!rawUrl) {
 			return json({ error: 'url_required', message: 'Repository URL is required' }, { status: 400 });
 		}

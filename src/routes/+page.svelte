@@ -188,6 +188,7 @@
 		try {
 			// Get GitHub token if user is authenticated
 			const githubToken = $auth.githubToken;
+			console.log('Scan starting, hasGithubToken:', !!githubToken, 'user:', $auth.user?.email);
 
 			const res = await fetch('/api/scan', {
 				method: 'POST',
