@@ -155,6 +155,39 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
 def health():
     return jsonify({'status': 'ok'})
 
+@app.route('/test-token', methods=['POST'])
+def test_token():
+    """Test if a GitHub token can access a repo"""
+    import requests
+    data = request.json or {}
+    token = data.get('token')
+    repo = data.get('repo', 'vibeforge1111/test')  # default test repo
+
+    if not token:
+        return jsonify({'error': 'No token provided'}), 400
+
+    # Test the token by calling GitHub API
+    headers = {
+        'Authorization': f'token {token}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+
+    # First, check what scopes the token has
+    user_resp = requests.get('https://api.github.com/user', headers=headers)
+    scopes = user_resp.headers.get('X-OAuth-Scopes', 'none')
+
+    # Try to access the repo
+    repo_resp = requests.get(f'https://api.github.com/repos/{repo}', headers=headers)
+
+    return jsonify({
+        'token_valid': user_resp.status_code == 200,
+        'token_scopes': scopes,
+        'user': user_resp.json().get('login') if user_resp.status_code == 200 else None,
+        'repo_accessible': repo_resp.status_code == 200,
+        'repo_status': repo_resp.status_code,
+        'repo_message': repo_resp.json().get('message') if repo_resp.status_code != 200 else 'OK'
+    })
+
 @app.route('/test-scan', methods=['POST'])
 def test_scan():
     """Test endpoint - runs scan without database, returns results directly"""
