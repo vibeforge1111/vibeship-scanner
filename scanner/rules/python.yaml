@@ -1489,3 +1489,139 @@ rules:
     message: JWT encoding - ensure secret key is not weak/hardcoded
     languages: [python]
     severity: INFO
+
+  # ============================================
+  # VAmPI: RegexDOS - Denial of Service via Regex
+  # ============================================
+
+  # Nested quantifiers in regex - exponential backtracking
+  - id: py-redos-nested-quantifiers
+    pattern-regex: "re\\.(match|search|findall|fullmatch|sub)\\([^)]*\\([^)]*[+*]\\)[^)]*[+*]"
+    message: Regex with nested quantifiers - potential ReDoS vulnerability (exponential backtracking)
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, vampi]
+
+  # Evil regex patterns - common ReDoS patterns
+  - id: py-redos-evil-pattern
+    pattern-regex: "re\\.(compile|match|search)\\(['\"][^'\"]*\\([^)]+\\)\\+\\)[^'\"]*['\"]"
+    message: Regex pattern may cause ReDoS - nested quantifiers with backtracking
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, vampi]
+
+  # Regex with user input without timeout
+  - id: py-regex-user-input
+    patterns:
+      - pattern: |
+          re.match($PATTERN, request.$X)
+      - pattern: |
+          re.search($PATTERN, request.$X)
+      - pattern: |
+          re.findall($PATTERN, request.$X)
+    message: Regex on user input - consider using timeout to prevent ReDoS
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, vampi]
+
+  # ============================================
+  # VAmPI: API Rate Limiting Missing
+  # ============================================
+
+  # Flask route without rate limiting
+  - id: py-flask-no-rate-limit
+    patterns:
+      - pattern: |
+          @app.route($PATH)
+          def $FUNC():
+              ...
+      - pattern: |
+          @app.route($PATH, methods=$METHODS)
+          def $FUNC():
+              ...
+    message: Flask route without rate limiting - add flask-limiter to prevent abuse
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-770"
+      tags: [rate-limiting, vampi]
+
+  # Login endpoint without rate limiting
+  - id: py-login-no-rate-limit
+    pattern-regex: "@app\\.route\\(['\"]/(login|auth|signin|authenticate)['\"]"
+    message: Authentication endpoint without visible rate limiting - add @limiter.limit() to prevent brute force
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-307"
+      tags: [rate-limiting, auth, vampi]
+
+  # Password reset without rate limiting
+  - id: py-password-reset-no-rate-limit
+    pattern-regex: "@app\\.route\\(['\"]/(reset|forgot|password)[^'\"]*['\"]"
+    message: Password reset endpoint - ensure rate limiting is applied
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-307"
+      tags: [rate-limiting, auth, vampi]
+
+  # Flask-RESTful without rate limiting
+  - id: py-flask-restful-no-rate-limit
+    patterns:
+      - pattern: |
+          class $RESOURCE(Resource):
+              def get(self):
+                  ...
+      - pattern: |
+          class $RESOURCE(Resource):
+              def post(self):
+                  ...
+    message: Flask-RESTful resource without rate limiting - add flask-limiter
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-770"
+      tags: [rate-limiting, vampi]
+
+  # Blueprint route without rate limiting
+  - id: py-blueprint-no-rate-limit
+    pattern-regex: "@\\w+_bp\\.route\\("
+    message: Flask Blueprint route - ensure rate limiting is configured
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-770"
+      tags: [rate-limiting, vampi]
+
+  # ============================================
+  # VAmPI: JWT Weak Key Detection (Additional)
+  # ============================================
+
+  # JWT with weak/short secret
+  - id: py-jwt-weak-secret
+    pattern-regex: "jwt\\.(encode|decode)\\([^)]+,\\s*['\"][^'\"]{1,16}['\"]"
+    message: JWT with potentially weak secret (less than 16 chars) - use strong random key
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+      tags: [jwt, vampi]
+
+  # JWT algorithm none attack
+  - id: py-jwt-algorithm-none
+    patterns:
+      - pattern: "jwt.decode($TOKEN, options={'verify_signature': False})"
+      - pattern-regex: "algorithm\\s*=\\s*['\"]none['\"]"
+    message: JWT signature verification disabled or algorithm=none - authentication bypass risk
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-347"
+      tags: [jwt, vampi]
