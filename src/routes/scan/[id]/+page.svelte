@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Force rebuild: v2.1 - Fixed snippet display and unified explanations
+	// Force rebuild: v2.2 - Added GitHub login for private repos in error state
 	import { page } from '$app/stores';
 	import { onMount, onDestroy } from 'svelte';
 	import { supabase } from '$lib/supabase';
@@ -8,6 +8,7 @@
 	import { getCWEFromRuleId, getCVSSColor, getCVSSLabel, type CWEInfo } from '$lib/cweDatabase';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import { trackPageView, trackScanCompleted, trackScanResultsViewed } from '$lib/analytics';
+	import { auth } from '$lib/stores/auth';
 
 	let scanId = $derived($page.params.id);
 	let status = $state<'queued' | 'scanning' | 'complete' | 'failed'>('queued');
@@ -38,11 +39,23 @@
 	let generatingPdf = $state(false);
 	let scanStartTime = $state<Date | null>(null);
 	let timeoutCheckInterval: ReturnType<typeof setInterval> | null = null;
+	let authLoading = $state(false);
 	const SCAN_TIMEOUT_MS = 15 * 60 * 1000;
 
 	explanationMode.subscribe(value => {
 		mode = value;
 	});
+
+	async function handleGitHubLogin() {
+		authLoading = true;
+		try {
+			await auth.signInWithGitHub();
+		} catch (err) {
+			console.error('GitHub login error:', err);
+		} finally {
+			authLoading = false;
+		}
+	}
 
 	function getScanUrl(): string {
 		if (typeof window !== 'undefined') {
@@ -747,7 +760,17 @@
 			<h1>Scan Error</h1>
 			{#if error.toLowerCase().includes('clone') || error.toLowerCase().includes('repository') || error.toLowerCase().includes('not found')}
 				<p>This repository couldn't be scanned. It may be private or doesn't exist.</p>
-				<p class="error-note">We can only scan public repositories.</p>
+				{#if $auth.user}
+					<p class="error-note">You're signed in but this repo may require additional permissions, or doesn't exist.</p>
+				{:else}
+					<p class="error-note">Sign in with GitHub to scan private repositories.</p>
+					<button class="github-login-btn" onclick={handleGitHubLogin} disabled={authLoading}>
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+						</svg>
+						{authLoading ? 'Connecting...' : 'Sign in with GitHub'}
+					</button>
+				{/if}
 			{:else if error.toLowerCase().includes('timeout') || error.toLowerCase().includes('timed out')}
 				<p>This scan took too long and was stopped.</p>
 				<p class="error-note">Large repositories may need more time. Try again - our scanner is getting faster!</p>
@@ -1148,6 +1171,36 @@
 		font-size: 0.85rem;
 		color: var(--text-tertiary);
 		margin-bottom: 1.5rem;
+	}
+
+	.error-container .github-login-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		margin-top: 0.5rem;
+		margin-bottom: 1.5rem;
+		padding: 0.75rem 1.5rem;
+		background: transparent;
+		border: 1px solid var(--border);
+		color: var(--text-secondary);
+		font-size: 0.95rem;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.error-container .github-login-btn:hover {
+		border-color: var(--green-dim);
+		color: var(--text-primary);
+	}
+
+	.error-container .github-login-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.error-container .github-login-btn svg {
+		fill: currentColor;
 	}
 
 	.error-actions {
