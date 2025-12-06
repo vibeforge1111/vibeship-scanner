@@ -1433,14 +1433,14 @@
 	}
 
 	.action-btn-primary {
-		background: var(--green, #00c49a);
-		border-color: var(--green, #00c49a);
-		color: #000;
+		background: #000;
+		border-color: #333;
+		color: #fff;
 	}
 
 	.action-btn-primary:hover {
-		background: #00a883;
-		border-color: #00a883;
+		background: #1a1a1a;
+		border-color: #444;
 	}
 
 	.action-btn-primary:disabled {
