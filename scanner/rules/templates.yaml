@@ -1,0 +1,235 @@
+# Template Security Rules (Pug, EJS, Handlebars, Nunjucks)
+# Scans template files for XSS and injection vulnerabilities
+rules:
+  # ============================================
+  # Pug/Jade Template XSS
+  # ============================================
+
+  # Pug unescaped interpolation with != operator
+  - id: pug-xss-unescaped-operator
+    pattern-regex: "!=\\s*['\"]?.*\\+"
+    message: "Pug unescaped output (!=) with string concatenation - XSS vulnerability"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, pug, template]
+    paths:
+      include:
+        - "*.pug"
+        - "*.jade"
+
+  # Pug != with variable
+  - id: pug-xss-unescaped-variable
+    pattern-regex: "^\\s*\\w+!=\\s*\\w+|\\s+!=\\s*\\w+"
+    message: "Pug unescaped output (!=) - XSS risk if variable contains user input"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, pug, template]
+    paths:
+      include:
+        - "*.pug"
+        - "*.jade"
+
+  # Pug !{} unescaped interpolation
+  - id: pug-xss-unescaped-interpolation
+    pattern-regex: "!\\{[^}]+\\}"
+    message: "Pug unescaped interpolation (!{}) - XSS vulnerability if content is user-controlled"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, pug, template]
+    paths:
+      include:
+        - "*.pug"
+        - "*.jade"
+
+  # Pug script tag with variable
+  - id: pug-xss-script-variable
+    pattern-regex: "script\\.?\\s*\\.?\\s*=?\\s*[\"']?.*#\\{"
+    message: "Pug script tag with interpolation - potential XSS"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, pug, template]
+    paths:
+      include:
+        - "*.pug"
+        - "*.jade"
+
+  # ============================================
+  # EJS Template XSS
+  # ============================================
+
+  # EJS <%- unescaped output
+  - id: ejs-xss-unescaped
+    pattern-regex: "<%-[^%]*%>"
+    message: "EJS unescaped output (<%-) - XSS vulnerability if content is user-controlled"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, ejs, template]
+    paths:
+      include:
+        - "*.ejs"
+
+  # EJS with innerHTML
+  - id: ejs-xss-innerhtml
+    pattern-regex: "innerHTML\\s*=.*<%="
+    message: "EJS output in innerHTML context - XSS risk"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, ejs, template]
+    paths:
+      include:
+        - "*.ejs"
+
+  # ============================================
+  # Handlebars Template XSS
+  # ============================================
+
+  # Handlebars triple-mustache unescaped
+  - id: handlebars-xss-triple-mustache
+    pattern-regex: "\\{\\{\\{[^}]+\\}\\}\\}"
+    message: "Handlebars unescaped output ({{{}}}) - XSS vulnerability if content is user-controlled"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, handlebars, template]
+    paths:
+      include:
+        - "*.hbs"
+        - "*.handlebars"
+
+  # Handlebars SafeString
+  - id: handlebars-safestring-user-input
+    pattern-regex: "Handlebars\\.SafeString\\s*\\("
+    message: "Handlebars.SafeString bypasses escaping - ensure content is sanitized"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, handlebars, template]
+    paths:
+      include:
+        - "*.hbs"
+        - "*.handlebars"
+        - "*.js"
+
+  # ============================================
+  # Nunjucks Template XSS
+  # ============================================
+
+  # Nunjucks safe filter
+  - id: nunjucks-xss-safe-filter
+    pattern-regex: "\\|\\s*safe\\s*}}"
+    message: "Nunjucks safe filter bypasses escaping - XSS risk if content is user-controlled"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, nunjucks, template]
+    paths:
+      include:
+        - "*.njk"
+        - "*.nunjucks"
+        - "*.html"
+
+  # ============================================
+  # Mustache Template XSS
+  # ============================================
+
+  # Mustache triple-mustache unescaped
+  - id: mustache-xss-triple-mustache
+    pattern-regex: "\\{\\{\\{[^}]+\\}\\}\\}"
+    message: "Mustache unescaped output ({{{}}}) - XSS vulnerability"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, mustache, template]
+    paths:
+      include:
+        - "*.mustache"
+
+  # Mustache &-prefixed unescaped
+  - id: mustache-xss-ampersand
+    pattern-regex: "\\{\\{&[^}]+\\}\\}"
+    message: "Mustache unescaped output ({{&}}) - XSS vulnerability"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, mustache, template]
+    paths:
+      include:
+        - "*.mustache"
+
+  # ============================================
+  # Twig Template XSS
+  # ============================================
+
+  # Twig raw filter
+  - id: twig-xss-raw-filter
+    pattern-regex: "\\|\\s*raw\\s*}}"
+    message: "Twig raw filter bypasses escaping - XSS risk if content is user-controlled"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, twig, template]
+    paths:
+      include:
+        - "*.twig"
+
+  # ============================================
+  # General Template Injection
+  # ============================================
+
+  # SSTI indicators - user input in template
+  - id: template-ssti-indicator
+    pattern-regex: "\\{\\{\\s*\\d+\\s*\\*\\s*\\d+\\s*\\}\\}|\\{\\{.*\\.__class__.*\\}\\}|\\{\\{.*config.*\\}\\}"
+    message: "Potential Server-Side Template Injection (SSTI) payload detected"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1336"
+      owasp: "A03:2021"
+      tags: [ssti, template-injection]
+    paths:
+      include:
+        - "*.pug"
+        - "*.jade"
+        - "*.ejs"
+        - "*.hbs"
+        - "*.njk"
+        - "*.twig"
+        - "*.mustache"
+
+  # Dangerous template includes
+  - id: template-dynamic-include
+    pattern-regex: "include\\s+[\"']?\\s*\\+|extends\\s+[\"']?\\s*\\+"
+    message: "Dynamic template include/extends - potential path traversal or SSTI"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, template]
+    paths:
+      include:
+        - "*.pug"
+        - "*.jade"
+        - "*.ejs"
+        - "*.njk"

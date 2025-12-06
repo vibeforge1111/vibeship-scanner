@@ -58,6 +58,13 @@ SHARED_RULES = [
     'comments.yaml',
 ]
 
+# Rule files that should ALWAYS be loaded regardless of detected languages
+# These are small files and missing vulnerabilities is worse than slower scans
+ALWAYS_LOAD_RULES = [
+    'templates.yaml',   # Pug, EJS, Handlebars, Nunjucks, Mustache, Twig XSS detection
+    'yaml-config.yaml', # CI/CD, Kubernetes, Docker secrets and misconfigs
+]
+
 
 def clone_repo(url: str, target_dir: str, branch: str = 'main') -> bool:
     """Clone a git repository (shallow clone for speed)"""
@@ -99,13 +106,22 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
     lang_extensions = {
         '.js': 'JavaScript',
         '.jsx': 'JavaScript',
+        '.mjs': 'JavaScript',
+        '.cjs': 'JavaScript',
         '.ts': 'TypeScript',
         '.tsx': 'TypeScript',
+        '.mts': 'TypeScript',
+        '.cts': 'TypeScript',
         '.py': 'Python',
+        '.pyw': 'Python',
         '.php': 'PHP',
+        '.phtml': 'PHP',
         '.rb': 'Ruby',
+        '.erb': 'Ruby',
         '.go': 'Go',
         '.java': 'Java',
+        '.jsp': 'Java',   # Java Server Pages - high XSS risk
+        '.jspx': 'Java',
         '.kt': 'Kotlin',
         '.kts': 'Kotlin',
         '.swift': 'Swift',
@@ -113,41 +129,85 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
         '.cs': 'C#',
         '.sh': 'Bash',
         '.bash': 'Bash',
+        '.zsh': 'Bash',
         '.sol': 'Solidity',
         '.dart': 'Dart',
     }
 
-    # Files/directories that indicate YAML config scanning is needed
-    yaml_config_patterns = [
-        '.github/workflows',  # GitHub Actions
-        'kubernetes', 'k8s',  # Kubernetes
-        'docker-compose',     # Docker Compose
-        'helm',               # Helm charts
-    ]
+    # Special filenames that indicate languages (no extension needed)
+    special_files = {
+        'Dockerfile': 'Bash',           # Dockerfiles contain shell commands
+        'Containerfile': 'Bash',        # Podman containerfiles
+        'Makefile': 'Bash',             # Makefiles contain shell commands
+        'GNUmakefile': 'Bash',
+        'Jenkinsfile': 'Java',          # Groovy-based, use Java rules
+        'Vagrantfile': 'Ruby',          # Ruby-based
+        '.gitlab-ci.yml': 'YAML',
+        '.travis.yml': 'YAML',
+        'azure-pipelines.yml': 'YAML',
+        'bitbucket-pipelines.yml': 'YAML',
+        'cloudbuild.yaml': 'YAML',
+        'appveyor.yml': 'YAML',
+        '.circleci/config.yml': 'YAML',
+    }
+
+    # Shebang patterns to detect language from file content
+    shebang_patterns = {
+        'python': 'Python',
+        'python3': 'Python',
+        'node': 'JavaScript',
+        'bash': 'Bash',
+        'sh': 'Bash',
+        'zsh': 'Bash',
+        'ruby': 'Ruby',
+        'perl': 'Bash',  # Use bash rules as fallback
+        'php': 'PHP',
+    }
 
     try:
         for root, dirs, filenames in os.walk(repo_dir):
             # Get relative path for pattern matching
             rel_root = os.path.relpath(root, repo_dir)
 
-            # Check for YAML config patterns in path
-            for pattern in yaml_config_patterns:
-                if pattern in rel_root or pattern in root:
-                    languages.add('YAML')
-                    break
-
-            # Check for docker-compose files
-            for filename in filenames:
-                if filename.startswith('docker-compose') and (filename.endswith('.yml') or filename.endswith('.yaml')):
-                    languages.add('YAML')
-
             # Skip hidden directories and common non-code folders
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'vendor', 'venv', '__pycache__', 'target', 'build', 'dist']]
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'vendor', 'venv', '__pycache__', 'target', 'build', 'dist', '.git']]
 
             for filename in filenames:
+                filepath = os.path.join(root, filename)
                 ext = os.path.splitext(filename)[1].lower()
+
+                # Check extension-based detection
                 if ext in lang_extensions:
                     languages.add(lang_extensions[ext])
+
+                # Check special filenames
+                if filename in special_files:
+                    languages.add(special_files[filename])
+
+                # Check for docker-compose files
+                if filename.startswith('docker-compose') and ext in ['.yml', '.yaml']:
+                    languages.add('YAML')
+
+                # Check for CI config files
+                if filename in ['.gitlab-ci.yml', '.travis.yml', 'azure-pipelines.yml', 'bitbucket-pipelines.yml']:
+                    languages.add('YAML')
+
+                # Check for Terraform/IaC
+                if ext == '.tf' or ext == '.tfvars':
+                    languages.add('YAML')  # Use YAML rules for config scanning
+
+                # Check for extensionless files with shebangs (limit to avoid reading large files)
+                if not ext and filename not in ['LICENSE', 'README', 'CHANGELOG', 'AUTHORS', 'CONTRIBUTORS']:
+                    try:
+                        with open(filepath, 'r', errors='ignore') as f:
+                            first_line = f.readline(256)  # Read first 256 chars max
+                            if first_line.startswith('#!'):
+                                for pattern, lang in shebang_patterns.items():
+                                    if pattern in first_line.lower():
+                                        languages.add(lang)
+                                        break
+                    except:
+                        pass
     except:
         pass
 
@@ -191,13 +251,48 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
                     frameworks.add('Prisma')
                 if 'drizzle-orm' in deps:
                     frameworks.add('Drizzle')
+                # Template engines (high XSS risk)
+                if 'pug' in deps or 'jade' in deps:
+                    frameworks.add('Pug')
+                if 'ejs' in deps:
+                    frameworks.add('EJS')
+                if 'handlebars' in deps or 'hbs' in deps:
+                    frameworks.add('Handlebars')
+                # Database clients (SQL injection risk)
+                if 'pg' in deps or 'postgres' in deps:
+                    frameworks.add('PostgreSQL')
+                if 'mysql' in deps or 'mysql2' in deps:
+                    frameworks.add('MySQL')
+                # Auth libraries (high-value security targets)
+                if 'passport' in deps:
+                    frameworks.add('Passport')
+                if 'jsonwebtoken' in deps or 'jose' in deps:
+                    frameworks.add('JWT')
         except:
             pass
 
-    if 'requirements.txt' in files or 'pyproject.toml' in files or 'setup.py' in files:
+    if 'requirements.txt' in files or 'pyproject.toml' in files or 'setup.py' in files or 'Pipfile' in files:
         languages.add('Python')
         if 'manage.py' in files:
             frameworks.add('Django')
+        # Check requirements.txt for frameworks
+        req_file = os.path.join(repo_dir, 'requirements.txt')
+        if os.path.isfile(req_file):
+            try:
+                with open(req_file, 'r') as f:
+                    reqs = f.read().lower()
+                    if 'flask' in reqs:
+                        frameworks.add('Flask')
+                    if 'fastapi' in reqs:
+                        frameworks.add('FastAPI')
+                    if 'django' in reqs:
+                        frameworks.add('Django')
+                    if 'sqlalchemy' in reqs:
+                        frameworks.add('SQLAlchemy')
+                    if 'celery' in reqs:
+                        frameworks.add('Celery')
+            except:
+                pass
 
     if 'composer.json' in files:
         languages.add('PHP')
@@ -263,6 +358,13 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
             if shared_path.exists():
                 configs.extend(['-f', str(shared_path)])
                 rule_files_used.append(f'_shared/{shared_rule}')
+
+    # ALWAYS load these rules regardless of language (security > speed)
+    for always_rule in ALWAYS_LOAD_RULES:
+        always_path = RULES_DIR / always_rule
+        if always_path.exists():
+            configs.extend(['-f', str(always_path)])
+            rule_files_used.append(always_rule)
 
     if detected_languages:
         # Get unique rule files for detected languages

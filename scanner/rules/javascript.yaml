@@ -4168,3 +4168,950 @@ rules:
     metadata:
       tags: [business-logic]
 
+  # ============================================
+  # NodeGoat / OWASP Top 10 - Advanced Detection
+  # ============================================
+
+  # MongoDB eval() injection (NodeGoat A1)
+  - id: mongodb-eval-injection
+    patterns:
+      - pattern: '$DB.eval($CODE)'
+      - pattern: '$DB.eval($CODE, ...)'
+      - pattern: 'db.eval($CODE)'
+    message: MongoDB eval() executes arbitrary JavaScript - critical injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      owasp: "A03:2021"
+      tags: [nosql-injection, mongodb, critical]
+
+  # MongoDB $where with string interpolation
+  - id: mongodb-where-string-interpolation
+    pattern-regex: "\\$where\\s*:\\s*['\"`][^'\"]*\\$\\{|\\$where\\s*:\\s*['\"`][^'\"]*\\+\\s*\\w"
+    message: MongoDB $where with string interpolation - NoSQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021"
+      tags: [nosql-injection, mongodb]
+
+  # MongoDB mapReduce injection
+  - id: mongodb-mapreduce-injection
+    patterns:
+      - pattern: '$COLL.mapReduce($MAP, $REDUCE, ...)'
+      - pattern: 'mapReduce($MAP, $REDUCE, ...)'
+    message: MongoDB mapReduce with dynamic functions - code injection risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-94"
+      tags: [nosql-injection, mongodb]
+
+  # Direct object reference without authorization check (IDOR)
+  - id: express-idor-no-auth-check
+    pattern-regex: "\\.(get|post|put|delete)\\s*\\(['\"].*/:id.*['\"]\\s*,\\s*(?:async\\s+)?(?:function)?\\s*\\([^)]*\\)\\s*(?:=>)?\\s*\\{[^}]{0,200}(?:findById|findOne|find)\\s*\\("
+    message: Route with ID parameter accesses database without visible authorization check - potential IDOR
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021"
+      tags: [idor, access-control]
+
+  # Accessing user data by ID from params without ownership check
+  - id: idor-user-data-access
+    patterns:
+      - pattern: '$MODEL.findById(req.params.$ID)'
+      - pattern: '$MODEL.findOne({_id: req.params.$ID})'
+      - pattern: '$MODEL.findOne({id: req.params.$ID})'
+    message: Database lookup by user-provided ID - ensure authorization check before access
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021"
+      tags: [idor, access-control]
+
+  # Session fixation - session ID in URL
+  - id: session-fixation-url
+    pattern-regex: "req\\.(query|params)\\.(session|sessionId|sid|token)"
+    message: Session identifier from URL parameter - session fixation vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-384"
+      owasp: "A07:2021"
+      tags: [session, authentication]
+
+  # Insecure session configuration
+  - id: express-session-insecure
+    patterns:
+      - pattern: 'session({..., secret: "...", ...})'
+      - pattern: "session({..., secret: '...', ...})"
+    message: Hardcoded session secret - use environment variable
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [session, hardcoded-secret]
+
+  # Session without secure cookie settings
+  - id: express-session-no-secure
+    pattern: |
+      session({
+        ...
+        cookie: { ..., secure: false, ... }
+        ...
+      })
+    message: Session cookie without secure flag - vulnerable to MITM on HTTP
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-614"
+      tags: [session, cookies]
+
+  # Weak bcrypt cost factor
+  - id: bcrypt-weak-rounds
+    patterns:
+      - pattern: 'bcrypt.hash($PASS, 1)'
+      - pattern: 'bcrypt.hash($PASS, 2)'
+      - pattern: 'bcrypt.hash($PASS, 3)'
+      - pattern: 'bcrypt.hash($PASS, 4)'
+      - pattern: 'bcrypt.hash($PASS, 5)'
+      - pattern: 'bcrypt.hash($PASS, 6)'
+      - pattern: 'bcrypt.hash($PASS, 7)'
+      - pattern: 'bcrypt.hash($PASS, 8)'
+      - pattern: 'bcrypt.hash($PASS, 9)'
+      - pattern: 'bcrypt.hashSync($PASS, 1)'
+      - pattern: 'bcrypt.hashSync($PASS, 2)'
+      - pattern: 'bcrypt.hashSync($PASS, 3)'
+      - pattern: 'bcrypt.hashSync($PASS, 4)'
+      - pattern: 'bcrypt.hashSync($PASS, 5)'
+      - pattern: 'bcrypt.hashSync($PASS, 6)'
+      - pattern: 'bcrypt.hashSync($PASS, 7)'
+      - pattern: 'bcrypt.hashSync($PASS, 8)'
+      - pattern: 'bcrypt.hashSync($PASS, 9)'
+    message: bcrypt cost factor too low (< 10) - use at least 10-12 rounds
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-916"
+      tags: [crypto, password]
+
+  # Swig template injection (NodeGoat uses Swig)
+  - id: swig-template-injection
+    patterns:
+      - pattern: 'swig.render($USER_INPUT)'
+      - pattern: 'swig.render($USER_INPUT, ...)'
+      - pattern: 'swig.compile($USER_INPUT)'
+      - pattern: 'swig.renderFile($PATH + $VAR, ...)'
+    message: Swig template with dynamic input - Server-Side Template Injection (SSTI) risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1336"
+      owasp: "A03:2021"
+      tags: [ssti, template-injection]
+
+  # Handlebars SSTI
+  - id: handlebars-template-injection
+    patterns:
+      - pattern: 'Handlebars.compile($USER_INPUT)'
+      - pattern: 'handlebars.compile($USER_INPUT)'
+      - pattern: 'hbs.compile($USER_INPUT)'
+    message: Handlebars template with dynamic input - SSTI risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1336"
+      tags: [ssti, template-injection]
+
+  # EJS template injection
+  - id: ejs-template-injection
+    patterns:
+      - pattern: 'ejs.render($USER_INPUT)'
+      - pattern: 'ejs.render($USER_INPUT, ...)'
+      - pattern: 'ejs.compile($USER_INPUT)'
+    message: EJS template with dynamic input - SSTI risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1336"
+      tags: [ssti, template-injection]
+
+  # Pug/Jade template injection
+  - id: pug-template-injection
+    patterns:
+      - pattern: 'pug.render($USER_INPUT)'
+      - pattern: 'pug.render($USER_INPUT, ...)'
+      - pattern: 'pug.compile($USER_INPUT)'
+      - pattern: 'jade.render($USER_INPUT)'
+      - pattern: 'jade.compile($USER_INPUT)'
+    message: Pug/Jade template with dynamic input - SSTI risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1336"
+      tags: [ssti, template-injection]
+
+  # Missing HTTPS redirect
+  - id: express-no-https-redirect
+    pattern-regex: "app\\.listen\\s*\\(\\s*(80|process\\.env\\.PORT|\\d{4})\\s*[,)]"
+    message: HTTP server without HTTPS redirect - consider enforcing HTTPS
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-319"
+      tags: [transport-security]
+
+  # Helmet not used
+  - id: express-no-helmet
+    pattern-regex: "app\\.use\\s*\\(\\s*express\\."
+    message: Express app detected - ensure helmet middleware is used for security headers
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [security-headers]
+
+  # Debug mode in production
+  - id: express-debug-production
+    patterns:
+      - pattern: "app.set('env', 'development')"
+      - pattern: 'DEBUG=*'
+      - pattern: 'debug: true'
+    message: Debug mode enabled - disable in production
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-489"
+      tags: [config, debug]
+
+  # Verbose error messages
+  - id: express-verbose-errors
+    patterns:
+      - pattern: 'res.send(err)'
+      - pattern: 'res.send(error)'
+      - pattern: 'res.json(err)'
+      - pattern: 'res.json(error)'
+      - pattern: 'res.send(err.stack)'
+      - pattern: 'res.json({error: err})'
+      - pattern: 'res.json({error: err.message, stack: err.stack})'
+    message: Error details sent to client - may leak sensitive information
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [error-handling, information-disclosure]
+
+  # Mass assignment vulnerability
+  - id: mongoose-mass-assignment
+    patterns:
+      - pattern: 'new $MODEL(req.body)'
+      - pattern: '$MODEL.create(req.body)'
+      - pattern: '$MODEL.update($Q, req.body)'
+      - pattern: '$MODEL.updateOne($Q, req.body)'
+      - pattern: '$MODEL.updateMany($Q, req.body)'
+      - pattern: '$MODEL.findOneAndUpdate($Q, req.body)'
+      - pattern: '$MODEL.findByIdAndUpdate($ID, req.body)'
+    message: Direct use of req.body in model - mass assignment vulnerability, use allowlisted fields
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      owasp: "A08:2021"
+      tags: [mass-assignment]
+
+  # Regex DoS (ReDoS) patterns
+  - id: regex-redos-nested-quantifiers
+    pattern-regex: "new RegExp\\s*\\([^)]*[+*]\\s*[+*]|/[^/]*[+*]\\s*[+*][^/]*/"
+    message: Regex with nested quantifiers - potential ReDoS vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, regex]
+
+  # Regex with overlapping groups
+  - id: regex-redos-overlapping
+    pattern-regex: "new RegExp\\s*\\([^)]*\\([^)]*\\|[^)]*\\)[+*]|/[^/]*\\([^)]*\\|[^)]*\\)[+*][^/]*/"
+    message: Regex with overlapping alternation - potential ReDoS
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, regex]
+
+  # User input in regex
+  - id: regex-user-input
+    patterns:
+      - pattern: 'new RegExp(req.$X.$Y)'
+      - pattern: 'new RegExp(req.$X.$Y, ...)'
+      - pattern: '$STR.match(new RegExp($VAR))'
+      - pattern: '$STR.replace(new RegExp($VAR), ...)'
+    message: User input in RegExp constructor - ReDoS and regex injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, regex, injection]
+
+  # XML parsing without protection (XXE)
+  - id: xxe-xml-parser
+    patterns:
+      - pattern: 'xml2js.parseString($DATA, ...)'
+      - pattern: 'libxmljs.parseXml($DATA)'
+      - pattern: 'libxmljs.parseXml($DATA, ...)'
+      - pattern: 'DOMParser().parseFromString($DATA, ...)'
+    message: XML parsing - ensure external entities are disabled to prevent XXE
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2021"
+      tags: [xxe, xml]
+
+  # Zip slip / path traversal in archive extraction
+  - id: zip-slip-vulnerability
+    patterns:
+      - pattern: 'unzip.Extract({path: $PATH})'
+      - pattern: 'tar.extract({cwd: $PATH})'
+      - pattern: 'AdmZip().extractAllTo($PATH)'
+      - pattern: 'AdmZip().extractAllTo($PATH, ...)'
+    message: Archive extraction - validate file paths to prevent Zip Slip attacks
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, zip-slip]
+
+  # Child process with shell and user input
+  - id: command-injection-shell-user-input
+    patterns:
+      - pattern: 'exec($CMD + req.$X.$Y, ...)'
+      - pattern: 'exec(`${$PREFIX}${req.$X.$Y}`, ...)'
+      - pattern: 'execSync($CMD + req.$X.$Y)'
+      - pattern: 'execSync(`${$PREFIX}${req.$X.$Y}`)'
+    message: Command execution with user input - command injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021"
+      tags: [command-injection, critical]
+
+  # Spawn with shell true and user input
+  - id: spawn-shell-user-input
+    pattern: 'spawn($CMD, [..., req.$X.$Y, ...], {shell: true})'
+    message: Spawn with shell=true and user input - command injection risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection]
+
+  # vm module code execution
+  - id: vm-code-execution
+    patterns:
+      - pattern: 'vm.runInContext($CODE, ...)'
+      - pattern: 'vm.runInNewContext($CODE, ...)'
+      - pattern: 'vm.runInThisContext($CODE)'
+      - pattern: 'new vm.Script($CODE)'
+    message: VM module executing dynamic code - sandbox escape and RCE risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [code-execution, sandbox-escape]
+
+  # Unsafe object property access
+  - id: unsafe-property-access
+    patterns:
+      - pattern: '$OBJ[req.body.$KEY]'
+      - pattern: '$OBJ[req.query.$KEY]'
+      - pattern: '$OBJ[req.params.$KEY]'
+    message: Object property access with user-controlled key - prototype pollution risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution]
+
+  # Express without rate limiting
+  - id: express-no-rate-limit
+    pattern-regex: "app\\.(post|put)\\s*\\(['\"].*(login|auth|signin|signup|register|password|forgot|reset)"
+    message: Authentication endpoint - ensure rate limiting is applied to prevent brute force
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-307"
+      owasp: "A07:2021"
+      tags: [rate-limiting, brute-force]
+
+  # Timing attack on string comparison
+  - id: timing-attack-comparison
+    patterns:
+      - pattern: 'if ($SECRET === req.$X.$Y)'
+      - pattern: 'if ($SECRET == req.$X.$Y)'
+      - pattern: 'if (req.$X.$Y === $SECRET)'
+      - pattern: '$TOKEN === $USER_TOKEN'
+    message: String comparison may be vulnerable to timing attacks - use crypto.timingSafeEqual
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-208"
+      tags: [timing-attack, crypto]
+
+  # ============================================
+  # PostgreSQL (pg library) SQL Injection
+  # ============================================
+
+  # pg client.query with template literal (samoylenko vulnerable app pattern)
+  - id: pg-client-query-template-literal
+    pattern-regex: "client\\.query\\s*\\(\\s*`[^`]*\\$\\{[^}]+\\}[^`]*`"
+    message: PostgreSQL query with template literal interpolation - SQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, postgres, critical]
+
+  # pg pool.query with template literal
+  - id: pg-pool-query-template-literal
+    pattern-regex: "pool\\.query\\s*\\(\\s*`[^`]*\\$\\{[^}]+\\}[^`]*`"
+    message: PostgreSQL pool query with template literal - SQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, postgres, critical]
+
+  # pg query with string concatenation
+  - id: pg-query-string-concat
+    patterns:
+      - pattern: 'client.query($Q + $VAR)'
+      - pattern: 'client.query($Q + $VAR, ...)'
+      - pattern: 'pool.query($Q + $VAR)'
+      - pattern: 'pool.query($Q + $VAR, ...)'
+    message: PostgreSQL query with string concatenation - use parameterized queries ($1, $2)
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, postgres]
+
+  # pg query with req.params/query/body directly
+  - id: pg-query-user-input
+    patterns:
+      - pattern: 'client.query($Q, [req.params.$ID])'
+      - pattern: 'client.query($Q, [req.query.$ID])'
+      - pattern: 'client.query($Q, [req.body.$ID])'
+    message: PostgreSQL query with user input - ensure proper parameterization
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, postgres]
+
+  # ============================================
+  # Reflected XSS - Express Response Patterns
+  # ============================================
+
+  # res.send with direct string concatenation of user input
+  - id: express-xss-res-send-concat
+    patterns:
+      - pattern: 'res.send("..." + req.query.$PARAM)'
+      - pattern: 'res.send("..." + req.query.$PARAM + "...")'
+      - pattern: "res.send('...' + req.query.$PARAM)"
+      - pattern: "res.send('...' + req.query.$PARAM + '...')"
+      - pattern: 'res.send("..." + req.params.$PARAM)'
+      - pattern: 'res.send("..." + req.body.$PARAM)'
+    message: Express res.send with user input concatenation - reflected XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, reflected-xss, critical]
+
+  # res.send with template literal containing user input
+  - id: express-xss-res-send-template
+    pattern-regex: "res\\.send\\s*\\(\\s*`[^`]*\\$\\{\\s*req\\.(query|params|body)\\.[^}]+\\}[^`]*`\\s*\\)"
+    message: Express res.send with template literal user input - reflected XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, reflected-xss, critical]
+
+  # res.send with variable that might contain user input
+  - id: express-xss-res-send-variable
+    patterns:
+      - pattern: 'res.send($VAR)'
+      - pattern-not: 'res.send("...")'
+      - pattern-not: "res.send('...')"
+      - pattern-not: 'res.send(`...`)'
+      - pattern-not: 'res.send({...})'
+    message: Express res.send with variable - ensure output is escaped if user-controlled
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss]
+
+  # res.write with user input
+  - id: express-xss-res-write
+    patterns:
+      - pattern: 'res.write(req.query.$PARAM)'
+      - pattern: 'res.write(req.params.$PARAM)'
+      - pattern: 'res.write(req.body.$PARAM)'
+      - pattern: 'res.write("..." + req.query.$PARAM)'
+    message: Express res.write with user input - XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, reflected-xss]
+
+  # ============================================
+  # Database Value Reflection (Stored XSS)
+  # ============================================
+
+  # Sending database row directly to response
+  - id: express-stored-xss-db-reflect
+    patterns:
+      - pattern: 'res.send($RESULT.rows[0])'
+      - pattern: 'res.send($RESULT.rows)'
+      - pattern: 'res.send($RESULT[0])'
+      - pattern: 'res.json($RESULT.rows[0])'
+    message: Database result sent directly to response - potential stored XSS if data contains user input
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, stored-xss]
+
+  # Mongoose/MongoDB result reflection
+  - id: express-stored-xss-mongo-reflect
+    patterns:
+      - pattern: 'res.send($DOC)'
+      - pattern: 'res.send($USER)'
+      - pattern: 'res.send($DATA)'
+    message: Variable sent to response - ensure HTML encoding if rendering user-controlled data
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss]
+
+  # ============================================
+  # Pug/Jade Template XSS (unescaped output)
+  # ============================================
+
+  # Pug != unescaped interpolation in template files
+  - id: pug-unescaped-interpolation
+    pattern-regex: "!=\\s*['\"]?[^'\"\\n]*\\+|!=\\s*\\w+\\s*$"
+    message: Pug unescaped output (!=) with concatenation - XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, pug, template]
+
+  # Pug !{} unescaped interpolation
+  - id: pug-unescaped-bracket
+    pattern-regex: "!\\{[^}]+\\}"
+    message: Pug unescaped interpolation !{} - XSS risk if variable contains user input
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, pug, template]
+
+  # EJS <%- unescaped output
+  - id: ejs-unescaped-output
+    pattern-regex: "<%-\\s*\\w+"
+    message: EJS unescaped output (<%-) - XSS vulnerability if variable contains user input
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, ejs, template]
+
+  # Handlebars triple-mustache unescaped
+  - id: handlebars-triple-mustache
+    pattern-regex: "\\{\\{\\{[^}]+\\}\\}\\}"
+    message: Handlebars unescaped output ({{{}}}) - XSS risk with user input
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, handlebars, template]
+
+  # ============================================
+  # Hardcoded Database Credentials
+  # ============================================
+
+  # PostgreSQL connection string with password
+  - id: postgres-hardcoded-password
+    pattern-regex: "postgres(ql)?://[^:]+:[^@]+@"
+    message: Hardcoded PostgreSQL password in connection string - use environment variables
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [secrets, hardcoded-credentials]
+
+  # MySQL connection string with password
+  - id: mysql-hardcoded-password
+    pattern-regex: "mysql://[^:]+:[^@]+@"
+    message: Hardcoded MySQL password in connection string - use environment variables
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [secrets, hardcoded-credentials]
+
+  # MongoDB connection string with password
+  - id: mongodb-hardcoded-password
+    pattern-regex: "mongodb(\\+srv)?://[^:]+:[^@]+@"
+    message: Hardcoded MongoDB password in connection string - use environment variables
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [secrets, hardcoded-credentials]
+
+  # pg.Client or Pool with hardcoded password
+  - id: pg-client-hardcoded-password
+    patterns:
+      - pattern: 'new Client({..., password: "...", ...})'
+      - pattern: "new Client({..., password: '...', ...})"
+      - pattern: 'new Pool({..., password: "...", ...})'
+      - pattern: "new Pool({..., password: '...', ...})"
+    message: Hardcoded database password - use environment variables
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [secrets, hardcoded-credentials, postgres]
+
+  # ============================================
+  # Vulnerable Dependencies Detection
+  # ============================================
+
+  # Lodash vulnerable versions (prototype pollution)
+  - id: lodash-require-vulnerable
+    pattern-regex: "require\\s*\\(['\"]lodash['\"]\\)"
+    message: Lodash import detected - ensure version >= 4.17.21 to avoid prototype pollution CVEs
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1321"
+      tags: [dependencies, prototype-pollution]
+
+  # Lodash ES import
+  - id: lodash-import-check
+    pattern-regex: "import\\s+.*from\\s+['\"]lodash['\"]"
+    message: Lodash import detected - verify version >= 4.17.21 for security patches
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [dependencies]
+
+  # ============================================
+  # NodeGoat-Specific Vulnerability Patterns
+  # ============================================
+
+  # SSRF via needle with query param URL
+  - id: ssrf-needle-query-url
+    patterns:
+      - pattern: needle($METHOD, $URL, ...)
+      - pattern-not: 'needle($M, "...", ...)'
+      - pattern-not: "needle($M, '...', ...)"
+    message: SSRF - needle HTTP client with dynamic URL - validate and whitelist allowed URLs
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021"
+      tags: [ssrf, nodegoat]
+
+  # SSRF URL concatenation with query params
+  - id: ssrf-url-concat-query
+    pattern-regex: "http[s]?://[^\\s]*\\$\\{?req\\.(query|params|body)\\.[^\\s]*\\}?"
+    message: SSRF - URL constructed with user input - validate against allowlist
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021"
+      tags: [ssrf, nodegoat]
+
+  # res.write with variable (not just req params)
+  - id: xss-res-write-variable
+    patterns:
+      - pattern: res.write($BODY)
+      - pattern-not: 'res.write("...")'
+      - pattern-not: "res.write('...')"
+      - pattern-not: "res.write(`...`)"
+    message: res.write with variable - ensure content is escaped to prevent XSS
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, nodegoat]
+
+  # Wrong encoding context - HTML encoding used in URL
+  - id: wrong-encoding-context-url
+    patterns:
+      - pattern: ESAPI.encoder().encodeForHTML($X)
+    message: ESAPI encodeForHTML detected - verify encoding matches context (use encodeForURL for URLs)
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-838"
+      tags: [encoding, xss, nodegoat]
+
+  # Swig template engine (deprecated, known vulnerabilities)
+  - id: swig-template-deprecated
+    pattern-regex: "require\\s*\\(['\"]swig['\"]\\)|from\\s+['\"]swig['\"]"
+    message: Swig template engine is deprecated and has known path traversal vulnerabilities - migrate to EJS, Pug, or Nunjucks
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      tags: [template, deprecated, nodegoat]
+
+  # Swig renderFile with variable path
+  - id: swig-render-path-traversal
+    patterns:
+      - pattern: swig.renderFile($PATH, ...)
+      - pattern-not: 'swig.renderFile("...", ...)'
+    message: Swig renderFile with dynamic path - path traversal vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, template, nodegoat]
+
+  # Nested quantifier ReDoS (more specific pattern)
+  - id: redos-nested-quantifier-specific
+    pattern-regex: "/\\([^)]*[+*]\\)[+*]"
+    message: Regex with nested quantifiers - potential ReDoS vulnerability (exponential backtracking)
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, nodegoat]
+
+  # HTTP Parameter Pollution - multiple same params
+  - id: hpp-array-param
+    patterns:
+      - pattern: $X = req.query.$PARAM
+    message: Query parameter access - if parameter can be array, validate to prevent HPP attacks
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-235"
+      tags: [hpp, nodegoat]
+
+  # Missing input sanitization before DB
+  - id: db-insert-no-validation
+    patterns:
+      - pattern: $DB.insert(req.body)
+      - pattern: $DB.insert({ ...req.body })
+      - pattern: $DB.create(req.body)
+      - pattern: $COLLECTION.insertOne(req.body)
+      - pattern: $COLLECTION.insertMany(req.body)
+    message: Database insert with raw request body - sanitize and validate input first
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-20"
+      owasp: "A03:2021"
+      tags: [injection, validation, nodegoat]
+
+  # parseInt without radix (can cause issues)
+  - id: parseint-radix-missing
+    pattern: parseInt($X)
+    message: parseInt without radix parameter - specify base to avoid unexpected behavior
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [best-practice, nodegoat]
+
+  # User ID from URL used directly in query
+  - id: idor-user-id-query
+    patterns:
+      - pattern: |
+          $COLLECTION.find({_id: parseInt($REQ.$PARAMS.$ID)})
+      - pattern: |
+          $COLLECTION.findOne({_id: parseInt($REQ.$PARAMS.$ID)})
+      - pattern: |
+          $COLLECTION.updateOne({_id: parseInt($REQ.$PARAMS.$ID)}, ...)
+    message: User ID from URL used in query - verify requesting user owns this resource (IDOR)
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021"
+      tags: [idor, bola, nodegoat]
+
+  # Hardcoded isAdmin in response
+  - id: hardcoded-admin-flag
+    pattern-regex: "isAdmin\\s*:\\s*true"
+    message: Hardcoded isAdmin flag - verify this is based on actual user role check
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-863"
+      tags: [authorization, nodegoat]
+
+  # Missing error callback handling
+  - id: mongodb-callback-error-ignored
+    patterns:
+      - pattern: |
+          $COLLECTION.$METHOD(..., function($ERR, $RESULT) {
+            ...
+            $CALLBACK(null, $DATA)
+          })
+    message: MongoDB callback may ignore errors - check $ERR before calling success callback
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [error-handling, nodegoat]
+
+  # Profile/sensitive data update without ownership check
+  - id: profile-update-no-owner-check
+    patterns:
+      - pattern: |
+          $COLLECTION.update({_id: $USER_ID}, {$set: $DATA})
+      - pattern: |
+          $COLLECTION.updateOne({_id: $USER_ID}, {$set: $DATA})
+    message: Profile update - ensure user owns this profile before updating (IDOR prevention)
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, profile, nodegoat]
+
+  # Callback response without auth check
+  - id: express-callback-no-auth
+    patterns:
+      - pattern: |
+          res.render($TEMPLATE, {
+            ...
+            $DATA
+          })
+    message: Template render - ensure user is authenticated and authorized to view this data
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [authorization, nodegoat]
+
+  # Direct assignment of user input to model
+  - id: mass-assignment-user-input
+    patterns:
+      - pattern: $MODEL.$FIELD = req.body.$FIELD
+      - pattern: $MODEL.$FIELD = req.query.$FIELD
+      - pattern: |
+          Object.assign($MODEL, req.body)
+    message: Mass assignment - user input directly assigned to model without validation
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      owasp: "A08:2021"
+      tags: [mass-assignment, nodegoat]
+
+  # Timestamp from client
+  - id: client-controlled-timestamp
+    patterns:
+      - pattern: |
+          { ..., timestamp: req.body.timestamp, ... }
+      - pattern: |
+          { ..., createdAt: req.body.createdAt, ... }
+      - pattern: |
+          { ..., date: req.body.date, ... }
+    message: Timestamp from client input - use server-generated timestamps instead
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-20"
+      tags: [validation, nodegoat]
+
+  # Revealing error details
+  - id: error-message-exposure
+    patterns:
+      - pattern: 'res.send({ error: $ERR.message })'
+      - pattern: 'res.json({ error: $ERR.message })'
+      - pattern: 'res.send("Error: " + $ERR.message)'
+      - pattern: 'res.send(`Error: ${$ERR.message}`)'
+    message: Error message exposed to client - use generic messages in production
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, nodegoat]
+
+  # Find with empty query (returns all)
+  - id: mongodb-find-all
+    patterns:
+      - pattern: $COLLECTION.find({})
+      - pattern: $COLLECTION.find()
+    message: MongoDB find all documents - ensure user is authorized to access all records
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-862"
+      tags: [authorization, nodegoat]
+
+  # Benefits/sensitive update without role check
+  - id: sensitive-update-no-role-check
+    patterns:
+      - pattern: |
+          $DAO.update$X(req.body.$ID, req.body.$DATA)
+      - pattern: |
+          $DAO.update$X($REQ.body.userId, ...)
+    message: Sensitive data update - verify user has permission to modify this resource
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-863"
+      tags: [authorization, nodegoat]
+
+  # Stored XSS in profile fields
+  - id: stored-xss-profile-field
+    patterns:
+      - pattern: |
+          $USER.website = $INPUT
+      - pattern: |
+          $USER.bio = $INPUT
+      - pattern: |
+          $USER.description = $INPUT
+      - pattern: |
+          $PROFILE.website = $INPUT
+    message: User profile field update - sanitize input to prevent stored XSS
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, stored-xss, nodegoat]
+
+  # SSN/Financial data in code
+  - id: sensitive-data-ssn
+    pattern-regex: "ssn|social.?security|bank.?account|routing.?number"
+    message: Sensitive financial data field - ensure proper encryption and access control
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-311"
+      tags: [sensitive-data, nodegoat]
+
