@@ -23,20 +23,27 @@ function createAuthStore() {
 		subscribe,
 
 		async initialize() {
+			console.log('[Auth] Initializing...');
 			const { data: { session } } = await supabase.auth.getSession();
+			console.log('[Auth] Session:', session ? 'exists' : 'null', 'provider_token:', session?.provider_token ? 'exists' : 'null');
 
 			if (session) {
 				// Try to get token from session first, then fall back to localStorage
 				let githubToken = session.provider_token || null;
+				const storedToken = localStorage.getItem(GITHUB_TOKEN_KEY);
+				console.log('[Auth] Token from session:', !!githubToken, 'Token from localStorage:', !!storedToken);
 
 				if (githubToken) {
 					// New token from OAuth - store it
 					localStorage.setItem(GITHUB_TOKEN_KEY, githubToken);
+					console.log('[Auth] Stored new token to localStorage');
 				} else {
 					// Try to retrieve stored token
-					githubToken = localStorage.getItem(GITHUB_TOKEN_KEY);
+					githubToken = storedToken;
+					console.log('[Auth] Using stored token from localStorage');
 				}
 
+				console.log('[Auth] Final githubToken:', !!githubToken);
 				set({
 					user: session.user,
 					session,
@@ -45,6 +52,7 @@ function createAuthStore() {
 				});
 			} else {
 				// No session - clear stored token
+				console.log('[Auth] No session, clearing token');
 				localStorage.removeItem(GITHUB_TOKEN_KEY);
 				set({
 					user: null,
