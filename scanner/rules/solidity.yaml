@@ -72,15 +72,7 @@ rules:
       cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
       references:
         - https://consensys.github.io/smart-contract-best-practices/attacks/reentrancy/
-    patterns:
-      - pattern-inside: |
-          function $FUNC(...) {
-            ...
-          }
-      - pattern: |
-          $ADDR.call{...}(...);
-          ...
-          $STATE = $VALUE;
+    pattern-regex: '\.call\s*\{[^}]*\}\s*\([^)]*\)\s*;[\s\S]*?\w+\s*='
 
   # ============================================
   # Critical: Arbitrary Calls
@@ -156,18 +148,7 @@ rules:
     metadata:
       category: security
       cwe: "CWE-284: Improper Access Control"
-    patterns:
-      - pattern-either:
-          - pattern: |
-              function burn($AMT) public {
-                ...
-              }
-          - pattern: |
-              function burn($AMT) external {
-                ...
-              }
-      - pattern-not-inside: |
-          function burn(...) ... onlyOwner { ... }
+    pattern-regex: 'function\s+burn\s*\([^)]*\)\s+(public|external)\s*\{'
 
   - id: sol-arbitrary-transferfrom
     message: ERC721/ERC20 transferFrom with user-controlled from address - potential unauthorized transfer
@@ -212,11 +193,7 @@ rules:
     metadata:
       category: security
       cwe: "CWE-20: Improper Input Validation"
-    patterns:
-      - pattern-either:
-          - pattern: $ROUTER.swapExactTokensForTokens(..., 0, ...)
-          - pattern: $ROUTER.swapExactETHForTokens{...}(..., 0, ...)
-          - pattern: IUniswapV2Router($R).swapExactTokensForTokens(..., 0, ...)
+    pattern-regex: '(swap\w+|swapExact\w+)\s*(\{[^}]*\})?\s*\([^)]*,\s*0\s*,'
 
   # ============================================
   # Medium: Randomness
@@ -624,12 +601,7 @@ rules:
       category: best-practice
       references:
         - https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-    patterns:
-      - pattern-inside: |
-          contract $CONTRACT is Initializable {
-            ...
-          }
-      - pattern-not: uint256[50] private __gap
+    pattern-regex: 'contract\s+\w+\s+is\s+Initializable\s*\{'
 
   # ============================================
   # Cross-Chain & Bridge
@@ -681,13 +653,7 @@ rules:
     severity: INFO
     metadata:
       category: best-practice
-    patterns:
-      - pattern-either:
-          - pattern: |
-              bool private locked;
-          - pattern: |
-              require(!locked, ...);
-              locked = true;
+    pattern-regex: '(bool\s+(private|internal)?\s*locked\s*;|require\s*\(\s*!locked\s*,)'
 
   # ============================================
   # Compiler & Language Issues
@@ -699,7 +665,7 @@ rules:
     severity: INFO
     metadata:
       category: security
-    pattern: assembly { ... }
+    pattern-regex: 'assembly\s*\{'
 
   - id: sol-deprecated-sha3
     message: sha3() is deprecated - use keccak256() instead

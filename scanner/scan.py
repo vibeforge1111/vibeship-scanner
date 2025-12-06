@@ -434,9 +434,21 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
 
                 # Log any rule errors (patterns that failed to compile/match)
                 if errors:
-                    print(f"Opengrep rule errors: {len(errors)}", file=sys.stderr)
-                    for err in errors[:10]:  # Show first 10 errors
-                        print(f"  - Rule error: {err}", file=sys.stderr)
+                    # Separate rule parse errors from syntax errors in target files
+                    rule_parse_errors = [e for e in errors if isinstance(e, dict) and e.get('type') == 'Rule parse error']
+                    syntax_errors = [e for e in errors if isinstance(e, dict) and e.get('type') == 'Syntax error']
+                    other_errors = [e for e in errors if isinstance(e, dict) and e.get('type') not in ['Rule parse error', 'Syntax error']]
+
+                    print(f"Opengrep errors summary: {len(errors)} total", file=sys.stderr)
+                    print(f"  - Rule parse errors: {len(rule_parse_errors)} (patterns that fail to compile)", file=sys.stderr)
+                    print(f"  - Syntax errors: {len(syntax_errors)} (target files with parse issues)", file=sys.stderr)
+                    print(f"  - Other errors: {len(other_errors)}", file=sys.stderr)
+
+                    if rule_parse_errors:
+                        rule_ids = [err.get('rule_id', 'unknown') for err in rule_parse_errors]
+                        print(f"  - Failed rule IDs: {rule_ids}", file=sys.stderr)
+                        for err in rule_parse_errors[:10]:
+                            print(f"  - Rule error: {err}", file=sys.stderr)
 
                 for item in results:
                     severity = SEVERITY_MAP.get(

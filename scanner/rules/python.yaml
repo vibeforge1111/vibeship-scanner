@@ -851,9 +851,7 @@ rules:
   # ============================================
 
   - id: py-flask-password-compare
-    patterns:
-      - pattern: 'if password == user.password'
-      - pattern: 'if user.password == password'
+    pattern-regex: 'if\s+(password\s*==\s*user\.password|user\.password\s*==\s*password)'
     message: Direct password comparison - use check_password_hash
     languages: [python]
     severity: ERROR
@@ -1072,11 +1070,7 @@ rules:
 
   # Mass Assignment - Admin privilege escalation
   - id: py-mass-assignment-admin
-    patterns:
-      - pattern: 'if $DATA["admin"]'
-      - pattern: 'if request_data["admin"]'
-      - pattern: "if $DATA.get('admin')"
-      - pattern: 'if request_data.get("admin")'
+    pattern-regex: 'if\s+(request_data|data|\w+_data)\s*(\[|\.get\()["\''"]admin["\''"]\]?\)?'
     message: Admin flag from user input - mass assignment privilege escalation
     languages: [python]
     severity: ERROR
@@ -1110,9 +1104,7 @@ rules:
     severity: WARNING
 
   - id: py-user-enum-separate-errors
-    patterns:
-      - pattern: 'if not user: return $USER_ERROR'
-      - pattern: 'elif not user: return $USER_ERROR'
+    pattern-regex: '(if|elif)\s+not\s+user\s*:\s*return\s+'
     message: Separate user/password errors enable enumeration - use generic message
     languages: [python]
     severity: WARNING
@@ -1384,7 +1376,7 @@ rules:
     severity: ERROR
 
   - id: py-debug-method-call
-    pattern: '$OBJ.get_all_$TYPE_debug()'
+    pattern-regex: '\w+\.get_all_\w+_debug\s*\(\)'
     message: Debug method exposing sensitive data - remove in production
     languages: [python]
     severity: ERROR
@@ -1462,7 +1454,7 @@ rules:
 
   # API route returning user debug info
   - id: py-route-returns-debug
-    pattern: 'return_value = jsonify({...: $MODEL.get_all_$TYPE_debug()})'
+    pattern-regex: 'return_value\s*=\s*jsonify\s*\(\s*\{.*\.get_all_\w+_debug\s*\(\)'
     message: API route returning debug data - may expose sensitive fields
     languages: [python]
     severity: ERROR

@@ -106,7 +106,7 @@ rules:
   # ============================================
 
   - id: vue-v-html-directive
-    pattern: 'v-html="$X"'
+    pattern-regex: 'v-html\s*=\s*["\'']\S+'
     message: Vue v-html directive bypasses sanitization - XSS risk with user input
     languages: [javascript, typescript]
     severity: ERROR
@@ -5383,3 +5383,288 @@ rules:
     metadata:
       cwe: "CWE-285"
       tags: [authorization, nodegoat]
+
+  # ============================================
+  # Juice Shop Specific - Additional Detection Rules
+  # ============================================
+
+  # Prototype Pollution - Direct __proto__ access
+  - id: proto-direct-access
+    pattern-regex: '__proto__'
+    message: Direct __proto__ access detected - prototype pollution vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution, juice-shop]
+
+  # Prototype Pollution - constructor.prototype
+  - id: constructor-prototype-access
+    pattern-regex: 'constructor\s*\.\s*prototype'
+    message: constructor.prototype access - potential prototype pollution
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution, juice-shop]
+
+  # Prototype Pollution - Object property from user input
+  - id: bracket-notation-user-input
+    pattern: $OBJ[$USER_INPUT] = $VALUE
+    message: Dynamic property assignment - prototype pollution if key is user-controlled
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution]
+
+  # Zip Slip - Path traversal in archive extraction
+  - id: zip-extract-no-sanitize
+    patterns:
+      - pattern: $ARCHIVE.extractAllTo(...)
+      - pattern: $ARCHIVE.extractEntryTo(...)
+      - pattern: unzip($INPUT, ...)
+      - pattern: extract($INPUT, ...)
+    message: Archive extraction without path sanitization - Zip Slip vulnerability risk
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, zip-slip, juice-shop]
+
+  # Zip Slip - adm-zip vulnerable pattern
+  - id: admzip-extract-all
+    pattern-regex: 'new\s+AdmZip\s*\([^)]*\)\s*\.\s*extractAllTo'
+    message: adm-zip extractAllTo - verify path traversal protection (Zip Slip)
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, zip-slip]
+
+  # Path traversal in extracted filename
+  - id: path-join-archive-entry
+    pattern: path.join($BASE, $ENTRY.entryName)
+    message: Archive entry path used without sanitization - check for ../
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, zip-slip]
+
+  # File Upload - No type validation
+  - id: multer-no-filefilter
+    pattern-regex: 'multer\s*\(\s*\{\s*(?!.*fileFilter)[^}]*\}\s*\)'
+    message: Multer without fileFilter - add file type validation
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-434"
+      tags: [file-upload, juice-shop]
+
+  # File Upload - Accepting any file type
+  - id: file-upload-any-type
+    pattern-regex: 'fileFilter.*(?:mimetype|originalname).*(?:return\s+cb\s*\(\s*null\s*,\s*true|cb\s*\(\s*null\s*,\s*true)'
+    message: File filter accepting all files - restrict to allowed types only
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-434"
+      tags: [file-upload]
+
+  # File Upload - No size limit
+  - id: multer-no-limits
+    pattern-regex: 'multer\s*\(\s*\{\s*(?!.*limits)[^}]*\}\s*\)'
+    message: Multer without size limits - add limits.fileSize to prevent DoS
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-400"
+      tags: [file-upload, dos]
+
+  # IDOR - Sequential ID without auth check
+  - id: route-id-param-no-auth
+    pattern-regex: "router\\.(get|put|delete)\\s*\\(\\s*['\"]/:id['\"]\\s*,\\s*(?:async\\s*)?\\(req"
+    message: Route with :id param - verify ownership/authorization check exists
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, authorization]
+
+  # Error disclosure - Stack trace in response
+  - id: stack-trace-exposed
+    patterns:
+      - pattern: res.send($ERR.stack)
+      - pattern: 'res.json({..., stack: $ERR.stack, ...})'
+      - pattern: res.status(...).send($ERR.stack)
+    message: Stack trace exposed in response - information disclosure
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      tags: [info-disclosure, juice-shop]
+
+  # Error disclosure - Full error object in catch block
+  - id: full-error-response
+    pattern-regex: 'catch\s*\(\s*\w+\s*\)\s*\{[^}]*res\.(send|json)\s*\(\s*\w+\s*\)'
+    message: Full error object sent in response - may expose sensitive info
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [info-disclosure]
+
+  # Debug endpoint in production
+  - id: debug-route-exposed
+    pattern-regex: "router\\.(get|post)\\s*\\(\\s*['\"].*debug"
+    message: Debug route detected - ensure disabled in production
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-489"
+      tags: [debug, security-misconfiguration]
+
+  # No rate limiting on auth endpoints
+  - id: auth-no-rate-limit
+    pattern-regex: "router\\.post\\s*\\(\\s*['\"].*(?:login|signin|auth|password|reset)['\"].*(?!rateLimit)"
+    message: Auth endpoint without rate limiting - brute force risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-307"
+      tags: [brute-force, rate-limit, juice-shop]
+
+  # Metrics/admin endpoint exposed
+  - id: metrics-endpoint-exposed
+    pattern-regex: "app\\.(get|use)\\s*\\(\\s*['\"].*(?:metrics|prometheus|health|status)['\"]"
+    message: Metrics/status endpoint - ensure authentication if exposing sensitive data
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [info-disclosure]
+
+  # B2B integration without auth
+  - id: b2b-endpoint-no-auth
+    pattern-regex: "router\\.(get|post)\\s*\\(\\s*['\"].*(?:b2b|api/orders|bulk|batch)['\"]\\s*,\\s*(?:async\\s*)?\\(req"
+    message: B2B/bulk endpoint - verify proper authentication exists
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306"
+      tags: [authorization, b2b]
+
+  # Unsafe file read with user input
+  - id: fs-read-user-input
+    patterns:
+      - pattern: fs.readFile($REQ.$PARAM, ...)
+      - pattern: fs.readFileSync($REQ.$PARAM, ...)
+      - pattern: fs.readFile(req.params.$X, ...)
+      - pattern: fs.readFile(req.query.$X, ...)
+      - pattern: fs.readFile(req.body.$X, ...)
+    message: File read with user input - path traversal vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, lfi, juice-shop]
+
+  # Directory listing enabled
+  - id: express-static-directory-listing
+    pattern-regex: "serveIndex\\s*\\("
+    message: Directory listing enabled - information disclosure risk
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-548"
+      tags: [info-disclosure]
+
+  # Captcha bypass - No server-side validation
+  - id: captcha-client-only
+    pattern-regex: "(?:captcha|recaptcha).*(?:validate|verify).*(?:req\\.(body|query)\\.)"
+    message: CAPTCHA validation - ensure server-side verification with secret key
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-804"
+      tags: [captcha, automation]
+
+  # Memory storage for sessions (not persistent)
+  - id: session-memory-store
+    pattern-regex: "session\\s*\\(\\s*\\{[^}]*(?!store)[^}]*\\}\\s*\\)"
+    message: Session using memory store - not suitable for production
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-384"
+      tags: [session, security-misconfiguration]
+
+  # Swagger/API docs exposed
+  - id: swagger-docs-exposed
+    pattern-regex: "app\\.(use|get)\\s*\\(\\s*['\"].*(?:swagger|api-docs|openapi)['\"]"
+    message: API documentation endpoint - ensure access control in production
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [info-disclosure, api-docs]
+
+  # FTP service enabled
+  - id: ftp-server-enabled
+    pattern-regex: "new\\s+(?:ftpd|FTPServer|ftp-srv)"
+    message: FTP server detected - consider SFTP for secure file transfer
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-319"
+      tags: [ftp, cleartext]
+
+  # Chatbot without input validation
+  - id: chatbot-user-input
+    pattern-regex: "(?:chatbot|bot)\\.(?:process|respond|handle)\\s*\\(\\s*req\\."
+    message: Chatbot processing user input - ensure sanitization
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [chatbot, input-validation]
+
+  # Crypto mining detection
+  - id: crypto-mining-script
+    pattern-regex: "(?:coinhive|cryptoloot|minero|coinpot|cryptonight)"
+    message: Potential crypto mining script reference detected
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [malware, crypto-mining]
+
+  # Video/image URL without validation
+  - id: media-url-user-controlled
+    patterns:
+      - pattern: '<video src={$USER_INPUT}'
+      - pattern: '<img src={$USER_INPUT}'
+      - pattern: '<iframe src={$USER_INPUT}'
+    message: Media element with user-controlled URL - potential SSRF or XSS
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf, xss]
+
+  # Blockchain/Web3 without validation
+  - id: web3-user-input
+    pattern-regex: "web3\\.eth\\.(?:sendTransaction|call)\\s*\\(\\s*\\{[^}]*(?:from|to|data):\\s*req\\."
+    message: Web3 transaction with user input - verify all parameters
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      tags: [web3, blockchain, juice-shop]
+
+  # NFT minting without validation
+  - id: nft-mint-no-validation
+    pattern-regex: "(?:mint|createNFT|mintNFT)\\s*\\([^)]*req\\."
+    message: NFT minting with user input - verify ownership and limits
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      tags: [nft, web3]
