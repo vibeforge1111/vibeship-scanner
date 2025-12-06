@@ -39,6 +39,7 @@
 	let generatingPdf = $state(false);
 	let scanStartTime = $state<Date | null>(null);
 	let timeoutCheckInterval: ReturnType<typeof setInterval> | null = null;
+	let progressPollInterval: ReturnType<typeof setInterval> | null = null;
 	let authLoading = $state(false);
 	const SCAN_TIMEOUT_MS = 15 * 60 * 1000;
 
@@ -471,6 +472,18 @@
 		if (status === 'queued' || status === 'scanning') {
 			scanStartTime = new Date();
 			timeoutCheckInterval = setInterval(checkScanTimeout, 30000);
+			// Poll for progress updates as fallback (in case realtime isn't working)
+			progressPollInterval = setInterval(async () => {
+				await fetchProgress();
+				await fetchScan();
+				// Stop polling if scan is done
+				if (status === 'complete' || status === 'failed') {
+					if (progressPollInterval) {
+						clearInterval(progressPollInterval);
+						progressPollInterval = null;
+					}
+				}
+			}, 2000);
 		}
 
 		channel = supabase
@@ -537,6 +550,9 @@
 		}
 		if (timeoutCheckInterval) {
 			clearInterval(timeoutCheckInterval);
+		}
+		if (progressPollInterval) {
+			clearInterval(progressPollInterval);
 		}
 		if (factInterval) {
 			clearInterval(factInterval);
