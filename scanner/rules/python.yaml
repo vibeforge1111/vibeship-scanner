@@ -2021,3 +2021,585 @@ rules:
     metadata:
       cwe: "CWE-295"
       tags: [ssl, api-security]
+
+  # ============================================
+  # API3:2023 - Excessive Data Exposure
+  # ============================================
+
+  # Credit card number in response/model
+  - id: py-pii-credit-card-response
+    pattern-regex: "(credit_card|card_number|cardnumber|cc_number)\\s*[=:]"
+    message: "Credit card field in data model - ensure PCI DSS compliance and mask in API responses (OWASP API3)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-359"
+      owasp: "API3:2023 Broken Object Property Level Authorization"
+      tags: [pii, pci-dss, data-exposure, capital]
+
+  # Visa card number pattern in code
+  - id: py-pii-visa-card-pattern
+    pattern-regex: "['\"]4[0-9]{12}(?:[0-9]{3})?['\"]"
+    message: "Potential Visa card number detected - PCI DSS violation if real"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-359"
+      tags: [pii, pci-dss, capital]
+
+  # Mastercard pattern
+  - id: py-pii-mastercard-pattern
+    pattern-regex: "['\"]5[1-5][0-9]{14}['\"]"
+    message: "Potential Mastercard number detected - PCI DSS violation if real"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-359"
+      tags: [pii, pci-dss]
+
+  # SSN in response
+  - id: py-pii-ssn-field
+    pattern-regex: "(ssn|social_security|socialSecurity)\\s*[=:]"
+    message: "SSN field detected - never expose in API responses"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-359"
+      owasp: "API3:2023 Broken Object Property Level Authorization"
+      tags: [pii, data-exposure]
+
+  # Returning full user object without field filtering
+  - id: py-data-exposure-full-object
+    patterns:
+      - pattern: 'return jsonify(user)'
+      - pattern: 'return user.dict()'
+      - pattern: 'return $MODEL.to_dict()'
+    message: "Returning full object - filter sensitive fields (password, SSN, credit_card) before response"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      owasp: "API3:2023 Broken Object Property Level Authorization"
+      tags: [data-exposure]
+
+  # Password hash in response
+  - id: py-data-exposure-password-hash
+    pattern-regex: "['\"]password[_]?(hash)?['\"]\\s*:"
+    message: "Password/hash field in response - never expose password data in API"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-200"
+      tags: [data-exposure, auth]
+
+  # Sensitive fields not excluded in Pydantic response model
+  - id: py-pydantic-expose-sensitive
+    pattern-regex: "class\\s+\\w+(Response|Out|Public).*:\\s*\\n.*\\s+(password|credit_card|ssn|secret)"
+    message: "Sensitive field in response model - exclude from public API responses"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-200"
+      owasp: "API3:2023 Broken Object Property Level Authorization"
+      tags: [pydantic, data-exposure]
+
+  # ============================================
+  # API5:2023 - Broken Function Level Authorization (BFLA)
+  # ============================================
+
+  # Admin endpoint without role check
+  - id: py-bfla-admin-no-role-check
+    pattern-regex: "@(router|app)\\.(get|post|put|delete)\\(['\"]/?admin"
+    message: "Admin endpoint - verify role-based access control (is_admin/is_superuser check) is enforced (OWASP API5)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-285"
+      owasp: "API5:2023 Broken Function Level Authorization"
+      tags: [bfla, admin, auth, capital]
+
+  # Admin function without decorator
+  - id: py-bfla-admin-function-unprotected
+    pattern-regex: "async\\s+def\\s+(admin|get_admin|create_admin|delete_admin|update_admin)\\s*\\("
+    message: "Admin function - ensure authorization decorator checks admin role"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-285"
+      owasp: "API5:2023 Broken Function Level Authorization"
+      tags: [bfla, admin]
+
+  # Checking admin from user input (bypass vulnerability)
+  - id: py-bfla-admin-from-input
+    pattern-regex: "(request\\.(json|form|args)|data)\\s*\\[\\s*['\"]is_?admin['\"]\\s*\\]"
+    message: "BFLA - checking admin status from user input allows privilege escalation"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-285"
+      owasp: "API5:2023 Broken Function Level Authorization"
+      tags: [bfla, privilege-escalation, capital]
+
+  # Missing role verification pattern
+  - id: py-bfla-missing-role-verify
+    pattern-regex: "if\\s+not\\s+current_user\\s*:"
+    message: "Auth check only verifies user exists - also verify role/permissions for admin operations"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-862"
+      tags: [bfla, auth]
+
+  # Undocumented admin endpoint (no OpenAPI docs)
+  - id: py-bfla-hidden-admin-endpoint
+    pattern-regex: "@(router|app)\\.(get|post)\\([^)]*include_in_schema\\s*=\\s*False[^)]*admin"
+    message: "Hidden admin endpoint - security through obscurity is not protection"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-656"
+      owasp: "API5:2023 Broken Function Level Authorization"
+      tags: [bfla, admin]
+
+  # ============================================
+  # API7:2023 - Security Misconfiguration (Redis/Database)
+  # ============================================
+
+  # Redis connection without password
+  - id: py-redis-no-auth
+    pattern-regex: "redis\\.(Redis|StrictRedis)\\s*\\([^)]*\\)(?![^)]*password)"
+    message: "Redis connection without authentication - set password for production (OWASP API7)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-287"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [redis, auth, misconfiguration, capital]
+
+  # Redis connection with empty/default password
+  - id: py-redis-weak-password
+    pattern-regex: "redis\\.(Redis|StrictRedis)\\s*\\([^)]*password\\s*=\\s*['\"]['\"]"
+    message: "Redis with empty password - configure strong authentication"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-287"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [redis, auth]
+
+  # Redis URL without password
+  - id: py-redis-url-no-auth
+    pattern-regex: "redis://(localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0):[0-9]+/?['\"]"
+    message: "Redis URL without authentication - use redis://:password@host:port format"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-287"
+      tags: [redis, auth, capital]
+
+  # aioredis without password
+  - id: py-aioredis-no-auth
+    pattern-regex: "aioredis\\.(create_redis|from_url)\\s*\\([^)]*\\)(?![^)]*password)"
+    message: "aioredis connection may lack authentication"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-287"
+      tags: [redis, auth]
+
+  # MongoDB without authentication
+  - id: py-mongodb-no-auth
+    pattern-regex: "MongoClient\\s*\\(['\"]mongodb://(localhost|127\\.0\\.0\\.1)"
+    message: "MongoDB connection to localhost - ensure authentication is configured for production"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-287"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [mongodb, auth, misconfiguration]
+
+  # Exposed debug endpoint
+  - id: py-debug-endpoint-exposed
+    pattern-regex: "@(router|app)\\.(get|post)\\(['\"]/?debug"
+    message: "Debug endpoint exposed - remove or protect in production (OWASP API7)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-489"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [debug, misconfiguration, capital]
+
+  # ============================================
+  # API4:2023 - Unrestricted Resource Consumption (Pagination)
+  # ============================================
+
+  # Query without limit
+  - id: py-unbounded-query-all
+    patterns:
+      - pattern: '$MODEL.query.all()'
+      - pattern: 'await $REPO.get_all()'
+      - pattern: '$SESSION.query($MODEL).all()'
+    message: "Unbounded query returns all records - add pagination with limit (OWASP API4)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-770"
+      owasp: "API4:2023 Unrestricted Resource Consumption"
+      tags: [pagination, dos, capital]
+
+  # User-controlled limit without max validation
+  - id: py-unbounded-limit-param
+    pattern-regex: "limit\\s*=\\s*(request\\.(args|json|form)|int\\(request)"
+    message: "User-controlled limit parameter - validate maximum value to prevent DoS"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-770"
+      owasp: "API4:2023 Unrestricted Resource Consumption"
+      tags: [pagination, dos, capital]
+
+  # FastAPI Query without le (max) constraint
+  - id: py-fastapi-unbounded-limit
+    pattern-regex: "limit:\\s*int\\s*=\\s*Query\\s*\\([^)]*\\)(?![^)]*le\\s*=)"
+    message: "FastAPI limit parameter without maximum constraint - add le=100 or similar"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-770"
+      owasp: "API4:2023 Unrestricted Resource Consumption"
+      tags: [fastapi, pagination, dos]
+
+  # Large default limit
+  - id: py-large-default-limit
+    pattern-regex: "limit\\s*[=:]\\s*(1000|10000|100000|999+)"
+    message: "Large default limit value - may cause resource exhaustion"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-770"
+      tags: [pagination, dos]
+
+  # Offset/skip without limit
+  - id: py-offset-without-limit
+    pattern-regex: "offset\\s*=.*(?!.*limit)"
+    message: "Pagination offset without limit - always pair offset with reasonable limit"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-770"
+      tags: [pagination]
+
+  # File upload without size limit
+  - id: py-upload-no-size-limit
+    pattern-regex: "(UploadFile|FileStorage|request\\.files)"
+    message: "File upload - ensure MAX_CONTENT_LENGTH or file size validation is configured"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-770"
+      owasp: "API4:2023 Unrestricted Resource Consumption"
+      tags: [upload, dos]
+
+  # ============================================
+  # API9:2023 - Improper Asset Management
+  # ============================================
+
+  # Deprecated API version still active
+  - id: py-deprecated-api-v1
+    pattern-regex: "@(router|app)\\.(get|post|put|delete)\\(['\"]/?v1/"
+    message: "API v1 endpoint - ensure deprecated versions are decommissioned (OWASP API9)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1104"
+      owasp: "API9:2023 Improper Inventory Management"
+      tags: [versioning, deprecated, capital]
+
+  # Old/legacy endpoint naming
+  - id: py-legacy-endpoint
+    pattern-regex: "@(router|app)\\.(get|post)\\(['\"][^'\"]*(_old|_legacy|_deprecated|_v1)['\"]"
+    message: "Legacy endpoint detected - remove deprecated API versions"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1104"
+      owasp: "API9:2023 Improper Inventory Management"
+      tags: [versioning, deprecated]
+
+  # Multiple API versions in same file
+  - id: py-multiple-api-versions
+    pattern-regex: "(/v1/.*\\n.*)?/v2/"
+    message: "Multiple API versions - ensure old versions are properly deprecated"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1104"
+      tags: [versioning]
+
+  # ============================================
+  # API10:2023 - Insufficient Logging & Monitoring
+  # ============================================
+
+  # Login without audit logging
+  - id: py-login-no-logging
+    pattern-regex: "def\\s+(login|authenticate|signin)\\s*\\([^)]*\\):\\s*\\n(?!.*log)"
+    message: "Authentication function without logging - log all auth attempts for security monitoring (OWASP API10)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-778"
+      owasp: "API10:2023 Insufficient Logging & Monitoring"
+      tags: [logging, auth, capital]
+
+  # Failed login not logged
+  - id: py-failed-auth-no-log
+    pattern-regex: "return.*['\"]([Ii]nvalid|[Ww]rong|[Ff]ailed).*password"
+    message: "Authentication failure - ensure failed attempts are logged with IP and timestamp"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-778"
+      owasp: "API10:2023 Insufficient Logging & Monitoring"
+      tags: [logging, auth]
+
+  # Admin action without audit log
+  - id: py-admin-action-no-log
+    pattern-regex: "def\\s+(delete|remove|update|create)_?(user|admin|role)\\s*\\([^)]*\\):\\s*\\n(?!.*log)"
+    message: "Admin action without audit logging - log privileged operations"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-778"
+      owasp: "API10:2023 Insufficient Logging & Monitoring"
+      tags: [logging, admin, audit]
+
+  # Sensitive data access without logging
+  - id: py-sensitive-access-no-log
+    pattern-regex: "\\.(credit_card|ssn|password)(?!.*log)"
+    message: "Sensitive data access - consider audit logging for compliance"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-778"
+      tags: [logging, pii, audit]
+
+  # ============================================
+  # API7:2023 - CORS Misconfigurations
+  # ============================================
+
+  # CORS wildcard origin - allows any domain
+  - id: py-cors-wildcard-origin
+    pattern-regex: "Access-Control-Allow-Origin['\"]?\\s*[,:=]\\s*['\"]\\*['\"]"
+    message: "CORS wildcard origin (*) allows any domain to access API - restrict to trusted domains (OWASP API7)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [cors, misconfiguration, capital]
+
+  # Flask-CORS wildcard
+  - id: py-flask-cors-wildcard
+    patterns:
+      - pattern: 'CORS($APP, origins="*")'
+      - pattern: 'CORS($APP, origins=["*"])'
+      - pattern: "CORS($APP, resources={$R: {'origins': '*'}})"
+    message: "Flask-CORS with wildcard origin - restrict to specific trusted domains"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [cors, flask]
+
+  # Flask-CORS regex pattern wildcard
+  - id: py-flask-cors-wildcard-regex
+    pattern-regex: "CORS\\s*\\([^)]*origins\\s*=\\s*[\"']\\*[\"']"
+    message: "Flask-CORS configured with wildcard origin (*)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942"
+      tags: [cors, flask]
+
+  # FastAPI CORS wildcard
+  - id: py-fastapi-cors-wildcard
+    patterns:
+      - pattern: 'CORSMiddleware($APP, allow_origins=["*"], ...)'
+      - pattern: 'add_middleware(CORSMiddleware, allow_origins=["*"], ...)'
+    message: "FastAPI CORS with wildcard origin - allows any domain access (OWASP API7)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [cors, fastapi, capital]
+
+  # FastAPI CORS wildcard regex
+  - id: py-fastapi-cors-wildcard-regex
+    pattern-regex: "allow_origins\\s*=\\s*\\[\\s*[\"']\\*[\"']\\s*\\]"
+    message: "FastAPI CORS allows all origins (*) - restrict to trusted domains"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [cors, fastapi, capital]
+
+  # CORS with credentials and wildcard (critical)
+  - id: py-cors-wildcard-credentials
+    pattern-regex: "allow_credentials\\s*=\\s*True.*allow_origins.*\\*|allow_origins.*\\*.*allow_credentials\\s*=\\s*True"
+    message: "CRITICAL: CORS wildcard with credentials enabled - session hijacking vulnerability"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [cors, credentials, critical]
+
+  # Django CORS wildcard
+  - id: py-django-cors-wildcard
+    pattern-regex: "CORS_ALLOW_ALL_ORIGINS\\s*=\\s*True"
+    message: "Django CORS allows all origins - set CORS_ALLOWED_ORIGINS with specific domains"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942"
+      tags: [cors, django]
+
+  # Direct header setting wildcard
+  - id: py-cors-header-wildcard
+    pattern-regex: "headers\\s*\\[\\s*['\"]Access-Control-Allow-Origin['\"]\\s*\\]\\s*=\\s*['\"]\\*['\"]"
+    message: "Setting CORS header to wildcard - restrict to specific origin"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942"
+      tags: [cors, headers]
+
+  # Response header wildcard
+  - id: py-response-cors-wildcard
+    pattern-regex: "response\\.headers\\s*\\[.*Access-Control.*\\]\\s*=\\s*['\"]\\*['\"]"
+    message: "Response CORS header set to wildcard (*)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942"
+      tags: [cors, headers]
+
+  # ============================================
+  # API7:2023 - Missing Security Headers
+  # ============================================
+
+  # Missing X-Content-Type-Options
+  - id: py-missing-content-type-options
+    pattern-regex: "@(app|router)\\.(get|post|put|delete)\\s*\\([^)]*\\)\\s*\\n(async\\s+)?def"
+    message: "Endpoint should include X-Content-Type-Options: nosniff header to prevent MIME sniffing"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-16"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [headers, security-headers]
+
+  # Flask app without security headers
+  - id: py-flask-no-security-headers
+    pattern-regex: "Flask\\s*\\(__name__\\)"
+    message: "Flask app - ensure security headers are configured (use Flask-Talisman or @after_request)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-16"
+      tags: [flask, security-headers]
+
+  # FastAPI app without security middleware
+  - id: py-fastapi-no-security-middleware
+    pattern-regex: "FastAPI\\s*\\([^)]*\\)"
+    message: "FastAPI app - consider adding security headers middleware (Secure, starlette-security)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-16"
+      tags: [fastapi, security-headers]
+
+  # X-Frame-Options not set
+  - id: py-missing-xframe-options
+    pattern-regex: "response\\.headers\\s*=\\s*\\{(?![^}]*X-Frame-Options)"
+    message: "Response headers missing X-Frame-Options - add to prevent clickjacking"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1021"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [headers, clickjacking]
+
+  # Disabled security headers explicitly
+  - id: py-disabled-security-header
+    pattern-regex: "(X-XSS-Protection|X-Content-Type-Options|X-Frame-Options|Strict-Transport-Security).*None|None.*(X-XSS-Protection|X-Content-Type-Options)"
+    message: "Security header explicitly disabled - this weakens client protection"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-16"
+      tags: [headers, security-headers]
+
+  # Content-Security-Policy unsafe-inline
+  - id: py-csp-unsafe-inline
+    pattern-regex: "Content-Security-Policy.*unsafe-inline"
+    message: "CSP with unsafe-inline allows inline scripts - XSS risk"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [csp, xss, headers]
+
+  # Content-Security-Policy unsafe-eval
+  - id: py-csp-unsafe-eval
+    pattern-regex: "Content-Security-Policy.*unsafe-eval"
+    message: "CSP with unsafe-eval allows eval() - code injection risk"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-95"
+      tags: [csp, code-injection, headers]
+
+  # Missing HSTS header
+  - id: py-missing-hsts
+    pattern-regex: "https://.*(?!.*Strict-Transport-Security)"
+    message: "HTTPS endpoint - consider adding Strict-Transport-Security header"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-319"
+      tags: [hsts, headers, https]
+
+  # CORS allowed_hosts wildcard in settings/config
+  - id: py-cors-allowed-hosts-wildcard
+    pattern-regex: "allowed_hosts.*=.*\\[\\s*[\"']\\*[\"']\\s*\\]"
+    message: "CORS allowed_hosts set to wildcard ['*'] - restrict to specific trusted domains (OWASP API7)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [cors, settings, capital]
+
+  # CORS allow all methods with wildcard
+  - id: py-cors-allow-all-methods
+    pattern-regex: "allow_methods\\s*=\\s*\\[\\s*[\"']\\*[\"']\\s*\\]"
+    message: "CORS allows all HTTP methods (*) - restrict to needed methods only"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-942"
+      tags: [cors, methods]
+
+  # CORS allow all headers with wildcard
+  - id: py-cors-allow-all-headers
+    pattern-regex: "allow_headers\\s*=\\s*\\[\\s*[\"']\\*[\"']\\s*\\]"
+    message: "CORS allows all headers (*) - restrict to needed headers only"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-942"
+      tags: [cors, headers]

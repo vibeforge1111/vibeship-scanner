@@ -321,3 +321,137 @@ rules:
       cwe: "CWE-489: Active Debug Code"
     pattern-regex: '(debug|DEBUG):\s*(true|True|1|yes|on)'
 
+  # ============================================
+  # Docker Compose - Redis Security (OWASP API7)
+  # ============================================
+
+  - id: docker-compose-redis-no-auth
+    message: >-
+      Redis container without authentication configured. Add --requirepass or REDIS_PASSWORD
+      environment variable for production security (OWASP API7: Security Misconfiguration).
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [redis, auth, docker-compose, capital]
+    pattern-regex: "image:\\s*['\"]?redis[^\\n]*\\n(?![\\s\\S]*(?:requirepass|REDIS_PASSWORD))"
+
+  - id: docker-compose-redis-exposed-port
+    message: >-
+      Redis port 6379 exposed without authentication. Redis should never be exposed
+      to untrusted networks without password protection.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      tags: [redis, network, docker-compose]
+    pattern-regex: "6379:6379"
+
+  - id: docker-compose-redis-bind-all
+    message: >-
+      Redis bound to all interfaces (0.0.0.0). Restrict to localhost or internal network.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-668: Exposure of Resource to Wrong Sphere"
+      tags: [redis, network]
+    pattern-regex: "redis.*\\n.*0\\.0\\.0\\.0:6379|0\\.0\\.0\\.0:6379.*redis"
+
+  # ============================================
+  # Docker Compose - Database Security
+  # ============================================
+
+  - id: docker-compose-mongo-no-auth
+    message: >-
+      MongoDB container without authentication. Set MONGO_INITDB_ROOT_USERNAME
+      and MONGO_INITDB_ROOT_PASSWORD environment variables.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [mongodb, auth, docker-compose]
+    pattern-regex: "image:\\s*['\"]?mongo[^\\n]*\\n(?![\\s\\S]*MONGO_INITDB_ROOT)"
+
+  - id: docker-compose-postgres-weak-password
+    message: >-
+      PostgreSQL with weak/empty password. Use strong password in production.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-521: Weak Password Requirements"
+      tags: [postgres, password, docker-compose]
+    pattern-regex: "POSTGRES_PASSWORD:\\s*['\"]?['\"]?\\s*$|POSTGRES_PASSWORD:\\s*['\"]?(password|postgres|admin|test|123)['\"]?"
+
+  - id: docker-compose-mysql-empty-password
+    message: >-
+      MySQL with MYSQL_ALLOW_EMPTY_PASSWORD or weak password. Configure strong authentication.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-521: Weak Password Requirements"
+      tags: [mysql, password, docker-compose]
+    pattern-regex: "MYSQL_ALLOW_EMPTY_PASSWORD:\\s*(yes|true|1)"
+
+  # ============================================
+  # Docker Compose - CORS and API Security
+  # ============================================
+
+  - id: docker-compose-cors-wildcard
+    message: >-
+      CORS configured with wildcard (*) origin. Restrict to specific trusted domains
+      to prevent cross-origin attacks (OWASP API7).
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-942: Overly Permissive Cross-domain Whitelist"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [cors, docker-compose, capital]
+    pattern-regex: "CORS.*\\*|ACCESS_CONTROL_ALLOW_ORIGIN.*\\*|ALLOWED_ORIGINS.*\\*"
+
+  - id: docker-compose-debug-enabled
+    message: >-
+      Debug mode enabled in container environment. Disable for production.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-489: Active Debug Code"
+      tags: [debug, docker-compose]
+    pattern-regex: "(DEBUG|FLASK_DEBUG|DJANGO_DEBUG):\\s*['\"]?(true|True|1|yes)['\"]?"
+
+  # ============================================
+  # Kubernetes - Security Misconfiguration
+  # ============================================
+
+  - id: k8s-redis-no-auth
+    message: >-
+      Redis Kubernetes deployment without authentication. Set requirepass in Redis config.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      owasp: "API7:2023 Server-Side Security Misconfiguration"
+      tags: [redis, kubernetes, auth]
+    pattern-regex: "image:\\s*redis[^\\n]*\\n(?![\\s\\S]*(?:requirepass|REDIS_PASSWORD))"
+
+  - id: k8s-secret-in-env
+    message: >-
+      Secret value directly in environment variable. Use Kubernetes Secrets instead.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      tags: [kubernetes, secrets]
+    pattern-regex: "env:\\s*\\n\\s*-\\s*name:\\s*(PASSWORD|SECRET|API_KEY|TOKEN)\\s*\\n\\s*value:"
+
