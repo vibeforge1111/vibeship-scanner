@@ -155,3 +155,35 @@ fly deploy --remote-only --no-cache
 - Python for scanner
 - No comments unless explaining complex logic
 - Use existing patterns and utilities
+
+## MCP Servers Configuration
+
+The project has MCP servers configured in `.mcp.json`:
+
+### vibeship-scanner MCP (Custom)
+**Location:** `~/.claude/mcp-servers/vibeship-scanner/`
+**Python:** `~/.claude/mcp-servers/vibeship-scanner/.venv/Scripts/python.exe`
+
+Tools:
+- `scan_repo` - Trigger security scan on GitHub repo
+- `get_scan_status` - Check scan progress
+- `lookup_cve` - Query NVD for CVE details
+- `lookup_ghsa` - Query GitHub Security Advisories
+- `get_cwe_info` - Get CWE weakness details + OWASP mapping
+- `validate_opengrep_rule` - Validate rule YAML before deployment
+
+### fetch MCP
+HTTP requests for custom API queries.
+
+### github MCP
+Repository operations, PR creation (requires GITHUB_TOKEN env var).
+
+## Security Rule Development Skill
+
+Use the `security-rule-development` skill when:
+- Creating new Opengrep detection rules
+- Benchmarking against vulnerable repos
+- Researching CVEs/CWEs for rule metadata
+- Improving scanner coverage
+
+Skill location: `~/.claude/skills/security-rule-development/`

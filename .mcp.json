@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "vibeship-scanner": {
+      "command": "C:\\Users\\USER\\.claude\\mcp-servers\\vibeship-scanner\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\USER\\.claude\\mcp-servers\\vibeship-scanner\\server.py"
+      ],
+      "description": "Vibeship Scanner MCP - Security scanning, CVE/CWE lookup, rule validation"
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-fetch"],
+      "description": "Fetch MCP - HTTP requests for NVD, GHSA, and other security APIs"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "GitHub MCP - Repository access, security advisories, PR management"
+    }
+  }
+}
