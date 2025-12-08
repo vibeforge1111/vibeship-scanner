@@ -11,19 +11,19 @@ rules:
     severity: ERROR
 
   - id: py-subprocess-shell
-    pattern: 'subprocess.call($CMD, shell=True)'
+    pattern: subprocess.call(..., shell=True, ...)
     message: subprocess with shell=True - command injection risk
     languages: [python]
     severity: ERROR
 
   - id: py-subprocess-popen-shell
-    pattern: 'subprocess.Popen($CMD, shell=True)'
+    pattern: subprocess.Popen(..., shell=True, ...)
     message: Popen with shell=True - command injection risk
     languages: [python]
     severity: ERROR
 
   - id: py-subprocess-run-shell
-    pattern: 'subprocess.run($CMD, shell=True)'
+    pattern: subprocess.run(..., shell=True, ...)
     message: subprocess.run with shell=True - command injection risk
     languages: [python]
     severity: ERROR
@@ -1615,3 +1615,409 @@ rules:
     metadata:
       cwe: "CWE-347"
       tags: [jwt, vampi]
+
+  # ============================================
+  # c{api}tal / FastAPI OWASP API Vulnerabilities
+  # ============================================
+
+  # Command Injection - subprocess.Popen with shell=True (regex for multiline)
+  - id: py-popen-shell-regex
+    pattern-regex: 'subprocess\.Popen\s*\([\s\S]*?shell\s*=\s*True'
+    message: subprocess.Popen with shell=True - command injection vulnerability
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection, capital]
+
+  # Also catch Popen import usage
+  - id: py-popen-direct-shell
+    pattern: Popen(..., shell=True, ...)
+    message: Popen with shell=True - command injection vulnerability
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection]
+
+  # BOLA - Action before authorization check (c{api}tal pattern)
+  # Note: Using regex since semgrep can't use metavariables inside method names
+  - id: py-bola-delete-before-check
+    pattern-regex: 'await.*\\.delete.*\\(.*\\)\\s*\\n.*if.*!=.*:'
+    message: BOLA - delete operation before ownership check allows unauthorized deletion
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-639"
+      tags: [bola, idor, capital]
+
+  - id: py-bola-action-then-check
+    pattern-regex: "(delete|remove|update).*\\n.*if.*author.*!=.*user"
+    message: BOLA - action performed before authorization check
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-639"
+      tags: [bola, capital]
+
+  # FastAPI - Authenticated but not authorized endpoint
+  - id: py-fastapi-auth-no-role-check
+    patterns:
+      - pattern: |
+          @router.$METHOD($PATH)
+          async def $FUNC(..., user: $TYPE = Depends(get_current_user_authorizer()), ...):
+              ...
+              return $RESPONSE
+    message: FastAPI endpoint uses authentication but may lack role/permission check
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-862"
+      tags: [fastapi, auth, capital]
+
+  # FastAPI admin endpoint without role verification
+  - id: py-fastapi-admin-no-role
+    pattern-regex: "@router\\.(get|post|put|delete)\\([\"']/admin"
+    message: Admin endpoint detected - verify role-based access control is enforced
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-862"
+      tags: [fastapi, admin, capital]
+
+  # Inadequate input validation (allows bypass)
+  - id: py-shell-injection-weak-filter
+    pattern-regex: "if.*[\"'](rm|cat|ls|whoami|id)[\"'].*in.*cmd"
+    message: Weak command filtering - blacklist approach is bypassable
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection, capital]
+
+  # Dangerous shell command patterns
+  - id: py-shell-command-concat
+    patterns:
+      - pattern: 'cmd = $PREFIX + $USER_INPUT'
+      - pattern: 'cmd = f"... {$VAR} ..."'
+      - pattern: 'cmd = "...".format($VAR)'
+    message: Shell command built from user input - command injection risk
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection]
+
+  # Hardcoded test/example credentials
+  - id: py-hardcoded-test-card
+    pattern-regex: "['\"]4[0-9]{15}['\"]"
+    message: Hardcoded credit card number (Visa format) - remove test data
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [pci, credentials, capital]
+
+  - id: py-hardcoded-cvv
+    pattern-regex: "['\"]\\d{3}['\"]\\s*#?\\s*(cvv|cvc|security)"
+    message: Hardcoded CVV/security code detected
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [pci, credentials]
+
+  # Flag/CTF indicator in code (indicates intentional vulnerability)
+  - id: py-ctf-flag-response
+    pattern-regex: "(flag|FLAG|Flag)\\s*[:=].*Injection|BOLA|SSRF|SQLi"
+    message: CTF flag in response - this indicates an intentional vulnerability for testing
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [ctf, capital]
+
+  # FastAPI - Excessive data exposure
+  # Fixed: Can't use metavariables inside method names, using valid patterns
+  - id: py-fastapi-return-all-records
+    patterns:
+      - pattern: return await $REPO.get_all(...)
+      - pattern: return $MODEL.query.all()
+      - pattern: return await $FUNC.all()
+    message: Returning all records - ensure authorization and pagination
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [data-exposure, capital]
+
+  # Broken function level authorization
+  - id: py-function-auth-bypass
+    pattern-regex: "def.*admin.*\\(.*\\).*:\\s*\\n.*return"
+    message: Admin function may lack authorization decorator
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-285"
+      tags: [auth, capital]
+
+  # ============================================
+  # Mass Assignment / API3 Detection
+  # ============================================
+
+  # Mass Assignment - Direct attribute assignment from user input
+  - id: py-mass-assignment-admin
+    pattern-regex: "\\.(admin|is_admin|is_superuser|role|privilege)\\s*=\\s*(True|admin|request\\.|user_in\\.|\\$)"
+    message: "Mass Assignment - Admin/privilege field set directly, allowing privilege escalation (OWASP API3)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+      owasp: "API3:2023 Broken Object Property Level Authorization"
+      tags: [mass-assignment, privilege-escalation, capital]
+
+  # Mass Assignment - Accepting arbitrary fields from request
+  - id: py-mass-assignment-kwargs
+    patterns:
+      - pattern: $OBJ.update(**$DICT)
+      - pattern: $MODEL(**request.json)
+      - pattern: $MODEL(**$DATA.dict())
+    message: "Mass Assignment - Object updated with unfiltered user input"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment]
+
+  # Mass Assignment - Pydantic model with arbitrary fields
+  - id: py-mass-assignment-setattr
+    pattern: setattr($OBJ, $KEY, $VALUE)
+    message: "Dynamic attribute assignment - potential mass assignment if key is user-controlled"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment]
+
+  # User-controlled field assignment in update operations
+  - id: py-user-controlled-field-update
+    pattern-regex: "for\\s+\\w+\\s*,\\s*\\w+\\s+in\\s+.*\\.items\\(\\).*:\\s*\\n\\s*setattr\\("
+    message: "Iterating over user input to set attributes - mass assignment vulnerability"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment, capital]
+
+  # Direct sensitive field assignment in FastAPI
+  - id: py-fastapi-sensitive-field-assign
+    pattern-regex: "user_in_db\\.(admin|role|is_admin|privilege|credit_card)\\s*=\\s*(True|admin|\\w+\\.admin)"
+    message: "Sensitive field directly assigned without validation - mass assignment risk"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment, fastapi, capital]
+
+  # ============================================
+  # API7:2023 - Server-Side Request Forgery (SSRF)
+  # ============================================
+
+  # SSRF - requests library with user-controlled URL
+  - id: py-ssrf-requests-get
+    pattern-regex: "requests\\.(get|post|put|delete|head|patch)\\s*\\([^)]*\\b(url|uri|link|href|src|endpoint|target|redirect|callback|webhook|fetch)\\b"
+    message: "Potential SSRF - HTTP request with user-controlled URL parameter (OWASP API7)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "API7:2023 Server-Side Request Forgery"
+      tags: [ssrf, api-security]
+
+  # SSRF - urllib with variable URL
+  - id: py-ssrf-urllib
+    pattern-regex: "urllib\\.(request\\.)?urlopen\\s*\\(\\s*[a-zA-Z_]"
+    message: "Potential SSRF - urllib.urlopen with variable URL"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  # SSRF - httpx library
+  - id: py-ssrf-httpx
+    pattern-regex: "httpx\\.(get|post|put|delete|head|patch|AsyncClient|Client)\\s*\\([^)]*\\b(url|uri|link|href)\\b"
+    message: "Potential SSRF - httpx request with user-controlled URL"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  # SSRF - aiohttp library
+  - id: py-ssrf-aiohttp
+    pattern-regex: "aiohttp\\.ClientSession\\(\\)|session\\.(get|post|put|delete)\\s*\\([^)]*\\b(url|uri)\\b"
+    message: "Potential SSRF - aiohttp request with user-controlled URL"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  # SSRF - Direct URL from request body/query
+  - id: py-ssrf-request-url
+    pattern-regex: "requests\\.(get|post)\\s*\\(\\s*(request\\.(json|form|args|data)\\[|data\\.)"
+    message: "SSRF - HTTP request URL taken directly from user input"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "API7:2023 Server-Side Request Forgery"
+      tags: [ssrf, capital]
+
+  # ============================================
+  # API4:2023 - Unrestricted Resource Consumption
+  # ============================================
+
+  # Missing rate limiting on FastAPI endpoint
+  - id: py-fastapi-no-rate-limit
+    pattern-regex: "@(app|router)\\.(get|post|put|delete|patch)\\s*\\([^)]*\\)\\s*\\n(async\\s+)?def\\s+\\w+\\s*\\("
+    message: "FastAPI endpoint without rate limiting - vulnerable to brute force/DoS (OWASP API4)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-770"
+      owasp: "API4:2023 Unrestricted Resource Consumption"
+      tags: [rate-limiting, dos]
+
+  # Missing rate limiting on Flask endpoint
+  - id: py-flask-no-rate-limit
+    pattern-regex: "@app\\.route\\s*\\([^)]*\\)\\s*\\ndef\\s+\\w+\\s*\\("
+    message: "Flask endpoint without rate limiting decorator - consider adding @limiter.limit()"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-770"
+      tags: [rate-limiting, dos]
+
+  # Login endpoint without rate limiting (high priority)
+  - id: py-login-no-rate-limit
+    pattern-regex: "@(app|router)\\.(post|get)\\s*\\(['\"].*/(login|signin|auth|authenticate)['\"]"
+    message: "Authentication endpoint may lack rate limiting - critical for brute force protection"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-307"
+      owasp: "API4:2023 Unrestricted Resource Consumption"
+      tags: [rate-limiting, auth, brute-force]
+
+  # Password reset without rate limiting
+  - id: py-password-reset-no-limit
+    pattern-regex: "@(app|router)\\.(post|get)\\s*\\(['\"].*/(password|reset|forgot)['\"]"
+    message: "Password reset endpoint - ensure rate limiting is applied"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-307"
+      tags: [rate-limiting, auth]
+
+  # ============================================
+  # API2:2023 - Broken Authentication / JWT Issues
+  # ============================================
+
+  # Weak JWT secret
+  - id: py-jwt-weak-secret
+    pattern-regex: "(jwt\\.encode|jwt\\.decode)\\s*\\([^)]*['\"]?(secret|password|key|123|test|dev)['\"]?"
+    message: "JWT using weak/hardcoded secret - use strong random secrets from environment"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      owasp: "API2:2023 Broken Authentication"
+      tags: [jwt, auth, secrets]
+
+  # JWT without algorithm verification
+  - id: py-jwt-no-algorithm
+    pattern-regex: "jwt\\.decode\\s*\\([^)]*algorithms\\s*=\\s*\\[\\s*\\]"
+    message: "JWT decode with empty algorithms list - vulnerable to algorithm confusion attacks"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+      tags: [jwt, auth]
+
+  # JWT with none algorithm allowed
+  - id: py-jwt-none-algorithm
+    pattern-regex: "jwt\\.decode\\s*\\([^)]*['\"]none['\"]"
+    message: "JWT allows 'none' algorithm - authentication bypass vulnerability"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+      owasp: "API2:2023 Broken Authentication"
+      tags: [jwt, auth, critical]
+
+  # JWT secret from code (not environment)
+  - id: py-jwt-hardcoded-secret
+    pattern-regex: "SECRET_KEY\\s*=\\s*['\"][^'\"]+['\"]"
+    message: "Hardcoded JWT/session secret key - use environment variables"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [jwt, secrets]
+
+  # Missing JWT verification
+  - id: py-jwt-no-verify
+    pattern-regex: "jwt\\.decode\\s*\\([^)]*verify\\s*=\\s*False"
+    message: "JWT signature verification disabled - authentication bypass"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-347"
+      owasp: "API2:2023 Broken Authentication"
+      tags: [jwt, auth, critical]
+
+  # Password comparison without timing-safe function
+  - id: py-password-compare-timing
+    pattern-regex: "(password|passwd|pwd)\\s*(==|!=)\\s*(request|data|user)"
+    message: "Password comparison may be vulnerable to timing attacks - use secrets.compare_digest()"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-208"
+      tags: [auth, timing-attack]
+
+  # ============================================
+  # API10:2023 - Unsafe Consumption of APIs
+  # ============================================
+
+  # Trusting external API response without validation
+  - id: py-unsafe-api-consumption
+    pattern-regex: "response\\.json\\(\\)\\s*\\[|json\\.loads\\(response\\.(text|content)\\)"
+    message: "External API response used without validation - verify and sanitize third-party data"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-20"
+      owasp: "API10:2023 Unsafe Consumption of APIs"
+      tags: [api-security, validation]
+
+  # External API call without error handling
+  - id: py-api-no-error-handling
+    pattern-regex: "requests\\.(get|post)\\([^)]+\\)\\.json\\(\\)"
+    message: "External API call without error handling - add try/except and status code checks"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-754"
+      tags: [api-security, error-handling]
+
+  # SSL verification disabled for external requests
+  - id: py-ssl-verify-disabled
+    pattern-regex: "requests\\.(get|post|put|delete)\\s*\\([^)]*verify\\s*=\\s*False"
+    message: "SSL verification disabled - vulnerable to MITM attacks on external API calls"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+      tags: [ssl, api-security]

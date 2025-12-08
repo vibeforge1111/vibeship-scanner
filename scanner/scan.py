@@ -441,6 +441,9 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
     print(f"Total rules loaded: {total_rules}", file=sys.stderr)
 
     # Opengrep uses similar syntax: opengrep scan -f rules --json target
+    # NOTE: We intentionally scan ALL directories including node_modules, vendor, etc.
+    # Excluding these could miss supply chain attacks, backdoored dependencies, or hidden malware.
+    # Users can filter results by path in the UI if needed.
     cmd = ['opengrep', 'scan', '--json'] + configs + [repo_dir]
 
     try:
