@@ -1796,7 +1796,7 @@
 
 	.btn-copy-sm {
 		position: absolute;
-		top: 0;
+		top: -0.25rem;
 		right: 0;
 		padding: 0.25rem 0.5rem;
 		font-family: 'JetBrains Mono', monospace;
