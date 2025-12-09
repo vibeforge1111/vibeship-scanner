@@ -78,12 +78,18 @@ rules:
   # ============================================
 
   - id: react-dangerously-set-inner-html
-    pattern: dangerouslySetInnerHTML={...}
-    message: React dangerouslySetInnerHTML - XSS risk without proper sanitization
+    pattern-either:
+      - pattern: <$ELEMENT dangerouslySetInnerHTML={...} />
+      - pattern: <$ELEMENT dangerouslySetInnerHTML={...} >...</$ELEMENT>
+      - pattern: <$ELEMENT ... dangerouslySetInnerHTML={...} />
+      - pattern: <$ELEMENT ... dangerouslySetInnerHTML={...} >...</$ELEMENT>
+    message: "React dangerouslySetInnerHTML - XSS risk if value is user-controlled. Use DOMPurify.sanitize() (CWE-79)"
     languages: [javascript, typescript]
     severity: ERROR
     metadata:
-      tags: [react, xss]
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      tags: [react, xss, dom-xss]
 
   - id: react-href-javascript
     pattern-regex: 'href\s*=\s*[{"\''"]javascript:'
@@ -1448,7 +1454,7 @@ rules:
   # XSS - Cross-Site Scripting
   # ============================================
 
-  - id: js-innerhtml-xss
+  - id: js-innerhtml-xss-v2
     patterns:
       - pattern: '$EL.innerHTML = $INPUT'
       - pattern: 'document.getElementById($ID).innerHTML = $INPUT'
@@ -1746,7 +1752,7 @@ rules:
   # CORS Misconfiguration
   # ============================================
 
-  - id: express-cors-wildcard
+  - id: express-cors-wildcard-v2
     patterns:
       - pattern: "cors({origin: '*'})"
       - pattern: "cors({origin: true})"
@@ -1757,7 +1763,7 @@ rules:
     metadata:
       tags: [express, cors]
 
-  - id: express-cors-credentials-wildcard
+  - id: express-cors-credentials-wildcard-v2
     pattern: "cors({origin: '*', credentials: true})"
     message: CORS wildcard with credentials - security misconfiguration
     languages: [javascript, typescript]
@@ -1861,7 +1867,7 @@ rules:
       tags: [core, injection, code]
 
   # Insecure Deserialization - node-serialize
-  - id: node-serialize-unserialize
+  - id: node-serialize-unserialize-v2
     patterns:
       - pattern: 'serialize.unserialize(...)'
       - pattern: 'nodeSerialize.unserialize(...)'
@@ -2253,7 +2259,7 @@ rules:
     metadata:
       tags: [session, fixation]
 
-  - id: cookie-no-httponly
+  - id: cookie-no-httponly-v2
     pattern: "res.cookie($NAME, $VALUE, {httpOnly: false})"
     message: Cookie without httpOnly flag - vulnerable to XSS theft
     languages: [javascript, typescript]
@@ -2261,7 +2267,7 @@ rules:
     metadata:
       tags: [cookie, session]
 
-  - id: cookie-no-secure
+  - id: cookie-no-secure-v2
     pattern: "res.cookie($NAME, $VALUE, {secure: false})"
     message: Cookie without secure flag - sent over HTTP
     languages: [javascript, typescript]
@@ -2390,7 +2396,7 @@ rules:
     metadata:
       tags: [ssti, rce]
 
-  - id: ejs-render-user-input
+  - id: ejs-render-user-input-v2
     patterns:
       - pattern: ejs.render($INPUT, ...)
       - pattern: ejs.compile($INPUT)
@@ -2463,7 +2469,7 @@ rules:
     metadata:
       tags: [auth, jwt]
 
-  - id: jwt-none-algorithm
+  - id: jwt-none-algorithm-v2
     patterns:
       - pattern: 'jwt.sign($PAYLOAD, $SECRET, {algorithm: "none"})'
       - pattern: '{algorithms: ["none"]}'
@@ -2692,7 +2698,7 @@ rules:
   # SQL Injection (Sequelize)
   # ============================================
 
-  - id: sequelize-raw-query
+  - id: sequelize-raw-query-v2
     patterns:
       - pattern: 'sequelize.query($QUERY)'
       - pattern: '$DB.query($QUERY)'
@@ -3100,7 +3106,7 @@ rules:
     metadata:
       tags: [a07, session]
 
-  - id: cookie-no-httponly
+  - id: cookie-no-httponly-v3
     patterns:
       - pattern: 'res.cookie($NAME, $VALUE)'
       - pattern: 'res.cookie($NAME, $VALUE, {secure: true})'
@@ -3248,7 +3254,7 @@ rules:
   # SQL Injection - Template Literals & Sequelize
   # ============================================
 
-  - id: sequelize-query-template-literal
+  - id: sequelize-query-template-literal-v2
     pattern-regex: "sequelize\\.query\\s*\\(\\s*`[^`]*\\$\\{"
     message: Sequelize query with template literal interpolation - SQL injection vulnerability
     languages: [javascript, typescript]
@@ -3296,7 +3302,7 @@ rules:
     metadata:
       tags: [core, sql-injection]
 
-  - id: sql-string-concat-injection
+  - id: sql-string-concat-injection-v2
     pattern-regex: "['\"]SELECT[^'\"]*['\"]\\s*\\+\\s*(req\\.|user|input|param)"
     message: SQL query with string concatenation of user input - SQL injection
     languages: [javascript, typescript]
@@ -3312,7 +3318,7 @@ rules:
     metadata:
       tags: [core, sql-injection]
 
-  - id: sequelize-literal-user-input
+  - id: sequelize-literal-user-input-v2
     pattern-regex: "Sequelize\\.literal\\s*\\(\\s*[`'\"][^`'\"]*\\$\\{[^}]*(req\\.|user)"
     message: Sequelize.literal with user input - SQL injection vulnerability
     languages: [javascript, typescript]
@@ -3333,7 +3339,7 @@ rules:
   # ============================================
 
   # DVNA: node-serialize RCE
-  - id: node-serialize-unserialize
+  - id: node-serialize-unserialize-v3
     patterns:
       - pattern: serialize.unserialize(...)
       - pattern: require("node-serialize").unserialize(...)
@@ -3358,7 +3364,7 @@ rules:
       tags: [injection, code-injection, dvna]
 
   # DVNA: libxmljs XXE
-  - id: libxmljs-xxe-noent
+  - id: libxmljs-xxe-noent-v2
     patterns:
       - pattern: 'libxmljs.parseXml($DATA, {noent: true})'
       - pattern: 'libxmljs.parseXmlString($DATA, {noent: true})'
@@ -3595,7 +3601,7 @@ rules:
   # User Enumeration
   # ============================================
 
-  - id: user-enumeration-error
+  - id: user-enumeration-error-v2
     patterns:
       - pattern: 'res.json({error: "User not found"})'
       - pattern: 'res.json({error: "Invalid username"})'
@@ -3827,7 +3833,7 @@ rules:
       cwe: "CWE-915"
       tags: [mass-assignment, injection]
 
-  - id: sequelize-mass-assignment
+  - id: sequelize-mass-assignment-v2
     patterns:
       - pattern: '$MODEL.create(req.body)'
       - pattern: '$MODEL.update(req.body, ...)'
@@ -3840,7 +3846,7 @@ rules:
       cwe: "CWE-915"
       tags: [mass-assignment, sequelize]
 
-  - id: mongoose-mass-assignment
+  - id: mongoose-mass-assignment-v2
     patterns:
       - pattern: '$MODEL.findByIdAndUpdate($ID, req.body)'
       - pattern: '$MODEL.updateOne($QUERY, req.body)'
@@ -3902,7 +3908,7 @@ rules:
       cwe: "CWE-22"
       tags: [path-traversal, file-download]
 
-  - id: path-traversal-concat
+  - id: path-traversal-concat-v2
     patterns:
       - pattern: 'path.join($BASE, req.params.$PATH)'
       - pattern: 'path.join($BASE, req.query.$PATH)'
@@ -3959,7 +3965,7 @@ rules:
       cwe: "CWE-200"
       tags: [data-exposure, api]
 
-  - id: password-in-response
+  - id: password-in-response-v2
     patterns:
       - pattern: 'res.json({..., password: $PWD, ...})'
       - pattern: 'res.send({..., password: $PWD, ...})'
@@ -4001,7 +4007,7 @@ rules:
   # Stored XSS Patterns
   # ============================================
 
-  - id: stored-xss-db-to-html
+  - id: stored-xss-db-to-html-v2
     patterns:
       - pattern: 'res.send($DATA.content)'
       - pattern: 'res.send($DATA.body)'
@@ -4039,7 +4045,7 @@ rules:
   # Insecure Randomness
   # ============================================
 
-  - id: math-random-security
+  - id: math-random-security-v2
     patterns:
       - pattern: 'Math.random()'
     message: Math.random() is not cryptographically secure - use crypto.randomBytes() for security
@@ -4061,7 +4067,7 @@ rules:
       cwe: "CWE-330"
       tags: [randomness, token]
 
-  - id: uuid-v1-predictable
+  - id: uuid-v1-predictable-v2
     patterns:
       - pattern: 'uuid.v1()'
       - pattern: "require('uuid').v1()"
@@ -4244,7 +4250,7 @@ rules:
       tags: [session, authentication]
 
   # Insecure session configuration
-  - id: express-session-insecure
+  - id: express-session-insecure-v2
     patterns:
       - pattern: 'session({..., secret: "...", ...})'
       - pattern: "session({..., secret: '...', ...})"
@@ -4360,7 +4366,7 @@ rules:
       tags: [transport-security]
 
   # Helmet not used
-  - id: express-no-helmet
+  - id: express-no-helmet-v2
     pattern-regex: "app\\.use\\s*\\(\\s*express\\."
     message: Express app detected - ensure helmet middleware is used for security headers
     languages: [javascript, typescript]
@@ -4408,7 +4414,7 @@ rules:
       tags: [error-handling, information-disclosure]
 
   # Mass assignment vulnerability
-  - id: mongoose-mass-assignment
+  - id: mongoose-mass-assignment-v3
     patterns:
       - pattern: 'new $MODEL(req.body)'
       - pattern: '$MODEL.create(req.body)'
@@ -4425,10 +4431,19 @@ rules:
       owasp: "A08:2021"
       tags: [mass-assignment]
 
-  # Regex DoS (ReDoS) patterns
+  # Regex DoS (ReDoS) patterns - requires actual regex syntax, not JSDoc comments
   - id: regex-redos-nested-quantifiers
-    pattern-regex: "new RegExp\\s*\\([^)]*[+*]\\s*[+*]|/[^/]*[+*]\\s*[+*][^/]*/"
+    pattern-regex: "new RegExp\\s*\\(['\"][^'\"]*[+*][^+*]*[+*]"
     message: Regex with nested quantifiers - potential ReDoS vulnerability
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, regex]
+
+  - id: regex-redos-literal
+    pattern-regex: "/[^/\\n]+[+*][)\\]][+*][^/]*/[gimsuvy]*"
+    message: Regex literal with nested quantifiers - potential ReDoS vulnerability
     languages: [javascript, typescript]
     severity: WARNING
     metadata:
@@ -5453,7 +5468,7 @@ rules:
       tags: [path-traversal, zip-slip]
 
   # File Upload - No type validation
-  - id: multer-no-filefilter
+  - id: multer-no-filefilter-v2
     pattern-regex: 'multer\s*\(\s*\{\s*(?!.*fileFilter)[^}]*\}\s*\)'
     message: Multer without fileFilter - add file type validation
     languages: [javascript, typescript]
@@ -5493,7 +5508,7 @@ rules:
       tags: [idor, authorization]
 
   # Error disclosure - Stack trace in response
-  - id: stack-trace-exposed
+  - id: stack-trace-exposed-v2
     patterns:
       - pattern: res.send($ERR.stack)
       - pattern: 'res.json({..., stack: $ERR.stack, ...})'
@@ -5674,7 +5689,7 @@ rules:
   # ============================================
 
   # node-serialize deserialization (CVE-2017-5941)
-  - id: node-serialize-unserialize
+  - id: node-serialize-unserialize-v4
     pattern-regex: "require\\s*\\(\\s*['\"]node-serialize['\"]\\s*\\)"
     message: "node-serialize library is vulnerable to RCE via deserialization - use safe alternatives"
     languages: [javascript, typescript]
@@ -5704,7 +5719,7 @@ rules:
       tags: [deserialization, rce]
 
   # JSON.parse with user input (potential prototype pollution via __proto__)
-  - id: json-parse-user-input
+  - id: json-parse-user-input-v2
     pattern: JSON.parse(req.$PARAM)
     message: "JSON.parse with user input - sanitize to prevent prototype pollution"
     languages: [javascript, typescript]
@@ -5723,7 +5738,7 @@ rules:
       tags: [deserialization]
 
   # YAML deserialization (yaml.load is unsafe)
-  - id: yaml-load-unsafe
+  - id: yaml-load-unsafe-v2
     pattern-regex: "yaml\\.load\\s*\\([^)]+\\)"
     message: "yaml.load is unsafe - use yaml.safeLoad or js-yaml with safe schema"
     languages: [javascript, typescript]
@@ -5823,7 +5838,7 @@ rules:
       tags: [misconfiguration, cors]
 
   # Missing security headers
-  - id: missing-helmet
+  - id: missing-helmet-v2
     pattern-regex: "app\\.use\\s*\\(\\s*express\\.static"
     message: "Express static serving without helmet - consider adding security headers"
     languages: [javascript, typescript]
@@ -5862,7 +5877,7 @@ rules:
       tags: [misconfiguration, tls]
 
   # Session config without secure flags
-  - id: session-insecure-cookie
+  - id: session-insecure-cookie-v2
     pattern-regex: "session\\s*\\([^)]*(?:secure\\s*:\\s*false|httpOnly\\s*:\\s*false)"
     message: "Insecure session cookie configuration - enable secure and httpOnly"
     languages: [javascript, typescript]
@@ -5961,7 +5976,7 @@ rules:
       tags: [obscurity, debug]
 
   # Metrics endpoints without auth
-  - id: metrics-endpoint-exposed
+  - id: metrics-endpoint-exposed-v2
     pattern-regex: "(?:app|router)\\.get\\s*\\([^)]*['\"]/?(?:metrics|health|status|info)['\"]"
     message: "Metrics/status endpoint - ensure proper access control"
     languages: [javascript, typescript]
@@ -5970,7 +5985,7 @@ rules:
       tags: [obscurity, information-disclosure]
 
   # Swagger/API docs in production
-  - id: swagger-docs-exposed
+  - id: swagger-docs-exposed-v2
     pattern-regex: "(?:swagger-ui|openapi|api-docs).*(?:app|router)\\.(?:use|get)"
     message: "API documentation exposed - consider restricting access in production"
     languages: [javascript, typescript]
@@ -6220,7 +6235,7 @@ rules:
       tags: [redirect, injection]
 
   # Window.location from user input
-  - id: window-location-user-input
+  - id: window-location-user-input-v2
     pattern-regex: "(?:window\\.)?location(?:\\.href)?\\s*=\\s*(?:req\\.|params\\.|query\\.|input|url|redirect|next|return)"
     message: "Setting window.location from potentially user-controlled value - open redirect risk"
     languages: [javascript, typescript]
@@ -6353,7 +6368,7 @@ rules:
   # ============================================
 
   # Axios with user-controlled URL
-  - id: axios-ssrf-user-url
+  - id: axios-ssrf-user-url-v2
     patterns:
       - pattern: axios.get($URL)
       - pattern: axios.post($URL, ...)
@@ -6368,7 +6383,7 @@ rules:
       tags: [ssrf]
 
   # fetch with user URL
-  - id: fetch-ssrf-user-url
+  - id: fetch-ssrf-user-url-v2
     patterns:
       - pattern: fetch($URL)
       - pattern: fetch($URL, ...)
@@ -6523,7 +6538,7 @@ rules:
       tags: [nosql, injection]
 
   # Stored XSS - user input stored then rendered
-  - id: stored-xss-profile-field
+  - id: stored-xss-profile-field-v2
     pattern-regex: "(firstName|lastName|name|displayName|bio|description)\\s*[=:]\\s*req\\.(body|query)\\."
     message: "User input stored in profile field - sanitize before storing to prevent stored XSS"
     languages: [javascript, typescript]
@@ -6626,7 +6641,7 @@ rules:
       tags: [password, crypto]
 
   # Plaintext password comparison
-  - id: plaintext-password-compare
+  - id: plaintext-password-compare-v2
     pattern-regex: "(?:password|pwd)\\s*===?\\s*(?:user\\.password|dbPassword|storedPassword|fromDB)|return\\s+fromDB\\s*===?\\s*fromUser"
     message: "Plaintext password comparison - use bcrypt.compareSync for secure comparison"
     languages: [javascript, typescript]
