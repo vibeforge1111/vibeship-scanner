@@ -146,19 +146,64 @@ The test procedure contains **30 vulnerable repositories** organized by priority
 - **Tier 3 (Specialized)**: API security, SSRF, XXE, GraphQL, CI/CD, secrets
 - **Tier 4 (Additional)**: Mobile, .NET, Kubernetes, CTF tools
 
-**Workflow for each repository**:
-1. Scan the repo
-2. Document findings in SECURITY_TEST_PROCEDURE.md
-3. Identify gaps (vulnerabilities not detected)
-4. Add new Semgrep rules for detectable gaps
-5. Update SECURITY_COMMONS.md with new patterns
-6. Re-scan to verify improvements
-7. Commit and deploy
+**Iterative Improvement Workflow (MUST FOLLOW)**:
+
+For each vulnerable repository, iterate until all key vulnerabilities are detected:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. INITIAL SCAN                                            │
+│     - Trigger scan using the scan procedure above           │
+│     - Save scan ID for comparison                           │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  2. GAP ANALYSIS                                            │
+│     - Review the repo's README/docs for known vulns         │
+│     - Check what OWASP Top 10 vulns the repo claims to have │
+│     - Compare against our scan findings                     │
+│     - List missing detections (gaps)                        │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  3. RULESET UPGRADE                                         │
+│     - Create new Opengrep rules for gaps                    │
+│     - Validate rules: opengrep --validate -f rule.yaml      │
+│     - Deploy: cd scanner && fly deploy --remote-only        │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  4. RE-SCAN & DIFF                                          │
+│     - Trigger new scan on same repo (new scan ID)           │
+│     - Use the diff tool to compare old vs new findings      │
+│     - Verify new rules caught the gaps                      │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  5. ITERATE OR COMPLETE                                     │
+│     - If gaps remain → go back to step 2                    │
+│     - If all key vulns detected → document and commit       │
+│     - Update SECURITY_TEST_PROCEDURE.md with results        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Gap Analysis Checklist**:
+- [ ] SQL Injection (if repo has database)
+- [ ] XSS (if repo has web UI)
+- [ ] Command Injection (if repo runs shell commands)
+- [ ] Path Traversal (if repo handles file paths)
+- [ ] SSRF (if repo makes HTTP requests)
+- [ ] Insecure Deserialization (if repo deserializes data)
+- [ ] Hardcoded Secrets (API keys, passwords)
+- [ ] Broken Authentication (weak session handling)
+- [ ] Security Misconfiguration (debug mode, CORS)
+- [ ] Vulnerable Dependencies (outdated packages)
 
 **Current Progress** (track in SECURITY_TEST_PROCEDURE.md):
 - ✅ digininja/DVWA - 18 high findings
 - ✅ OWASP/crAPI - 137 findings
-- ⏳ 28 more repos pending
+- ✅ OWASP/NodeGoat - 353 findings
+- ⏳ 27 more repos pending
 
 ## Semgrep Rule Guidelines
 
