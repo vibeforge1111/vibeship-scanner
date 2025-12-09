@@ -9,6 +9,7 @@ import json
 import tempfile
 import threading
 from datetime import datetime
+import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -59,7 +60,18 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
     start_time = datetime.now()
 
     try:
-        update_scan(supabase, scan_id, {'status': 'scanning', 'started_at': start_time.isoformat()})
+        # Create scan row if it doesn't exist (upsert)
+        target_url_hash = hashlib.sha256(repo_url.encode()).hexdigest()[:16]
+        supabase.table('scans').upsert({
+            'id': scan_id,
+            'target_url': repo_url,
+            'target_url_hash': target_url_hash,
+            'target_branch': branch or 'main',
+            'target_type': 'github',
+            'status': 'scanning',
+            'started_at': start_time.isoformat()
+        }, on_conflict='id').execute()
+
         update_progress(supabase, scan_id, 'init', 'Initializing scan...', 5)
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -111,12 +123,19 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
                         percent = 40 + (completed * 12)  # 40, 52, 64, 76
                         update_progress(supabase, scan_id, 'sast', f'{scanner_name} complete ({completed}/4)...', percent)
                     except Exception as e:
-                        print(f"Scanner {scanner_name} error: {e}")
+                        print(f"Scanner {scanner_name} error: {e}", flush=True)
+
+            print(f"[Scan] All scanners complete. Combining findings...", flush=True)
+            print(f"[Scan] Opengrep: {len(opengrep_findings)}, Trivy: {len(trivy_findings)}, Gitleaks: {len(gitleaks_findings)}, RetireJS: {len(retirejs_findings)}", flush=True)
 
             all_findings = opengrep_findings + trivy_findings + gitleaks_findings + retirejs_findings
+            print(f"[Scan] Total raw findings: {len(all_findings)}", flush=True)
+
             all_findings = deduplicate_findings(all_findings)
+            print(f"[Scan] After dedup: {len(all_findings)}", flush=True)
 
             update_progress(supabase, scan_id, 'score', 'Calculating score...', 95)
+            print(f"[Scan] Calculating score...", flush=True)
             score = calculate_score(all_findings)
             grade = calculate_grade(score)
             ship_status = calculate_ship_status(score)
@@ -128,6 +147,10 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
             for f in all_findings:
                 sev = f.get('severity', 'info')
                 counts[sev] = counts.get(sev, 0) + 1
+
+            print(f"[Scan] Score={score}, Grade={grade}, Duration={duration_ms}ms, Findings={len(all_findings)}", flush=True)
+            print(f"[Scan] Counts: {counts}", flush=True)
+            print(f"[Scan] Updating database with final results...", flush=True)
 
             update_scan(supabase, scan_id, {
                 'status': 'complete',
@@ -142,14 +165,22 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
                 'completed_at': end_time.isoformat()
             })
 
+            print(f"[Scan] Database updated successfully!", flush=True)
+
             update_progress(supabase, scan_id, 'complete', 'Scan complete!', 100)
+            print(f"[Scan] SCAN COMPLETE for {scan_id}", flush=True)
 
     except Exception as e:
-        print(f"Scan error: {e}")
-        update_scan(supabase, scan_id, {
-            'status': 'failed',
-            'error_message': str(e)
-        })
+        import traceback
+        print(f"Scan error: {e}", flush=True)
+        print(f"Traceback: {traceback.format_exc()}", flush=True)
+        try:
+            update_scan(supabase, scan_id, {
+                'status': 'failed',
+                'error_message': str(e)
+            })
+        except Exception as e2:
+            print(f"Failed to update scan status: {e2}", flush=True)
 
 @app.route('/health', methods=['GET'])
 def health():
