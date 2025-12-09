@@ -4059,3 +4059,28 @@ rules:
     metadata:
       cwe: "CWE-329"
       tags: [cryptography, iv]
+
+  # ============================================
+  # Reflected User Input (XSS/Data Exposure)
+  # ============================================
+
+  # User input reflected in JSON/dict response via f-string
+  - id: py-reflected-input-json-fstring
+    pattern-regex: 'return\s*\{[^}]*f"[^"]*\{[a-zA-Z_][a-zA-Z0-9_]*\}'
+    message: "User input reflected in response - potential XSS if rendered as HTML (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, reflected-input, api]
+
+  # User input from .get() reflected in response
+  - id: py-reflected-input-get-method
+    pattern-regex: '\.get\s*\(\s*"[a-zA-Z_]+"'
+    message: "Input from .get() may be reflected - sanitize before output (CWE-79)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, reflected-input]
