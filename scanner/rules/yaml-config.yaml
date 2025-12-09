@@ -455,3 +455,63 @@ rules:
       tags: [kubernetes, secrets]
     pattern-regex: "env:\\s*\\n\\s*-\\s*name:\\s*(PASSWORD|SECRET|API_KEY|TOKEN)\\s*\\n\\s*value:"
 
+  # ============================================
+  # OpenAPI/Swagger Security
+  # ============================================
+
+  - id: openapi-no-security-schemes
+    message: >-
+      OpenAPI spec has no securitySchemes defined. APIs should require authentication (OWASP API2).
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-306: Missing Authentication"
+      owasp: "API2:2023 Broken Authentication"
+      tags: [openapi, swagger, auth]
+    pattern-regex: "openapi:\\s*[\"']?3\\.[0-9]"
+
+  - id: openapi-no-security-requirement
+    message: >-
+      OpenAPI paths without security requirement. Endpoints may be unauthenticated (OWASP API2).
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-306: Missing Authentication"
+      owasp: "API2:2023 Broken Authentication"
+      tags: [openapi, swagger, auth]
+    pattern-regex: "paths:\\s*\\n\\s*/[a-zA-Z]"
+
+  - id: swagger-v2-detected
+    message: >-
+      Swagger 2.0 detected - consider upgrading to OpenAPI 3.x for better security features.
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      tags: [swagger, openapi]
+    pattern-regex: "swagger:\\s*[\"']?2\\."
+
+  - id: openapi-server-http
+    message: >-
+      OpenAPI server URL uses HTTP instead of HTTPS. Use HTTPS for production APIs.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-319: Cleartext Transmission"
+      tags: [openapi, swagger, tls]
+    pattern-regex: "servers:\\s*\\n\\s*-\\s*url:\\s*[\"']?http://"
+
+  - id: openapi-no-rate-limiting
+    message: >-
+      OpenAPI spec - consider documenting rate limiting with x-ratelimit extension (OWASP API4).
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      owasp: "API4:2023 Unrestricted Resource Consumption"
+      tags: [openapi, swagger, ratelimit]
+    pattern-regex: "openapi:\\s*[\"']?3\\.[0-9]"
+

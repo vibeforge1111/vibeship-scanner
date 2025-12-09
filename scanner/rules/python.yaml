@@ -3760,3 +3760,82 @@ rules:
     severity: INFO
     metadata:
       cwe: "CWE-79"
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  # Hardcoded admin credentials in INSERT
+  - id: py-hardcoded-admin-insert
+    pattern-regex: "INSERT\\s+INTO\\s+\\w*[Uu]sers?\\w*\\s+VALUES\\s*\\([^)]*admin"
+    message: "Hardcoded admin credentials in INSERT statement (CWE-798)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  # Hardcoded password in INSERT
+  - id: py-hardcoded-password-insert
+    pattern-regex: "INSERT\\s+INTO\\s+\\w*[Uu]sers?\\w*.*VALUES"
+    message: "User data inserted directly - ensure no hardcoded credentials (CWE-798)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+
+  # ============================================
+  # SQL Injection - INSERT statements
+  # ============================================
+
+  # SQL injection in INSERT with f-string
+  - id: py-sqli-fstring-insert
+    pattern-regex: 'f"INSERT\\s+INTO'
+    message: "SQL injection - f-string in INSERT query (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # SQL injection in INSERT with format
+  - id: py-sqli-format-insert
+    pattern-regex: '"INSERT\\s+INTO[^"]*"\\s*\\.format\\s*\\('
+    message: "SQL injection - format() in INSERT query (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # ============================================
+  # Network Exposure
+  # ============================================
+
+  # Flask/app binding to all interfaces
+  - id: py-flask-bind-all-interfaces
+    pattern-regex: "\\.run\\s*\\([^)]*host\\s*=\\s*[\"']0\\.0\\.0\\.0[\"']"
+    message: "App binding to 0.0.0.0 exposes to all network interfaces (CWE-668)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-668"
+
+  # ============================================
+  # Host Header - Additional patterns
+  # ============================================
+
+  # Dictionary access to Host header
+  - id: py-host-header-dict-access
+    pattern-regex: "headers\\s*\\[\\s*[\"']Host[\"']\\s*\\]"
+    message: "Host header accessed from dictionary - potential header injection (CWE-644)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-644"
+
+  # Response containing headers variable
+  - id: py-header-reflected-response
+    pattern-regex: "return\\s+.*headers"
+    message: "Headers variable in return - verify Host header not reflected (CWE-644)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-644"
