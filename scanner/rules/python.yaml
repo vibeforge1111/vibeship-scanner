@@ -3774,6 +3774,36 @@ rules:
     metadata:
       cwe: "CWE-22"
 
+  # Direct import rmtree (from shutil import rmtree)
+  - id: py-rmtree-direct
+    pattern: rmtree($PATH)
+    message: "rmtree() deletes directory recursively - ensure path is validated (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+
+  # Direct import remove (from os import remove)
+  - id: py-remove-direct
+    pattern: remove($PATH)
+    message: "remove() deletes file - ensure path is validated (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+
+  # SQL injection with unquoted f-string variable
+  - id: py-sql-fstring-unquoted
+    pattern-regex: "f['\"][^'\"]*=\\s*\\{[^}]+\\}[^'\"]*['\"]"
+    message: "SQL with unquoted f-string variable - SQL injection risk (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
   # Unsafe symlink following
   - id: py-os-path-realpath-check
     pattern-regex: "os\\.path\\.realpath\\s*\\([^)]*\\)"
@@ -4090,6 +4120,40 @@ rules:
   - id: py-nosqli-mongodb-find-var
     pattern: $COLLECTION.find($QUERY)
     message: "MongoDB find() with variable - ensure query is validated to prevent NoSQL injection (CWE-943)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb]
+
+  # Request JSON passed to function (potential NoSQL injection)
+  - id: py-nosqli-request-json-to-function
+    patterns:
+      - pattern: |
+          $QUERY = await $REQUEST.json()
+          ...
+          $FUNC($QUERY)
+    message: "Request JSON passed to function - validate before database operations (CWE-943)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, input-validation]
+
+  # delete_one with variable (NoSQL)
+  - id: py-nosqli-mongodb-delete-var
+    pattern: $COLLECTION.delete_one($QUERY)
+    message: "MongoDB delete_one() with variable - validate query to prevent injection (CWE-943)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb]
+
+  # update_one with variable (NoSQL)
+  - id: py-nosqli-mongodb-update-var
+    pattern: $COLLECTION.update_one($QUERY, ...)
+    message: "MongoDB update_one() with variable - validate query to prevent injection (CWE-943)"
     languages: [python]
     severity: WARNING
     metadata:
