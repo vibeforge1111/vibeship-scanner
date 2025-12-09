@@ -6427,3 +6427,142 @@ rules:
     metadata:
       cwe: "CWE-918"
       tags: [ssrf, dns-rebinding]
+
+  # ============================================
+  # NodeGoat-Specific Vulnerabilities
+  # ============================================
+
+  # SSRF - URL constructed from query params then passed to HTTP client
+  - id: ssrf-url-from-query-concat
+    pattern-regex: "(?:const|let|var)\\s+\\w+\\s*=\\s*req\\.query\\.\\w+\\s*\\+\\s*req\\.query"
+    message: "URL constructed from concatenated query parameters - SSRF vulnerability"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      tags: [ssrf, nodegoat]
+
+  # SSRF - needle.get with variable (indirect)
+  - id: ssrf-needle-variable
+    patterns:
+      - pattern: |
+          $URL = ...
+          ...
+          needle.get($URL, ...)
+      - pattern: |
+          $URL = ...
+          ...
+          needle($METHOD, $URL, ...)
+    message: "needle HTTP request with variable URL - verify URL is not user-controlled (SSRF)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  # IDOR - destructured params passed to DAO
+  - id: idor-destructured-params
+    pattern-regex: "const\\s*\\{\\s*(?:userId|id|user_id|accountId)\\s*\\}\\s*=\\s*req\\.params"
+    message: "User ID from URL params - verify authorization check exists (IDOR risk)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [idor, authz, nodegoat]
+
+  # IDOR - req.params.userId passed to function
+  - id: idor-userid-param-to-dao
+    patterns:
+      - pattern: '$DAO.getByUserId(req.params.$ID, ...)'
+      - pattern: '$DAO.findByUserId(req.params.$ID, ...)'
+      - pattern: '$DAO.getByUserIdAndThreshold(req.params.$ID, ...)'
+    message: "DAO query using URL param - IDOR vulnerability if no auth check"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [idor, authz]
+
+  # IDOR - variable from req.params used in query
+  - id: idor-param-variable-query
+    pattern: |
+        $VAR = req.params.$PARAM
+        ...
+        $DAO.$METHOD($VAR, ...)
+    message: "URL parameter passed to data access - ensure authorization is verified (IDOR)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, authz]
+
+  # MongoDB NoSQL Injection - operator injection in auth
+  - id: nosql-auth-operator-injection
+    patterns:
+      - pattern: '$COLL.findOne({username: $USER, password: $PASS})'
+      - pattern: '$COLL.find({username: $USER, password: $PASS})'
+    message: "MongoDB auth query - vulnerable to operator injection ({$gt:''}) without input validation"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021 Injection"
+      tags: [nosql, injection, auth]
+
+  # MongoDB - $where with any variable
+  - id: nosql-where-injection
+    pattern-regex: "\\$where\\s*:\\s*[`\"'].*\\$\\{|\\$where\\s*:\\s*[^\"']"
+    message: "MongoDB $where with dynamic content - JavaScript injection vulnerability"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql, injection]
+
+  # Stored XSS - user input stored then rendered
+  - id: stored-xss-profile-field
+    pattern-regex: "(firstName|lastName|name|displayName|bio|description)\\s*[=:]\\s*req\\.(body|query)\\."
+    message: "User input stored in profile field - sanitize before storing to prevent stored XSS"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      tags: [xss, stored]
+
+  # Express res.write with variable - XSS sink
+  - id: express-res-write-xss
+    patterns:
+      - pattern: 'res.write($VAR)'
+      - pattern: 'res.write(`${$VAR}`)'
+      - pattern: 'res.write($A + $B)'
+    message: "res.write with variable - ensure content is escaped to prevent XSS"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, express]
+
+  # Missing function-level access control
+  - id: express-route-no-admin-check
+    pattern-regex: "app\\.(get|post|put|delete)\\(['\"]/(admin|benefits|settings|users)['\"],\\s*isLoggedIn\\s*,"
+    message: "Admin route with only login check - add role/permission verification"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-285"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [authz, access-control]
+
+  # Session fixation - login without regenerate
+  - id: session-fixation-login
+    pattern-regex: "req\\.session\\.userId\\s*=|req\\.session\\.user\\s*=(?!.*regenerate)"
+    message: "Session ID assignment without regeneration - session fixation vulnerability"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-384"
+      tags: [session, auth]

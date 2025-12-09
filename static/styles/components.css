@@ -76,6 +76,12 @@
     color: var(--text-primary);
 }
 
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 .navbar-x-btn {
     display: flex;
     align-items: center;
@@ -91,6 +97,76 @@
     border-color: var(--text-primary);
     background: var(--text-primary);
     color: var(--bg-primary);
+}
+
+.navbar-github-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.navbar-github-btn:hover {
+    border-color: var(--green-dim);
+    color: var(--text-primary);
+}
+
+.navbar-github-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.navbar-github-btn svg {
+    fill: currentColor;
+}
+
+.navbar-auth-status {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.navbar-auth-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(0, 196, 154, 0.1);
+    color: var(--green);
+    padding: 0.4rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.navbar-auth-badge svg {
+    fill: currentColor;
+}
+
+.navbar-signout {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 0.4rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.navbar-signout:hover {
+    border-color: var(--text-tertiary);
+    color: var(--text-primary);
+}
+
+.navbar-auth-loading {
+    color: var(--text-tertiary);
+    font-size: 0.8rem;
 }
 
 /* Theme Toggle */
