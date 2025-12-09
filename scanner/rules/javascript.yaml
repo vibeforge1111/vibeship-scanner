@@ -6677,3 +6677,123 @@ rules:
     metadata:
       cwe: "CWE-754"
       tags: [error-handling]
+
+  # ==============================================
+  # DOM XSS - React dangerouslySetInnerHTML (regex)
+  # ==============================================
+
+  - id: react-dangerous-innerhtml-regex
+    pattern-regex: 'dangerouslySetInnerHTML\s*=\s*\{'
+    message: "React dangerouslySetInnerHTML - XSS risk if data is user-controlled (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [react, xss, dom-xss]
+
+  - id: dom-xss-location-hash
+    pattern-regex: 'document\.location\.hash'
+    message: "Reading document.location.hash - DOM XSS source if rendered without sanitization (CWE-79)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [dom-xss]
+
+  - id: dom-xss-location-search
+    pattern-regex: 'document\.location\.search|location\.search'
+    message: "Reading location.search - DOM XSS source if rendered without sanitization (CWE-79)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [dom-xss]
+
+  - id: dom-xss-location-href
+    pattern-regex: '(document\.)?location\.href\s*[^=]|window\.location\.href'
+    message: "Reading location.href - DOM XSS source if rendered without sanitization (CWE-79)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [dom-xss]
+
+  - id: dom-xss-url-params
+    pattern-regex: 'new URLSearchParams\s*\(|URLSearchParams\s*\('
+    message: "URLSearchParams usage - ensure query data is sanitized before rendering (CWE-79)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [dom-xss]
+
+  - id: dom-xss-inner-html-pattern
+    pattern-regex: '__html\s*:'
+    message: "React __html property - XSS risk if assigned user-controlled data (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [react, xss, dom-xss]
+
+  - id: dom-xss-decode-uri
+    pattern-regex: 'decodeURIComponent\s*\(\s*(document\.location|location|window\.location)'
+    message: "Decoding URL component from location - DOM XSS source (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [dom-xss]
+
+  - id: dom-xss-write-document
+    pattern-regex: 'document\.writeln?\s*\('
+    message: "document.write/writeln - DOM XSS sink (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [dom-xss]
+
+  # ==============================================
+  # DOM XSS - jQuery sinks
+  # ==============================================
+
+  - id: dom-xss-jquery-html
+    pattern-regex: '\$\([^)]+\)\.html\s*\('
+    message: "jQuery .html() - DOM XSS sink if data is user-controlled (CWE-79)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [jquery, xss, dom-xss]
+
+  - id: dom-xss-jquery-append
+    pattern-regex: '\$\([^)]+\)\.(append|prepend|before|after)\s*\('
+    message: "jQuery DOM manipulation - XSS sink if data is user-controlled (CWE-79)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [jquery, xss, dom-xss]
+
+  # ==============================================
+  # Client-side template injection
+  # ==============================================
+
+  - id: client-template-angular-bypass
+    pattern-regex: '\$sce\.trustAsHtml\s*\(|bypassSecurityTrustHtml\s*\('
+    message: "Angular HTML trust bypass - XSS if data is user-controlled (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [angular, xss]
+
+  - id: client-template-vue-v-html
+    pattern-regex: 'v-html\s*='
+    message: "Vue v-html directive - XSS risk if data is user-controlled (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [vue, xss]
