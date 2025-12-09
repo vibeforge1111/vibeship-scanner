@@ -6812,3 +6812,68 @@ rules:
     metadata:
       cwe: "CWE-79"
       tags: [vue, xss]
+
+  # ============================================
+  # Client-Side Storage - Sensitive Data
+  # ============================================
+
+  # Storing tokens in localStorage (XSS accessible)
+  - id: localstorage-token
+    patterns:
+      - pattern-either:
+          - pattern: 'localStorage.setItem("token", ...)'
+          - pattern: "localStorage.setItem('token', ...)"
+          - pattern: 'localStorage.setItem("accessToken", ...)'
+          - pattern: 'localStorage.setItem("access_token", ...)'
+          - pattern: 'localStorage.setItem("authToken", ...)'
+          - pattern: 'localStorage.setItem("jwt", ...)'
+    message: "Token stored in localStorage - vulnerable to XSS. Use httpOnly cookies instead (CWE-922)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-922"
+      owasp: "A05:2021 Security Misconfiguration"
+      tags: [storage, auth, xss]
+
+  # Storing passwords in localStorage
+  - id: localstorage-password
+    patterns:
+      - pattern-either:
+          - pattern: 'localStorage.setItem("password", ...)'
+          - pattern: "localStorage.setItem('password', ...)"
+          - pattern: 'localStorage.setItem(..., $USER.password)'
+    message: "Password stored in localStorage - never store passwords client-side (CWE-922)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-922"
+      tags: [storage, password]
+
+  # Storing API keys in localStorage
+  - id: localstorage-apikey
+    patterns:
+      - pattern-either:
+          - pattern: 'localStorage.setItem("apiKey", ...)'
+          - pattern: "localStorage.setItem('apiKey', ...)"
+          - pattern: 'localStorage.setItem("api_key", ...)'
+          - pattern: 'localStorage.setItem("secretKey", ...)'
+    message: "API key stored in localStorage - use server-side proxy instead (CWE-922)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-922"
+      tags: [storage, secrets]
+
+  # sessionStorage for sensitive data
+  - id: sessionstorage-sensitive
+    patterns:
+      - pattern-either:
+          - pattern: 'sessionStorage.setItem("token", ...)'
+          - pattern: 'sessionStorage.setItem("password", ...)'
+          - pattern: 'sessionStorage.setItem("apiKey", ...)'
+    message: "Sensitive data in sessionStorage - still accessible to XSS (CWE-922)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-922"
+      tags: [storage, xss]

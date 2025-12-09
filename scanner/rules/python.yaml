@@ -2457,6 +2457,32 @@ rules:
       owasp: "API4:2023 Unrestricted Resource Consumption"
       tags: [upload, dos]
 
+  # File upload - filename used directly (path traversal)
+  - id: py-upload-filename-direct
+    patterns:
+      - pattern-either:
+          - pattern: $FILE.filename
+          - pattern: file.filename
+          - pattern: upload.filename
+    message: "File upload filename used directly - use secure_filename() to prevent path traversal (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [upload, path-traversal]
+
+  # Flask file.save without secure_filename
+  - id: py-flask-file-save-unsafe
+    pattern: $FILE.save($PATH)
+    message: "File save - ensure filename is sanitized with secure_filename() (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [flask, upload, path-traversal]
+
   # ============================================
   # API9:2023 - Improper Asset Management
   # ============================================
