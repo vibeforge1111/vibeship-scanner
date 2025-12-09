@@ -6566,3 +6566,114 @@ rules:
     metadata:
       cwe: "CWE-384"
       tags: [session, auth]
+
+  # Stored XSS - user input inserted into database then rendered
+  - id: stored-xss-memo-insert
+    pattern-regex: "\\.(insert|save|create)\\s*\\(\\s*\\{[^}]*(?:memo|comment|message|content|body|text|note|post|review)\\s*[,:]"
+    message: "User content stored in database - ensure output encoding when rendering to prevent stored XSS"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      tags: [xss, stored]
+
+  # Stored XSS - req.body directly to insert
+  - id: stored-xss-body-to-db
+    pattern-regex: "\\.(insert|insertOne|insertMany|save|create)\\s*\\(\\s*req\\.body"
+    message: "Request body inserted directly to database - sanitize input and encode output to prevent stored XSS"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      tags: [xss, stored, mass-assignment]
+
+  # IDOR - session userId used directly in query without verification
+  - id: idor-session-userid-query
+    patterns:
+      - pattern: |
+          const { userId } = req.session;
+          ...
+          $DAO.$METHOD(parseInt(userId), ...)
+    message: "User ID from session used in query - verify user owns the requested resource"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, authz]
+
+  # IDOR - URL param to database query
+  - id: idor-url-param-query
+    pattern-regex: "\\.(findOne|find|findById|getBy|updateOne|deleteOne)\\s*\\(\\s*\\{[^}]*:\\s*(?:req\\.params|parseInt\\s*\\(\\s*req\\.params)"
+    message: "URL parameter used directly in database query - verify authorization before access"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [idor, authz]
+
+  # Plaintext password storage
+  - id: plaintext-password-storage
+    pattern-regex: "password\\s*[,:]\\s*(?:password|req\\.body\\.password|user\\.password)\\s*[,}]"
+    message: "Password stored without hashing - use bcrypt or similar before storage"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      owasp: "A02:2021 Cryptographic Failures"
+      tags: [password, crypto]
+
+  # Plaintext password comparison
+  - id: plaintext-password-compare
+    pattern-regex: "(?:password|pwd)\\s*===?\\s*(?:user\\.password|dbPassword|storedPassword|fromDB)|return\\s+fromDB\\s*===?\\s*fromUser"
+    message: "Plaintext password comparison - use bcrypt.compareSync for secure comparison"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      owasp: "A02:2021 Cryptographic Failures"
+      tags: [password, crypto]
+
+  # Mass assignment - spreading req.body into object
+  - id: mass-assignment-spread
+    pattern-regex: "\\{\\s*\\.\\.\\.req\\.body|Object\\.assign\\s*\\([^,]+,\\s*req\\.body\\)"
+    message: "Mass assignment vulnerability - spreading req.body allows attackers to set arbitrary fields"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      tags: [mass-assignment]
+
+  # Unsafe user enumeration - different errors for user not found vs wrong password
+  - id: user-enumeration-error-message
+    pattern-regex: "(?:User|Account|Email).*(?:not found|does not exist|invalid)|(?:Invalid|Wrong|Incorrect)\\s+password"
+    message: "User enumeration via error message - use generic 'Invalid credentials' message"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-204"
+      owasp: "A07:2021 Identification and Authentication Failures"
+      tags: [auth, enumeration]
+
+  # Render user input without encoding
+  - id: xss-render-user-input
+    pattern-regex: "res\\.render\\s*\\([^,]+,\\s*\\{[^}]*(?:firstName|lastName|userName|name|title|message|memo|comment)\\s*[,:]"
+    message: "User-controlled data passed to render - ensure template properly escapes output"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss]
+
+  # MongoDB callback ignoring first param (error)
+  - id: mongodb-callback-ignores-error
+    pattern-regex: "\\.(find|findOne|insert|update|delete|aggregate)\\s*\\([^)]+,\\s*\\(\\s*_\\s*,"
+    message: "MongoDB callback ignores error parameter - handle errors properly"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-754"
+      tags: [error-handling]
