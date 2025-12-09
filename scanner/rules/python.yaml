@@ -124,6 +124,127 @@ rules:
     languages: [python]
     severity: ERROR
 
+  - id: py-sql-db-execute-fstring
+    pattern: $DB.execute(f"...")
+    message: "SQL query with f-string - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-await-execute-fstring
+    pattern: await $DB.execute(f"...")
+    message: "Async SQL query with f-string - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-execute-var
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $QUERY = f"..."
+              ...
+              $DB.execute($QUERY, ...)
+          - pattern: |
+              $QUERY = f"..."
+              ...
+              await $DB.execute($QUERY, ...)
+          - pattern: |
+              $QUERY = f"..."
+              ...
+              $CURSOR.execute($QUERY, ...)
+    message: "SQL query built with f-string then executed - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-aiosqlite-fstring
+    pattern-regex: 'await\s+\w+\.execute\s*\(\s*f["\''"]'
+    message: "aiosqlite execute with f-string - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-fstring-select-single
+    pattern-regex: "f'[^']*SELECT[^']*\\{[^}]+\\}[^']*'"
+    message: "SQL SELECT with f-string interpolation - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-fstring-select-double
+    pattern-regex: 'f"[^"]*SELECT[^"]*\{[^}]+\}[^"]*"'
+    message: "SQL SELECT with f-string interpolation - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-fstring-insert-single
+    pattern-regex: "f'[^']*INSERT[^']*\\{[^}]+\\}[^']*'"
+    message: "SQL INSERT with f-string interpolation - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-fstring-insert-double
+    pattern-regex: 'f"[^"]*INSERT[^"]*\{[^}]+\}[^"]*"'
+    message: "SQL INSERT with f-string interpolation - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-fstring-delete-single
+    pattern-regex: "f'[^']*DELETE[^']*\\{[^}]+\\}[^']*'"
+    message: "SQL DELETE with f-string interpolation - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-fstring-delete-double
+    pattern-regex: 'f"[^"]*DELETE[^"]*\{[^}]+\}[^"]*"'
+    message: "SQL DELETE with f-string interpolation - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-fstring-update-single
+    pattern-regex: "f'[^']*UPDATE[^']*\\{[^}]+\\}[^']*'"
+    message: "SQL UPDATE with f-string interpolation - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sql-fstring-update-double
+    pattern-regex: 'f"[^"]*UPDATE[^"]*\{[^}]+\}[^"]*"'
+    message: "SQL UPDATE with f-string interpolation - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
   - id: py-sqlalchemy-text
     pattern: text($QUERY)
     message: SQLAlchemy text() - ensure parameterized queries
@@ -155,6 +276,22 @@ rules:
     message: MD5 is a weak hash function - use SHA-256 or better
     languages: [python]
     severity: WARNING
+
+  - id: py-md5-direct
+    pattern: md5(...)
+    message: "MD5 is a weak hash - use SHA-256 or bcrypt for passwords (CWE-328)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-328"
+
+  - id: py-md5-hexdigest
+    pattern-regex: 'md5\(.*\)\.hexdigest\(\)'
+    message: "MD5 hexdigest - weak hash, use SHA-256 or bcrypt for passwords (CWE-328)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-328"
 
   - id: py-sha1-hashlib
     pattern: hashlib.sha1(...)
@@ -3926,6 +4063,58 @@ rules:
   # ============================================
   # NoSQL Injection - MongoDB/PyMongo
   # ============================================
+
+  # FastAPI/Flask endpoint passing request JSON directly to MongoDB
+  - id: py-nosqli-request-json-to-find
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $QUERY = await $REQUEST.json()
+              ...
+              $COLLECTION.find($QUERY)
+          - pattern: |
+              $QUERY = await $REQUEST.json()
+              ...
+              $COLLECTION.find_one($QUERY)
+          - pattern: $COLLECTION.find(await $REQUEST.json())
+          - pattern: $COLLECTION.find_one(await $REQUEST.json())
+    message: "NoSQL injection - passing request JSON directly to MongoDB find() allows operator injection (CWE-943)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021 Injection"
+      tags: [nosql-injection, mongodb, fastapi]
+
+  # MongoDB find with user-controlled dict variable
+  - id: py-nosqli-mongodb-find-var
+    pattern: $COLLECTION.find($QUERY)
+    message: "MongoDB find() with variable - ensure query is validated to prevent NoSQL injection (CWE-943)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb]
+
+  # MontyDB (MongoDB-compatible) find with variable
+  - id: py-nosqli-montydb-find
+    pattern-regex: 'db_client\.[a-zA-Z_]+\.[a-zA-Z_]+\.find\s*\(\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\)'
+    message: "MontyDB find() with variable - validate query to prevent NoSQL injection (CWE-943)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, montydb]
+
+  # Generic MongoDB operators in user input (regex detection)
+  - id: py-nosqli-operator-in-query
+    pattern-regex: '\{\s*["\x27]\$(?:gt|gte|lt|lte|ne|in|nin|or|and|not|exists|type|regex|where)["\x27]'
+    message: "MongoDB query operators detected - validate user input to prevent NoSQL injection (CWE-943)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb]
 
   # MongoDB find with $where operator (allows JS execution)
   - id: py-nosqli-mongodb-where
