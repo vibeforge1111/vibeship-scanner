@@ -5,9 +5,64 @@ This file provides guidance to Claude Code when working with this repository.
 ## Project Overview
 
 Vibeship Scanner is a security scanning tool that analyzes GitHub repositories for vulnerabilities using:
-- **Semgrep** - Static Application Security Testing (SAST)
+- **Opengrep** - Static Application Security Testing (SAST) - open-source Semgrep fork
 - **Trivy** - Dependency vulnerability scanning
 - **Gitleaks** - Secret detection
+
+## IMPORTANT: How to Trigger Scans
+
+**ALWAYS use the deployed Vibeship Scanner API for scans** - never run local semgrep/opengrep commands directly.
+
+### Scan Procedure (MUST FOLLOW)
+
+```bash
+# 1. Generate a UUID for the scan
+SCAN_ID=$(python -c "import uuid; print(uuid.uuid4())")
+
+# 2. Trigger the scan via curl
+curl -X POST https://scanner-empty-field-5676.fly.dev/scan \
+  -H "Content-Type: application/json" \
+  -d "{\"scanId\": \"$SCAN_ID\", \"repoUrl\": \"https://github.com/OWNER/REPO\"}"
+
+# 3. Provide the scan URLs to the user
+echo "View at: http://localhost:5173/scan/$SCAN_ID"
+echo "View at: https://vibeship.co/scan/$SCAN_ID"
+```
+
+### Quick One-Liner Template
+```bash
+SCAN_ID=$(python -c "import uuid; print(uuid.uuid4())") && \
+echo "Scan ID: $SCAN_ID" && \
+echo "View at: http://localhost:5173/scan/$SCAN_ID" && \
+echo "View at: https://vibeship.co/scan/$SCAN_ID" && \
+curl -X POST https://scanner-empty-field-5676.fly.dev/scan \
+  -H "Content-Type: application/json" \
+  -d "{\"scanId\": \"$SCAN_ID\", \"repoUrl\": \"https://github.com/OWNER/REPO\"}"
+```
+
+### View Results At
+- **Local dev**: `http://localhost:5173/scan/<scanId>`
+- **Production**: `https://vibeship.co/scan/<scanId>`
+
+### Why This Matters
+1. Results are saved to Supabase and viewable in the web UI
+2. All four scanners run (Opengrep + Trivy + Gitleaks + npm audit)
+3. Consistent rule versions from deployed scanner
+4. Scan progress is tracked in real-time
+
+### Monitoring Scans
+```bash
+# Watch scanner logs in real-time
+fly logs -a scanner-empty-field-5676
+
+# Get recent logs (no streaming)
+fly logs -a scanner-empty-field-5676 --no-tail | tail -100
+```
+
+### Common Issues
+- **Scan stuck in "scanning"**: Check Fly.io logs for errors
+- **Database errors**: Ensure scan row is created with proper schema (target_url, target_url_hash, target_branch)
+- **Deployment kills running scans**: Fly.io restarts terminate in-progress scans - wait for completion before deploying
 
 ## Architecture
 
