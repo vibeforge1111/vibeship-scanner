@@ -1003,6 +1003,63 @@ rules:
     metadata:
       tags: [core, injection]
 
+  # Drizzle sql template with string interpolation
+  - id: js-drizzle-sql-interpolation
+    pattern-regex: "sql`[^`]*\\$\\{(?!sql\\.)[^}]+\\}[^`]*`"
+    message: "Drizzle SQL with direct interpolation - use sql.placeholder() for user input (CWE-89)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [drizzle, sql-injection]
+
+  # Prisma $queryRaw with template literal containing variables
+  - id: js-prisma-queryraw-interpolation
+    pattern-regex: "\\$queryRaw`[^`]*\\$\\{[^}]+\\}[^`]*`"
+    message: "Prisma raw query with interpolation - use Prisma.sql for parameters (CWE-89)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [prisma, sql-injection]
+
+  # Kysely raw SQL
+  - id: js-kysely-raw-sql
+    patterns:
+      - pattern-either:
+          - pattern: 'sql.raw($QUERY)'
+          - pattern: 'db.raw($QUERY)'
+    message: "Kysely raw SQL - ensure user input is parameterized (CWE-89)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-89"
+      tags: [kysely, sql-injection]
+
+  # TypeORM query with string concatenation
+  - id: js-typeorm-query-unsafe
+    patterns:
+      - pattern-either:
+          - pattern: '$REPO.query($QUERY + $VAR)'
+          - pattern: '$REPO.query(`${$VAR}...`)'
+          - pattern: 'getRepository($MODEL).query($QUERY + $VAR)'
+    message: "TypeORM query with concatenation - use parameterized queries (CWE-89)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [typeorm, sql-injection]
+
+  # Sequelize literal with user input
+  - id: js-sequelize-literal-unsafe
+    pattern: Sequelize.literal($QUERY)
+    message: "Sequelize.literal - ensure no user input in SQL string (CWE-89)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-89"
+      tags: [sequelize, sql-injection]
+
   # ============================================
   # Core: SSRF
   # ============================================
@@ -6877,3 +6934,119 @@ rules:
     metadata:
       cwe: "CWE-922"
       tags: [storage, xss]
+
+  # ============================================
+  # Environment Variable Exposure
+  # ============================================
+
+  # Logging environment variables
+  - id: env-var-logged
+    patterns:
+      - pattern-either:
+          - pattern: 'console.log(process.env)'
+          - pattern: 'console.log(process.env.$VAR)'
+          - pattern: 'console.log(..., process.env, ...)'
+          - pattern: 'console.log(..., process.env.$VAR, ...)'
+    message: "Environment variable logged - may expose secrets in logs (CWE-532)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, secrets]
+
+  # Returning env vars in API response
+  - id: env-var-in-response
+    patterns:
+      - pattern-either:
+          - pattern: 'res.json({..., env: process.env, ...})'
+          - pattern: 'res.send(process.env)'
+          - pattern: 'res.json(process.env)'
+          - pattern: 'return { ..., env: process.env, ... }'
+          - pattern: 'return process.env'
+    message: "Environment variables in response - leaks secrets to client (CWE-200)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-200"
+      tags: [api, secrets]
+
+  # Next.js exposing server env to client
+  - id: nextjs-env-exposure
+    pattern-regex: "NEXT_PUBLIC_.*(?:SECRET|KEY|PASSWORD|TOKEN|API_KEY)"
+    message: "Sensitive value in NEXT_PUBLIC_ - exposed to browser (CWE-200)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-200"
+      tags: [nextjs, secrets]
+
+  # ============================================
+  # Prototype Pollution
+  # ============================================
+
+  # Object.assign with user input
+  - id: prototype-pollution-object-assign
+    patterns:
+      - pattern-either:
+          - pattern: 'Object.assign($TARGET, req.body)'
+          - pattern: 'Object.assign($TARGET, req.query)'
+          - pattern: 'Object.assign($TARGET, req.params)'
+          - pattern: 'Object.assign({}, req.body)'
+          - pattern: 'Object.assign($TARGET, $USER_INPUT)'
+    message: "Object.assign with user input - prototype pollution risk (CWE-1321)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1321"
+      owasp: "A03:2021 Injection"
+      tags: [prototype-pollution]
+
+  # Spread operator with user input into object
+  - id: prototype-pollution-spread
+    patterns:
+      - pattern-either:
+          - pattern: '{ ...req.body }'
+          - pattern: '{ ...$OBJ, ...req.body }'
+          - pattern: '{ ...req.body, ...$OBJ }'
+    message: "Spread operator with user input - validate/sanitize to prevent prototype pollution (CWE-1321)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution]
+
+  # Lodash merge/defaultsDeep (known vulnerable)
+  - id: prototype-pollution-lodash-merge
+    patterns:
+      - pattern-either:
+          - pattern: '_.merge($TARGET, req.body)'
+          - pattern: '_.merge($TARGET, req.query)'
+          - pattern: '_.defaultsDeep($TARGET, req.body)'
+          - pattern: 'merge($TARGET, req.body)'
+          - pattern: 'defaultsDeep($TARGET, req.body)'
+    message: "Lodash merge with user input - prototype pollution vulnerability (CWE-1321)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution, lodash]
+
+  # Direct __proto__ access
+  - id: prototype-pollution-proto-access
+    pattern-regex: "\\[\\s*['\"]__proto__['\"]\\s*\\]|\\.__proto__"
+    message: "__proto__ access detected - potential prototype pollution (CWE-1321)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution]
+
+  # constructor.prototype access
+  - id: prototype-pollution-constructor
+    pattern-regex: "\\[\\s*['\"]constructor['\"]\\s*\\]\\s*\\[\\s*['\"]prototype['\"]\\s*\\]"
+    message: "constructor.prototype access - prototype pollution risk (CWE-1321)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution]
