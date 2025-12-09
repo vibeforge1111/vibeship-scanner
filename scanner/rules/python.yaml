@@ -3242,7 +3242,7 @@ rules:
 
   # String formatting then execute - multiline pattern
   - id: py-sqli-format-then-execute
-    pattern-regex: '\\.format\\s*\\([^)]*\\)[\\s\\S]{0,100}\\.(execute|executemany|executescript)\\s*\\('
+    pattern-regex: '\.format\s*\(.*?\)[\s\S]{0,100}\.(execute|executemany|executescript)\s*\('
     message: "SQL string with .format() passed to execute - SQL injection (CWE-89)"
     languages: [python]
     severity: ERROR
@@ -3798,7 +3798,7 @@ rules:
 
   # SQL injection in INSERT with format
   - id: py-sqli-format-insert
-    pattern-regex: '"INSERT\\s+INTO[^"]*"\\s*\\.format\\s*\\('
+    pattern-regex: 'INSERT\s+INTO.*?\.format\s*\('
     message: "SQL injection - format() in INSERT query (CWE-89)"
     languages: [python]
     severity: ERROR
