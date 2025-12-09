@@ -3839,3 +3839,56 @@ rules:
     severity: INFO
     metadata:
       cwe: "CWE-644"
+
+  # Generic Host header access pattern (any variable name)
+  - id: py-host-header-generic-access
+    pattern-regex: "\\[\\s*[\"']Host[\"']\\s*\\]"
+    message: "Host header accessed - potential header injection if used in response/redirect (CWE-644)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-644"
+
+  # Host value used in HTML/link
+  - id: py-host-in-html-link
+    pattern-regex: "<a\\s+href\\s*=\\s*[\"']?\\{?\\$?[a-zA-Z_]"
+    message: "Variable in HTML href attribute - verify not user/header controlled (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+
+  # ============================================
+  # SQL Injection - More INSERT patterns
+  # ============================================
+
+  # f-string INSERT with VALUES
+  - id: py-sqli-fstring-insert-values
+    pattern-regex: "f\"INSERT\\s+INTO\\s+\\w+\\s+VALUES\\s*\\("
+    message: "SQL injection - f-string in INSERT VALUES (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # ============================================
+  # Hardcoded Credentials - Additional patterns
+  # ============================================
+
+  # Hardcoded username/password in SQL
+  - id: py-hardcoded-creds-in-sql
+    pattern-regex: "VALUES\\s*\\(\\s*[a-zA-Z_]+\\s*,\\s*[a-zA-Z_]+\\s*\\)"
+    message: "Possible hardcoded credentials in SQL VALUES - use parameters (CWE-798)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+
+  # Literal admin in code
+  - id: py-hardcoded-admin-literal
+    pattern-regex: "[\"']admin[\"']\\s*,\\s*[\"']admin[\"']"
+    message: "Hardcoded admin:admin credentials detected (CWE-798)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
