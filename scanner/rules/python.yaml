@@ -3542,3 +3542,122 @@ rules:
     severity: WARNING
     metadata:
       cwe: "CWE-338"
+
+  # ============================================
+  # Additional Security Patterns
+  # ============================================
+
+  # Insecure tempfile usage
+  - id: py-tempfile-mktemp
+    pattern: tempfile.mktemp(...)
+    message: "tempfile.mktemp() is insecure - use tempfile.mkstemp() or NamedTemporaryFile (CWE-377)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-377"
+
+  # World-writable permissions
+  - id: py-chmod-world-writable
+    pattern-regex: "os\\.chmod\\s*\\([^,]+,\\s*0o?777\\s*\\)"
+    message: "Setting world-writable permissions (777) is insecure (CWE-732)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-732"
+
+  - id: py-chmod-world-writable-decimal
+    pattern-regex: "os\\.chmod\\s*\\([^,]+,\\s*511\\s*\\)"
+    message: "Setting world-writable permissions (511 = 0o777) is insecure (CWE-732)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-732"
+
+  # Assert for security checks - disabled in optimized mode
+  - id: py-assert-security-check
+    pattern-regex: "assert\\s+(?:request\\.|user\\.|session\\.|auth\\.|token|password|credential|permission|role|admin)"
+    message: "Using assert for security checks - assert is stripped with python -O (CWE-617)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-617"
+
+  # Unsafe zipfile extraction
+  - id: py-zipfile-extractall
+    pattern: $ZIP.extractall(...)
+    message: "zipfile.extractall() - verify no path traversal in archive (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  - id: py-zipfile-extract
+    pattern: $ZIP.extract($MEMBER, ...)
+    message: "zipfile.extract() - verify member path has no traversal (CWE-22)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-22"
+
+  # Unsafe shutil operations with user input
+  - id: py-shutil-rmtree
+    pattern: shutil.rmtree($PATH)
+    message: "shutil.rmtree() - ensure path is not user-controlled (CWE-22)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-22"
+
+  # Unsafe os.remove/unlink
+  - id: py-os-remove
+    pattern: os.remove($PATH)
+    message: "os.remove() - ensure path is not user-controlled (CWE-22)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-22"
+
+  # Unsafe symlink following
+  - id: py-os-path-realpath-check
+    pattern-regex: "os\\.path\\.realpath\\s*\\([^)]*\\)"
+    message: "Verify symlink target is within expected directory to prevent traversal"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-59"
+
+  # Binding to all interfaces
+  - id: py-socket-bind-all-interfaces
+    pattern-regex: "\\.bind\\s*\\(\\s*\\(['\"]0\\.0\\.0\\.0['\"]"
+    message: "Binding to 0.0.0.0 exposes service to all network interfaces (CWE-668)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-668"
+
+  # Empty password/secret
+  - id: py-empty-password
+    pattern-regex: "(?:password|secret|api_key|token)\\s*=\\s*['\"]['\"]"
+    message: "Empty password/secret string detected (CWE-258)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-258"
+
+  # Disabled certificate verification in requests
+  - id: py-requests-cert-false
+    pattern: requests.$METHOD(..., cert=False, ...)
+    message: "Disabled certificate verification - vulnerable to MITM (CWE-295)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-295"
+
+  # Unsafe YAML Loader explicit
+  - id: py-yaml-fullloader
+    pattern: yaml.load($DATA, Loader=yaml.FullLoader)
+    message: "yaml.FullLoader can still execute Python objects in some versions - use SafeLoader"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-502"
