@@ -3661,3 +3661,102 @@ rules:
     severity: INFO
     metadata:
       cwe: "CWE-502"
+
+  # ============================================
+  # Server-Side Template Injection (SSTI) - Enhanced
+  # ============================================
+
+  # Jinja2 Template with string concatenation - CRITICAL
+  - id: py-ssti-jinja2-string-concat
+    pattern-regex: "Template\\s*\\(\\s*[\"'][^\"']*[\"']\\s*\\+\\s*[a-zA-Z_]"
+    message: "Jinja2 Template with string concatenation - SSTI vulnerability (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      owasp: "A03:2021-Injection"
+
+  # Template constructor with variable
+  - id: py-ssti-template-variable
+    pattern-regex: "Template\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\)"
+    message: "Jinja2 Template with variable - SSTI vulnerability if user-controlled (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  # Template with format string
+  - id: py-ssti-template-format
+    pattern-regex: "Template\\s*\\(\\s*[\"'][^\"']*[\"']\\s*\\.\\s*format\\s*\\("
+    message: "Jinja2 Template with format string - SSTI vulnerability (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  # Template with f-string
+  - id: py-ssti-template-fstring
+    pattern-regex: "Template\\s*\\(\\s*f[\"']"
+    message: "Jinja2 Template with f-string - SSTI vulnerability (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  # Mako Template with variable
+  - id: py-ssti-mako-variable
+    pattern-regex: "MakoTemplate\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\)"
+    message: "Mako Template with variable - SSTI vulnerability if user-controlled (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  # Tornado template execute with user input
+  - id: py-ssti-tornado-template
+    pattern-regex: "tornado\\.template\\.Template\\s*\\(\\s*[a-zA-Z_]"
+    message: "Tornado Template with variable - SSTI vulnerability if user-controlled (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  # Django mark_safe with user input
+  - id: py-ssti-django-mark-safe
+    pattern: mark_safe($INPUT)
+    message: "Django mark_safe() - XSS if user input is passed (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+
+  # ============================================
+  # Host Header Injection
+  # ============================================
+
+  # Request headers in response
+  - id: py-host-header-injection
+    pattern-regex: "request\\.headers\\s*\\[\\s*[\"']Host[\"']\\s*\\]"
+    message: "Host header used directly - potential host header injection (CWE-644)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-644"
+
+  # Request host in redirect or link
+  - id: py-host-header-redirect
+    pattern-regex: "request\\.host"
+    message: "request.host used - verify not in redirects or links (CWE-601)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-601"
+
+  # Flask request.url used in response
+  - id: py-request-url-reflected
+    pattern-regex: "request\\.url\\s"
+    message: "request.url used - verify not reflected unsanitized (CWE-79)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
