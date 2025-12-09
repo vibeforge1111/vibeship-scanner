@@ -1843,6 +1843,16 @@ rules:
       cwe: "CWE-918"
       tags: [ssrf]
 
+  # SSRF - requests.get/post with url= keyword argument and any variable
+  - id: py-ssrf-requests-url-kwarg
+    pattern-regex: 'requests\.(get|post|put|delete|head|patch)\s*\([^)]*url\s*=\s*[a-zA-Z_][a-zA-Z0-9_]*'
+    message: "SSRF - requests with url= keyword argument pointing to variable (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf, rfi]
+
   # SSRF - httpx library
   - id: py-ssrf-httpx
     pattern-regex: "httpx\\.(get|post|put|delete|head|patch|AsyncClient|Client)\\s*\\([^)]*\\b(url|uri|link|href)\\b"
