@@ -983,7 +983,6 @@
 											<details class="fix-details">
 												<summary class="fix-summary">
 													<span>How to fix</span>
-													<span class="fix-meta">{fixTemplate.estimatedTime}</span>
 												</summary>
 												<div class="fix-content">
 													<div class="fix-comparison">
