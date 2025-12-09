@@ -2794,6 +2794,14 @@ rules:
     metadata:
       cwe: "CWE-1333"
 
+  - id: py-redos-re-subn
+    pattern: re.subn($PATTERN, $REPL, $INPUT)
+    message: "Regex subn - ensure pattern is not vulnerable to ReDoS (CWE-1333)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
   - id: py-redos-re-fullmatch
     pattern: re.fullmatch($PATTERN, $INPUT)
     message: "Regex fullmatch - ensure pattern is not vulnerable to ReDoS (CWE-1333)"
@@ -2813,6 +2821,54 @@ rules:
   - id: py-redos-compiled-search
     pattern: $PATTERN.search($INPUT)
     message: "Compiled regex search - ensure pattern is not vulnerable to ReDoS"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-compiled-findall
+    pattern: $PATTERN.findall($INPUT)
+    message: "Compiled regex findall - ensure pattern is not vulnerable to ReDoS"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-compiled-finditer
+    pattern: $PATTERN.finditer($INPUT)
+    message: "Compiled regex finditer - ensure pattern is not vulnerable to ReDoS"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-compiled-fullmatch
+    pattern: $PATTERN.fullmatch($INPUT)
+    message: "Compiled regex fullmatch - ensure pattern is not vulnerable to ReDoS"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-compiled-sub
+    pattern: $PATTERN.sub($REPL, $INPUT)
+    message: "Compiled regex sub - ensure pattern is not vulnerable to ReDoS"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-compiled-subn
+    pattern: $PATTERN.subn($REPL, $INPUT)
+    message: "Compiled regex subn - ensure pattern is not vulnerable to ReDoS"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-compiled-split
+    pattern: $PATTERN.split($INPUT)
+    message: "Compiled regex split - ensure pattern is not vulnerable to ReDoS"
     languages: [python]
     severity: INFO
     metadata:
