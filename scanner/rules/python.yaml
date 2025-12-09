@@ -356,6 +356,16 @@ rules:
     languages: [python]
     severity: WARNING
 
+
+  # Flask debug=True with additional arguments (host, port, etc)
+  - id: py-flask-debug-run-args
+    pattern-regex: '\.run\s*\([^)]*debug\s*=\s*True'
+    message: "Flask/Connexion app running with debug=True - critical security issue in production (CWE-489)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-489"
+      tags: [flask, debug, production]
   - id: py-flask-secret-key-hardcoded
     pattern: 'app.secret_key = "..."'
     message: Hardcoded Flask secret key - use environment variables
@@ -3902,3 +3912,13 @@ rules:
     severity: ERROR
     metadata:
       cwe: "CWE-798"
+  # Hardcoded credentials in SQL INSERT (e.g., admin/admin)
+  - id: py-hardcoded-creds-sql-insert
+    pattern-regex: 'INSERT\s+INTO\s+\w*USER\w*.*VALUES\s*\([^)]*(?:admin|password|secret|root|test)[^)]*\)'
+    message: "Hardcoded credentials in SQL INSERT statement - remove or use environment variables (CWE-798)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [hardcoded-credentials, sql]
+
