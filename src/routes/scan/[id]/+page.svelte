@@ -966,119 +966,60 @@
 
 								{#if isExpanded}
 									<div class="finding-details">
-										{#if cweInfo}
-											<div class="cwe-info-box">
-												<div class="cwe-header">
-													<div class="cwe-title">
-														<a href={cweInfo.references[0]} target="_blank" rel="noopener noreferrer" class="cwe-link">
-															{cweInfo.id}
-														</a>
-														<span class="cwe-name">{cweInfo.name}</span>
-													</div>
-													{#if cweInfo.cvssBase}
-														<div class="cvss-badge" style="background: {getCVSSColor(cweInfo.cvssBase)}">
-															<span class="cvss-score">{cweInfo.cvssBase}</span>
-															<span class="cvss-label">{getCVSSLabel(cweInfo.cvssBase)}</span>
-														</div>
-													{/if}
-												</div>
-												<div class="cwe-details">
-													<div class="cwe-detail">
-														<span class="cwe-detail-label">Category</span>
-														<span class="cwe-detail-value">{cweInfo.category}</span>
-													</div>
-													<div class="cwe-detail">
-														<span class="cwe-detail-label">Exploitability</span>
-														<span class="cwe-detail-value exploit-{cweInfo.exploitability}">{cweInfo.exploitability}</span>
-													</div>
-												</div>
-												<p class="cwe-impact"><strong>Impact:</strong> {cweInfo.impact}</p>
-											</div>
-										{/if}
-
-											<div class="explanation-box">
-												<p class="explanation-text">
-													{getExplanation(finding)}
-												</p>
-											</div>
+										<p class="finding-explanation">{getExplanation(finding)}</p>
 
 										{#if finding.location?.file}
 											<div class="finding-location">
-												<span class="location-label">Location:</span>
 												<code>{finding.location.file}{finding.location.line ? `:${finding.location.line}` : ''}</code>
 											</div>
 										{/if}
 
 										{#if finding.snippet?.code && finding.snippet.code.trim() && finding.snippet.code.length > 10 && !isUnhelpfulSnippet(finding.snippet.code)}
-											<div class="code-snippet">
-												<div class="snippet-header">
-													<span>Vulnerable Code</span>
-												</div>
-												<pre><code>{finding.snippet.code}</code></pre>
-											</div>
+											<pre class="finding-code"><code>{finding.snippet.code}</code></pre>
 										{/if}
 
 										{#if getFixTemplate(finding)}
 											{@const fixTemplate = getFixTemplate(finding)}
-											<div class="fix-template">
-												<div class="fix-template-header">
-													<div class="fix-template-title">
-														<span class="fix-icon">🔧</span>
-														<span>{fixTemplate.title}</span>
-													</div>
-													<div class="fix-meta">
-														<span class="fix-time">⏱ {fixTemplate.estimatedTime}</span>
-														<span class="fix-difficulty" style="color: {getDifficultyColor(fixTemplate.difficulty)}">
-															{fixTemplate.difficulty.toUpperCase()}
-														</span>
-													</div>
-												</div>
-												<p class="fix-description">{fixTemplate.description}</p>
-
-												<div class="code-comparison">
-													<div class="code-block before">
-														<div class="code-block-header">
-															<span class="code-label-bad">Before (Vulnerable)</span>
+											<details class="fix-details">
+												<summary class="fix-summary">
+													<span>How to fix</span>
+													<span class="fix-meta">{fixTemplate.estimatedTime}</span>
+												</summary>
+												<div class="fix-content">
+													<div class="fix-comparison">
+														<div class="fix-before">
+															<span class="fix-label-bad">Before</span>
+															<pre><code>{fixTemplate.before}</code></pre>
 														</div>
-														<pre><code>{fixTemplate.before}</code></pre>
-													</div>
-													<div class="code-block after">
-														<div class="code-block-header">
-															<span class="code-label-good">After (Safe)</span>
-															<button class="btn-copy" onclick={() => copyFix(fixTemplate.after)}>
-																{copied === 'fix' ? 'Copied!' : 'Copy'}
+														<div class="fix-after">
+															<span class="fix-label-good">After</span>
+															<button class="btn-copy-sm" onclick={() => copyFix(fixTemplate.after)}>
+																{copied === 'fix' ? '✓' : 'Copy'}
 															</button>
+															<pre><code>{fixTemplate.after}</code></pre>
 														</div>
-														<pre><code>{fixTemplate.after}</code></pre>
 													</div>
+													{#if cweInfo?.references?.[0]}
+														<a href={cweInfo.references[0]} target="_blank" rel="noopener noreferrer" class="fix-learn-more">
+															Learn more →
+														</a>
+													{/if}
 												</div>
-
-												<p class="fix-explanation">{fixTemplate.explanation}</p>
-
-												{#if fixTemplate.references?.length}
-													<div class="fix-references">
-														<span class="ref-label">Learn more:</span>
-														{#each fixTemplate.references as ref}
-															<a href={ref} target="_blank" rel="noopener noreferrer">
-																{new URL(ref).hostname.replace('www.', '')}
-															</a>
-														{/each}
-													</div>
-												{/if}
-											</div>
+											</details>
 										{:else if finding.fix?.available && finding.fix?.template}
-											<div class="finding-fix">
-												<div class="fix-header">
-													<span class="fix-label">Suggested Fix</span>
-													<button class="btn-copy" onclick={() => copyFix(finding.fix.template)}>
-														{copied === 'fix' ? 'Copied!' : 'Copy'}
+											<details class="fix-details">
+												<summary class="fix-summary">
+													<span>Suggested fix</span>
+												</summary>
+												<div class="fix-content">
+													<pre><code>{finding.fix.template}</code></pre>
+													<button class="btn-copy-sm" onclick={() => copyFix(finding.fix.template)}>
+														{copied === 'fix' ? '✓' : 'Copy'}
 													</button>
 												</div>
-												<pre class="fix-code"><code>{finding.fix.template}</code></pre>
-											</div>
+											</details>
 										{/if}
-
-										</div>
+									</div>
 								{/if}
 							</div>
 						{/each}
@@ -1715,61 +1656,173 @@
 	}
 
 	.finding-details {
-		padding: 0 1.5rem 1.5rem;
+		padding: 1rem 1.5rem 1.5rem;
 		border-top: 1px solid var(--border);
-		margin-top: 0;
-		animation: slideDown 0.2s ease;
+		animation: slideDown 0.15s ease;
 	}
 
 	@keyframes slideDown {
-		from {
-			opacity: 0;
-			transform: translateY(-10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
+		from { opacity: 0; transform: translateY(-5px); }
+		to { opacity: 1; transform: translateY(0); }
 	}
 
-	.explanation-box {
-		margin: 1.5rem 0;
-		padding: 1rem;
-		border-left: 3px solid var(--border);
-		background: var(--bg-secondary);
+	.finding-explanation {
+		font-size: 0.9rem;
+		line-height: 1.6;
+		color: var(--text-secondary);
+		margin: 0 0 1rem 0;
 	}
 
-	.explanation-box.founder {
-		border-left-color: var(--orange);
+	.finding-location {
+		margin: 0.75rem 0;
 	}
 
-	.explanation-box.developer {
-		border-left-color: var(--blue);
-	}
-
-	.explanation-header {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 0.75rem;
-	}
-
-	.explanation-icon {
-		font-size: 1rem;
-	}
-
-	.explanation-label {
-		font-size: 0.75rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+	.finding-location code {
+		font-size: 0.8rem;
+		background: var(--bg-tertiary);
+		padding: 0.25rem 0.5rem;
 		color: var(--text-secondary);
 	}
 
-	.explanation-text {
-		font-size: 0.9rem;
-		line-height: 1.7;
+	.finding-code {
+		margin: 0.75rem 0;
+		padding: 0.75rem 1rem;
+		background: var(--bg-inverse);
+		color: var(--text-inverse);
+		font-size: 0.8rem;
+		line-height: 1.5;
+		overflow-x: auto;
+		border-left: 3px solid var(--red);
+	}
+
+	.finding-code code {
+		background: transparent;
+		padding: 0;
+	}
+
+	.fix-details {
+		margin-top: 1rem;
+		border: 1px solid var(--border);
+	}
+
+	.fix-summary {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.75rem 1rem;
+		background: var(--bg-tertiary);
+		cursor: pointer;
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: var(--green-dim);
+		list-style: none;
+	}
+
+	.fix-summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.fix-summary::before {
+		content: '▶';
+		font-size: 0.6rem;
+		margin-right: 0.5rem;
+		transition: transform 0.15s;
+	}
+
+	.fix-details[open] .fix-summary::before {
+		transform: rotate(90deg);
+	}
+
+	.fix-summary:hover {
+		background: var(--bg-secondary);
+	}
+
+	.fix-meta {
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.7rem;
+		color: var(--text-tertiary);
+	}
+
+	.fix-content {
+		padding: 1rem;
+		background: var(--bg-secondary);
+	}
+
+	.fix-comparison {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.5rem;
+	}
+
+	@media (max-width: 700px) {
+		.fix-comparison {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.fix-before, .fix-after {
+		position: relative;
+	}
+
+	.fix-label-bad, .fix-label-good {
+		display: block;
+		font-size: 0.65rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-bottom: 0.25rem;
+	}
+
+	.fix-label-bad { color: var(--red); }
+	.fix-label-good { color: var(--green); }
+
+	.fix-before pre, .fix-after pre {
+		margin: 0;
+		padding: 0.75rem;
+		background: var(--bg-inverse);
+		color: var(--text-inverse);
+		font-size: 0.75rem;
+		line-height: 1.4;
+		overflow-x: auto;
+		max-height: 200px;
+	}
+
+	.fix-before pre { border-left: 2px solid var(--red); }
+	.fix-after pre { border-left: 2px solid var(--green); }
+
+	.fix-before pre code, .fix-after pre code {
+		background: transparent;
+		padding: 0;
+	}
+
+	.btn-copy-sm {
+		position: absolute;
+		top: 0;
+		right: 0;
+		padding: 0.25rem 0.5rem;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.6rem;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		color: var(--text-secondary);
+		cursor: pointer;
+	}
+
+	.btn-copy-sm:hover {
+		background: var(--bg-secondary);
 		color: var(--text-primary);
+	}
+
+	.fix-learn-more {
+		display: inline-block;
+		margin-top: 0.75rem;
+		font-size: 0.8rem;
+		color: var(--blue);
+		text-decoration: none;
+	}
+
+	.fix-learn-more:hover {
+		text-decoration: underline;
 	}
 
 	.code-snippet {
