@@ -3922,3 +3922,140 @@ rules:
       cwe: "CWE-798"
       tags: [hardcoded-credentials, sql]
 
+
+  # ============================================
+  # NoSQL Injection - MongoDB/PyMongo
+  # ============================================
+
+  # MongoDB find with $where operator (allows JS execution)
+  - id: py-nosqli-mongodb-where
+    pattern-regex: '\.(find|find_one)\s*\(\s*\{\s*["\x27]\$where["\x27]'
+    message: "NoSQL injection - MongoDB $where allows JavaScript execution (CWE-943)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021"
+      tags: [nosql-injection, mongodb]
+
+  # MongoDB $regex operator with user input
+  - id: py-nosqli-mongodb-regex
+    pattern-regex: '\$regex["\x27]?\s*:\s*[a-zA-Z_][a-zA-Z0-9_]*'
+    message: "NoSQL injection - $regex with variable can cause ReDoS or auth bypass (CWE-943)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb, redos]
+
+  # MongoDB $ne (not equal) auth bypass pattern
+  - id: py-nosqli-mongodb-ne-bypass
+    pattern-regex: '\$ne["\x27]?\s*:\s*["\x27]'
+    message: "Potential NoSQL auth bypass - $ne operator in query (CWE-943)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb, auth-bypass]
+
+  # MongoDB eval (deprecated, dangerous)
+  - id: py-nosqli-mongodb-eval
+    pattern-regex: 'db\.eval\s*\([^)]*\)'
+    message: "MongoDB eval() is deprecated and dangerous - allows arbitrary JS execution (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [nosql-injection, mongodb, code-execution]
+
+  # ============================================
+  # LDAP Injection
+  # ============================================
+
+  # python-ldap search_s with variable filter
+  - id: py-ldap-search-var
+    pattern-regex: '\.search_s\s*\([^,]+,\s*[^,]+,\s*[a-zA-Z_][a-zA-Z0-9_]*\s*[,)]'
+    message: "LDAP search with variable filter - use ldap.filter.escape_filter_chars() (CWE-90)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-90"
+      tags: [ldap-injection]
+
+  # LDAP filter string formatting
+  - id: py-ldap-filter-format
+    pattern-regex: '\(uid=%s\)|cn=%s|dn=.*%s'
+    message: "LDAP injection - string formatting in LDAP filter (CWE-90)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-90"
+      tags: [ldap-injection]
+
+  # ============================================
+  # GraphQL Security
+  # ============================================
+
+  # GraphQL introspection enabled in production
+  - id: py-graphql-introspection-enabled
+    pattern-regex: 'introspection\s*[=:]\s*True'
+    message: "GraphQL introspection enabled - disable in production to prevent schema exposure (CWE-200)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [graphql, information-disclosure]
+
+  # ============================================
+  # Additional Security Patterns
+  # ============================================
+
+  # Unsafe object deserialization with dill
+  - id: py-dill-loads-unsafe
+    pattern-regex: 'dill\.loads?\s*\('
+    message: "Unsafe deserialization with dill - can execute arbitrary code (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization, rce]
+
+  # Marshal module unsafe load
+  - id: py-marshal-loads-unsafe
+    pattern-regex: 'marshal\.loads?\s*\('
+    message: "Unsafe deserialization with marshal - can execute arbitrary code (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization, rce]
+
+  # Weak cryptographic key size
+  - id: py-weak-rsa-key-size
+    pattern-regex: 'generate\s*\(\s*(512|768|1024)\s*\)'
+    message: "Weak RSA key size - use at least 2048 bits (CWE-326)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-326"
+      tags: [cryptography, weak-key]
+
+  # ECB mode in cryptography (insecure)
+  - id: py-crypto-ecb-mode
+    pattern-regex: 'modes\.ECB\s*\(|MODE_ECB'
+    message: "ECB mode is insecure - use CBC, GCM, or CTR mode (CWE-327)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+      tags: [cryptography, ecb]
+
+  # Hardcoded IV (initialization vector)
+  - id: py-crypto-hardcoded-iv
+    pattern-regex: 'iv\s*=\s*b?["\x27][a-zA-Z0-9+/=]{8,}["\x27]'
+    message: "Hardcoded IV detected - use random IV for each encryption (CWE-329)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-329"
+      tags: [cryptography, iv]
