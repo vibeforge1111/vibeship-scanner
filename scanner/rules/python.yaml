@@ -2603,3 +2603,886 @@ rules:
     metadata:
       cwe: "CWE-942"
       tags: [cors, headers]
+
+  # ============================================
+  # XPath Injection (CWE-643) - vulnpy coverage
+  # ============================================
+
+  - id: py-xpath-lxml-findall
+    pattern: lxml.etree.findall($PATH, ...)
+    message: "lxml XPath query with potential user input - XPath injection vulnerability (CWE-643)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-643"
+      owasp: "A03:2021 Injection"
+
+  - id: py-xpath-lxml-findtext
+    pattern: lxml.etree.findtext($PATH, ...)
+    message: "lxml XPath text query - XPath injection vulnerability (CWE-643)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-643"
+
+  - id: py-xpath-etree-findall
+    pattern: $ELEM.findall($PATH)
+    message: "XML Element findall with XPath - potential XPath injection (CWE-643)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-643"
+
+  - id: py-xpath-etree-find
+    pattern: $ELEM.find($PATH)
+    message: "XML Element find with XPath - potential XPath injection (CWE-643)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-643"
+
+  - id: py-xpath-iterfind
+    pattern: $ELEM.iterfind($PATH)
+    message: "XML iterfind with XPath - potential XPath injection (CWE-643)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-643"
+
+  # ============================================
+  # SSRF via http.client (CWE-918) - vulnpy
+  # ============================================
+
+  - id: py-ssrf-httpconnection
+    pattern: http.client.HTTPConnection($HOST)
+    message: "HTTPConnection with user-controlled host - SSRF vulnerability (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "API7:2023 SSRF"
+
+  - id: py-ssrf-httpsconnection
+    pattern: http.client.HTTPSConnection($HOST)
+    message: "HTTPSConnection with user-controlled host - SSRF vulnerability (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+
+  - id: py-ssrf-httpconnection-request
+    pattern: $CONN.request($METHOD, $PATH, ...)
+    message: "HTTP request method - ensure path is not user-controlled (SSRF)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  - id: py-ssrf-httpconnection-putrequest
+    pattern: $CONN.putrequest($METHOD, $URL)
+    message: "HTTP putrequest with URL - SSRF risk if user-controlled"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  # ============================================
+  # YAML unsafe loading - additional patterns
+  # ============================================
+
+  - id: py-yaml-load-all-unsafe
+    pattern: yaml.load_all($DATA, ...)
+    message: "yaml.load_all() - insecure deserialization, use safe_load_all (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+
+  - id: py-yaml-full-load
+    pattern: yaml.full_load($DATA)
+    message: "yaml.full_load() - insecure deserialization, use safe_load (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+
+  - id: py-yaml-unsafe-load
+    pattern: yaml.unsafe_load($DATA)
+    message: "yaml.unsafe_load() - intentionally insecure deserialization (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+
+  # ============================================
+  # Weak Hash - additional patterns
+  # ============================================
+
+  - id: py-hashlib-new-md5
+    pattern: hashlib.new("md5", ...)
+    message: "MD5 via hashlib.new() - cryptographically broken (CWE-327)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327"
+
+  - id: py-hashlib-new-sha1
+    pattern: hashlib.new("sha1", ...)
+    message: "SHA1 via hashlib.new() - deprecated weak hash (CWE-327)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327"
+
+  - id: py-hashlib-new-sha1-upper
+    pattern: hashlib.new("SHA1", ...)
+    message: "SHA1 via hashlib.new() - deprecated weak hash (CWE-327)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327"
+
+  # ============================================
+  # ReDoS - Regex Denial of Service (CWE-1333)
+  # ============================================
+
+  - id: py-redos-re-match
+    pattern: re.match($PATTERN, $INPUT)
+    message: "Regex match - ensure pattern is not vulnerable to ReDoS (CWE-1333)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-re-search
+    pattern: re.search($PATTERN, $INPUT)
+    message: "Regex search - ensure pattern is not vulnerable to ReDoS (CWE-1333)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-re-findall
+    pattern: re.findall($PATTERN, $INPUT)
+    message: "Regex findall - ensure pattern is not vulnerable to ReDoS (CWE-1333)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-re-finditer
+    pattern: re.finditer($PATTERN, $INPUT)
+    message: "Regex finditer - ensure pattern is not vulnerable to ReDoS (CWE-1333)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-re-sub
+    pattern: re.sub($PATTERN, $REPL, $INPUT)
+    message: "Regex sub - ensure pattern is not vulnerable to ReDoS (CWE-1333)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-re-split
+    pattern: re.split($PATTERN, $INPUT)
+    message: "Regex split - ensure pattern is not vulnerable to ReDoS (CWE-1333)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-re-fullmatch
+    pattern: re.fullmatch($PATTERN, $INPUT)
+    message: "Regex fullmatch - ensure pattern is not vulnerable to ReDoS (CWE-1333)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-compiled-match
+    pattern: $PATTERN.match($INPUT)
+    message: "Compiled regex match - ensure pattern is not vulnerable to ReDoS"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  - id: py-redos-compiled-search
+    pattern: $PATTERN.search($INPUT)
+    message: "Compiled regex search - ensure pattern is not vulnerable to ReDoS"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1333"
+
+  # ============================================
+  # Tarfile Path Traversal (CWE-22) - vulnpy
+  # ============================================
+
+  - id: py-tarfile-open
+    pattern: tarfile.open($PATH, ...)
+    message: "tarfile.open() - verify no path traversal in archive members (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  - id: py-tarfile-extractall
+    pattern: $TAR.extractall(...)
+    message: "tarfile extractall() - path traversal vulnerability, use extraction filter (CWE-22)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+
+  - id: py-tarfile-extract
+    pattern: $TAR.extract($MEMBER, ...)
+    message: "tarfile extract() - verify member path for traversal (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  - id: py-tarfile-class
+    pattern: tarfile.TarFile($PATH, ...)
+    message: "TarFile class - verify archive for path traversal (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  # ============================================
+  # bz2 Path Traversal (CWE-22) - vulnpy
+  # ============================================
+
+  - id: py-bz2-open
+    pattern: bz2.open($PATH, ...)
+    message: "bz2.open() with user-controlled path - path traversal risk (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  - id: py-bz2-file
+    pattern: bz2.BZ2File($PATH, ...)
+    message: "BZ2File with user-controlled path - path traversal risk (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  # ============================================
+  # io.open Path Traversal (CWE-22) - vulnpy
+  # ============================================
+
+  - id: py-io-open
+    pattern: io.open($PATH, ...)
+    message: "io.open() with potentially user-controlled path - path traversal risk (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  # ============================================
+  # Random - additional weak patterns (CWE-338)
+  # ============================================
+
+  - id: py-random-uniform
+    pattern: random.uniform($A, $B)
+    message: "random.uniform() is not cryptographically secure - use secrets module (CWE-338)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-338"
+
+  - id: py-random-randrange
+    pattern: random.randrange(...)
+    message: "random.randrange() is not cryptographically secure - use secrets module (CWE-338)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-338"
+
+  - id: py-random-sample
+    pattern: random.sample($POP, $K)
+    message: "random.sample() is not cryptographically secure - use secrets module (CWE-338)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-338"
+
+  - id: py-random-shuffle
+    pattern: random.shuffle($LIST)
+    message: "random.shuffle() is not cryptographically secure - use secrets module (CWE-338)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-338"
+
+  # ============================================
+  # XXE - Additional lxml patterns (CWE-611)
+  # ============================================
+
+  - id: py-lxml-fromstring
+    pattern: lxml.etree.fromstring($DATA)
+    message: "lxml.etree.fromstring() - disable external entity resolution (CWE-611)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2017 XXE"
+
+  - id: py-lxml-html-fromstring
+    pattern: lxml.html.fromstring($DATA)
+    message: "lxml.html.fromstring() with user input - potential XSS/injection"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+
+  - id: py-xml-dom-parsestring
+    pattern: xml.dom.pulldom.parseString($DATA)
+    message: "xml.dom.pulldom.parseString() - XXE vulnerability (CWE-611)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+
+  - id: py-xml-sax-parsestring
+    pattern: xml.sax.parseString($DATA, ...)
+    message: "xml.sax.parseString() - XXE vulnerability (CWE-611)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+
+  - id: py-xml-minidom-parsestring
+    pattern: xml.dom.minidom.parseString($DATA)
+    message: "xml.dom.minidom.parseString() - XXE vulnerability (CWE-611)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+
+  # ============================================
+  # execfile (Python 2) - vulnpy
+  # ============================================
+
+  - id: py-execfile
+    pattern: execfile($PATH)
+    message: "execfile() with user-controlled path - code execution vulnerability (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  # ============================================
+  # SQL Injection - sqlite3 patterns (vulnpy)
+  # ============================================
+
+  - id: py-sqlite-execute-format
+    pattern: $CURSOR.execute($Q % $V)
+    message: "SQLite execute with string formatting - SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: py-sqlite-execute-fstring
+    pattern: $CURSOR.execute(f"...")
+    message: "SQLite execute with f-string - SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: py-sqlite-execute-concat
+    pattern: $CURSOR.execute($Q + $V)
+    message: "SQLite execute with concatenation - SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: py-sqlite-executemany-format
+    pattern: $CURSOR.executemany($Q % $V, ...)
+    message: "SQLite executemany with string formatting - SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: py-sqlite-executescript
+    pattern: $CURSOR.executescript($SCRIPT)
+    message: "SQLite executescript - ensure script is not user-controlled (CWE-89)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-89"
+
+  # ============================================
+  # urllib patterns - vulnpy SSRF
+  # ============================================
+
+  - id: py-urllib-urlopen-request
+    patterns:
+      - pattern: urllib.request.urlopen(urllib.request.Request($URL))
+      - pattern: urlopen(Request($URL))
+    message: "urllib urlopen via Request object - SSRF if URL is user-controlled (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  # ============================================
+  # Flask/FastAPI Response Headers
+  # ============================================
+
+  - id: py-missing-content-type-options
+    pattern-regex: "(?:response\\.headers|headers)\\[.*\\]\\s*=(?!.*X-Content-Type-Options)"
+    message: "Response missing X-Content-Type-Options header - add nosniff"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-16"
+
+  - id: py-response-no-csp
+    pattern-regex: "return\\s+Response\\((?!.*Content-Security-Policy)"
+    message: "Response without Content-Security-Policy header"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1021"
+
+  # ============================================
+  # Additional SSRF patterns (vulnpy coverage)
+  # ============================================
+
+  # Legacy Python 2 urllib.urlopen
+  - id: py-ssrf-legacy-urlopen
+    pattern: urllib.urlopen($URL)
+    message: "Legacy urllib.urlopen() - SSRF vulnerability if URL is user-controlled (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+
+  # HTTPConnection with host from variable
+  - id: py-ssrf-httpconnection-init
+    pattern-regex: "HTTPConnection\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*"
+    message: "HTTPConnection with variable host - SSRF if user-controlled (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  # HTTPSConnection with host from variable
+  - id: py-ssrf-httpsconnection-init
+    pattern-regex: "HTTPSConnection\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*"
+    message: "HTTPSConnection with variable host - SSRF if user-controlled (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  # putrequest with variable URL
+  - id: py-ssrf-putrequest
+    pattern-regex: "\\.putrequest\\s*\\([^,]+,\\s*[a-zA-Z_]"
+    message: "HTTP putrequest with variable URL - SSRF risk (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  # ============================================
+  # Additional weak random patterns
+  # ============================================
+
+  - id: py-random-choices
+    pattern: random.choices(...)
+    message: "random.choices() is not cryptographically secure - use secrets module (CWE-338)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-338"
+
+  - id: py-random-getrandbits
+    pattern: random.getrandbits(...)
+    message: "random.getrandbits() is not cryptographically secure - use secrets module (CWE-338)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-338"
+
+  # ============================================
+  # SQL Injection - format string patterns
+  # ============================================
+
+  - id: py-sql-format-string
+    pattern: $CURSOR.execute($Q.format(...))
+    message: "SQL query with .format() - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # ============================================
+  # Jinja2 XSS patterns
+  # ============================================
+
+  - id: py-jinja2-safe-filter
+    pattern-regex: "\\|\\s*safe\\b"
+    message: "Jinja2 |safe filter - XSS risk if applied to user input (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+
+  - id: py-markupsafe-markup
+    pattern: Markup($USER_INPUT)
+    message: "MarkupSafe Markup() - XSS risk if wrapping user input (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+
+  # ============================================
+  # SQL Injection - Indirect Taint Flow Patterns
+  # Catches: sql = "...".format(x); cursor.execute(sql)
+  # ============================================
+
+  # vulnpy pattern: sql = CONST.format(user_input) then cursor.execute(sql)
+  # Catch: variable = SOMETHING.format(anything)
+  - id: py-sqli-var-format-call
+    pattern-regex: "sql\\s*=\\s*[A-Za-z_][A-Za-z0-9_]*\\.format\\s*\\("
+    message: "SQL variable built with .format() - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  # Catch cursor.execute(sql) where sql is a variable (not parameterized)
+  - id: py-sqli-execute-var
+    pattern-regex: "\\.(execute|executemany|executescript)\\s*\\(\\s*sql\\s*[,)]"
+    message: "cursor.execute with sql variable - ensure parameterized queries (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # Catch cursor.execute(query) where query is a variable
+  - id: py-sqli-execute-query-var
+    pattern-regex: "\\.(execute|executemany|executescript)\\s*\\(\\s*query\\s*[,)]"
+    message: "cursor.execute with query variable - ensure parameterized queries (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # String formatting then execute - multiline pattern
+  - id: py-sqli-format-then-execute
+    pattern-regex: '\\.format\\s*\\([^)]*\\)[\\s\\S]{0,100}\\.(execute|executemany|executescript)\\s*\\('
+    message: "SQL string with .format() passed to execute - SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # Variable assigned with string literal format
+  - id: py-sqli-sql-var-format
+    pattern-regex: "sql\\s*=\\s*[\"'][^\"']*[\"']\\.format\\s*\\("
+    message: "SQL query built with .format() - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # f-string SQL assignment
+  - id: py-sqli-sql-var-fstring
+    pattern-regex: "sql\\s*=\\s*f[\"']"
+    message: "SQL query built with f-string - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # Percent formatting SQL
+  - id: py-sqli-sql-var-percent
+    pattern-regex: "sql\\s*=\\s*[\"'][^\"']*%s[^\"']*[\"']\\s*%"
+    message: "SQL query built with % formatting - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # query variable with format
+  - id: py-sqli-query-var-format
+    pattern-regex: "query\\s*=\\s*[\"'][^\"']*[\"']\\.format\\s*\\("
+    message: "Query string built with .format() - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # query = CONST.format() pattern
+  - id: py-sqli-query-const-format
+    pattern-regex: "query\\s*=\\s*[A-Za-z_][A-Za-z0-9_]*\\.format\\s*\\("
+    message: "Query variable built with .format() - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # ============================================
+  # SSRF - HTTPConnection/HTTPSConnection Indirect
+  # ============================================
+
+  # HTTPConnection with any variable (not just string literal)
+  - id: py-ssrf-httpconnection-var
+    pattern-regex: "HTTPConnection\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*[,)]"
+    message: "HTTPConnection with variable host - SSRF if user-controlled (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 SSRF"
+
+  # HTTPSConnection with any variable
+  - id: py-ssrf-httpsconnection-var
+    pattern-regex: "HTTPSConnection\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*[,)]"
+    message: "HTTPSConnection with variable host - SSRF if user-controlled (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+
+  # vulnpy pattern: connection_class(user_input) where connection_class is HTTP(S)Connection
+  - id: py-ssrf-connection-class-var
+    pattern-regex: "connection_class\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\)"
+    message: "HTTP connection class with variable host - SSRF vulnerability (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+
+  # Generic: any_var(user_input) then .request() pattern - catches dynamic connection classes
+  - id: py-ssrf-dynamic-connection
+    pattern-regex: "[a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\(\\s*user_input\\s*\\)"
+    message: "Connection with user_input parameter - potential SSRF (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  # conn.request with variable in first OR second position
+  - id: py-ssrf-conn-request-var
+    pattern-regex: "\\.(request|putrequest)\\s*\\([^,]+,\\s*[a-zA-Z_][a-zA-Z0-9_]*"
+    message: "HTTP request with variable URL/path - SSRF risk (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  # .request(user_input, ...) - method injection
+  - id: py-ssrf-request-method-var
+    pattern-regex: "\\.request\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*,"
+    message: "HTTP request with variable method - potential request smuggling (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  # urlopen with variable
+  - id: py-ssrf-urlopen-var
+    pattern-regex: "urlopen\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\)"
+    message: "urlopen with variable URL - SSRF if user-controlled (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+
+  # urllib.urlopen (legacy)
+  - id: py-ssrf-urllib-legacy-var
+    pattern-regex: "urllib\\.urlopen\\s*\\(\\s*[a-zA-Z_]"
+    message: "Legacy urllib.urlopen with variable - SSRF vulnerability (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+
+  # requests library with variable URL
+  - id: py-ssrf-requests-var
+    pattern-regex: "requests\\.(get|post|put|delete|patch|head|options)\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*[,)]"
+    message: "requests library with variable URL - SSRF if user-controlled (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  # ============================================
+  # XPath Injection - Indirect Patterns
+  # ============================================
+
+  # lxml etree operations with variable xpath
+  - id: py-xpath-lxml-var
+    pattern-regex: "etree\\.(findall|findtext|find|iterfind|xpath)\\s*\\(\\s*[a-zA-Z_]"
+    message: "lxml XPath query with variable - XPath injection if user-controlled (CWE-643)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-643"
+
+  # Element find operations
+  - id: py-xpath-element-var
+    pattern-regex: "\\.(findall|findtext|find|iterfind)\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\)"
+    message: "XML find with variable XPath - XPath injection risk (CWE-643)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-643"
+
+  # ============================================
+  # Deserialization - Indirect Patterns
+  # ============================================
+
+  # pickle.loads with variable
+  - id: py-pickle-loads-var
+    pattern-regex: "pickle\\.loads?\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\)"
+    message: "pickle.load(s) with variable data - insecure deserialization (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+
+  # yaml.load with variable
+  - id: py-yaml-load-var
+    pattern-regex: "yaml\\.(load|load_all|full_load|unsafe_load)\\s*\\(\\s*[a-zA-Z_]"
+    message: "YAML load with variable data - insecure deserialization (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+
+  # ============================================
+  # Command Injection - Indirect Patterns
+  # ============================================
+
+  # os.system with variable
+  - id: py-cmdi-os-system-var
+    pattern-regex: "os\\.system\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\)"
+    message: "os.system with variable command - command injection (CWE-78)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+
+  # subprocess with shell=True and variable
+  - id: py-cmdi-subprocess-var
+    pattern-regex: "subprocess\\.(call|run|Popen)\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*.*shell\\s*=\\s*True"
+    message: "subprocess with variable and shell=True - command injection (CWE-78)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+
+  # ============================================
+  # Code Execution - Indirect Patterns
+  # ============================================
+
+  # exec with variable
+  - id: py-exec-var
+    pattern-regex: "exec\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\)"
+    message: "exec() with variable - code injection if user-controlled (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  # eval with variable
+  - id: py-eval-var
+    pattern-regex: "eval\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*\\)"
+    message: "eval() with variable - code injection if user-controlled (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  # compile with variable
+  - id: py-compile-var
+    pattern-regex: "compile\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*,"
+    message: "compile() with variable - code injection risk (CWE-94)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-94"
+
+  # ============================================
+  # Path Traversal - Indirect Patterns
+  # ============================================
+
+  # open with variable path
+  - id: py-path-open-var
+    pattern-regex: "(?:^|[^a-zA-Z_])open\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*[,)]"
+    message: "open() with variable path - path traversal if user-controlled (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  # io.open with variable
+  - id: py-path-io-open-var
+    pattern-regex: "io\\.open\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*"
+    message: "io.open() with variable path - path traversal risk (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  # tarfile operations with variable
+  - id: py-path-tarfile-var
+    pattern-regex: "tarfile\\.(open|TarFile)\\s*\\(\\s*[a-zA-Z_]"
+    message: "tarfile with variable path - path traversal risk (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  # ============================================
+  # XXE - Indirect Patterns
+  # ============================================
+
+  # lxml.etree.fromstring with variable
+  - id: py-xxe-lxml-fromstring-var
+    pattern-regex: "etree\\.fromstring\\s*\\(\\s*[a-zA-Z_]"
+    message: "lxml.etree.fromstring with variable - XXE vulnerability (CWE-611)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+
+  # xml parsing with variable
+  - id: py-xxe-parse-var
+    pattern-regex: "(parseString|parse|fromstring)\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*[,)]"
+    message: "XML parsing with variable data - XXE risk (CWE-611)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+
+  # ============================================
+  # Weak Random - Function Call Patterns
+  # ============================================
+
+  # random module function with any args
+  - id: py-random-insecure-call
+    pattern-regex: "random\\.(random|randint|randrange|choice|choices|uniform|sample|shuffle|getrandbits)\\s*\\("
+    message: "random module is not cryptographically secure - use secrets module (CWE-338)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-338"
