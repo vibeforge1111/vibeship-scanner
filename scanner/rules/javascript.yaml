@@ -7050,3 +7050,427 @@ rules:
     metadata:
       cwe: "CWE-1321"
       tags: [prototype-pollution]
+
+  # ============================================
+  # MongoDB/NoSQL Injection
+  # ============================================
+
+  # MongoDB collection.insert with req.body
+  - id: mongodb-nosql-injection-insert
+    patterns:
+      - pattern-either:
+          - pattern: '$COLLECTION.insert(req.body)'
+          - pattern: '$COLLECTION.insert(req.body, ...)'
+          - pattern: '$COLLECTION.insertOne(req.body)'
+          - pattern: '$COLLECTION.insertMany(req.body)'
+    message: "MongoDB insert with raw req.body - NoSQL injection risk, validate input (CWE-943)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021"
+      tags: [nosql-injection, mongodb]
+
+  # MongoDB find with req.body/query
+  - id: mongodb-nosql-injection-find
+    patterns:
+      - pattern-either:
+          - pattern: '$COLLECTION.find(req.body)'
+          - pattern: '$COLLECTION.find(req.query)'
+          - pattern: '$COLLECTION.findOne(req.body)'
+          - pattern: '$COLLECTION.findOne(req.query)'
+    message: "MongoDB find with raw user input - NoSQL injection allows query operator attacks (CWE-943)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021"
+      tags: [nosql-injection, mongodb]
+
+  # MongoDB update with req.body
+  - id: mongodb-nosql-injection-update
+    patterns:
+      - pattern-either:
+          - pattern: '$COLLECTION.update($QUERY, req.body)'
+          - pattern: '$COLLECTION.updateOne($QUERY, req.body)'
+          - pattern: '$COLLECTION.updateMany($QUERY, req.body)'
+          - pattern: '$COLLECTION.findOneAndUpdate($QUERY, req.body)'
+          - pattern: '$COLLECTION.findOneAndUpdate($QUERY, { $set: req.body })'
+    message: "MongoDB update with raw user input - NoSQL injection risk (CWE-943)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021"
+      tags: [nosql-injection, mongodb]
+
+  # MongoDB $where operator (JS execution)
+  - id: mongodb-where-injection
+    pattern-regex: "\\$where\\s*:\\s*(req\\.|user_input|query)"
+    message: "MongoDB $where with user input - JavaScript injection vulnerability (CWE-943)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb, code-injection]
+
+  # Mongoose find with user input
+  - id: mongoose-nosql-injection
+    patterns:
+      - pattern-either:
+          - pattern: '$MODEL.find(req.body)'
+          - pattern: '$MODEL.find(req.query)'
+          - pattern: '$MODEL.findOne(req.body)'
+          - pattern: '$MODEL.findOne(req.query)'
+          - pattern: '$MODEL.findById(req.body.$ID)'
+          - pattern: '$MODEL.findByIdAndUpdate($ID, req.body)'
+    message: "Mongoose query with raw user input - NoSQL injection risk (CWE-943)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongoose]
+
+  # Generic req.body in database query
+  - id: nosql-injection-req-body-query
+    pattern-regex: "(find|update|delete|remove)\\w*\\s*\\(\\s*req\\.(body|query)"
+    message: "Database operation with raw request data - validate and sanitize input (CWE-943)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection]
+
+  # ============================================
+  # Plaintext Password Storage
+  # ============================================
+
+  # Storing password without hashing
+  - id: plaintext-password-storage
+    pattern-regex: "(password|passwd|pwd)\\s*:\\s*req\\.(body|query)\\.(password|passwd|pwd)"
+    message: "Storing password from request without hashing - use bcrypt/argon2 (CWE-256)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      owasp: "A02:2021"
+      tags: [password, cryptography]
+
+  # Direct password assignment
+  - id: plaintext-password-assignment
+    pattern-regex: "user\\.(password|passwd)\\s*=\\s*req\\.(body|query)"
+    message: "Direct password assignment without hashing - hash passwords before storage (CWE-256)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      tags: [password, cryptography]
+
+  # Comparing plaintext passwords
+  - id: plaintext-password-comparison
+    pattern-regex: "(password|passwd)\\s*(===|==|!==|!=)\\s*(req\\.|user\\.|password|passwd)"
+    message: "Plaintext password comparison - use bcrypt.compare() instead (CWE-256)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      tags: [password, cryptography]
+
+  # ============================================
+  # Express Broken Access Control
+  # ============================================
+
+  # Admin route without auth middleware
+  - id: express-admin-no-auth
+    pattern-regex: "router\\.(get|post|put|delete)\\s*\\(\\s*['\"]/?admin"
+    message: "Admin route - ensure authentication middleware is applied (CWE-306)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306"
+      owasp: "A01:2021"
+      tags: [access-control, express]
+
+  # Delete route without auth check
+  - id: express-delete-no-auth
+    pattern-regex: "router\\.delete\\s*\\(\\s*['\"][^'\"]+['\"]\\s*,\\s*(async\\s+)?function"
+    message: "DELETE route - verify authentication/authorization middleware (CWE-306)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306"
+      tags: [access-control, express]
+
+  # Sensitive route patterns
+  - id: express-sensitive-route-no-auth
+    pattern-regex: "router\\.(get|post|put|delete)\\s*\\(\\s*['\"]/?((user|account|profile|settings|api)/?)"
+    message: "Sensitive route - ensure proper authentication middleware (CWE-306)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-306"
+      tags: [access-control, express]
+
+  # ============================================
+  # Command Injection (Node.js)
+  # ============================================
+
+  # child_process.exec with user input
+  - id: nodejs-exec-injection
+    patterns:
+      - pattern-either:
+          - pattern: 'exec(req.$ATTR)'
+          - pattern: 'exec($CMD + req.$ATTR)'
+          - pattern: 'exec(`...${req.$ATTR}...`)'
+          - pattern: 'child_process.exec(req.$ATTR)'
+    message: "child_process.exec with user input - command injection vulnerability (CWE-78)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021"
+      tags: [command-injection, nodejs]
+
+  # execSync with user input
+  - id: nodejs-execsync-injection
+    patterns:
+      - pattern-either:
+          - pattern: 'execSync(req.$ATTR)'
+          - pattern: 'execSync($CMD + req.$ATTR)'
+          - pattern: 'execSync(`...${req.$ATTR}...`)'
+    message: "execSync with user input - command injection vulnerability (CWE-78)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021"
+      tags: [command-injection, nodejs]
+
+  # spawn with shell option
+  - id: nodejs-spawn-shell
+    pattern-regex: "spawn\\s*\\([^)]*,\\s*\\{[^}]*shell\\s*:\\s*true"
+    message: "spawn with shell:true - command injection risk if input is not sanitized (CWE-78)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection, nodejs]
+
+  # Generic exec with string concatenation
+  - id: nodejs-exec-concat
+    pattern-regex: "exec\\s*\\(\\s*['\"`][^'\"]+['\"`]\\s*\\+|exec\\s*\\(\\s*`[^`]*\\$\\{"
+    message: "exec with string concatenation/interpolation - command injection risk (CWE-78)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection, nodejs]
+
+  # ============================================
+  # Path Traversal (Node.js File Operations)
+  # ============================================
+
+  # fs.readFile with user input
+  - id: nodejs-path-traversal-readfile
+    patterns:
+      - pattern-either:
+          - pattern: 'fs.readFile(req.$ATTR, ...)'
+          - pattern: 'fs.readFileSync(req.$ATTR)'
+          - pattern: 'fs.readFile($PATH + req.$ATTR, ...)'
+    message: "fs.readFile with user input - path traversal vulnerability (CWE-22)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021"
+      tags: [path-traversal, nodejs]
+
+  # fs.writeFile with user input
+  - id: nodejs-path-traversal-writefile
+    patterns:
+      - pattern-either:
+          - pattern: 'fs.writeFile(req.$ATTR, ...)'
+          - pattern: 'fs.writeFileSync(req.$ATTR, ...)'
+    message: "fs.writeFile with user input - path traversal vulnerability (CWE-22)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021"
+      tags: [path-traversal, nodejs]
+
+  # Path without validation
+  - id: nodejs-path-traversal-generic
+    pattern-regex: "(readFile|writeFile|unlink|rmdir|mkdir|access)\\s*\\(\\s*(req\\.|query\\.|params\\.)"
+    message: "File operation with user input - validate path to prevent traversal (CWE-22)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, nodejs]
+
+  # sendFile with user input
+  - id: express-sendfile-traversal
+    patterns:
+      - pattern-either:
+          - pattern: 'res.sendFile(req.$ATTR)'
+          - pattern: 'res.sendFile($PATH + req.$ATTR)'
+          - pattern: 'res.sendFile(path.join($DIR, req.$ATTR))'
+    message: "res.sendFile with user input - path traversal risk, use path.resolve and validate (CWE-22)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, express]
+
+  # ============================================
+  # Session Security Issues
+  # ============================================
+
+  # Session without secure cookie
+  - id: express-session-no-secure
+    pattern-regex: "session\\s*\\(\\s*\\{[^}]*(?!secure\\s*:)[^}]*\\}"
+    message: "Express session - consider setting secure:true for HTTPS-only cookies (CWE-614)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-614"
+      tags: [session, express]
+
+  # Session with saveUninitialized true
+  - id: express-session-save-uninitialized
+    pattern-regex: "saveUninitialized\\s*:\\s*true"
+    message: "saveUninitialized:true creates empty sessions - set to false in production (CWE-384)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-384"
+      tags: [session, express]
+
+  # Session regeneration missing
+  - id: express-session-no-regenerate
+    pattern-regex: "req\\.session\\.(user|userId|username)\\s*=(?!.*regenerate)"
+    message: "Session assignment without regeneration - call req.session.regenerate() on login (CWE-384)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-384"
+      tags: [session, express]
+
+  # ============================================
+  # XXE (XML External Entities)
+  # ============================================
+
+  # xml2js without disabling external entities
+  - id: nodejs-xxe-xml2js
+    pattern-regex: "xml2js\\.parseString\\s*\\(|new\\s+xml2js\\.Parser\\s*\\("
+    message: "xml2js parser - ensure external entities are disabled (CWE-611)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2017"
+      tags: [xxe, xml]
+
+  # libxmljs without noent
+  - id: nodejs-xxe-libxmljs
+    pattern-regex: "libxmljs\\.(parseXml|parseHtml)\\s*\\("
+    message: "libxmljs parsing - disable external entities with noent:false (CWE-611)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  # DOMParser usage
+  - id: nodejs-xxe-domparser
+    pattern-regex: "new\\s+DOMParser\\s*\\(\\).*parseFromString"
+    message: "DOMParser usage - verify XML external entities handling (CWE-611)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  # ============================================
+  # Information Disclosure
+  # ============================================
+
+  # Exposing stack traces
+  - id: express-stack-trace-exposure
+    pattern-regex: "res\\.(send|json)\\s*\\(\\s*(err|error)\\.stack"
+    message: "Stack trace exposed in response - hide in production (CWE-209)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      owasp: "A01:2021"
+      tags: [information-disclosure, express]
+
+  # Returning raw error object
+  - id: express-error-object-exposure
+    pattern-regex: "res\\.(send|json)\\s*\\(\\s*(err|error)\\s*\\)"
+    message: "Raw error object in response - may leak sensitive info (CWE-209)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, express]
+
+  # console.log with sensitive data
+  - id: nodejs-console-log-sensitive
+    pattern-regex: "console\\.(log|info|debug)\\s*\\([^)]*password|console\\.(log|info|debug)\\s*\\([^)]*secret|console\\.(log|info|debug)\\s*\\([^)]*token"
+    message: "Logging potentially sensitive data - avoid logging credentials (CWE-532)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, sensitive-data]
+
+  # ============================================
+  # Rate Limiting Missing
+  # ============================================
+
+  # Login route without rate limiting
+  - id: express-login-no-rate-limit
+    pattern-regex: "router\\.(post|get)\\s*\\(\\s*['\"]/?login"
+    message: "Login route - consider adding rate limiting to prevent brute force (CWE-307)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-307"
+      tags: [rate-limiting, express]
+
+  # ============================================
+  # Insecure Crypto
+  # ============================================
+
+  # MD5 for password hashing
+  - id: nodejs-md5-password
+    pattern-regex: "(crypto\\.createHash\\s*\\(\\s*['\"]md5['\"]|md5\\s*\\().*password"
+    message: "MD5 for password hashing - use bcrypt or argon2 instead (CWE-328)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-328"
+      tags: [cryptography, password]
+
+  # SHA1 for password hashing
+  - id: nodejs-sha1-password
+    pattern-regex: "crypto\\.createHash\\s*\\(\\s*['\"]sha1['\"].*password"
+    message: "SHA1 for password hashing - use bcrypt or argon2 instead (CWE-328)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-328"
+      tags: [cryptography, password]
+
+  # Math.random for security
+  - id: nodejs-math-random-security
+    pattern-regex: "(token|secret|key|nonce|salt)\\s*=.*Math\\.random"
+    message: "Math.random() for security value - use crypto.randomBytes() (CWE-330)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-330"
+      tags: [cryptography, weak-random]
