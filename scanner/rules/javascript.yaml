@@ -8354,3 +8354,254 @@ rules:
     metadata:
       cwe: "CWE-532"
       tags: [logging, sensitive-data, pci-dss]
+
+  # ============================================
+  # jQuery DOM XSS Vulnerabilities
+  # ============================================
+
+  # jQuery .html() with string concatenation
+  - id: jquery-html-string-concat
+    pattern-regex: "\\.html\\s*\\([^)]*\\+"
+    message: "jQuery .html() with string concatenation - DOM XSS risk (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, jquery, dom-xss]
+
+  # jQuery .html() with this.field (database data)
+  - id: jquery-html-this-field
+    pattern-regex: "\\.html\\s*\\([^)]*this\\.[a-zA-Z_]"
+    message: "jQuery .html() with object property - Stored XSS if data is user-controlled (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jquery, stored-xss]
+
+  # jQuery .append() with string concatenation
+  - id: jquery-append-string-concat
+    pattern-regex: "\\.append\\s*\\([^)]*\\+"
+    message: "jQuery .append() with string concatenation - DOM XSS risk (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jquery, dom-xss]
+
+  # jQuery .prepend() with string concatenation
+  - id: jquery-prepend-string-concat
+    pattern-regex: "\\.prepend\\s*\\([^)]*\\+"
+    message: "jQuery .prepend() with string concatenation - DOM XSS risk (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jquery, dom-xss]
+
+  # jQuery .after() with string concatenation
+  - id: jquery-after-string-concat
+    pattern-regex: "\\.after\\s*\\([^)]*\\+"
+    message: "jQuery .after() with string concatenation - DOM XSS risk (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jquery, dom-xss]
+
+  # jQuery .before() with string concatenation
+  - id: jquery-before-string-concat
+    pattern-regex: "\\.before\\s*\\([^)]*\\+"
+    message: "jQuery .before() with string concatenation - DOM XSS risk (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jquery, dom-xss]
+
+  # jQuery .replaceWith() with string concatenation
+  - id: jquery-replacewith-string-concat
+    pattern-regex: "\\.replaceWith\\s*\\([^)]*\\+"
+    message: "jQuery .replaceWith() with string concatenation - DOM XSS risk (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jquery, dom-xss]
+
+  # jQuery $() constructor with string concat (DOM creation)
+  - id: jquery-constructor-string-concat
+    pattern-regex: "\\$\\s*\\(\\s*['\"]<[^>]+>.*\\+"
+    message: "jQuery element creation with string concatenation - DOM XSS risk (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jquery, dom-xss]
+
+  # Building HTML table rows with concatenation
+  - id: js-html-table-string-concat
+    pattern-regex: "tableContent\\s*\\+=\\s*['\"]<t[dr]"
+    message: "HTML table built with string concatenation - escape data to prevent XSS (CWE-79)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, html-building]
+
+  # ============================================
+  # Suspicious Response Handling
+  # ============================================
+
+  # Empty string as success indicator
+  - id: js-empty-string-success-check
+    pattern-regex: "response\\.(?:msg|message|error)\\s*===?\\s*['\"]['\"]"
+    message: "Empty string as success indicator - use explicit success flag instead (CWE-754)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-754"
+      tags: [error-handling, logic]
+
+  # ============================================
+  # jQuery AJAX Security
+  # ============================================
+
+  # AJAX without error handler
+  - id: jquery-ajax-no-error-handler
+    pattern-regex: "\\$\\.ajax\\s*\\(\\s*\\{[^}]*\\}\\s*\\)(?!\\.fail|\\.error)"
+    message: "jQuery AJAX without error handler - handle failures properly (CWE-754)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-754"
+      tags: [jquery, error-handling]
+
+  # getJSON without error handling
+  - id: jquery-getjson-no-error
+    pattern-regex: "\\$\\.getJSON\\s*\\([^)]+,\\s*function"
+    message: "jQuery getJSON without error callback - add .fail() handler (CWE-754)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-754"
+      tags: [jquery, error-handling]
+
+  # ============================================
+  # URL/Location Manipulation
+  # ============================================
+
+  # window.location with user input
+  - id: js-open-redirect-location
+    pattern-regex: "window\\.location\\s*=\\s*(?:req\\.|params\\.|query\\.|\\$)"
+    message: "window.location assigned from user input - open redirect risk (CWE-601)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A01:2021"
+      tags: [open-redirect]
+
+  # location.href with user input
+  - id: js-open-redirect-href
+    pattern-regex: "location\\.href\\s*=\\s*(?:req\\.|params\\.|query\\.|\\$)"
+    message: "location.href assigned from user input - open redirect risk (CWE-601)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect]
+
+  # window.open with user input
+  - id: js-open-redirect-window-open
+    pattern-regex: "window\\.open\\s*\\(\\s*(?:req\\.|params\\.|query\\.|\\$)"
+    message: "window.open with user input - open redirect/phishing risk (CWE-601)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect]
+
+  # ============================================
+  # Insecure Randomness
+  # ============================================
+
+  # Math.random for security purposes
+  - id: js-math-random-security
+    pattern-regex: "Math\\.random\\s*\\(\\s*\\).*(?:token|secret|key|password|id|session)"
+    message: "Math.random() for security purposes - use crypto.randomBytes() (CWE-330)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-330"
+      tags: [cryptography, randomness]
+
+  # Math.random for ID generation
+  - id: js-math-random-id
+    pattern-regex: "(?:id|uuid|guid).*Math\\.random|Math\\.random.*(?:id|uuid|guid)"
+    message: "Math.random() for ID generation - use uuid package or crypto (CWE-330)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-330"
+      tags: [randomness]
+
+  # ============================================
+  # Prototype Pollution
+  # ============================================
+
+  # Object.assign with user input
+  - id: js-prototype-pollution-assign
+    pattern-regex: "Object\\.assign\\s*\\([^,]+,\\s*(?:req\\.body|req\\.query|req\\.params)"
+    message: "Object.assign with user input - prototype pollution risk (CWE-1321)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1321"
+      owasp: "A03:2021"
+      tags: [prototype-pollution]
+
+  # Spread operator with user input
+  - id: js-prototype-pollution-spread
+    pattern-regex: "\\{\\s*\\.\\.\\.(?:req\\.body|req\\.query|req\\.params)"
+    message: "Spread operator with user input - prototype pollution risk (CWE-1321)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution]
+
+  # lodash merge with user input
+  - id: js-prototype-pollution-lodash
+    pattern-regex: "_\\.(?:merge|defaultsDeep|set)\\s*\\([^,]+,\\s*(?:req\\.body|req\\.query)"
+    message: "Lodash deep merge with user input - prototype pollution risk (CWE-1321)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1321"
+      tags: [prototype-pollution, lodash]
+
+  # ============================================
+  # ReDoS (Regular Expression DoS)
+  # ============================================
+
+  # Nested quantifiers in regex
+  - id: js-redos-nested-quantifiers
+    pattern-regex: "new\\s+RegExp\\s*\\([^)]*[+*].*[+*]"
+    message: "Regex with nested quantifiers - potential ReDoS (CWE-1333)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, regex]
+
+  # User input in RegExp constructor
+  - id: js-regex-injection
+    pattern-regex: "new\\s+RegExp\\s*\\(\\s*(?:req\\.|params\\.|query\\.|user)"
+    message: "User input in RegExp constructor - regex injection risk (CWE-185)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-185"
+      tags: [regex, injection]
