@@ -8605,3 +8605,233 @@ rules:
     metadata:
       cwe: "CWE-185"
       tags: [regex, injection]
+
+  # ============================================
+  # HTTP Script Loading / Missing SRI
+  # ============================================
+
+  # HTTP script without HTTPS
+  - id: html-http-script-src
+    pattern-regex: "<script[^>]+src\\s*=\\s*['\"]http://"
+    message: "Script loaded over HTTP - use HTTPS to prevent MITM attacks (CWE-319)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-319"
+      owasp: "A02:2021"
+      tags: [http, script, mitm]
+    paths:
+      include:
+        - "*.html"
+        - "*.ejs"
+        - "*.pug"
+        - "*.jade"
+        - "*.hbs"
+
+  # CDN script without integrity attribute
+  - id: html-cdn-no-integrity
+    pattern-regex: "<script[^>]+src\\s*=\\s*['\"]https?://(?:cdn|cdnjs|unpkg|jsdelivr|ajax\\.googleapis)[^>]+(?!integrity)"
+    message: "CDN script without integrity hash - add SRI to prevent supply chain attacks (CWE-353)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-353"
+      tags: [sri, cdn, supply-chain]
+    paths:
+      include:
+        - "*.html"
+        - "*.ejs"
+        - "*.pug"
+        - "*.jade"
+        - "*.hbs"
+
+  # jQuery from CDN without SRI (common vulnerability)
+  - id: html-jquery-cdn-no-sri
+    pattern-regex: "<script[^>]+src\\s*=\\s*['\"][^'\"]*jquery[^'\"]*['\"][^>]*>(?!</script>)"
+    message: "jQuery loaded from CDN - ensure integrity attribute is present (CWE-353)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-353"
+      tags: [jquery, sri, cdn]
+    paths:
+      include:
+        - "*.html"
+        - "*.ejs"
+        - "*.pug"
+        - "*.jade"
+        - "*.hbs"
+
+  # Protocol-relative script URLs (inherits HTTP if page is HTTP)
+  - id: html-protocol-relative-script
+    pattern-regex: "<script[^>]+src\\s*=\\s*['\"]//[^'\"]+"
+    message: "Protocol-relative script URL - explicitly use HTTPS (CWE-319)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-319"
+      tags: [http, script]
+    paths:
+      include:
+        - "*.html"
+        - "*.ejs"
+        - "*.pug"
+        - "*.jade"
+
+  # ============================================
+  # Missing Security Headers / Helmet.js
+  # ============================================
+
+  # Express app without Helmet
+  - id: express-missing-helmet
+    pattern-regex: "express\\s*\\(\\s*\\)"
+    message: "Express app - ensure helmet middleware is used for security headers (CWE-693)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-693"
+      tags: [headers, helmet, security-config]
+
+  # Manual header setting without CSP
+  - id: express-missing-csp
+    pattern-regex: "app\\.use\\s*\\([^)]*(?:express\\.static|router)"
+    message: "Express middleware - consider adding Content-Security-Policy header (CWE-693)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-693"
+      tags: [csp, headers]
+
+  # X-Powered-By header not disabled
+  - id: express-x-powered-by-enabled
+    pattern-regex: "app\\.disable\\s*\\(\\s*['\"]x-powered-by['\"]\\s*\\)"
+    message: "Good: X-Powered-By header disabled"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [headers, security-config]
+
+  # ============================================
+  # Unfiltered Database Responses
+  # ============================================
+
+  # MongoDB find returning all fields to response
+  - id: mongodb-unfiltered-response
+    pattern-regex: "\\.find\\s*\\(\\s*\\{[^}]*\\}\\s*\\)\\s*\\.toArray\\s*\\([^)]*\\)\\s*\\.then\\s*\\([^)]*\\)\\s*=>\\s*\\{?\\s*res\\.(?:json|send)"
+    message: "MongoDB query returning all fields - filter sensitive fields before response (CWE-200)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [data-exposure, mongodb]
+
+  # Direct database result to response
+  - id: express-db-result-to-response
+    pattern-regex: "res\\.(?:json|send)\\s*\\(\\s*(?:docs?|results?|rows?|records?|data)\\s*\\)"
+    message: "Database result sent directly to client - filter sensitive fields (CWE-200)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [data-exposure]
+
+  # User object returned with password field
+  - id: express-user-password-exposure
+    pattern-regex: "res\\.(?:json|send)\\s*\\(\\s*user\\s*\\)"
+    message: "User object sent to client - exclude password/hash fields (CWE-200)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      owasp: "A01:2021"
+      tags: [data-exposure, password]
+
+  # MongoDB findOne result directly to response
+  - id: mongodb-findone-unfiltered
+    pattern-regex: "\\.findOne\\s*\\([^)]+\\)\\s*(?:\\.then\\s*\\(|,\\s*function).*res\\.(?:json|send)"
+    message: "MongoDB findOne result sent directly - filter sensitive fields (CWE-200)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [data-exposure, mongodb]
+
+  # ============================================
+  # Session Expiration Issues
+  # ============================================
+
+  # Long session expiration (30 days+)
+  - id: express-session-long-expiry
+    pattern-regex: "maxAge\\s*:\\s*(?:\\d{8,}|30\\s*\\*\\s*24\\s*\\*\\s*60|2592000000)"
+    message: "Session maxAge is very long (30+ days) - consider shorter expiration (CWE-613)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-613"
+      tags: [session, expiration]
+
+  # Session without expiration
+  - id: express-session-no-expiry
+    pattern-regex: "session\\s*\\(\\s*\\{[^}]*(?!maxAge)[^}]*\\}\\s*\\)"
+    message: "Session without maxAge - sessions may persist indefinitely (CWE-613)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-613"
+      tags: [session, expiration]
+
+  # Cookie without expires/maxAge
+  - id: express-cookie-no-expiry
+    pattern-regex: "res\\.cookie\\s*\\(\\s*[^,]+,\\s*[^,]+\\s*\\)"
+    message: "Cookie without expiration - consider setting maxAge (CWE-613)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-613"
+      tags: [cookie, expiration]
+
+  # ============================================
+  # Database Error Message Disclosure
+  # ============================================
+
+  # MongoDB error sent to client
+  - id: mongodb-error-disclosure
+    pattern-regex: "\\.catch\\s*\\(\\s*(?:err|error|e)\\s*=>\\s*\\{?\\s*res\\.(?:json|send)\\s*\\(\\s*(?:err|error|e)"
+    message: "Database error sent to client - may expose sensitive information (CWE-209)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      owasp: "A04:2021"
+      tags: [error-disclosure, mongodb]
+
+  # Error message in response
+  - id: express-error-message-disclosure
+    pattern-regex: "res\\.(?:status|json|send)\\s*\\([^)]*(?:err|error)\\.(?:message|stack|toString)"
+    message: "Error details sent to client - use generic error messages (CWE-209)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [error-disclosure]
+
+  # Stack trace in response
+  - id: express-stack-trace-disclosure
+    pattern-regex: "res\\.(?:json|send)\\s*\\([^)]*\\.stack"
+    message: "Stack trace sent to client - remove in production (CWE-209)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      owasp: "A04:2021"
+      tags: [error-disclosure, stack-trace]
+
+  # Callback with error to response
+  - id: express-callback-error-disclosure
+    pattern-regex: "function\\s*\\(\\s*err[^)]*\\)\\s*\\{[^}]*res\\.(?:json|send)\\s*\\(\\s*err"
+    message: "Callback error sent to client - filter error details (CWE-209)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [error-disclosure]
