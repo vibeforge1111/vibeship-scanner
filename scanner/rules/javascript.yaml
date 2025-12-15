@@ -8016,3 +8016,341 @@ rules:
         - "*.ejs"
         - "*.jade"
         - "*.pug"
+
+  # ============================================
+  # IDOR / Broken Access Control
+  # ============================================
+
+  # Delete route with :id parameter (potential IDOR)
+  - id: express-delete-route-idor
+    pattern-regex: "router\\.delete\\s*\\(\\s*['\"][^'\"]*:id[^'\"]*['\"]"
+    message: "DELETE route with :id parameter - verify authorization before deletion (CWE-639)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021"
+      tags: [idor, broken-access-control]
+
+  # Put/Patch route with :id parameter
+  - id: express-update-route-idor
+    pattern-regex: "router\\.(?:put|patch)\\s*\\(\\s*['\"][^'\"]*:id[^'\"]*['\"]"
+    message: "UPDATE route with :id parameter - verify user owns resource (CWE-639)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, broken-access-control]
+
+  # MongoDB remove without auth check
+  - id: mongodb-remove-no-auth
+    pattern-regex: "collection\\.remove\\s*\\(\\s*\\{\\s*['\"]?_id['\"]?\\s*:"
+    message: "MongoDB remove by _id - ensure authorization is checked (CWE-639)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [mongodb, idor]
+
+  # MongoDB deleteOne without auth
+  - id: mongodb-deleteone-no-auth
+    pattern-regex: "collection\\.deleteOne\\s*\\(\\s*\\{\\s*['\"]?_id['\"]?\\s*:"
+    message: "MongoDB deleteOne by _id - verify user authorization (CWE-639)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [mongodb, idor]
+
+  # ============================================
+  # Sensitive Data Exposure - Credit Cards
+  # ============================================
+
+  # Credit card in JavaScript object
+  - id: js-credit-card-exposure
+    pattern-regex: "['\"]card['\"]\\s*:\\s*.*\\.val\\(\\)|card\\s*:\\s*\\$\\("
+    message: "Credit card data captured in JavaScript - ensure PCI DSS compliance (CWE-311)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-311"
+      tags: [sensitive-data, pci-dss, credit-card]
+
+  # Credit card field displayed in DOM
+  - id: js-credit-card-dom-display
+    pattern-regex: "\\.text\\s*\\(.*\\.card\\)|\\.html\\s*\\(.*\\.card\\)|\\.val\\s*\\(.*\\.card\\)"
+    message: "Credit card displayed in DOM without masking (CWE-311)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-311"
+      tags: [sensitive-data, credit-card]
+
+  # Credit card in AJAX request
+  - id: js-credit-card-ajax
+    pattern-regex: "\\$\\.ajax\\s*\\([^)]*card|\\$\\.post\\s*\\([^)]*card"
+    message: "Credit card sent via AJAX - ensure HTTPS and PCI compliance (CWE-319)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-319"
+      tags: [sensitive-data, credit-card]
+
+  # ============================================
+  # Missing Rate Limiting
+  # ============================================
+
+  # Login route without rate limiting
+  - id: express-login-no-rate-limit
+    pattern-regex: "router\\.post\\s*\\(\\s*['\"]/?(?:login|session|auth|signin)['\"]"
+    message: "Login endpoint without rate limiting - add express-rate-limit (CWE-307)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-307"
+      owasp: "A07:2021"
+      tags: [brute-force, rate-limiting]
+
+  # Password reset without rate limiting
+  - id: express-password-reset-no-limit
+    pattern-regex: "router\\.post\\s*\\(\\s*['\"]/?(?:reset|forgot|password)['\"]"
+    message: "Password reset endpoint - ensure rate limiting is applied (CWE-307)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-307"
+      tags: [brute-force, rate-limiting]
+
+  # ============================================
+  # Hardcoded Database Connections
+  # ============================================
+
+  # Hardcoded MongoDB localhost connection
+  - id: mongodb-hardcoded-localhost
+    pattern-regex: "monk\\s*\\(\\s*['\"]localhost|mongoose\\.connect\\s*\\(\\s*['\"]mongodb://localhost"
+    message: "Hardcoded MongoDB localhost - use environment variables (CWE-798)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      tags: [hardcoded, database, configuration]
+
+  # MongoDB connection without auth
+  - id: mongodb-connection-no-auth
+    pattern-regex: "mongodb://localhost:\\d+/\\w+['\"]\\s*\\)"
+    message: "MongoDB connection without authentication credentials (CWE-306)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306"
+      tags: [database, authentication]
+
+  # Hardcoded MySQL connection
+  - id: mysql-hardcoded-connection
+    pattern-regex: "mysql\\.createConnection\\s*\\(\\s*\\{[^}]*host\\s*:\\s*['\"]localhost"
+    message: "Hardcoded MySQL connection - use environment variables (CWE-798)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      tags: [hardcoded, database]
+
+  # ============================================
+  # Missing Cookie Security Flags
+  # ============================================
+
+  # Session without httpOnly
+  - id: express-session-no-httponly
+    pattern-regex: "session\\s*\\(\\s*\\{[^}]*cookie\\s*:\\s*\\{[^}]*httpOnly\\s*:\\s*false"
+    message: "Session cookie httpOnly:false - enables XSS cookie theft (CWE-1004)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1004"
+      tags: [session, cookie, xss]
+
+  # Session without sameSite
+  - id: express-session-no-samesite
+    pattern-regex: "session\\s*\\(\\s*\\{[^}]*cookie\\s*:\\s*\\{[^}]*sameSite\\s*:\\s*['\"]?(?:none|false)"
+    message: "Session cookie sameSite disabled - CSRF vulnerability (CWE-1275)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1275"
+      tags: [session, cookie, csrf]
+
+  # Cookie-parser without signed cookies
+  - id: express-cookie-parser-unsigned
+    pattern-regex: "cookieParser\\s*\\(\\s*\\)"
+    message: "cookie-parser without secret - cookies are unsigned and can be tampered (CWE-565)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-565"
+      tags: [cookie, configuration]
+
+  # res.cookie without secure flags
+  - id: express-res-cookie-insecure
+    pattern-regex: "res\\.cookie\\s*\\([^)]+\\)(?![^)]*secure)"
+    message: "res.cookie without security options - add httpOnly, secure, sameSite (CWE-614)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-614"
+      tags: [cookie]
+
+  # ============================================
+  # Username/Account Enumeration
+  # ============================================
+
+  # Different error messages for user exists vs wrong password
+  - id: auth-username-enumeration
+    pattern-regex: "user.*not.*found|invalid.*username|no.*user|username.*doesn.*exist"
+    message: "Specific error for missing user enables username enumeration (CWE-204)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-204"
+      tags: [authentication, enumeration]
+
+  # Registration check if user exists
+  - id: auth-registration-enumeration
+    pattern-regex: "user.*already.*exists|username.*taken|email.*already.*registered"
+    message: "User existence revealed during registration - consider generic response (CWE-204)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-204"
+      tags: [authentication, enumeration]
+
+  # ============================================
+  # Password Logic Bugs
+  # ============================================
+
+  # Password field assigned from wrong input
+  - id: js-password-wrong-field
+    pattern-regex: "password['\"]?\\s*:\\s*.*(?:username|email|name).*\\.val\\(\\)"
+    message: "Password field may be assigned from wrong input field - verify mapping (CWE-287)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-287"
+      tags: [authentication, logic-bug]
+
+  # Password compared with ==
+  - id: js-password-loose-comparison
+    pattern-regex: "password\\s*==\\s*[^=]|[^=]\\s*==\\s*password"
+    message: "Password compared with loose equality (==) - use === or crypto compare (CWE-697)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-697"
+      tags: [authentication, comparison]
+
+  # ============================================
+  # Sensitive Data in HTML Forms
+  # ============================================
+
+  # Credit card input as text type
+  - id: html-credit-card-text-input
+    pattern-regex: "input.*(?:card|credit).*type\\s*=\\s*['\"]text['\"]|type\\s*=\\s*['\"]text['\"].*(?:card|credit)"
+    message: "Credit card field as text input - use appropriate masking (CWE-311)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-311"
+      tags: [sensitive-data, html]
+    paths:
+      include:
+        - "*.html"
+        - "*.jade"
+        - "*.pug"
+        - "*.ejs"
+
+  # SSN/Social Security input
+  - id: html-ssn-text-input
+    pattern-regex: "input.*(?:ssn|social.*security).*type\\s*=\\s*['\"]text['\"]"
+    message: "SSN field as text input - mask sensitive data (CWE-311)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-311"
+      tags: [sensitive-data, html]
+    paths:
+      include:
+        - "*.html"
+        - "*.jade"
+        - "*.pug"
+        - "*.ejs"
+
+  # ============================================
+  # Timing Attack Vulnerabilities
+  # ============================================
+
+  # String comparison for secrets
+  - id: js-timing-attack-string-compare
+    pattern-regex: "(?:secret|token|key|password)\\s*===\\s*(?:req\\.|params\\.|body\\.)"
+    message: "String comparison may be vulnerable to timing attacks - use crypto.timingSafeEqual (CWE-208)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-208"
+      tags: [cryptography, timing-attack]
+
+  # ============================================
+  # Insecure Protocol Usage
+  # ============================================
+
+  # HTTP URL for sensitive endpoints
+  - id: js-http-sensitive-endpoint
+    pattern-regex: "http://[^/]+/(?:api|auth|login|pay|checkout)"
+    message: "Sensitive endpoint over HTTP - use HTTPS (CWE-319)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-319"
+      tags: [transport-security]
+
+  # WebSocket without TLS
+  - id: js-websocket-insecure
+    pattern-regex: "new\\s+WebSocket\\s*\\(\\s*['\"]ws://"
+    message: "WebSocket over ws:// - use wss:// for encrypted connection (CWE-319)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-319"
+      tags: [transport-security, websocket]
+
+  # ============================================
+  # Debug/Console Logging Sensitive Data
+  # ============================================
+
+  # Console log password
+  - id: js-console-log-password
+    pattern-regex: "console\\.log\\s*\\([^)]*password"
+    message: "Password logged to console - remove in production (CWE-532)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, sensitive-data]
+
+  # Console log token/secret
+  - id: js-console-log-secret
+    pattern-regex: "console\\.log\\s*\\([^)]*(?:token|secret|key|apiKey|api_key)"
+    message: "Secret/token logged to console - remove in production (CWE-532)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, sensitive-data]
+
+  # Console log credit card
+  - id: js-console-log-card
+    pattern-regex: "console\\.log\\s*\\([^)]*(?:card|creditCard|credit_card)"
+    message: "Credit card logged to console - PCI DSS violation (CWE-532)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, sensitive-data, pci-dss]
