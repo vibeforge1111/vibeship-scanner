@@ -4418,7 +4418,7 @@ rules:
 
   # FastAPI route without any authentication dependency
   - id: py-fastapi-no-auth-crud
-    pattern-regex: '@(app|router)\.(post|put|patch|delete)\s*\(\s*["\'][^"\']+["\']\s*\)\s*\n\s*(async\s+)?def\s+\w+\s*\([^)]*\)\s*:'
+    pattern-regex: "@(app|router)\\.(post|put|patch|delete)\\s*\\(.*\\)\\s*\\n\\s*(async\\s+)?def\\s+\\w+"
     message: "FastAPI CRUD endpoint without authentication dependency - add Depends(get_current_user) (CWE-306)"
     languages: [python]
     severity: WARNING
@@ -4432,7 +4432,6 @@ rules:
     patterns:
       - pattern: 'return list($COLLECTION.find())'
       - pattern: 'return list($COLLECTION.find({}))'
-      - pattern-regex: 'return\s+\[.*for\s+\w+\s+in\s+\w+\.find\(\)'
     message: "Data exposure - returning all database records without pagination (CWE-200)"
     languages: [python]
     severity: WARNING
@@ -4479,7 +4478,7 @@ rules:
 
   # Direct password comparison without timing-safe comparison
   - id: py-auth-password-direct-compare
-    pattern-regex: 'if\s+.*password.*==.*password|if\s+.*==.*\.password'
+    pattern-regex: "if\\s+.*password.*==.*password|if\\s+.*==.*\\.password"
     message: "Direct password comparison - use secrets.compare_digest() for timing-safe comparison (CWE-208)"
     languages: [python]
     severity: WARNING
