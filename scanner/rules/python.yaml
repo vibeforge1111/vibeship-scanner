@@ -6861,3 +6861,529 @@ rules:
     metadata:
       cwe: "CWE-754"
       tags: [logic-flaw]
+
+  # ============================================
+  # Jinja2 Dynamic Template Injection (SSTI)
+  # ============================================
+
+  # Jinja2 Template() with user input - critical SSTI
+  - id: py-jinja2-template-dynamic
+    pattern-regex: "Template\\s*\\([^)]*\\+|Template\\s*\\(\\s*f[\"']|Template\\s*\\([^)]*\\.format\\("
+    message: "Jinja2 Template() with dynamic content - Server-Side Template Injection vulnerability (CWE-1336)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1336"
+      owasp: "A03:2021"
+      tags: [ssti, template-injection, jinja2]
+
+  # Jinja2 Environment.from_string with user input
+  - id: py-jinja2-env-from-string
+    pattern-regex: "(Environment|env)\\s*\\(\\s*\\)\\s*\\.from_string\\s*\\("
+    message: "Jinja2 Environment.from_string() - SSTI if content is user-controlled (CWE-1336)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1336"
+      owasp: "A03:2021"
+      tags: [ssti, template-injection, jinja2]
+
+  # Template concatenation with user input
+  - id: py-template-string-concat
+    pattern-regex: "Template\\s*\\(\\s*[\"'][^\"']*[\"']\\s*\\+\\s*\\w+\\s*\\)"
+    message: "Template string concatenation - SSTI vulnerability if variable is user-controlled (CWE-1336)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1336"
+      owasp: "A03:2021"
+      tags: [ssti, template-injection]
+
+  # render_template_string with user input
+  - id: py-flask-render-template-string-var
+    pattern-regex: "render_template_string\\s*\\([^)]*\\+|render_template_string\\s*\\(\\s*f[\"']"
+    message: "render_template_string with dynamic content - SSTI vulnerability (CWE-1336)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1336"
+      owasp: "A03:2021"
+      tags: [ssti, template-injection, flask]
+
+  # ============================================
+  # HTTP Header Injection
+  # ============================================
+
+  # Host header used in HTML response
+  - id: py-host-header-html
+    pattern-regex: "request\\.headers\\[[\"']Host[\"']\\].*href|href.*request\\.headers"
+    message: "Host header in HTML href - HTTP Response Splitting/XSS risk (CWE-113)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-113"
+      owasp: "A03:2021"
+      tags: [header-injection, xss]
+
+  # Request header directly in response
+  - id: py-header-reflection
+    pattern-regex: "h\\s*=\\s*request\\.headers\\[|header.*=.*request\\.headers\\.get"
+    message: "Request header assigned to variable - ensure sanitization before use in response (CWE-113)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-113"
+      tags: [header-injection]
+
+  # Headers in f-string response
+  - id: py-header-fstring-response
+    pattern-regex: "return.*f[\"'].*\\{.*headers.*\\}"
+    message: "Request headers in f-string response - header injection risk (CWE-113)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-113"
+      tags: [header-injection, xss]
+
+  # ============================================
+  # Bare Except Masking Security Operations
+  # ============================================
+
+  # File open with bare except
+  - id: py-file-open-bare-except
+    pattern-regex: "try:\\s*\\n\\s*.*open\\s*\\([^)]+\\).*\\n\\s*except:\\s*\\n"
+    message: "File open with bare except - masks path traversal attacks (CWE-390)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-390"
+      tags: [exception-handling, path-traversal]
+
+  # Request access with bare except
+  - id: py-request-bare-except
+    pattern-regex: "try:\\s*\\n\\s*.*request\\.(headers|args|form|json)\\[.*\\n\\s*except:\\s*\\n"
+    message: "Request access with bare except - may mask injection attempts (CWE-390)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-390"
+      tags: [exception-handling]
+
+  # Database operation with bare except
+  - id: py-db-bare-except
+    pattern-regex: "try:\\s*\\n\\s*.*(execute|query|cursor).*\\n\\s*except:\\s*\\n"
+    message: "Database operation with bare except - may mask SQL injection attempts (CWE-390)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-390"
+      tags: [exception-handling, sqli]
+
+  # Catch all Exception silently
+  - id: py-silent-exception-pass
+    pattern-regex: "except\\s+(Exception|BaseException).*:\\s*\\n\\s*pass"
+    message: "Silently catching all exceptions - may hide security errors (CWE-390)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-390"
+      tags: [exception-handling]
+
+  # ============================================
+  # Exception Information Disclosure
+  # ============================================
+
+  # Exception in JSON response
+  - id: py-exception-json-response
+    pattern-regex: "return\\s*\\{[^}]*[\"']error[\"']:\\s*(str\\(e\\)|e\\.message|repr\\(e\\))"
+    message: "Exception details in JSON response - information disclosure (CWE-209)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      owasp: "A01:2021"
+      tags: [information-disclosure]
+
+  # Exception in f-string response
+  - id: py-exception-fstring-response
+    pattern-regex: "return.*f[\"'].*\\{e\\}|return.*f[\"'].*\\{(str\\(e\\)|repr\\(e\\)|e\\.args)\\}"
+    message: "Exception in f-string response - leaks internal error details (CWE-209)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      owasp: "A01:2021"
+      tags: [information-disclosure]
+
+  # Flask abort with exception details
+  - id: py-flask-abort-exception
+    pattern-regex: "abort\\s*\\([^,]+,\\s*(str\\(e\\)|e\\.message|description=.*e)"
+    message: "Flask abort with exception details - information disclosure (CWE-209)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, flask]
+
+  # Traceback in response
+  - id: py-traceback-response
+    pattern-regex: "traceback\\.(format_exc|print_exc|format_exception).*return|return.*traceback"
+    message: "Traceback in response - exposes internal code structure (CWE-209)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      owasp: "A01:2021"
+      tags: [information-disclosure]
+
+  # ============================================
+  # Tarfile/Zipfile Path Traversal
+  # ============================================
+
+  # Tarfile extractall without validation
+  - id: py-tarfile-extractall
+    pattern-regex: "tarfile\\.(open|TarFile).*\\.extractall\\s*\\("
+    message: "tarfile.extractall() - validate members for path traversal (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021"
+      tags: [path-traversal, archive]
+
+  # Tarfile extract without checking member name
+  - id: py-tarfile-extract-member
+    pattern-regex: "tarfile.*\\.extract\\s*\\(\\s*member|tarfile.*\\.extract\\s*\\(\\s*\\w+\\s*\\)"
+    message: "tarfile.extract() - check member.name for ../ before extraction (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, archive]
+
+  # Zipfile extractall without validation
+  - id: py-zipfile-extractall
+    pattern-regex: "zipfile\\.ZipFile.*\\.extractall\\s*\\("
+    message: "zipfile.extractall() - validate member names for path traversal (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021"
+      tags: [path-traversal, archive]
+
+  # ZipFile extract without checking
+  - id: py-zipfile-extract-member
+    pattern-regex: "ZipFile.*\\.extract\\s*\\(|zipfile.*\\.extract\\s*\\("
+    message: "zipfile.extract() - verify filename doesn't contain ../ (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, archive]
+
+  # Tarfile user input in open
+  - id: py-tarfile-user-input
+    pattern-regex: "tarfile\\.(open|TarFile)\\s*\\(\\s*(request\\.|user_input|filename|path)"
+    message: "tarfile with user input - potential path traversal or zip bomb (CWE-22)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, archive]
+
+  # ============================================
+  # SSL/TLS Verification Disabled (All Methods)
+  # ============================================
+
+  # requests.put with verify=False
+  - id: py-requests-put-verify-false
+    pattern-regex: "requests\\.put\\s*\\([^)]*verify\\s*=\\s*False"
+    message: "requests.put() with SSL verification disabled - MITM risk (CWE-295)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021"
+      tags: [ssl, mitm]
+
+  # requests.patch with verify=False
+  - id: py-requests-patch-verify-false
+    pattern-regex: "requests\\.patch\\s*\\([^)]*verify\\s*=\\s*False"
+    message: "requests.patch() with SSL verification disabled - MITM risk (CWE-295)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021"
+      tags: [ssl, mitm]
+
+  # requests.delete with verify=False
+  - id: py-requests-delete-verify-false
+    pattern-regex: "requests\\.delete\\s*\\([^)]*verify\\s*=\\s*False"
+    message: "requests.delete() with SSL verification disabled - MITM risk (CWE-295)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021"
+      tags: [ssl, mitm]
+
+  # requests.head with verify=False
+  - id: py-requests-head-verify-false
+    pattern-regex: "requests\\.head\\s*\\([^)]*verify\\s*=\\s*False"
+    message: "requests.head() with SSL verification disabled - MITM risk (CWE-295)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021"
+      tags: [ssl, mitm]
+
+  # requests.options with verify=False
+  - id: py-requests-options-verify-false
+    pattern-regex: "requests\\.options\\s*\\([^)]*verify\\s*=\\s*False"
+    message: "requests.options() with SSL verification disabled - MITM risk (CWE-295)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021"
+      tags: [ssl, mitm]
+
+  # Session with verify=False
+  - id: py-requests-session-verify-false
+    pattern-regex: "Session\\(\\).*\\.verify\\s*=\\s*False|session\\.verify\\s*=\\s*False"
+    message: "Requests session with SSL verification disabled - MITM risk (CWE-295)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+      owasp: "A02:2021"
+      tags: [ssl, mitm]
+
+  # ============================================
+  # YAML Unsafe Loader Variants
+  # ============================================
+
+  # yaml.load with explicit UnsafeLoader
+  - id: py-yaml-unsafe-loader
+    pattern-regex: "yaml\\.load\\s*\\([^)]*Loader\\s*=\\s*yaml\\.UnsafeLoader"
+    message: "yaml.load with UnsafeLoader - arbitrary code execution (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021"
+      tags: [deserialization, yaml]
+
+  # yaml.load_all with UnsafeLoader
+  - id: py-yaml-load-all-unsafe
+    pattern-regex: "yaml\\.load_all\\s*\\([^)]*Loader\\s*=\\s*yaml\\.UnsafeLoader"
+    message: "yaml.load_all with UnsafeLoader - arbitrary code execution (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021"
+      tags: [deserialization, yaml]
+
+  # yaml.full_load (deprecated but still dangerous)
+  - id: py-yaml-full-load
+    pattern-regex: "yaml\\.full_load\\s*\\("
+    message: "yaml.full_load() - can execute arbitrary Python objects (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization, yaml]
+
+  # ============================================
+  # HTTPConnection/HTTPSConnection SSRF
+  # ============================================
+
+  # HTTPConnection with user input
+  - id: py-httpconnection-user-input
+    pattern-regex: "HTTPConnection\\s*\\(\\s*(request\\.|user_input|host|url)"
+    message: "HTTPConnection with user-controlled host - SSRF vulnerability (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021"
+      tags: [ssrf]
+
+  # HTTPSConnection with user input
+  - id: py-httpsconnection-user-input
+    pattern-regex: "HTTPSConnection\\s*\\(\\s*(request\\.|user_input|host|url)"
+    message: "HTTPSConnection with user-controlled host - SSRF vulnerability (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021"
+      tags: [ssrf]
+
+  # ============================================
+  # Hardcoded Database Credentials
+  # ============================================
+
+  # INSERT with admin/admin credentials
+  - id: py-hardcoded-admin-creds-insert
+    pattern-regex: "INSERT INTO.*VALUES.*[\"']admin[\"'].*[\"']admin[\"']"
+    message: "Hardcoded admin credentials in database seed - use environment variables (CWE-798)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A02:2021"
+      tags: [hardcoded-credentials]
+
+  # INSERT with root/root credentials
+  - id: py-hardcoded-root-creds-insert
+    pattern-regex: "INSERT INTO.*VALUES.*[\"']root[\"'].*[\"']root[\"']"
+    message: "Hardcoded root credentials in database seed - use environment variables (CWE-798)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A02:2021"
+      tags: [hardcoded-credentials]
+
+  # INSERT with user/password credentials
+  - id: py-hardcoded-user-password-insert
+    pattern-regex: "INSERT INTO.*VALUES.*[\"']user[\"'].*[\"']password[\"']"
+    message: "Hardcoded credentials in database seed - use strong passwords (CWE-798)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      tags: [hardcoded-credentials]
+
+  # ============================================
+  # Insecure Random for Security Operations
+  # ============================================
+
+  # random for token generation
+  - id: py-random-token
+    pattern-regex: "token\\s*=\\s*[\"']\\s*\\.join\\s*\\(\\s*random\\.(choice|choices|sample)"
+    message: "Using random module for token - use secrets module instead (CWE-330)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-330"
+      owasp: "A02:2021"
+      tags: [weak-random, cryptography]
+
+  # random for session ID
+  - id: py-random-session-id
+    pattern-regex: "session_id\\s*=.*random\\.(randint|choice|random)"
+    message: "Using random module for session ID - use secrets.token_urlsafe() (CWE-330)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-330"
+      owasp: "A02:2021"
+      tags: [weak-random, session]
+
+  # random.randint for security value
+  - id: py-random-randint-security
+    pattern-regex: "(otp|code|pin|key|nonce)\\s*=\\s*random\\.randint"
+    message: "Using random.randint for security value - use secrets module (CWE-330)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-330"
+      tags: [weak-random]
+
+  # ============================================
+  # ReDoS with User Input
+  # ============================================
+
+  # Regex with request input
+  - id: py-regex-request-input
+    pattern-regex: "re\\.(match|search|findall)\\s*\\([^,]+,\\s*request\\."
+    message: "Regex matching user input - ensure pattern is not vulnerable to ReDoS (CWE-1333)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, regex]
+
+  # Catastrophic backtracking patterns
+  - id: py-redos-nested-quantifier
+    pattern-regex: "re\\.(compile|match|search)\\s*\\([^)]*\\(\\.[+*]\\)\\+[^)]*\\)"
+    message: "Regex with nested quantifiers - potential ReDoS vulnerability (CWE-1333)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, regex]
+
+  # ============================================
+  # Flask Response Security
+  # ============================================
+
+  # Returning entire user object
+  - id: py-flask-return-user-object
+    pattern-regex: "return.*jsonify\\s*\\(\\s*user\\s*\\)|return.*\\{.*[\"']user[\"']:\\s*user\\s*\\}"
+    message: "Returning entire user object - may expose sensitive fields like password hash (CWE-200)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [information-disclosure]
+
+  # Returning query results directly
+  - id: py-flask-return-query-result
+    pattern-regex: "return.*jsonify\\s*\\(\\s*\\w+\\.query\\.all\\(\\)"
+    message: "Returning raw query results - ensure sensitive fields are filtered (CWE-200)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [information-disclosure]
+
+  # ============================================
+  # Unsafe File Operations
+  # ============================================
+
+  # shutil.copy with user input
+  - id: py-shutil-copy-user-input
+    pattern-regex: "shutil\\.(copy|copy2|copyfile)\\s*\\(\\s*(request\\.|user_input|src|source)"
+    message: "shutil copy with user input - potential path traversal (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, file-operations]
+
+  # shutil.move with user input
+  - id: py-shutil-move-user-input
+    pattern-regex: "shutil\\.move\\s*\\(\\s*(request\\.|user_input|src|source)"
+    message: "shutil.move with user input - potential path traversal (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, file-operations]
+
+  # os.rename with user input
+  - id: py-os-rename-user-input
+    pattern-regex: "os\\.rename\\s*\\(\\s*(request\\.|user_input|src|old)"
+    message: "os.rename with user input - potential path traversal (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, file-operations]
+
+  # pathlib write with user content
+  - id: py-pathlib-write-user
+    pattern-regex: "Path\\s*\\([^)]+\\)\\.write_(text|bytes)\\s*\\(\\s*(request\\.|user_input)"
+    message: "pathlib write with user content - ensure path and content are validated (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, file-operations]
