@@ -6026,3 +6026,334 @@ rules:
     metadata:
       cwe: "CWE-327"
       tags: [crypto, encryption]
+
+  # ============================================
+  # WTForms CSRF - Form vs FlaskForm
+  # ============================================
+
+  # Form class without CSRF (should use FlaskForm)
+  - id: py-wtforms-no-csrf
+    pattern-regex: "class\\s+\\w+\\s*\\(\\s*Form\\s*\\)"
+    message: "WTForms Form without CSRF - use FlaskForm from flask_wtf instead for CSRF protection (CWE-352)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-352"
+      owasp: "A01:2021"
+      tags: [csrf, wtforms, flask]
+
+  # Importing Form from wtforms instead of FlaskForm
+  - id: py-import-wtforms-form
+    pattern-regex: "from\\s+wtforms\\s+import.*\\bForm\\b"
+    message: "Importing Form from wtforms - use FlaskForm from flask_wtf for CSRF protection (CWE-352)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf, wtforms, flask]
+
+  # ============================================
+  # Mass Assignment Vulnerabilities
+  # ============================================
+
+  # is_admin field in form (mass assignment risk)
+  - id: py-mass-assignment-admin
+    pattern-regex: "is_admin\\s*=\\s*(BooleanField|IntegerField|StringField)"
+    message: "Admin flag in form - mass assignment vulnerability, never accept is_admin from user input (CWE-915)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+      owasp: "A01:2021"
+      tags: [mass-assignment, authorization]
+
+  # role field in user form
+  - id: py-mass-assignment-role
+    pattern-regex: "(role|user_role|permission)\\s*=\\s*(StringField|SelectField|IntegerField)"
+    message: "Role/permission field in form - mass assignment vulnerability, validate server-side (CWE-915)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment, authorization]
+
+  # Populating model directly from form
+  - id: py-form-populate-obj
+    pattern-regex: "form\\.populate_obj\\("
+    message: "form.populate_obj() copies all form fields to model - verify no sensitive fields can be overwritten (CWE-915)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment, wtforms]
+
+  # **kwargs in model __init__
+  - id: py-model-kwargs-init
+    pattern-regex: "def\\s+__init__\\s*\\([^)]*\\*\\*kwargs"
+    message: "Model __init__ with **kwargs - may allow mass assignment of unintended attributes (CWE-915)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment]
+
+  # ============================================
+  # User Enumeration / Information Disclosure
+  # ============================================
+
+  # Exposing user email in response
+  - id: py-user-email-exposure
+    pattern-regex: "(return|jsonify|json\\.dumps).*\\.(email|username|user_id)"
+    message: "Exposing user email/username in response - may enable user enumeration (CWE-200)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [user-enumeration, information-disclosure]
+
+  # Different error messages for user exists vs wrong password
+  - id: py-user-enumeration-message
+    pattern-regex: "(User not found|Invalid username|Unknown user|Email not registered)"
+    message: "Specific 'user not found' message enables user enumeration - use generic 'Invalid credentials' (CWE-204)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-204"
+      tags: [user-enumeration, authentication]
+
+  # is_logged_in endpoint exposing user details
+  - id: py-auth-status-exposure
+    pattern-regex: "(is_logged_in|check_auth|auth_status).*current_user\\."
+    message: "Auth check endpoint exposing user details - avoid returning user info in auth status (CWE-200)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [user-enumeration, authentication]
+
+  # ============================================
+  # Flash Messages Security
+  # ============================================
+
+  # flash() with json.dumps (exposing form errors)
+  - id: py-flash-json-dumps
+    pattern-regex: "flash\\s*\\(\\s*(json\\.)?dumps\\s*\\("
+    message: "flash() with dumps() - may expose sensitive error details to users (CWE-209)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, flask]
+
+  # flash() with form.errors
+  - id: py-flash-form-errors
+    pattern-regex: "flash\\s*\\([^)]*form\\.errors"
+    message: "flash() with form.errors - may expose validation details, use generic error message (CWE-209)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, flask]
+
+  # flash() with exception message
+  - id: py-flash-exception
+    pattern-regex: "flash\\s*\\([^)]*str\\s*\\(\\s*e\\s*\\)|flash\\s*\\([^)]*exception"
+    message: "flash() with exception details - may expose sensitive information (CWE-209)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, flask]
+
+  # ============================================
+  # Password Comparison Issues
+  # ============================================
+
+  # Direct password comparison (timing attack + plaintext)
+  - id: py-password-direct-compare
+    pattern-regex: "password\\s*==\\s*[^=]|[^=]\\s*==\\s*password"
+    message: "Direct password comparison - vulnerable to timing attack, use bcrypt.checkpw() (CWE-208)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-208"
+      owasp: "A02:2021"
+      tags: [authentication, timing-attack]
+
+  # Storing password without hashing
+  - id: py-password-store-plaintext
+    pattern-regex: "self\\.password\\s*=\\s*(password|pwd|pass)"
+    message: "Storing password without hashing - always hash passwords with bcrypt (CWE-256)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      owasp: "A02:2021"
+      tags: [authentication, password]
+
+  # ============================================
+  # Flask Route Security
+  # ============================================
+
+  # Route without login_required that accesses current_user
+  - id: py-route-no-login-required
+    pattern-regex: "@app\\.route\\([^)]+\\)\\s*\\n\\s*def\\s+\\w+\\([^)]*\\):[^@]*current_user"
+    message: "Route accessing current_user without @login_required - unauthorized access possible (CWE-862)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-862"
+      tags: [authentication, flask]
+
+  # Route modifying data without POST method
+  - id: py-route-get-modify
+    pattern-regex: "@app\\.route\\(['\"][^'\"]+['\"]\\)\\s*\\n\\s*def\\s+\\w+\\([^)]*\\):[^@]*(delete|remove|update|create|add|insert)"
+    message: "Route modifying data without specifying POST method - may be vulnerable to CSRF via GET (CWE-352)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf, flask]
+
+  # ============================================
+  # Session Security
+  # ============================================
+
+  # Session without expiry
+  - id: py-session-no-expiry
+    pattern-regex: "session\\[['\"]\\w+['\"]\\]\\s*="
+    message: "Session value set - ensure PERMANENT_SESSION_LIFETIME is configured (CWE-613)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-613"
+      tags: [session, flask]
+
+  # Flask session secret key issues
+  - id: py-flask-secret-short
+    pattern-regex: "SECRET_KEY\\s*=\\s*['\"][^'\"]{1,16}['\"]"
+    message: "Flask SECRET_KEY appears short - use at least 32 bytes of random data (CWE-331)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-331"
+      tags: [session, flask, crypto]
+
+  # ============================================
+  # Request Handling Security
+  # ============================================
+
+  # request.form without validation
+  - id: py-request-form-direct
+    pattern-regex: "request\\.form\\[['\"]\\w+['\"]\\]"
+    message: "Direct request.form access - use request.form.get() with validation (CWE-20)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-20"
+      tags: [input-validation, flask]
+
+  # request.args in SQL or command
+  - id: py-request-args-injection
+    pattern-regex: "(execute|system|popen|subprocess).*request\\.(args|form|json)"
+    message: "User input from request directly in dangerous function - validate and sanitize (CWE-77)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-77"
+      owasp: "A03:2021"
+      tags: [injection, flask]
+
+  # ============================================
+  # JWT Security
+  # ============================================
+
+  # JWT decode without verify
+  - id: py-jwt-no-verify
+    pattern-regex: "jwt\\.decode\\([^)]*verify\\s*=\\s*False"
+    message: "JWT decode with verify=False - signature not verified, token can be forged (CWE-347)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-347"
+      owasp: "A02:2021"
+      tags: [jwt, authentication]
+
+  # JWT with algorithm none
+  - id: py-jwt-none-algorithm
+    pattern-regex: "jwt\\.(encode|decode)\\([^)]*algorithm\\s*=\\s*['\"]none['\"]"
+    message: "JWT with 'none' algorithm - token can be forged without secret (CWE-327)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+      tags: [jwt, crypto]
+
+  # JWT secret from environment without fallback check
+  - id: py-jwt-secret-env
+    pattern-regex: "jwt\\.(encode|decode)\\([^)]*os\\.environ\\.get\\("
+    message: "JWT secret from environment - ensure fallback is not used if env var missing (CWE-798)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      tags: [jwt, configuration]
+
+  # ============================================
+  # Debug / Development Mode
+  # ============================================
+
+  # Flask debug mode enabled
+  - id: py-flask-debug-true
+    pattern-regex: "app\\.run\\([^)]*debug\\s*=\\s*True"
+    message: "Flask debug mode enabled - exposes debugger and auto-reloader in production (CWE-489)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-489"
+      owasp: "A05:2021"
+      tags: [debug, flask]
+
+  # DEBUG = True in config
+  - id: py-debug-config-true
+    pattern-regex: "DEBUG\\s*=\\s*True"
+    message: "DEBUG = True in configuration - disable in production (CWE-489)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-489"
+      tags: [debug, configuration]
+
+  # TESTING = True left enabled
+  - id: py-testing-config-true
+    pattern-regex: "TESTING\\s*=\\s*True"
+    message: "TESTING = True in configuration - may bypass security checks (CWE-489)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-489"
+      tags: [debug, configuration]
+
+  # ============================================
+  # Logging Security
+  # ============================================
+
+  # Logging password or secret
+  - id: py-log-sensitive
+    pattern-regex: "(logger|logging)\\.(info|debug|warning|error)\\([^)]*(?:password|secret|token|key|credential)"
+    message: "Logging potentially sensitive data (password/secret/token) - mask before logging (CWE-532)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, information-disclosure]
+
+  # print() with sensitive data
+  - id: py-print-sensitive
+    pattern-regex: "print\\([^)]*(?:password|secret|api_key|token|credential)"
+    message: "Printing sensitive data - remove or mask in production (CWE-532)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, information-disclosure]
