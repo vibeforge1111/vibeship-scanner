@@ -6633,3 +6633,231 @@ rules:
     metadata:
       cwe: "CWE-754"
       tags: [sqlalchemy, error-handling]
+
+  # ============================================
+  # Missing Authentication on Routes
+  # ============================================
+
+  # POST route without @login_required
+  - id: py-post-route-no-auth
+    pattern-regex: "@(app|bp)\\.route\\([^)]*methods\\s*=\\s*\\[[^]]*[\"']POST[\"'][^]]*\\][^)]*\\)\\s*\\ndef\\s+(?!login|signup|register|do_login|do_signup)"
+    message: "POST route without @login_required - verify authentication is enforced (CWE-306)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306"
+      owasp: "A07:2021"
+      tags: [authentication, flask]
+
+  # Route accessing session/db without auth decorator
+  - id: py-route-db-no-auth
+    pattern-regex: "@(app|bp)\\.route\\([^)]+\\)\\s*\\ndef\\s+\\w+\\([^)]*\\):[^@]*(Session\\(\\)|db\\.session)"
+    message: "Route accessing database without visible @login_required - verify authentication (CWE-306)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-306"
+      tags: [authentication, flask]
+
+  # ============================================
+  # Hardcoded Secrets in Seed Data
+  # ============================================
+
+  # Hardcoded static UUID (registration/invite codes)
+  - id: py-hardcoded-static-uuid
+    pattern-regex: "static_code\\s*=\\s*[\"'][0-9a-f-]{36}[\"']"
+    message: "Hardcoded static registration/invite code - generate dynamically or use environment variable (CWE-798)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      tags: [hardcoded-secrets, seed-data]
+
+  # Weak seed password patterns
+  - id: py-weak-seed-password
+    pattern-regex: "hashpw\\s*\\(\\s*b[\"'](user|admin|test|password|123|pass)[\"']"
+    message: "Weak password in seed data - use strong passwords even in development (CWE-521)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-521"
+      tags: [password, seed-data]
+
+  # Predictable test credentials
+  - id: py-predictable-credentials
+    pattern-regex: "(user|admin|test)@.*\\.com.*hashpw|hashpw.*b[\"'](user|admin|test)[\"']"
+    message: "Predictable test credentials - attackers check common email/password combinations (CWE-798)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-798"
+      tags: [credentials, seed-data]
+
+  # ============================================
+  # Auth State Exposure Endpoints
+  # ============================================
+
+  # /is_logged_in or /check_auth style endpoints
+  - id: py-auth-check-endpoint
+    pattern-regex: "@(app|bp)\\.route\\([\"']/(is_logged_in|check_auth|auth_status|logged_in|session_check)[\"']"
+    message: "Auth check endpoint - ensure no sensitive user data is exposed (CWE-200)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [authentication, information-disclosure]
+
+  # Returning current_user attributes in JSON
+  - id: py-current-user-json-exposure
+    pattern-regex: "jsonify\\s*\\([^)]*current_user\\.(email|id|username|is_admin)"
+    message: "Exposing current_user attributes in JSON response - may leak sensitive info (CWE-200)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [information-disclosure, flask]
+
+  # ============================================
+  # Database Configuration Security
+  # ============================================
+
+  # SQLite/SQLAlchemy echo=True (query logging)
+  - id: py-sqlalchemy-echo-true
+    pattern-regex: "create_engine\\s*\\([^)]*echo\\s*=\\s*True"
+    message: "SQLAlchemy echo=True logs all SQL queries - disable in production (CWE-532)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, sqlalchemy, configuration]
+
+  # SQLite database in project directory
+  - id: py-sqlite-project-dir
+    pattern-regex: "sqlite:///.*database\\.db|sqlite:///.*\\.db"
+    message: "SQLite database file - ensure not web-accessible and properly backed up (CWE-219)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-219"
+      tags: [database, configuration]
+
+  # ============================================
+  # Password Handling Issues
+  # ============================================
+
+  # Password encode before bcrypt compare
+  - id: py-bcrypt-encode-issue
+    pattern-regex: "\\.password\\.encode\\([\"']utf-8[\"']\\)"
+    message: "Password encoding before bcrypt - ensure consistent encoding, bcrypt expects bytes (CWE-261)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-261"
+      tags: [password, bcrypt]
+
+  # Password field without validators
+  - id: py-password-field-no-validator
+    pattern-regex: "PasswordField\\s*\\([^)]*\\)(?!.*validators)"
+    message: "PasswordField without validators - add Length, DataRequired validators (CWE-521)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-521"
+      tags: [password, wtforms]
+
+  # ============================================
+  # User Enumeration Patterns
+  # ============================================
+
+  # Query user then check if None with different messages
+  - id: py-user-query-enumeration
+    pattern-regex: "user\\s*=.*query.*\\n.*if\\s+(not\\s+)?user"
+    message: "User lookup pattern - ensure same error message for user not found and wrong password (CWE-204)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-204"
+      tags: [user-enumeration, authentication]
+
+  # Separate flash messages for user vs password
+  - id: py-separate-auth-errors
+    pattern-regex: "flash\\([\"'].*[Uu]ser.*[\"']\\).*\\n.*flash\\([\"'].*[Pp]assword.*[\"']\\)|flash\\([\"'].*[Pp]assword.*[\"']\\).*\\n.*flash\\([\"'].*[Uu]ser.*[\"']\\)"
+    message: "Separate error messages for user/password - use generic 'Invalid credentials' (CWE-204)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-204"
+      tags: [user-enumeration, authentication]
+
+  # ============================================
+  # Logic Flaws
+  # ============================================
+
+  # Unconditional logout after login attempt
+  - id: py-unconditional-logout
+    pattern-regex: "login_user\\([^)]+\\).*\\n.*logout_user\\(\\)"
+    message: "logout_user() called after login_user() - possible logic flaw (CWE-287)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-287"
+      tags: [authentication, logic-flaw]
+
+  # Return after flash without conditional
+  - id: py-flash-return-logic
+    pattern-regex: "flash\\([^)]+\\)\\s*\\n\\s*return\\s+redirect"
+    message: "Flash then redirect pattern - verify this is in correct conditional branch (CWE-287)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-287"
+      tags: [logic-flaw, flask]
+
+  # ============================================
+  # IDOR via User ID Parameter
+  # ============================================
+
+  # Route with user_id accessing other user's data
+  - id: py-route-user-id-idor
+    pattern-regex: "@(app|bp)\\.route\\([\"'][^\"']*<int:user_id>[^\"']*[\"']"
+    message: "Route with user_id parameter - verify authorization check against current_user (CWE-639)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021"
+      tags: [idor, authorization]
+
+  # Accessing notes/resources by user_id from URL
+  - id: py-notes-by-user-id
+    pattern-regex: "get_notes.*user_id|notes.*filter.*user_id"
+    message: "Accessing notes by user_id - verify current_user.id == user_id (CWE-639)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, authorization]
+
+  # ============================================
+  # Filtered Values Logic Issues
+  # ============================================
+
+  # Accessing key that was filtered out
+  - id: py-filtered-dict-access
+    pattern-regex: "filtered.*=.*\\{.*for.*if.*\\}.*\\n.*filtered.*\\.get\\("
+    message: "Accessing filtered dict - verify key wasn't excluded by filter (CWE-754)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-754"
+      tags: [logic-flaw]
+
+  # Dict comprehension filtering then accessing original key
+  - id: py-dict-filter-then-access
+    pattern-regex: "if\\s+k\\s+(!=|not in).*\\}.*\\n.*\\[.*password.*\\]"
+    message: "Dict filtering pattern - verify filtered key is not accessed later (CWE-754)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-754"
+      tags: [logic-flaw]
