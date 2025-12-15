@@ -4485,3 +4485,557 @@ rules:
     metadata:
       cwe: "CWE-208"
       tags: [authentication, timing-attack]
+
+  # SQL INSERT with f-string interpolation
+  - id: py-sqli-insert-fstring
+    pattern-regex: "f['\"]INSERT\\s+INTO\\s+\\w+.*\\{[^}]+\\}"
+    message: "SQL injection - INSERT with f-string interpolation allows arbitrary data injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      tags: [sql-injection, insert]
+
+  # SQL UPDATE with f-string interpolation
+  - id: py-sqli-update-fstring
+    pattern-regex: "f['\"]UPDATE\\s+\\w+\\s+SET.*\\{[^}]+\\}"
+    message: "SQL injection - UPDATE with f-string interpolation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      tags: [sql-injection, update]
+
+  # Pickle insecure deserialization
+  - id: py-insecure-pickle-loads
+    patterns:
+      - pattern: pickle.loads($DATA)
+      - pattern: pickle.load($FILE)
+      - pattern: cPickle.loads($DATA)
+      - pattern: cPickle.load($FILE)
+    message: "Insecure deserialization - pickle can execute arbitrary code (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      tags: [deserialization, rce]
+
+  # YAML unsafe load
+  - id: py-insecure-yaml-load
+    patterns:
+      - pattern: yaml.load($DATA)
+      - pattern: yaml.load($DATA, ...)
+      - pattern: yaml.unsafe_load($DATA)
+    message: "Insecure YAML deserialization - use yaml.safe_load() instead (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      tags: [deserialization, yaml]
+
+  # SSTI - Jinja2 render_template_string with user input
+  - id: py-ssti-jinja2-template-string
+    patterns:
+      - pattern: render_template_string($USER_INPUT)
+      - pattern: Template($USER_INPUT).render(...)
+      - pattern: jinja2.Template($USER_INPUT)
+      - pattern: Environment(...).from_string($USER_INPUT)
+    message: "Server-Side Template Injection - user input in template allows RCE (CWE-1336)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1336"
+      owasp: "A03:2021 Injection"
+      tags: [ssti, template-injection, rce]
+
+  # SSRF - requests with user-controlled URL
+  - id: py-ssrf-requests-user-url
+    patterns:
+      - pattern: requests.get($URL, ...)
+      - pattern: requests.post($URL, ...)
+      - pattern: requests.put($URL, ...)
+      - pattern: requests.delete($URL, ...)
+      - pattern: requests.head($URL, ...)
+      - pattern: httpx.get($URL, ...)
+      - pattern: httpx.post($URL, ...)
+      - pattern: aiohttp.ClientSession().get($URL)
+      - pattern: urllib.request.urlopen($URL)
+    message: "Potential SSRF - validate URL is not user-controlled or use allowlist (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      tags: [ssrf, requests]
+
+  # XXE - XML parsing without disabling external entities
+  - id: py-xxe-etree-parse
+    patterns:
+      - pattern: etree.parse($INPUT)
+      - pattern: etree.fromstring($INPUT)
+      - pattern: ET.parse($INPUT)
+      - pattern: ET.fromstring($INPUT)
+      - pattern: xml.dom.minidom.parse($INPUT)
+      - pattern: xml.dom.minidom.parseString($INPUT)
+      - pattern: xml.sax.parse($INPUT, ...)
+    message: "Potential XXE - disable external entities in XML parser (CWE-611)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2021 Security Misconfiguration"
+      tags: [xxe, xml]
+
+  # JWT decode without verification
+  - id: py-jwt-no-verify
+    patterns:
+      - pattern: 'jwt.decode($TOKEN, options={"verify_signature": False})'
+      - pattern: 'jwt.decode($TOKEN, verify=False)'
+    message: "JWT decoded without signature verification - tokens can be forged (CWE-347)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-347"
+      owasp: "A02:2021 Cryptographic Failures"
+      tags: [jwt, authentication]
+
+  # os.system command injection
+  - id: py-cmdi-os-system
+    patterns:
+      - pattern: os.system($CMD)
+      - pattern: os.popen($CMD)
+      - pattern: os.popen($CMD, ...)
+    message: "Command injection - os.system/popen executes shell commands (CWE-78)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+      tags: [command-injection, os]
+
+  # eval() with any input - extremely dangerous
+  - id: py-code-injection-eval
+    patterns:
+      - pattern: eval($INPUT)
+      - pattern: eval($INPUT, ...)
+    message: "Code injection - eval() executes arbitrary Python code (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      owasp: "A03:2021 Injection"
+      tags: [code-injection, eval]
+
+  # exec() with any input - extremely dangerous
+  - id: py-code-injection-exec
+    patterns:
+      - pattern: exec($INPUT)
+      - pattern: exec($INPUT, ...)
+    message: "Code injection - exec() executes arbitrary Python code (CWE-94)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      owasp: "A03:2021 Injection"
+      tags: [code-injection, exec]
+
+  # Hardcoded JWT secret
+  - id: py-hardcoded-jwt-secret
+    pattern-regex: "jwt\\.(encode|decode)\\([^)]*,\\s*['\"][^'\"]{8,}['\"]"
+    message: "Hardcoded JWT secret - move to environment variable (CWE-798)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A02:2021 Cryptographic Failures"
+      tags: [jwt, hardcoded-secret]
+
+  # Flask debug mode enabled
+  - id: py-flask-debug-enabled
+    patterns:
+      - pattern: app.run(debug=True)
+      - pattern: app.run(..., debug=True, ...)
+    message: "Flask debug mode exposes debugger and reloader - disable in production (CWE-489)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-489"
+      tags: [flask, debug, misconfiguration]
+
+  # Django DEBUG=True
+  - id: py-django-debug-enabled
+    pattern-regex: "DEBUG\\s*=\\s*True"
+    message: "Django DEBUG=True exposes sensitive information - disable in production (CWE-489)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-489"
+      tags: [django, debug, misconfiguration]
+
+  # File open with user-controlled path
+  - id: py-path-traversal-open
+    patterns:
+      - pattern: open($PATH, ...)
+    message: "Potential path traversal - validate file path is not user-controlled (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, file-access]
+
+  # SQL query string formatting (% operator)
+  - id: py-sqli-percent-format
+    pattern-regex: "['\"]SELECT.*%s.*['\"]\\s*%"
+    message: "SQL injection - string formatting with % operator is unsafe (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection]
+
+  # SQL query .format() method
+  - id: py-sqli-format-method
+    pattern-regex: "['\"]SELECT.*\\{\\}.*['\"].format\\("
+    message: "SQL injection - .format() in SQL query is unsafe (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection]
+
+  # Binding to 0.0.0.0 (all interfaces)
+  - id: py-bind-all-interfaces
+    pattern-regex: "\\.(run|bind|listen)\\([^)]*['\"]0\\.0\\.0\\.0['\"]"
+    message: "Binding to 0.0.0.0 exposes service to all network interfaces (CWE-200)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [network, misconfiguration]
+
+  # assert used for security check (can be disabled with -O flag)
+  - id: py-assert-security-check
+    pattern-regex: "assert\\s+.*password|assert\\s+.*auth|assert\\s+.*token|assert\\s+.*permission"
+    message: "assert can be disabled with -O flag - do not use for security checks (CWE-617)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-617"
+      tags: [assertion, security]
+
+  # ============================================
+  # vfapi-specific and advanced injection rules
+  # ============================================
+
+  # SQL with VALUES clause using f-string (INSERT)
+  - id: py-sqli-values-fstring
+    pattern-regex: "f['\"].*VALUES\\s*\\([^)]*\\{[^}]+\\}"
+    message: "SQL injection - VALUES clause with f-string interpolation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      tags: [sql-injection, insert, values]
+
+  # await request.json() passed to function - NoSQL injection vector
+  - id: py-nosqli-request-json-to-func
+    pattern: |
+      $QUERY = await $REQUEST.json()
+      ...
+      $FUNC($QUERY)
+    message: "Request JSON body passed directly to function - validate before database operations (CWE-943)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021 Injection"
+      tags: [nosql-injection, request-body]
+
+  # Direct request.json() in function call
+  - id: py-nosqli-await-request-json
+    patterns:
+      - pattern: await $REQUEST.json()
+    message: "Unvalidated request JSON - validate schema before use in database queries (CWE-20)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-20"
+      tags: [input-validation, nosql]
+
+  # MontyDB/MongoDB insert_one with user data
+  - id: py-nosqli-insert-one-user-data
+    patterns:
+      - pattern: $COLLECTION.insert_one({...})
+      - pattern: $DB.$COLLECTION.insert_one($DATA)
+    message: "MongoDB insert_one - ensure user data is validated to prevent injection (CWE-943)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb, insert]
+
+  # SQL query built with triple-quoted f-string (multi-line)
+  - id: py-sqli-multiline-fstring
+    pattern-regex: "f'''[^']*\\{[^}]+\\}[^']*'''|f\"\"\"[^\"]*\\{[^}]+\\}[^\"]*\"\"\""
+    message: "SQL injection - multi-line f-string with variable interpolation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, multiline]
+
+  # cursor.execute or db.execute with f-string query
+  - id: py-sqli-execute-fstring
+    patterns:
+      - pattern: $DB.execute(f"...")
+      - pattern: $DB.execute(f'...')
+      - pattern: $CURSOR.execute(f"...")
+      - pattern: $CURSOR.execute(f'...')
+      - pattern: await $DB.execute(f"...")
+      - pattern: await $DB.execute(f'...')
+    message: "SQL injection - execute() with f-string query (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      tags: [sql-injection, execute]
+
+  # run_sql_query or similar custom function with f-string
+  - id: py-sqli-custom-query-func
+    pattern-regex: "(run_sql_query|execute_query|run_query|sql_query|db_query)\\(f['\"]"
+    message: "SQL injection - custom query function with f-string (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, custom-function]
+
+  # aiosqlite connection without parameterized queries
+  - id: py-sqli-aiosqlite-execute
+    patterns:
+      - pattern: await $DB.execute($QUERY)
+    message: "aiosqlite execute - ensure parameterized queries are used (CWE-89)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, aiosqlite, async]
+
+  # Pydantic model field assigned to query without validation
+  - id: py-sqli-pydantic-model-in-query
+    pattern-regex: "f['\"][^'\"]*\\{\\s*\\w+\\.(name|username|email|address|password|id|user_id)[^}]*\\}"
+    message: "Pydantic model field in SQL query - use parameterized queries (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, pydantic]
+
+  # MD5 encoding pattern (common in vfapi)
+  - id: py-weak-hash-md5-encode
+    pattern-regex: "md5\\([^)]+\\.encode\\(\\)\\)"
+    message: "MD5 hash with encode() - MD5 is cryptographically broken, use bcrypt/argon2 for passwords (CWE-328)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-328"
+      owasp: "A02:2021 Cryptographic Failures"
+      tags: [weak-hash, md5, password]
+
+  # hashlib.md5 usage
+  - id: py-weak-hash-hashlib-md5
+    patterns:
+      - pattern: hashlib.md5($DATA)
+      - pattern: hashlib.md5($DATA).hexdigest()
+      - pattern: hashlib.md5($DATA).digest()
+    message: "MD5 hash is cryptographically weak - use SHA-256 or bcrypt for passwords (CWE-328)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-328"
+      tags: [weak-hash, md5]
+
+  # from hashlib import md5
+  - id: py-weak-hash-import-md5
+    pattern: from hashlib import md5
+    message: "MD5 import detected - MD5 is cryptographically broken (CWE-328)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-328"
+      tags: [weak-hash, md5, import]
+
+  # SHA1 weak hash
+  - id: py-weak-hash-sha1
+    patterns:
+      - pattern: hashlib.sha1($DATA)
+      - pattern: hashlib.sha1($DATA).hexdigest()
+    message: "SHA1 hash is cryptographically weak - use SHA-256 or better (CWE-328)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-328"
+      tags: [weak-hash, sha1]
+
+  # FileResponse without path validation
+  - id: py-path-traversal-fileresponse
+    patterns:
+      - pattern: FileResponse($PATH)
+      - pattern: FileResponse($PATH, ...)
+    message: "FileResponse - ensure path is not user-controlled to prevent path traversal (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal, fastapi, file]
+
+  # StaticFiles mount - potential directory listing
+  - id: py-fastapi-staticfiles-mount
+    patterns:
+      - pattern: app.mount($PATH, StaticFiles(...), ...)
+    message: "StaticFiles mount - ensure sensitive files are not exposed (CWE-538)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-538"
+      tags: [information-disclosure, fastapi, static]
+
+  # uvicorn.run or __import__('uvicorn').run
+  - id: py-uvicorn-run-config
+    pattern-regex: "uvicorn['\"]\\)\\.run\\(|uvicorn\\.run\\("
+    message: "Uvicorn run detected - ensure host/port are properly configured for production"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [configuration, uvicorn]
+
+  # Optional parameter with None default for security-sensitive field
+  - id: py-optional-user-param
+    pattern-regex: "Optional\\[.*User.*\\]\\s*=\\s*None"
+    message: "Optional User parameter - ensure proper validation when None (CWE-754)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-754"
+      tags: [input-validation, optional]
+
+  # delete_one/delete_many with variable query
+  - id: py-nosqli-delete-variable-query
+    patterns:
+      - pattern: $COLLECTION.delete_one($QUERY)
+      - pattern: $COLLECTION.delete_many($QUERY)
+    message: "MongoDB delete with variable query - validate to prevent NoSQL injection (CWE-943)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb, delete]
+
+  # find() with dict containing user field
+  - id: py-nosqli-find-user-field
+    pattern-regex: "\\.find\\(\\{['\"]username['\"]:\\s*\\w+\\}\\)"
+    message: "MongoDB find with username field - ensure value is validated (CWE-943)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb]
+
+  # Faker usage in production code (test data in prod)
+  - id: py-faker-in-production
+    patterns:
+      - pattern: from faker import Faker
+      - pattern: Faker()
+    message: "Faker library detected - ensure not used in production for real data (CWE-330)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-330"
+      tags: [test-data, faker]
+
+  # asyncio.run in __main__ without proper error handling
+  - id: py-asyncio-run-main
+    pattern-regex: "asyncio\\.run\\([^)]+\\)"
+    message: "asyncio.run() - ensure proper error handling for async initialization"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [async, error-handling]
+
+  # MontyDB/MongoDB set_storage or client config
+  - id: py-mongodb-storage-config
+    patterns:
+      - pattern: set_storage(...)
+      - pattern: MontyClient(...)
+      - pattern: MongoClient(...)
+    message: "MongoDB client configuration - ensure connection is secured and credentials are not hardcoded"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [mongodb, configuration]
+
+  # Return statement missing after delete operation
+  - id: py-missing-return-after-delete
+    pattern: |
+      if $COND:
+          ...
+          return {...}
+      elif $OTHER:
+          ...
+          $DB.delete_one(...)
+    message: "Missing return after delete in elif branch - potential logic flaw (CWE-670)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-670"
+      tags: [logic-flaw, control-flow]
+
+  # Password field not filtered from response
+  - id: py-password-in-dict-response
+    pattern-regex: "['\"]password['\"]:\\s*\\w+\\.(password|passwd)"
+    message: "Password field included in response dictionary - filter sensitive data (CWE-200)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-200"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [information-disclosure, password]
+
+  # Generic database exception handler that retries
+  - id: py-db-exception-retry-dangerous
+    pattern: |
+      except $EXCEPTION:
+          ...
+          return await $FUNC($ARGS)
+    message: "Database exception with recursive retry - may cause infinite loops or mask errors (CWE-755)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-755"
+      tags: [error-handling, database]
+
+  # SQL string concatenation with + operator
+  - id: py-sqli-string-concat
+    pattern-regex: "['\"]SELECT[^'\"]+['\"]\\s*\\+\\s*\\w+"
+    message: "SQL injection - string concatenation in query (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, concatenation]
+
+  # Dangerous import pattern (__import__)
+  - id: py-dangerous-import
+    pattern-regex: "__import__\\(['\"][^'\"]+['\"]\\)"
+    message: "Dynamic __import__ - potential code injection if user-controlled (CWE-94)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-94"
+      tags: [code-injection, import]
