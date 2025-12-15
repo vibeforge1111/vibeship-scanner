@@ -6357,3 +6357,279 @@ rules:
     metadata:
       cwe: "CWE-532"
       tags: [logging, information-disclosure]
+
+  # ============================================
+  # Flask-CKEditor / Rich Text Stored XSS
+  # ============================================
+
+  # Flask-CKEditor import (indicates rich text XSS risk)
+  - id: py-flask-ckeditor-import
+    pattern-regex: "from\\s+flask_ckeditor\\s+import|import\\s+flask_ckeditor"
+    message: "Flask-CKEditor detected - ensure stored content is sanitized before rendering with | safe filter (CWE-79)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, stored-xss, ckeditor]
+
+  # CKEditor field storing user content
+  - id: py-ckeditor-field
+    pattern-regex: "CKEditorField\\("
+    message: "CKEditor field stores rich HTML - sanitize before storage or use Content Security Policy (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, stored-xss, ckeditor]
+
+  # Storing HTML content in database (potential stored XSS source)
+  - id: py-html-content-storage
+    pattern-regex: "(text|content|body|description|message|comment)\\s*=\\s*(form|request)\\.(data|form)"
+    message: "Storing user content - sanitize HTML to prevent stored XSS when rendering (CWE-79)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, stored-xss]
+
+  # ============================================
+  # SQLAlchemy text() SQL Injection
+  # ============================================
+
+  # text() with f-string (SQL injection)
+  - id: py-sqla-text-fstring
+    pattern-regex: "text\\s*\\(\\s*f[\"']"
+    message: "SQLAlchemy text() with f-string - SQL injection vulnerability, use bound parameters (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sqli, sqlalchemy]
+
+  # text() with .format() (SQL injection)
+  - id: py-sqla-text-format
+    pattern-regex: "text\\s*\\([^)]+\\.format\\s*\\("
+    message: "SQLAlchemy text() with .format() - SQL injection vulnerability, use bound parameters (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sqli, sqlalchemy]
+
+  # text() with % formatting (SQL injection)
+  - id: py-sqla-text-percent
+    pattern-regex: "text\\s*\\([^)]+%\\s*[^)]"
+    message: "SQLAlchemy text() with % formatting - SQL injection vulnerability, use bound parameters (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sqli, sqlalchemy]
+
+  # session.execute with text() and f-string
+  - id: py-session-execute-text-fstring
+    pattern-regex: "session\\.execute\\s*\\(\\s*text\\s*\\(\\s*f[\"']"
+    message: "session.execute with text(f'...') - SQL injection via string interpolation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sqli, sqlalchemy]
+
+  # ============================================
+  # Download/Fetch Without URL Validation (SSRF)
+  # ============================================
+
+  # Generic download function with urlopen
+  - id: py-download-urlopen-ssrf
+    pattern-regex: "def\\s+download\\s*\\([^)]*url[^)]*\\)[^:]*:[^}]*urlopen\\s*\\(\\s*url\\s*\\)"
+    message: "Download function using urlopen without URL validation - SSRF allows access to internal services (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021"
+      tags: [ssrf]
+
+  # Image download from user URL
+  - id: py-image-download-ssrf
+    pattern-regex: "(image|img|avatar|profile).*url.*urlopen|urlopen.*\\.(jpg|png|gif|jpeg|webp|image)"
+    message: "Image download from URL - validate URL scheme and host to prevent SSRF (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  # URL from parameter passed directly to request
+  - id: py-param-url-ssrf
+    pattern-regex: "def\\s+\\w+\\s*\\([^)]*url[^)]*\\)[^:]*:[^}]*(requests\\.(get|post)|urlopen|urllib)"
+    message: "URL parameter passed to HTTP request - validate against allowlist to prevent SSRF (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  # ============================================
+  # IDOR - Delete Without Ownership Check
+  # ============================================
+
+  # Route with ID param doing delete
+  - id: py-route-delete-by-id
+    pattern-regex: "@(app|bp|blueprint)\\.route\\([\"'][^\"']*<int:\\w+>[^\"']*(delete|remove)"
+    message: "Delete route with ID parameter - verify user owns resource before deletion to prevent IDOR (CWE-639)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021"
+      tags: [idor, authorization]
+
+  # session.delete without user check nearby
+  - id: py-session-delete-no-user-check
+    pattern-regex: "session\\.delete\\s*\\(\\s*\\w+\\s*\\)(?!.*current_user)"
+    message: "Database delete operation - ensure ownership check before deletion (CWE-639)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, authorization]
+
+  # Getting object by ID then deleting without ownership check
+  - id: py-get-and-delete-idor
+    pattern-regex: "session\\.(get|query).*\\n.*session\\.delete"
+    message: "Object retrieved then deleted - verify current_user owns object before deletion (CWE-639)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, authorization]
+
+  # ============================================
+  # Registration/Invite Code Vulnerabilities
+  # ============================================
+
+  # Registration code in SQL query
+  - id: py-registration-code-sqli
+    pattern-regex: "(registration|invite|referral).*code.*text\\s*\\(\\s*f"
+    message: "Registration/invite code in SQL query with f-string - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sqli, registration]
+
+  # Weak registration code validation
+  - id: py-registration-code-weak
+    pattern-regex: "code\\s*==\\s*[\"'][^\"']{1,8}[\"']"
+    message: "Short/weak registration code comparison - use cryptographically secure codes (CWE-330)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-330"
+      tags: [crypto, registration]
+
+  # ============================================
+  # Pickle Deserialization from Cookies
+  # ============================================
+
+  # Pickle loads from cookie
+  - id: py-pickle-cookie-rce
+    pattern-regex: "pickle\\.loads\\s*\\([^)]*cookie|cookie[^)]*pickle\\.loads"
+    message: "Pickle deserialization from cookie - RCE vulnerability, use JSON or signed cookies (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021"
+      tags: [deserialization, rce]
+
+  # Base64 decode then pickle (common pattern)
+  - id: py-b64-pickle-chain
+    pattern-regex: "pickle\\.loads\\s*\\(\\s*(base64\\.)?b64decode|b64decode[^)]*\\)[^}]*pickle\\.loads"
+    message: "Base64 decode to pickle - insecure deserialization chain, attacker-controlled RCE (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021"
+      tags: [deserialization, rce]
+
+  # ============================================
+  # No Rate Limiting Detection
+  # ============================================
+
+  # Login route without rate limit decorator
+  - id: py-login-no-rate-limit
+    pattern-regex: "@(app|bp)\\.route\\([\"']/(login|signin|auth)[\"'][^)]*\\)\\s*\\ndef"
+    message: "Login endpoint without visible rate limiting - add flask-limiter to prevent brute force (CWE-307)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-307"
+      tags: [brute-force, authentication]
+
+  # Password reset without rate limit
+  - id: py-password-reset-no-rate-limit
+    pattern-regex: "@(app|bp)\\.route\\([\"']/(reset|forgot|password)[^\"']*[\"'][^)]*\\)\\s*\\ndef"
+    message: "Password reset endpoint without rate limiting - vulnerable to enumeration attacks (CWE-307)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-307"
+      tags: [brute-force, authentication]
+
+  # Signup without rate limit
+  - id: py-signup-no-rate-limit
+    pattern-regex: "@(app|bp)\\.route\\([\"']/(signup|register)[\"'][^)]*\\)\\s*\\ndef"
+    message: "Registration endpoint without rate limiting - vulnerable to spam/abuse (CWE-307)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-307"
+      tags: [brute-force, registration]
+
+  # ============================================
+  # Bcrypt Timing Attack Prevention
+  # ============================================
+
+  # checkpw result used in conditional
+  - id: py-bcrypt-checkpw-timing
+    pattern-regex: "if\\s+(not\\s+)?bcrypt\\.checkpw|if\\s+(not\\s+)?checkpw"
+    message: "bcrypt.checkpw in conditional - ensure consistent response time to prevent timing attacks (CWE-208)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-208"
+      tags: [timing-attack, authentication]
+
+  # ============================================
+  # SQLAlchemy Session Patterns
+  # ============================================
+
+  # Session not using context manager
+  - id: py-sqlalchemy-session-no-context
+    pattern-regex: "session\\s*=\\s*Session\\(\\)(?!.*with)"
+    message: "SQLAlchemy Session without context manager - use 'with Session() as session:' for proper cleanup (CWE-404)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-404"
+      tags: [sqlalchemy, resource-leak]
+
+  # Commit without try/except
+  - id: py-sqlalchemy-commit-no-except
+    pattern-regex: "session\\.commit\\(\\)(?!.*except)"
+    message: "session.commit() without exception handling - wrap in try/except for rollback on failure (CWE-754)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-754"
+      tags: [sqlalchemy, error-handling]
