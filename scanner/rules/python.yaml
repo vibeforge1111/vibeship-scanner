@@ -4389,7 +4389,7 @@ rules:
 
   # SQL DELETE without proper quoting (vfapi pattern)
   - id: py-sqli-delete-unquoted-var
-    pattern-regex: 'DELETE\s+FROM\s+\w+\s+WHERE\s+\w+\s*=\s*\{[^}]+\}[^"'\'']'
+    pattern-regex: "DELETE\\s+FROM\\s+\\w+\\s+WHERE\\s+\\w+\\s*=\\s*\\{[^}]+\\}[^\"']"
     message: "SQL injection - DELETE with unquoted f-string variable allows numeric injection (CWE-89)"
     languages: [python]
     severity: ERROR
