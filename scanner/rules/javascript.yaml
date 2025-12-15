@@ -7721,3 +7721,298 @@ rules:
     metadata:
       cwe: "CWE-489"
       tags: [debug, logging]
+
+  # ============================================
+  # Hardcoded Secrets in Session Config
+  # ============================================
+
+  # Hardcoded session secret
+  - id: express-hardcoded-session-secret
+    pattern-regex: "session\\s*\\(\\s*\\{[^}]*secret\\s*:\\s*['\"][^'\"]+['\"]"
+    message: "Hardcoded session secret - use environment variable instead (CWE-798)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A07:2021"
+      tags: [hardcoded-secret, session]
+
+  # Weak session secret patterns
+  - id: express-weak-session-secret
+    pattern-regex: "secret\\s*:\\s*['\"](?:secret|password|changeme|test|demo|dev|123|admin)['\"]"
+    message: "Weak/default session secret detected - use strong random secret (CWE-798)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [hardcoded-secret, session]
+
+  # ============================================
+  # Insecure Session Configuration
+  # ============================================
+
+  # Session resave true (unnecessary writes)
+  - id: express-session-resave-true
+    pattern-regex: "session\\s*\\(\\s*\\{[^}]*resave\\s*:\\s*true"
+    message: "Session resave:true causes unnecessary store writes - set to false (CWE-613)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-613"
+      tags: [session, configuration]
+
+  # Session saveUninitialized true
+  - id: express-session-save-uninitialized
+    pattern-regex: "session\\s*\\(\\s*\\{[^}]*saveUninitialized\\s*:\\s*true"
+    message: "Session saveUninitialized:true creates unnecessary sessions - set to false (CWE-613)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-613"
+      tags: [session, configuration]
+
+  # Session without secure cookie in production
+  - id: express-session-insecure-cookie
+    pattern-regex: "session\\s*\\(\\s*\\{[^}]*cookie\\s*:\\s*\\{[^}]*secure\\s*:\\s*false"
+    message: "Session cookie secure:false - enable in production for HTTPS (CWE-614)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-614"
+      tags: [session, cookie]
+
+  # ============================================
+  # MongoDB Mass Assignment
+  # ============================================
+
+  # Direct req.body insert (mass assignment)
+  - id: mongodb-mass-assignment-insert
+    pattern-regex: "collection\\.insert(?:One|Many)?\\s*\\(\\s*req\\.body"
+    message: "MongoDB insert with raw req.body - mass assignment vulnerability (CWE-915)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+      owasp: "A04:2021"
+      tags: [mongodb, mass-assignment]
+
+  # Mongoose create with req.body
+  - id: mongoose-mass-assignment-create
+    pattern-regex: "\\.create\\s*\\(\\s*req\\.body\\s*\\)"
+    message: "Mongoose create with raw req.body - mass assignment vulnerability (CWE-915)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+      tags: [mongoose, mass-assignment]
+
+  # MongoDB $set with req.body (privilege escalation)
+  - id: mongodb-mass-assignment-update
+    pattern-regex: "\\$set\\s*:\\s*(?:req\\.body|query|params)"
+    message: "MongoDB $set with user input - privilege escalation risk (CWE-915)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+      tags: [mongodb, mass-assignment, privilege-escalation]
+
+  # findOneAndUpdate with req.body
+  - id: mongodb-findone-update-mass-assign
+    pattern-regex: "findOneAndUpdate\\s*\\([^,]+,\\s*\\{[^}]*\\$set\\s*:\\s*\\w+"
+    message: "MongoDB findOneAndUpdate with $set - verify field whitelisting (CWE-915)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      tags: [mongodb, mass-assignment]
+
+  # ============================================
+  # Unauthenticated Admin Routes
+  # ============================================
+
+  # Admin route without auth middleware
+  - id: express-admin-route-no-auth
+    pattern-regex: "router\\.(?:get|post|put|delete)\\s*\\(\\s*['\"]/?admin"
+    message: "Admin route detected - ensure authentication middleware is applied (CWE-306)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306"
+      owasp: "A07:2021"
+      tags: [authentication, admin]
+
+  # app.get /admin without middleware
+  - id: express-app-admin-no-auth
+    pattern-regex: "app\\.(?:get|post|put|delete)\\s*\\(\\s*['\"]/?admin"
+    message: "Admin endpoint detected - ensure authentication is required (CWE-306)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306"
+      tags: [authentication, admin]
+
+  # ============================================
+  # Error Stack Trace Disclosure
+  # ============================================
+
+  # Error stack in response
+  - id: express-error-stack-disclosure
+    pattern-regex: "res\\.(send|json|render)\\s*\\([^)]*(?:err|error)\\.stack"
+    message: "Error stack trace sent to client - information disclosure (CWE-209)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      owasp: "A04:2021"
+      tags: [information-disclosure, error-handling]
+
+  # res.locals.error with stack
+  - id: express-locals-error-stack
+    pattern-regex: "res\\.locals\\.error\\s*=\\s*(?:err|error)"
+    message: "Full error object exposed to template - may leak stack traces (CWE-209)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, error-handling]
+
+  # console.error in production code
+  - id: nodejs-console-error-production
+    pattern-regex: "console\\.(?:error|trace)\\s*\\(.*(?:err|error)"
+    message: "Console error logging - ensure not exposed to users in production (CWE-209)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-209"
+      tags: [logging, error-handling]
+
+  # ============================================
+  # Jade/Pug Error Template Disclosure
+  # ============================================
+
+  # Error stack in Jade/Pug template
+  - id: jade-error-stack-disclosure
+    pattern-regex: "#\\{\\s*error\\.stack\\s*\\}|pre=\\s*error\\.stack"
+    message: "Error stack trace in Jade template - information disclosure (CWE-209)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, jade, pug]
+    paths:
+      include:
+        - "*.jade"
+        - "*.pug"
+
+  # ============================================
+  # MongoDB Authentication Bypass
+  # ============================================
+
+  # findOne with both username and password from req.body
+  - id: mongodb-auth-bypass-findone
+    pattern-regex: "findOne\\s*\\(\\s*\\{[^}]*username\\s*:\\s*req\\.body\\.[^,}]+[^}]*password\\s*:\\s*req\\.body"
+    message: "MongoDB auth bypass risk - operator injection via {$gt:''} (CWE-943)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021"
+      tags: [mongodb, nosql-injection, authentication]
+
+  # Login query pattern vulnerable to NoSQL injection
+  - id: mongodb-login-nosql-injection
+    pattern-regex: "collection\\.findOne\\s*\\(\\s*\\{\\s*username\\s*:"
+    message: "MongoDB login query - sanitize input to prevent NoSQL injection (CWE-943)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [mongodb, nosql-injection]
+
+  # ============================================
+  # Unsafe URL Parameter Parsing
+  # ============================================
+
+  # Manual URL parsing with substr
+  - id: nodejs-unsafe-url-parsing
+    pattern-regex: "(?:url|query|path)\\.substr\\s*\\("
+    message: "Manual URL parsing with substr - use URL API or querystring module (CWE-20)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-20"
+      tags: [input-validation, parsing]
+
+  # Split-based parameter extraction
+  - id: nodejs-unsafe-param-split
+    pattern-regex: "(?:query|url|path)\\.split\\s*\\(['\"][?&=]['\"]\\)"
+    message: "Manual parameter parsing - use querystring or URL API for safety (CWE-20)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-20"
+      tags: [input-validation, parsing]
+
+  # ============================================
+  # Plaintext Password Handling
+  # ============================================
+
+  # Password in localStorage
+  - id: browser-password-localstorage
+    pattern-regex: "localStorage\\.setItem\\s*\\([^)]*password"
+    message: "Password stored in localStorage - use secure session management (CWE-922)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-922"
+      tags: [password, storage]
+
+  # Password in sessionStorage
+  - id: browser-password-sessionstorage
+    pattern-regex: "sessionStorage\\.setItem\\s*\\([^)]*password"
+    message: "Password stored in sessionStorage - avoid client-side password storage (CWE-922)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-922"
+      tags: [password, storage]
+
+  # Password sent via GET params
+  - id: http-password-in-url
+    pattern-regex: "\\?[^'\"]*password\\s*="
+    message: "Password in URL query string - use POST body instead (CWE-598)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-598"
+      tags: [password, http]
+
+  # ============================================
+  # Missing CSRF Protection
+  # ============================================
+
+  # POST route without CSRF
+  - id: express-post-no-csrf
+    pattern-regex: "router\\.post\\s*\\([^)]+function\\s*\\(\\s*req\\s*,\\s*res"
+    message: "POST route - ensure CSRF protection is applied (CWE-352)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf]
+
+  # Form without CSRF token
+  - id: html-form-no-csrf
+    pattern-regex: "<form[^>]*method\\s*=\\s*['\"]post['\"][^>]*>(?:(?!csrf|_token|csrfmiddlewaretoken).)*</form>"
+    message: "Form POST without CSRF token field detected (CWE-352)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf]
+    paths:
+      include:
+        - "*.html"
+        - "*.ejs"
+        - "*.jade"
+        - "*.pug"
