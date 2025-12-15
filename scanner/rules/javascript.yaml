@@ -7474,3 +7474,250 @@ rules:
     metadata:
       cwe: "CWE-330"
       tags: [cryptography, weak-random]
+
+  # ============================================
+  # Express Template XSS (req.query to render)
+  # ============================================
+
+  # req.query passed directly to res.render
+  - id: express-render-query-xss
+    pattern-regex: "res\\.render\\s*\\([^,]+,\\s*\\{[^}]*:\\s*req\\.query"
+    message: "req.query passed to template - XSS if template doesn't escape (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, express, template]
+
+  # req.query property to render
+  - id: express-render-query-prop-xss
+    pattern-regex: "res\\.render\\s*\\([^,]+,\\s*\\{[^}]*:\\s*req\\.query\\."
+    message: "req.query property passed to template - ensure template escapes output (CWE-79)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, express, template]
+
+  # req.params to render
+  - id: express-render-params-xss
+    pattern-regex: "res\\.render\\s*\\([^,]+,\\s*\\{[^}]*:\\s*req\\.params\\."
+    message: "req.params passed to template - ensure template escapes output (CWE-79)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, express, template]
+
+  # req.body to render
+  - id: express-render-body-xss
+    pattern-regex: "res\\.render\\s*\\([^,]+,\\s*\\{[^}]*:\\s*req\\.body"
+    message: "req.body passed to template - XSS if template doesn't escape (CWE-79)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, express, template]
+
+  # Generic user input to render
+  - id: express-render-user-input
+    patterns:
+      - pattern-either:
+          - pattern: 'res.render($TEMPLATE, { ..., $KEY: req.query.$PROP, ... })'
+          - pattern: 'res.render($TEMPLATE, { ..., $KEY: req.body.$PROP, ... })'
+          - pattern: 'res.render($TEMPLATE, { ..., $KEY: req.params.$PROP, ... })'
+    message: "User input passed to template render - ensure proper escaping (CWE-79)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, express]
+
+  # ============================================
+  # Path Concatenation Without Validation
+  # ============================================
+
+  # String concatenation for file path
+  - id: nodejs-path-concat-traversal
+    pattern-regex: "(phpPath|filePath|basePath|rootPath|dir)\\s*\\+\\s*['\"]?\\s*\\+?\\s*(fileName|file|path|name)"
+    message: "Path concatenation - validate input to prevent path traversal (CWE-22)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal]
+
+  # Folder + filename concatenation
+  - id: nodejs-folder-file-concat
+    pattern-regex: "(folder|directory|dir)\\s*\\+\\s*(file|name|path)"
+    message: "Directory + filename concatenation - validate for path traversal (CWE-22)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal]
+
+  # Template literal path construction
+  - id: nodejs-path-template-literal
+    pattern-regex: "`\\$\\{[^}]*(path|dir|folder)[^}]*\\}/\\$\\{[^}]*(file|name)"
+    message: "Template literal path construction - validate components (CWE-22)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      tags: [path-traversal]
+
+  # ============================================
+  # Child Process Command Construction
+  # ============================================
+
+  # exec with multiple concatenations
+  - id: nodejs-exec-multi-concat
+    pattern-regex: "exec\\s*\\([^)]*\\+[^)]*\\+[^)]*\\)"
+    message: "exec() with multiple string concatenations - high command injection risk (CWE-78)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021"
+      tags: [command-injection]
+
+  # exec with variable in command
+  - id: nodejs-exec-variable
+    pattern-regex: "exec\\s*\\(\\s*[a-zA-Z_][a-zA-Z0-9_]*\\s*,"
+    message: "exec() with variable command - ensure input is validated (CWE-78)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection]
+
+  # child_process.exec building command string
+  - id: nodejs-exec-cmd-build
+    pattern-regex: "(cmd|command)\\s*=.*\\+.*\\n.*exec\\s*\\(\\s*(cmd|command)"
+    message: "Building command string then executing - command injection risk (CWE-78)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection]
+
+  # ============================================
+  # Jade/Pug Template Security
+  # ============================================
+
+  # Jade files should be scanned
+  - id: jade-unescaped-interpolation
+    pattern-regex: "!=\\s*\\w+"
+    message: "Jade/Pug unescaped output (!=) - XSS risk if variable contains user input (CWE-79)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jade, pug, template]
+    paths:
+      include:
+        - "*.jade"
+        - "*.pug"
+
+  # Jade script injection
+  - id: jade-script-variable
+    pattern-regex: "script\\s*\\..*#\\{"
+    message: "Jade/Pug variable in script tag - XSS vulnerability (CWE-79)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jade, pug]
+    paths:
+      include:
+        - "*.jade"
+        - "*.pug"
+
+  # ============================================
+  # Clickjacking Protection
+  # ============================================
+
+  # iframe without sandbox
+  - id: html-iframe-no-sandbox
+    pattern-regex: "<iframe[^>]*(?!sandbox)[^>]*>"
+    message: "iframe without sandbox attribute - clickjacking risk (CWE-1021)"
+    languages: [generic]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1021"
+      tags: [clickjacking]
+    paths:
+      include:
+        - "*.html"
+        - "*.htm"
+
+  # X-Frame-Options missing detection
+  - id: express-no-xframe-options
+    pattern-regex: "app\\.use\\s*\\(\\s*helmet\\s*\\(\\s*\\{[^}]*frameguard\\s*:\\s*false"
+    message: "Helmet frameguard disabled - clickjacking vulnerability (CWE-1021)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1021"
+      tags: [clickjacking, security-headers]
+
+  # ============================================
+  # CORS Misconfiguration
+  # ============================================
+
+  # CORS allow all origins
+  - id: express-cors-allow-all
+    pattern-regex: "cors\\s*\\(\\s*\\{[^}]*origin\\s*:\\s*['\"]\\*['\"]"
+    message: "CORS allows all origins (*) - restrict to trusted domains (CWE-942)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-942"
+      tags: [cors, security-headers]
+
+  # CORS with credentials and wildcard
+  - id: express-cors-credentials-wildcard
+    pattern-regex: "cors\\s*\\(\\s*\\{[^}]*credentials\\s*:\\s*true[^}]*origin\\s*:\\s*true"
+    message: "CORS with credentials and dynamic origin - verify origin validation (CWE-942)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-942"
+      tags: [cors]
+
+  # Access-Control-Allow-Origin: *
+  - id: express-access-control-allow-all
+    pattern-regex: "res\\.setHeader\\s*\\(['\"]Access-Control-Allow-Origin['\"]\\s*,\\s*['\"]\\*['\"]"
+    message: "Access-Control-Allow-Origin: * allows any origin (CWE-942)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-942"
+      tags: [cors]
+
+  # ============================================
+  # Debug/Development Mode in Production
+  # ============================================
+
+  # Express app.set debug
+  - id: express-debug-enabled
+    pattern-regex: "app\\.set\\s*\\(['\"]env['\"]\\s*,\\s*['\"]development['\"]"
+    message: "Express environment set to development - use production in deployment (CWE-489)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-489"
+      tags: [debug, configuration]
+
+  # Debug package enabled
+  - id: nodejs-debug-enabled
+    pattern-regex: "DEBUG\\s*=\\s*['\"]\\*['\"]|DEBUG=\\*"
+    message: "Debug logging enabled for all modules - disable in production (CWE-489)"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-489"
+      tags: [debug, logging]

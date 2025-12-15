@@ -458,3 +458,81 @@ rules:
     languages: [php]
     severity: WARNING
 
+  # ============================================
+  # XXE (XML External Entity) Injection
+  # ============================================
+
+  - id: php-xxe-libxml-disable-entity-false
+    pattern-regex: "libxml_disable_entity_loader\\s*\\(\\s*false\\s*\\)"
+    message: "PHP XXE - libxml_disable_entity_loader(false) enables external entities (CWE-611)"
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2021"
+      tags: [xxe, xml, injection]
+
+  - id: php-xxe-libxml-noent
+    pattern-regex: "LIBXML_NOENT"
+    message: "PHP XXE - LIBXML_NOENT substitutes entities, enabling XXE attacks (CWE-611)"
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2021"
+      tags: [xxe, xml, injection]
+
+  - id: php-xxe-libxml-dtdload
+    pattern-regex: "LIBXML_DTDLOAD"
+    message: "PHP XXE - LIBXML_DTDLOAD enables external DTD loading (CWE-611)"
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2021"
+      tags: [xxe, xml, injection]
+
+  - id: php-xxe-simplexml-load
+    pattern: simplexml_load_string($XML, ...)
+    message: "PHP SimpleXML - ensure external entities are disabled (CWE-611)"
+    languages: [php]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: php-xxe-domdocument-loadxml
+    pattern: '$DOC->loadXML($XML)'
+    message: "PHP DOMDocument::loadXML - disable external entities to prevent XXE (CWE-611)"
+    languages: [php]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: php-xxe-domdocument-load
+    pattern: '$DOC->load($FILE)'
+    message: "PHP DOMDocument::load - disable external entities to prevent XXE (CWE-611)"
+    languages: [php]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: php-xxe-xmlreader-xml
+    pattern: '$READER->xml($XML)'
+    message: "PHP XMLReader::xml - disable external entities to prevent XXE (CWE-611)"
+    languages: [php]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: php-xxe-xmlreader-open
+    pattern: '$READER->open($FILE)'
+    message: "PHP XMLReader::open - disable external entities to prevent XXE (CWE-611)"
+    languages: [php]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
