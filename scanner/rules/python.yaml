@@ -4363,3 +4363,126 @@ rules:
     metadata:
       cwe: "CWE-79"
       tags: [xss, reflected-input]
+
+  # ============================================
+  # vfapi / FastAPI Enhanced Security Rules
+  # ============================================
+
+  # NoSQL Injection - raw request.json() passed to MongoDB query
+  - id: py-nosqli-raw-request-json
+    patterns:
+      - pattern: |
+          $QUERY = await request.json()
+          ...
+          $COLLECTION.find($QUERY)
+      - pattern: |
+          $DATA = await request.json()
+          ...
+          $COLLECTION.find_one($DATA)
+    message: "NoSQL injection - raw request.json() passed to MongoDB find() allows query operator injection (CWE-943)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-943"
+      owasp: "A03:2021 Injection"
+      tags: [nosql-injection, mongodb, vfapi]
+
+  # SQL DELETE without proper quoting (vfapi pattern)
+  - id: py-sqli-delete-unquoted-var
+    pattern-regex: 'DELETE\s+FROM\s+\w+\s+WHERE\s+\w+\s*=\s*\{[^}]+\}[^"'\'']'
+    message: "SQL injection - DELETE with unquoted f-string variable allows numeric injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      tags: [sql-injection, vfapi]
+
+  # FastAPI endpoint accepting full request.json() to database
+  - id: py-fastapi-mass-assignment-nosql
+    patterns:
+      - pattern: |
+          @$APP.$METHOD($PATH)
+          async def $FUNC($REQ: Request):
+              ...
+              $DATA = await $REQ.json()
+              ...
+              $COLLECTION.insert_one($DATA)
+    message: "Mass assignment - full request body inserted to NoSQL without validation (CWE-915)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      owasp: "API6:2023 Unrestricted Access to Sensitive Business Flows"
+      tags: [mass-assignment, nosql, fastapi]
+
+  # FastAPI route without any authentication dependency
+  - id: py-fastapi-no-auth-crud
+    pattern-regex: '@(app|router)\.(post|put|patch|delete)\s*\(\s*["\'][^"\']+["\']\s*\)\s*\n\s*(async\s+)?def\s+\w+\s*\([^)]*\)\s*:'
+    message: "FastAPI CRUD endpoint without authentication dependency - add Depends(get_current_user) (CWE-306)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306"
+      owasp: "API2:2023 Broken Authentication"
+      tags: [authentication, fastapi, vfapi]
+
+  # Returning all database records without pagination
+  - id: py-fastapi-no-pagination
+    patterns:
+      - pattern: 'return list($COLLECTION.find())'
+      - pattern: 'return list($COLLECTION.find({}))'
+      - pattern-regex: 'return\s+\[.*for\s+\w+\s+in\s+\w+\.find\(\)'
+    message: "Data exposure - returning all database records without pagination (CWE-200)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      owasp: "API3:2023 Broken Object Property Level Authorization"
+      tags: [data-exposure, pagination, fastapi]
+
+  # SQL INSERT with f-string containing user model fields
+  - id: py-sqli-insert-fstring-model
+    pattern-regex: 'INSERT\s+INTO\s+\w+.*VALUES\s*\([^)]*\{[^}]+\.(username|name|email|password|address)[^}]*\}'
+    message: "SQL injection - INSERT with f-string interpolation of user fields (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      tags: [sql-injection, insert, vfapi]
+
+  # MongoDB find_one with user-controlled query
+  - id: py-nosqli-find-one-user-input
+    patterns:
+      - pattern: '$COLLECTION.find_one($USER_INPUT)'
+      - pattern: '$COLLECTION.find_one({"$FIELD": $VAR})'
+    message: "Potential NoSQL injection - find_one() with user-controlled query (CWE-943)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-943"
+      tags: [nosql-injection, mongodb]
+
+  # cursor.fetchall() after unsafe execute
+  - id: py-sqli-fetchall-after-execute
+    pattern: |
+        $CURSOR.execute($QUERY)
+        ...
+        $CURSOR.fetchall()
+    message: "SQL result fetch after potentially unsafe execute - verify query is parameterized (CWE-89)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection]
+
+  # Direct password comparison without timing-safe comparison
+  - id: py-auth-password-direct-compare
+    pattern-regex: 'if\s+.*password.*==.*password|if\s+.*==.*\.password'
+    message: "Direct password comparison - use secrets.compare_digest() for timing-safe comparison (CWE-208)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-208"
+      tags: [authentication, timing-attack]

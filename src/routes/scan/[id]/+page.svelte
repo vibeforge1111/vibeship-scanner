@@ -1382,6 +1382,9 @@
 	}
 
 	.score-section {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 		text-align: center;
 	}
 
@@ -1393,7 +1396,7 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		margin-bottom: 1rem;
+		margin: 0 auto 1rem auto;
 		border: 3px solid;
 	}
 
