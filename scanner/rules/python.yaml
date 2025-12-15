@@ -5039,3 +5039,237 @@ rules:
     metadata:
       cwe: "CWE-94"
       tags: [code-injection, import]
+
+  # ============================================
+  # Additional vfapi-specific detection rules
+  # ============================================
+
+  # FastAPI app without CORS middleware
+  - id: py-fastapi-no-cors
+    patterns:
+      - pattern: app = FastAPI(...)
+      - pattern: FastAPI(...)
+    message: "FastAPI app - consider adding CORSMiddleware for cross-origin requests (CWE-942)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-942"
+      tags: [cors, fastapi, misconfiguration]
+
+  # Pydantic BaseModel without validators
+  - id: py-pydantic-no-validation
+    pattern: |
+      class $MODEL(BaseModel):
+          $FIELD: str
+    message: "Pydantic model with string fields - consider adding validators for input sanitization"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [pydantic, validation, input]
+
+  # MongoDB insert_one with dict containing user fields
+  - id: py-nosqli-insert-all-user-fields
+    pattern-regex: "insert_one\\(\\{[^}]*'(password|email|username)'[^}]*\\}\\)"
+    message: "MongoDB insert with sensitive fields - ensure password is hashed and fields are validated (CWE-312)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-312"
+      tags: [nosql, sensitive-data, mongodb]
+
+  # dict.pop() on password field (good practice detection)
+  - id: py-sensitive-field-removal
+    pattern-regex: "\\.pop\\(['\"](_id|password|secret|token)['\"]\\)"
+    message: "Sensitive field removal detected - ensure this happens before returning data"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [sensitive-data, good-practice]
+
+  # db.commit() without try/except for rollback
+  - id: py-db-commit-no-rollback
+    pattern: await $DB.commit()
+    message: "Database commit without rollback handling - consider wrapping in try/except (CWE-754)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-754"
+      tags: [database, transaction, error-handling]
+
+  # KeyboardInterrupt except (unusual pattern)
+  - id: py-keyboard-interrupt-catch
+    pattern: |
+      except KeyboardInterrupt:
+          ...
+    message: "Catching KeyboardInterrupt may prevent clean shutdown - use signal handlers instead"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [error-handling, signals]
+
+  # tuple() call on database result (potential data exposure)
+  - id: py-tuple-db-result
+    pattern-regex: "tuple\\([^)]*\\.find\\([^)]*\\)[^)]*\\)"
+    message: "Converting MongoDB find() to tuple - ensure sensitive fields are filtered first"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [mongodb, data-exposure]
+
+  # aiosqlite.connect without context manager
+  - id: py-aiosqlite-no-context-manager
+    pattern: await aiosqlite.connect($DB)
+    message: "aiosqlite connection - prefer async context manager for automatic cleanup"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [aiosqlite, resource-management]
+
+  # fetchall without limit (potential DoS)
+  - id: py-fetchall-no-limit
+    pattern: await $CURSOR.fetchall()
+    message: "fetchall() without LIMIT - may cause memory issues with large datasets (CWE-400)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-400"
+      tags: [database, dos, resource]
+
+  # cursor.close() pattern (should use context manager)
+  - id: py-cursor-manual-close
+    pattern: await $CURSOR.close()
+    message: "Manual cursor close - prefer context manager for automatic resource cleanup"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [database, resource-management]
+
+  # INTEGER PRIMARY KEY without explicit type safety
+  - id: py-sql-create-table-no-strict
+    pattern-regex: "CREATE\\s+TABLE.*INTEGER\\s+PRIMARY\\s+KEY"
+    message: "SQLite table - consider using STRICT mode for type safety (SQLite 3.37+)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [sqlite, schema, type-safety]
+
+  # FastAPI endpoint returning dict directly
+  - id: py-fastapi-return-dict
+    pattern: |
+      @app.$METHOD(...)
+      $DECORATOR
+      def $FUNC(...):
+          ...
+          return {...}
+    message: "FastAPI endpoint returning dict - consider using response_model for schema validation"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [fastapi, response, validation]
+
+  # f-string with .address field (common injection point)
+  - id: py-sqli-address-field
+    pattern-regex: "f['\"][^'\"]*\\{[^}]*\\.address[^}]*\\}"
+    message: "User address field in f-string - addresses often contain special chars that can cause injection (CWE-89)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, user-input]
+
+  # len() check on user-controlled list (timing attack)
+  - id: py-len-timing-attack
+    pattern-regex: "if\\s+len\\([^)]+\\)\\s*==\\s*1:"
+    message: "Length check on result - consider constant-time comparison for security operations (CWE-208)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-208"
+      tags: [timing-attack]
+
+  # Returning password hash in response (even if hashed)
+  - id: py-password-hash-in-response
+    pattern-regex: "['\"]password['\"]:\\s*\\w+\\[\\d+\\]"
+    message: "Password hash may be exposed in response - never return password data even if hashed (CWE-200)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [password, information-disclosure]
+
+  # MontyClient or MongoClient without authentication
+  - id: py-mongodb-no-auth
+    pattern-regex: "(MontyClient|MongoClient)\\([^)]*\\)"
+    message: "MongoDB client - ensure authentication is configured for production (CWE-306)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306"
+      tags: [mongodb, authentication]
+
+  # set_storage for MontyDB
+  - id: py-montydb-storage-config
+    pattern: set_storage(...)
+    message: "MontyDB storage configuration - ensure database files are not web-accessible"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [montydb, configuration]
+
+  # HTMLResponse with string concatenation
+  - id: py-xss-htmlresponse-concat
+    pattern-regex: "HTMLResponse\\([^)]*\\+[^)]*\\)"
+    message: "HTMLResponse with string concatenation - potential XSS if user data is included (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      tags: [xss, htmlresponse]
+
+  # HTMLResponse with f-string
+  - id: py-xss-htmlresponse-fstring
+    pattern-regex: "HTMLResponse\\(f['\"]"
+    message: "HTMLResponse with f-string - escape user data to prevent XSS (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, htmlresponse]
+
+  # app.title in HTML (potential XSS if configurable)
+  - id: py-xss-app-title-in-html
+    pattern-regex: "HTMLResponse\\([^)]*app\\.title[^)]*\\)"
+    message: "app.title in HTMLResponse - ensure title is sanitized if user-configurable (CWE-79)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, configuration]
+
+  # include_in_schema=False (hiding endpoints)
+  - id: py-fastapi-hidden-endpoint
+    pattern-regex: "@app\\.(get|post|put|delete)\\([^)]*include_in_schema\\s*=\\s*False"
+    message: "Hidden endpoint (include_in_schema=False) - security through obscurity is not protection"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [fastapi, documentation, security]
+
+  # docs_url=False or redoc_url=False
+  - id: py-fastapi-docs-disabled
+    pattern-regex: "FastAPI\\([^)]*(docs_url|redoc_url)\\s*=\\s*False"
+    message: "API documentation disabled - ensure alternative documentation exists"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [fastapi, documentation]
+
+  # synchronous=1 in database config (blocking mode)
+  - id: py-db-synchronous-mode
+    pattern-regex: "synchronous\\s*=\\s*1"
+    message: "Database synchronous mode - may impact performance under load"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [database, performance]
