@@ -5273,3 +5273,406 @@ rules:
     severity: INFO
     metadata:
       tags: [database, performance]
+
+  # ============================================
+  # Insecure Deserialization - Advanced Patterns
+  # ============================================
+
+  # Base64 decode + pickle.loads (cookie deserialization attack)
+  - id: py-pickle-b64decode-cookie
+    pattern-regex: "loads\\(b64decode\\([^)]*cookie"
+    message: "Insecure deserialization - pickle.loads on base64-decoded cookie data enables RCE (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      owasp: "A08:2021"
+      tags: [deserialization, rce, cookie]
+
+  # Base64 decode + pickle (general pattern)
+  - id: py-pickle-b64decode
+    pattern-regex: "(pickle\\.loads?|loads)\\s*\\(\\s*b64decode"
+    message: "Insecure deserialization - pickle.loads with b64decode often indicates untrusted data (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization, rce]
+
+  # Cookie data directly to pickle
+  - id: py-pickle-from-cookie
+    pattern-regex: "(pickle\\.loads?|loads)\\s*\\([^)]*cookies"
+    message: "Insecure deserialization - deserializing cookie data can lead to RCE (CWE-502)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization, cookie]
+
+  # ============================================
+  # IDOR / Broken Access Control
+  # ============================================
+
+  # session.delete without ownership check (IDOR)
+  - id: py-sqlalchemy-delete-no-owner-check
+    pattern-regex: "session\\.delete\\([^)]+\\)"
+    message: "Database delete operation - verify object ownership before deletion to prevent IDOR (CWE-639)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021"
+      tags: [idor, authorization]
+
+  # Accessing user resources by ID without ownership verification
+  - id: py-idor-user-id-param
+    pattern-regex: "def\\s+\\w+\\([^)]*user_id[^)]*\\):"
+    message: "Function accepts user_id parameter - ensure authorization check before accessing user resources (CWE-639)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, authorization]
+
+  # Flask route with <int:user_id> without @login_required check
+  - id: py-flask-route-user-id-idor
+    pattern-regex: "@(app|bp|blueprint)\\.route\\([^)]*<int:user_id>"
+    message: "Route exposes user_id - verify requesting user has permission to access this resource (CWE-639)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021"
+      tags: [idor, flask, authorization]
+
+  # Note/resource access without ownership check
+  - id: py-idor-note-access
+    pattern-regex: "session\\.get\\(Note,\\s*\\w+_id\\)"
+    message: "Note access by ID - verify note ownership before returning to prevent IDOR (CWE-639)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, authorization]
+
+  # ============================================
+  # Authentication / Information Disclosure
+  # ============================================
+
+  # Timing attack - checking user existence before password
+  - id: py-timing-attack-user-check
+    pattern-regex: "if\\s+user\\s+(is\\s+not\\s+None|!=\\s*None|is\\s+None|==\\s*None)"
+    message: "User existence check before password verification may enable timing attacks (CWE-208)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-208"
+      tags: [authentication, timing-attack]
+
+  # Exposing email in response
+  - id: py-email-disclosure-response
+    pattern-regex: "(jsonify|json\\.dumps)\\([^)]*email[^)]*\\)"
+    message: "Email exposure in API response - consider if this enables user enumeration (CWE-200)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [information-disclosure, privacy]
+
+  # Endpoint that reveals user existence
+  - id: py-user-enumeration-endpoint
+    pattern-regex: "(is_logged_in|check_user|user_exists|verify_email)"
+    message: "Endpoint may enable user enumeration - ensure consistent responses for valid/invalid users (CWE-203)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-203"
+      tags: [authentication, enumeration]
+
+  # ============================================
+  # Password Handling Issues
+  # ============================================
+
+  # Password stored as String column (no hashing indicator)
+  - id: py-password-column-string
+    pattern-regex: "password\\s*=\\s*Column\\(String"
+    message: "Password column as String - ensure passwords are hashed with bcrypt/argon2, not stored as plaintext (CWE-256)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      owasp: "A02:2021"
+      tags: [authentication, password]
+
+  # Direct password assignment without hashing
+  - id: py-password-plaintext-assignment
+    pattern-regex: "self\\.password\\s*=\\s*password(?!\\s*_hash)"
+    message: "Direct password assignment without hashing - use bcrypt.hashpw() or similar (CWE-256)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      tags: [authentication, password]
+
+  # No password validation/strength check visible
+  - id: py-weak-password-policy
+    pattern-regex: "def\\s+__init__\\([^)]*password[^)]*\\):[^}]*self\\.password"
+    message: "Password in constructor - consider adding password strength validation (CWE-521)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-521"
+      tags: [authentication, password-policy]
+
+  # ============================================
+  # File Upload Vulnerabilities
+  # ============================================
+
+  # BLOB column for images without validation
+  - id: py-unrestricted-file-upload-blob
+    pattern-regex: "(profile_image|avatar|image|photo)\\s*=\\s*Column\\(BLOB"
+    message: "Binary file storage - validate file type, size, and content before storing (CWE-434)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-434"
+      owasp: "A04:2021"
+      tags: [file-upload, validation]
+
+  # File upload without content type check
+  - id: py-file-upload-no-validation
+    pattern-regex: "request\\.files\\[[^]]+\\]\\.read\\(\\)"
+    message: "File upload read without validation - check file type, size, and scan for malware (CWE-434)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-434"
+      tags: [file-upload]
+
+  # ============================================
+  # Flask Security Issues
+  # ============================================
+
+  # Flash message with json.dumps (error structure disclosure)
+  - id: py-flask-flash-json-errors
+    pattern-regex: "flash\\((json\\.)?dumps\\("
+    message: "Flash message with JSON dumps - may expose internal error structure to users (CWE-209)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-209"
+      tags: [flask, information-disclosure]
+
+  # No CSRF token visible in form handling
+  - id: py-flask-form-no-csrf
+    pattern-regex: "form\\.validate_on_submit\\(\\)"
+    message: "Form validation - ensure Flask-WTF CSRF protection is enabled (CWE-352)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-352"
+      owasp: "A05:2021"
+      tags: [flask, csrf]
+
+  # WTForms without CSRFProtect
+  - id: py-wtforms-csrf-disabled
+    pattern-regex: "class\\s+\\w+Form\\(.*\\):[^}]*class\\s+Meta:[^}]*csrf\\s*=\\s*False"
+    message: "CSRF protection disabled in WTForms - enable CSRF to prevent cross-site request forgery (CWE-352)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-352"
+      tags: [flask, csrf]
+
+  # ============================================
+  # Race Conditions / TOCTOU
+  # ============================================
+
+  # Validate then use pattern (TOCTOU)
+  - id: py-toctou-validate-then-get
+    pattern-regex: "validate_\\w+\\([^)]+\\)[^}]*session\\.get\\("
+    message: "Validate-then-use pattern may have race condition - consider atomic operations (CWE-367)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-367"
+      tags: [race-condition, toctou]
+
+  # Check exists then delete/update
+  - id: py-toctou-check-then-delete
+    pattern-regex: "if\\s+\\w+\\s+is\\s+not\\s+None:[^}]*session\\.delete"
+    message: "Check-then-delete pattern - consider using database-level constraints to prevent TOCTOU (CWE-367)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-367"
+      tags: [race-condition]
+
+  # ============================================
+  # Unsafe URL Handling
+  # ============================================
+
+  # urlopen without timeout
+  - id: py-urlopen-no-timeout
+    pattern-regex: "urlopen\\([^)]*\\)(?!.*timeout)"
+    message: "urlopen without timeout - can cause indefinite blocking, vulnerable to slowloris attacks (CWE-400)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-400"
+      tags: [dos, timeout]
+
+  # No URL scheme validation
+  - id: py-url-no-scheme-validation
+    pattern-regex: "urlopen\\(\\w+\\)"
+    message: "URL opened without scheme validation - may allow file:// or other dangerous protocols (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf, url-validation]
+
+  # URL from request parameter directly to urlopen
+  - id: py-ssrf-request-to-urlopen
+    pattern-regex: "(request\\.(args|form|json|data))[^}]*urlopen"
+    message: "User-controlled URL to urlopen - SSRF vulnerability allows access to internal services (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021"
+      tags: [ssrf]
+
+  # ============================================
+  # Jinja2 Template Security
+  # ============================================
+
+  # Jinja2 safe filter on user data
+  - id: py-jinja-safe-filter
+    pattern: '{{ $VAR | safe }}'
+    message: "Jinja2 safe filter bypasses HTML escaping - XSS risk if $VAR contains user input (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jinja2, template]
+
+  # Markup() with user data
+  - id: py-markup-user-data
+    pattern: Markup($DATA)
+    message: "Markup() marks content as safe - XSS risk if $DATA contains user input (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jinja2]
+
+  # ============================================
+  # Misc Flask Vulnerabilities
+  # ============================================
+
+  # logout_user() called unconditionally
+  - id: py-flask-logout-redundant
+    pattern-regex: "logout_user\\(\\)"
+    message: "logout_user() call - verify this is intentional and not a logic flaw"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [flask, authentication]
+
+  # Return redirect without validating URL
+  - id: py-open-redirect
+    pattern-regex: "redirect\\(request\\.(args|form)\\["
+    message: "Redirect to user-controlled URL - validate or whitelist destinations to prevent open redirect (CWE-601)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A03:2021"
+      tags: [redirect, flask]
+
+  # Using request.referrer for redirect
+  - id: py-open-redirect-referrer
+    pattern-regex: "redirect\\(request\\.referrer"
+    message: "Redirect to referrer - can be manipulated by attacker for open redirect (CWE-601)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect, flask]
+
+  # Flask app with SESSION_COOKIE_SECURE = False
+  - id: py-flask-insecure-session-cookie
+    pattern-regex: "SESSION_COOKIE_SECURE\\s*=\\s*False"
+    message: "Session cookie not secure - enable HTTPS and SESSION_COOKIE_SECURE (CWE-614)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-614"
+      tags: [flask, session, cookie]
+
+  # Flask app with SESSION_COOKIE_HTTPONLY = False
+  - id: py-flask-session-cookie-httponly
+    pattern-regex: "SESSION_COOKIE_HTTPONLY\\s*=\\s*False"
+    message: "Session cookie HTTP-only disabled - XSS can steal session cookies (CWE-1004)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1004"
+      tags: [flask, session, cookie]
+
+  # send_file without safe path handling
+  - id: py-flask-send-file-unsafe
+    pattern-regex: "send_file\\((request\\.|f['\"])"
+    message: "send_file with user input - validate path to prevent directory traversal (CWE-22)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021"
+      tags: [flask, path-traversal]
+
+  # ============================================
+  # SQL Injection - Additional Patterns
+  # ============================================
+
+  # Triple-quoted f-string SQL
+  - id: py-sqli-triple-quote-fstring
+    pattern-regex: 'text\\(f"""'
+    message: "SQL injection - triple-quoted f-string in text() allows SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sqli, sqlalchemy]
+
+  # execute() with user input
+  - id: py-sqli-execute-fstring
+    pattern-regex: "\\.execute\\(f['\"]"
+    message: "SQL injection - f-string in execute() allows SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sqli]
+
+  # Raw SQL with % formatting
+  - id: py-sqli-percent-format
+    pattern-regex: "(execute|text)\\([^)]*%\\s*\\("
+    message: "SQL injection - % string formatting in SQL is vulnerable (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sqli]
+
+  # Raw SQL with .format()
+  - id: py-sqli-string-format
+    pattern-regex: "(execute|text)\\([^)]*\\.format\\("
+    message: "SQL injection - .format() in SQL query is vulnerable (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sqli]
