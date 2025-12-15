@@ -233,3 +233,205 @@ rules:
         - "*.jade"
         - "*.ejs"
         - "*.njk"
+
+  # ============================================
+  # Jinja2 Template XSS (Flask/Python)
+  # ============================================
+
+  # Jinja2 safe filter
+  - id: jinja2-xss-safe-filter
+    pattern-regex: "\\|\\s*safe\\s*\\}\\}"
+    message: "Jinja2 safe filter bypasses HTML escaping - XSS risk if content is user-controlled (CWE-79)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, jinja2, flask, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+
+  # Jinja2 .decode() in template (binary to string without escaping)
+  - id: jinja2-xss-decode
+    pattern-regex: "\\{\\{[^}]*\\.decode\\(\\)[^}]*\\}\\}"
+    message: "Jinja2 .decode() in template - binary data may contain XSS payload (CWE-79)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jinja2, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+
+  # Jinja2 variable in data attribute
+  - id: jinja2-data-attr-xss
+    pattern-regex: "data\\s*=\\s*[\"']\\{\\{[^}]+\\}\\}[\"']"
+    message: "Jinja2 variable in data attribute - may allow data URI injection (CWE-79)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, jinja2, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+
+  # Jinja2 variable in href/src (potential open redirect)
+  - id: jinja2-href-src-injection
+    pattern-regex: "(href|src)\\s*=\\s*[\"']\\{\\{[^}]+\\}\\}[\"']"
+    message: "Jinja2 variable in href/src - validate URL to prevent open redirect (CWE-601)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect, jinja2, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+
+  # Jinja2 variable in onclick/event handlers
+  - id: jinja2-event-handler-xss
+    pattern-regex: "(onclick|onerror|onload|onmouseover|onfocus)\\s*=\\s*[\"'][^\"']*\\{\\{"
+    message: "Jinja2 variable in event handler - critical XSS vulnerability (CWE-79)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, jinja2, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+
+  # Jinja2 variable in style attribute (CSS injection)
+  - id: jinja2-style-injection
+    pattern-regex: "style\\s*=\\s*[\"'][^\"']*\\{\\{"
+    message: "Jinja2 variable in style attribute - CSS injection risk (CWE-79)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, css-injection, jinja2, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+
+  # Jinja2 in script tag
+  - id: jinja2-script-injection
+    pattern-regex: "<script[^>]*>[^<]*\\{\\{[^}]+\\}\\}"
+    message: "Jinja2 variable inside script tag - XSS risk, use |tojson filter (CWE-79)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, jinja2, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+
+  # ============================================
+  # HTML Object/Embed Tags
+  # ============================================
+
+  # Object tag with template variable
+  - id: html-object-tag-injection
+    pattern-regex: "<object[^>]*\\{\\{"
+    message: "Object tag with template variable - may allow malicious embedding (CWE-829)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-829"
+      tags: [xss, embed, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+        - "*.ejs"
+        - "*.hbs"
+
+  # Embed tag with template variable
+  - id: html-embed-tag-injection
+    pattern-regex: "<embed[^>]*\\{\\{"
+    message: "Embed tag with template variable - may allow malicious embedding (CWE-829)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-829"
+      tags: [xss, embed, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+        - "*.ejs"
+        - "*.hbs"
+
+  # Iframe with template variable
+  - id: html-iframe-injection
+    pattern-regex: "<iframe[^>]*\\{\\{"
+    message: "Iframe with template variable - clickjacking or malicious embedding risk (CWE-1021)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1021"
+      tags: [clickjacking, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+        - "*.ejs"
+        - "*.hbs"
+
+  # ============================================
+  # Meta Tag Security
+  # ============================================
+
+  # Meta refresh with template variable
+  - id: html-meta-refresh-injection
+    pattern-regex: "<meta[^>]*http-equiv\\s*=\\s*[\"']refresh[\"'][^>]*\\{\\{"
+    message: "Meta refresh with template variable - open redirect risk (CWE-601)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+
+  # Base tag with template variable
+  - id: html-base-tag-injection
+    pattern-regex: "<base[^>]*href\\s*=\\s*[\"']\\{\\{"
+    message: "Base tag with template variable - can hijack all relative URLs (CWE-79)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"

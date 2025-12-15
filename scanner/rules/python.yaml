@@ -5676,3 +5676,353 @@ rules:
     metadata:
       cwe: "CWE-89"
       tags: [sqli]
+
+  # ============================================
+  # WTForms / Form Validation Issues
+  # ============================================
+
+  # URLField without scheme validation (SSRF/XSS)
+  - id: py-wtforms-urlfield-no-scheme
+    pattern-regex: "URLField\\([^)]*\\)"
+    message: "WTForms URLField - ensure scheme validation to prevent javascript: or data: URLs (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [wtforms, xss, ssrf]
+
+  # Form without CSRF protection indicator
+  - id: py-wtforms-no-csrf-indicator
+    pattern-regex: "class\\s+\\w+Form\\(FlaskForm\\):"
+    message: "WTForms FlaskForm - verify CSRFProtect is initialized in app factory (CWE-352)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-352"
+      tags: [wtforms, csrf]
+
+  # DataRequired but no Length validator (potential DoS)
+  - id: py-wtforms-no-length-validator
+    pattern-regex: "StringField\\([^)]*DataRequired\\(\\)[^)]*\\)(?![^)]*Length)"
+    message: "StringField with DataRequired but no Length validator - may allow oversized input (CWE-400)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-400"
+      tags: [wtforms, validation]
+
+  # ============================================
+  # Hardcoded Secrets / Registration Codes
+  # ============================================
+
+  # Hardcoded UUID (often used as registration/invite codes)
+  - id: py-hardcoded-uuid-secret
+    pattern-regex: "['\"][0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}['\"]"
+    message: "Hardcoded UUID - if used as invite/registration code, move to environment variable (CWE-798)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-798"
+      tags: [secrets, uuid]
+
+  # Hardcoded simple password in seed/test data
+  - id: py-hardcoded-weak-password
+    pattern-regex: "password\\s*[=:]\\s*['\"](?:admin|password|123456|user|test|root|guest)['\"]"
+    message: "Hardcoded weak password - use strong random passwords even in seed data (CWE-798)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      tags: [secrets, password]
+
+  # Default admin credentials
+  - id: py-default-admin-creds
+    pattern-regex: "(admin|root|superuser).*password.*[=:]"
+    message: "Default admin credentials pattern - ensure these are not used in production (CWE-798)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      tags: [secrets, admin]
+
+  # ============================================
+  # bcrypt / Password Hashing Issues
+  # ============================================
+
+  # bcrypt gensalt without cost factor
+  - id: py-bcrypt-gensalt-no-rounds
+    pattern-regex: "gensalt\\(\\)"
+    message: "bcrypt gensalt() without rounds - specify rounds (e.g., gensalt(12)) for adequate security (CWE-916)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-916"
+      tags: [bcrypt, password]
+
+  # bcrypt with low rounds
+  - id: py-bcrypt-low-rounds
+    pattern-regex: "gensalt\\(\\s*([1-9]|10)\\s*\\)"
+    message: "bcrypt with low cost factor - use at least 12 rounds for adequate security (CWE-916)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-916"
+      tags: [bcrypt, password]
+
+  # checkpw with potential timing leak
+  - id: py-bcrypt-checkpw-timing
+    pattern-regex: "if\\s+.*checkpw\\("
+    message: "bcrypt checkpw in conditional - ensure consistent response time to prevent timing attacks (CWE-208)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-208"
+      tags: [bcrypt, timing-attack]
+
+  # ============================================
+  # Flask-Login Security Issues
+  # ============================================
+
+  # login_user with remember=True without duration
+  - id: py-flask-login-remember-no-duration
+    pattern-regex: "login_user\\([^)]*remember\\s*=\\s*True[^)]*\\)"
+    message: "login_user with remember=True - configure REMEMBER_COOKIE_DURATION for security (CWE-613)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-613"
+      tags: [flask-login, session]
+
+  # login_user without checking user.is_active
+  - id: py-flask-login-no-active-check
+    pattern-regex: "login_user\\(\\s*user\\s*[,)]"
+    message: "login_user - verify user.is_active is checked before login to prevent disabled account access (CWE-863)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-863"
+      tags: [flask-login, authorization]
+
+  # ============================================
+  # Template XSS - Advanced Patterns
+  # ============================================
+
+  # .decode() in template context (potential XSS)
+  - id: py-template-decode-xss
+    pattern-regex: "\\{\\{[^}]*\\.decode\\(\\)[^}]*\\}\\}"
+    message: "Template .decode() - binary data in template may enable XSS, ensure proper escaping (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, template]
+
+  # data attribute with template variable (data URI injection)
+  - id: py-template-data-attr-xss
+    pattern-regex: "data\\s*=\\s*[\"']\\{\\{"
+    message: "Template variable in data attribute - may allow data URI XSS injection (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, template]
+
+  # value attribute with template variable
+  - id: py-template-value-attr
+    pattern-regex: "value\\s*=\\s*[\"']\\{\\{[^}]+\\}\\}[\"']"
+    message: "Template variable in value attribute - ensure proper escaping to prevent XSS (CWE-79)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, template]
+
+  # href/src with template variable (potential open redirect/SSRF)
+  - id: py-template-href-src-injection
+    pattern-regex: "(href|src)\\s*=\\s*[\"']\\{\\{[^}]+\\}\\}[\"']"
+    message: "Template variable in href/src - validate URL to prevent open redirect or SSRF (CWE-601)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [redirect, ssrf, template]
+
+  # onclick/onerror with template variable (direct XSS)
+  - id: py-template-event-handler-xss
+    pattern-regex: "(onclick|onerror|onload|onmouseover)\\s*=\\s*[\"'][^\"']*\\{\\{"
+    message: "Template variable in event handler - critical XSS vulnerability (CWE-79)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, template]
+
+  # ============================================
+  # Database Seed / Migration Security
+  # ============================================
+
+  # Creating user with plaintext password in seed
+  - id: py-seed-plaintext-password
+    pattern-regex: "User\\([^)]*password\\s*=\\s*['\"][^'\"]+['\"][^)]*\\)"
+    message: "User creation with plaintext password - hash passwords even in seed data (CWE-256)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-256"
+      tags: [seed, password]
+
+  # Admin user in seed data
+  - id: py-seed-admin-user
+    pattern-regex: "User\\([^)]*is_admin\\s*=\\s*True"
+    message: "Admin user in seed data - ensure admin credentials are properly secured (CWE-250)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-250"
+      tags: [seed, admin]
+
+  # ============================================
+  # Object/Embed Tag Security
+  # ============================================
+
+  # object tag with user data (PDF/Flash injection)
+  - id: py-template-object-tag
+    pattern-regex: "<object[^>]*\\{\\{"
+    message: "Object tag with template variable - may allow malicious PDF/Flash embedding (CWE-829)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-829"
+      tags: [xss, template, embed]
+
+  # embed tag with user data
+  - id: py-template-embed-tag
+    pattern-regex: "<embed[^>]*\\{\\{"
+    message: "Embed tag with template variable - may allow malicious content embedding (CWE-829)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-829"
+      tags: [xss, template, embed]
+
+  # iframe with user data
+  - id: py-template-iframe-injection
+    pattern-regex: "<iframe[^>]*\\{\\{"
+    message: "Iframe with template variable - may allow clickjacking or malicious embedding (CWE-1021)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1021"
+      tags: [clickjacking, template]
+
+  # ============================================
+  # Session / Cookie Security
+  # ============================================
+
+  # Setting cookie without secure flag
+  - id: py-cookie-no-secure
+    pattern-regex: "set_cookie\\([^)]*\\)(?![^)]*secure\\s*=\\s*True)"
+    message: "set_cookie without secure flag - cookie can be intercepted over HTTP (CWE-614)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-614"
+      tags: [cookie, session]
+
+  # Setting cookie without httponly flag
+  - id: py-cookie-no-httponly
+    pattern-regex: "set_cookie\\([^)]*\\)(?![^)]*httponly\\s*=\\s*True)"
+    message: "set_cookie without httponly flag - cookie accessible to JavaScript (CWE-1004)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1004"
+      tags: [cookie, session]
+
+  # Setting cookie without samesite
+  - id: py-cookie-no-samesite
+    pattern-regex: "set_cookie\\([^)]*\\)(?![^)]*samesite)"
+    message: "set_cookie without samesite attribute - vulnerable to CSRF (CWE-352)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-352"
+      tags: [cookie, csrf]
+
+  # ============================================
+  # Error Handling / Information Disclosure
+  # ============================================
+
+  # Catching bare exception
+  - id: py-bare-exception
+    pattern-regex: "except\\s*:"
+    message: "Bare except catches all exceptions including KeyboardInterrupt - be specific (CWE-396)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-396"
+      tags: [exception, error-handling]
+
+  # Printing exception details
+  - id: py-print-exception
+    pattern-regex: "print\\([^)]*(?:exception|error|traceback|exc_info)"
+    message: "Printing exception details - use logging and avoid exposing to users (CWE-209)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-209"
+      tags: [exception, information-disclosure]
+
+  # traceback.print_exc in production code
+  - id: py-traceback-print
+    pattern-regex: "traceback\\.print_exc\\(\\)"
+    message: "traceback.print_exc() - avoid in production, may expose sensitive information (CWE-209)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [exception, information-disclosure]
+
+  # ============================================
+  # Cryptographic Issues
+  # ============================================
+
+  # Using random instead of secrets
+  - id: py-random-for-security
+    pattern-regex: "random\\.(choice|randint|random)\\([^)]*\\)"
+    message: "random module is not cryptographically secure - use secrets module for security purposes (CWE-330)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-330"
+      tags: [crypto, random]
+
+  # uuid4 for tokens (fine but could use secrets)
+  - id: py-uuid-for-token
+    pattern-regex: "(token|secret|key|code)\\s*=\\s*.*uuid\\.uuid4\\(\\)"
+    message: "UUID for security token - consider secrets.token_urlsafe() for better entropy (CWE-330)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-330"
+      tags: [crypto, token]
+
+  # Static IV for encryption
+  - id: py-static-iv
+    pattern-regex: "(iv|IV|nonce)\\s*=\\s*b['\"]"
+    message: "Static IV/nonce for encryption - use random IV for each encryption (CWE-329)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-329"
+      tags: [crypto, iv]
+
+  # ECB mode usage
+  - id: py-ecb-mode
+    pattern-regex: "(MODE_ECB|ECB)"
+    message: "ECB encryption mode - patterns in data are preserved, use CBC or GCM (CWE-327)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+      tags: [crypto, encryption]
