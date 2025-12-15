@@ -853,23 +853,6 @@
 			{/if}
 
 			<div class="results-header">
-				<div class="top-actions" class:revealed={showResults}>
-					<button class="action-btn" onclick={rescanRepo} disabled={rescanning || !repoUrl}>
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M23 4v6h-6"/>
-							<path d="M1 20v-6h6"/>
-							<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-						</svg>
-						{rescanning ? 'Starting...' : 'Rescan'}
-					</button>
-					<button class="action-btn" onclick={shareTwitter}>
-						Share on
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-							<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-						</svg>
-					</button>
-				</div>
-
 				<div class="score-section" class:revealed={showResults}>
 					<div class="score-circle {getGradeClass(results.grade)}">
 						<span class="score-number">{displayScore}</span>
@@ -883,6 +866,22 @@
 							</svg>
 							{repoUrl.replace('https://github.com/', '')}
 						</a>
+						<div class="repo-actions" class:revealed={showResults}>
+							<button class="action-btn" onclick={rescanRepo} disabled={rescanning || !repoUrl}>
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M23 4v6h-6"/>
+									<path d="M1 20v-6h6"/>
+									<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+								</svg>
+								{rescanning ? 'Starting...' : 'Rescan'}
+							</button>
+							<button class="action-btn" onclick={shareTwitter}>
+								Share on
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+									<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+								</svg>
+							</button>
+						</div>
 					{/if}
 				</div>
 
@@ -1314,20 +1313,18 @@
 		border-bottom: 1px solid var(--border);
 	}
 
-	.top-actions {
-		position: absolute;
-		top: 0;
-		right: 0;
+	.repo-actions {
 		display: flex;
+		justify-content: center;
 		gap: 0.5rem;
+		margin-top: 0.75rem;
 		opacity: 0;
 		transform: translateY(-10px);
 		transition: opacity 0.3s ease, transform 0.3s ease;
 		pointer-events: none;
-		z-index: 10;
 	}
 
-	.top-actions.revealed {
+	.repo-actions.revealed {
 		opacity: 1;
 		transform: translateY(0);
 		pointer-events: auto;
@@ -2585,13 +2582,8 @@
 			padding-top: 3rem;
 		}
 
-		.top-actions {
-			position: relative;
-			top: auto;
-			right: auto;
-			justify-content: center;
+		.repo-actions {
 			flex-wrap: wrap;
-			margin-bottom: 1rem;
 		}
 
 		.action-btn {
