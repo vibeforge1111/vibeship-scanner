@@ -540,3 +540,172 @@ rules:
         - "*.html"
         - "*.jinja"
         - "*.hbs"
+
+  # ============================================
+  # EJS Credential Exposure (vulnerable-node Round 6)
+  # ============================================
+
+  # Hardcoded credentials in EJS template
+  - id: ejs-hardcoded-credentials
+    pattern-regex: "admin\\s*:\\s*admin|password\\s*:\\s*\\w+|user\\s*:\\s*\\w+"
+    message: "Hardcoded credentials in template - remove test accounts before production"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A07:2021"
+      tags: [credentials, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+        - "*.html"
+        - "*.hbs"
+
+  # Default password displayed in template
+  - id: template-password-displayed
+    pattern-regex: "password.*['\"][a-zA-Z0-9]+['\"]|['\"][a-zA-Z0-9]+['\"].*password"
+    message: "Password visible in template - potential credential exposure"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-312"
+      tags: [credentials, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+        - "*.html"
+
+  # ============================================
+  # EJS Hidden Field XSS (vulnerable-node Round 6)
+  # ============================================
+
+  # EJS variable in hidden field without escaping
+  - id: ejs-hidden-field-xss
+    pattern-regex: "type=['\"]hidden['\"][^>]*value=['\"]<%-"
+    message: "EJS unescaped output in hidden field - XSS via value attribute"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, ejs, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+
+  # Hidden input with server variable
+  - id: ejs-hidden-input-variable
+    pattern-regex: "<input[^>]*type=['\"]hidden['\"][^>]*<%[-=]"
+    message: "Server variable in hidden input - validate and escape properly"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, ejs, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+
+  # ============================================
+  # EJS Error Message Display (vulnerable-node Round 6)
+  # ============================================
+
+  # EJS auth_error or error message displayed
+  - id: ejs-error-message-display
+    pattern-regex: "<%[-=]\\s*(?:auth_)?error\\s*%>|<%[-=]\\s*\\w+_error\\s*%>"
+    message: "Error message displayed in template - sanitize to prevent XSS"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, information-disclosure, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+
+  # Error in span/label without escaping
+  - id: ejs-error-in-element
+    pattern-regex: "<(?:span|label|div)[^>]*class=['\"][^'\"]*(?:error|danger|warning)[^'\"]*['\"][^>]*>\\s*<%[-=]"
+    message: "Error message in styled element - ensure proper escaping"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+
+  # ============================================
+  # EJS URL Parameter Display (vulnerable-node Round 6)
+  # ============================================
+
+  # Return URL in template
+  - id: ejs-returnurl-xss
+    pattern-regex: "<%[-=]\\s*returnurl\\s*%>|<%[-=]\\s*return_url\\s*%>|<%[-=]\\s*redirect\\s*%>"
+    message: "URL parameter in template - validate to prevent XSS and open redirect"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, open-redirect, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+
+  # Query parameter in href
+  - id: ejs-query-param-href
+    pattern-regex: "href=['\"]<%[-=]\\s*\\w+\\s*%>['\"]"
+    message: "Server variable in href - validate to prevent XSS and open redirect"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [xss, open-redirect, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+
+  # ============================================
+  # EJS Product/Data Display (vulnerable-node Round 6)
+  # ============================================
+
+  # Product data unescaped
+  - id: ejs-product-data-xss
+    pattern-regex: "<%[-]\\s*product\\.(?:name|description|title|image)\\s*%>"
+    message: "Product data displayed without escaping - stored XSS risk"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, stored-xss, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+
+  # User data unescaped
+  - id: ejs-user-data-xss
+    pattern-regex: "<%[-]\\s*user\\.(?:name|email|bio|website)\\s*%>"
+    message: "User data displayed without escaping - stored XSS risk"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, stored-xss, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+
+  # Loop variable unescaped in link
+  - id: ejs-loop-variable-href
+    pattern-regex: "href=['\"][^'\"]*<%[-]\\s*\\w+\\.(?:id|url|link)\\s*%>"
+    message: "Loop variable in href - ensure ID is numeric or URL is validated"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"

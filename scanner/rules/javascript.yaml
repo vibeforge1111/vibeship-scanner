@@ -9390,3 +9390,285 @@ rules:
     metadata:
       cwe: "CWE-209"
       tags: [error-disclosure]
+
+  # ============================================
+  # Session Security (vulnerable-node Round 6)
+  # ============================================
+
+  # Hardcoded session secret
+  - id: session-hardcoded-secret
+    pattern-regex: "secret:\\s*['\"][^'\"]{10,}['\"]"
+    message: "Hardcoded session secret - use environment variable for production security"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A02:2021"
+      tags: [session, secrets, vulnerable-node]
+
+  # Session secret too short
+  - id: session-secret-short
+    pattern-regex: "secret:\\s*['\"][^'\"]{1,15}['\"]"
+    message: "Session secret appears too short - use at least 32 random characters"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-331"
+      tags: [session, vulnerable-node]
+
+  # Insecure cookie secure:false
+  - id: cookie-secure-false
+    pattern-regex: "secure:\\s*false"
+    message: "Cookie secure:false allows transmission over HTTP - enable for production"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-614"
+      owasp: "A02:2021"
+      tags: [session, cookie, vulnerable-node]
+
+  # Excessive cookie maxAge
+  - id: cookie-excessive-maxage
+    pattern-regex: "maxAge:\\s*\\d{10,}"
+    message: "Cookie maxAge is excessively long - limits session hijacking window"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-613"
+      tags: [session, cookie, vulnerable-node]
+
+  # Missing httpOnly on session cookie
+  - id: cookie-missing-httponly
+    patterns:
+      - pattern: |
+          session({
+            ...,
+            cookie: { ..., httpOnly: false, ... }
+          })
+    message: "Cookie httpOnly disabled - prevents JavaScript access to session cookie"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1004"
+      tags: [session, cookie, vulnerable-node]
+
+  # ============================================
+  # Deprecated/Insecure Middleware (vulnerable-node)
+  # ============================================
+
+  # Deprecated bodyParser without options
+  - id: bodyparser-deprecated
+    pattern: 'app.use(bodyParser())'
+    message: "Deprecated bodyParser() - use bodyParser.json() and bodyParser.urlencoded() separately"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      tags: [deprecated, vulnerable-node]
+
+  # Missing CSRF protection
+  - id: missing-csrf-middleware
+    pattern-regex: "app\\.use\\(session\\("
+    message: "Session middleware without CSRF protection - add csurf or csrf-csrf middleware"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
+      owasp: "A01:2021"
+      tags: [csrf, vulnerable-node]
+
+  # Missing helmet.js
+  - id: express-missing-helmet
+    pattern-regex: "express\\(\\)[\\s\\S]{0,500}app\\.listen"
+    message: "Express app may lack security headers - use helmet() middleware"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-693"
+      tags: [headers, helmet, vulnerable-node]
+
+  # ============================================
+  # Log Injection (vulnerable-node)
+  # ============================================
+
+  # Log injection - user input in logger
+  - id: log-injection-error
+    pattern-regex: "logger\\.(?:error|warn|info|debug)\\([^)]*\\+\\s*\\w+"
+    message: "User input in log message - sanitize to prevent log injection/forging"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-117"
+      tags: [log-injection, vulnerable-node]
+
+  # Log injection - template string with variable
+  - id: log-injection-template
+    pattern-regex: "logger\\.(?:error|warn|info|debug)\\(`[^`]*\\$\\{[^}]+\\}"
+    message: "User input in log template - sanitize to prevent log injection"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-117"
+      tags: [log-injection, vulnerable-node]
+
+  # Console.log with user input
+  - id: console-log-user-input
+    pattern-regex: "console\\.(?:log|error|warn)\\([^)]*(?:req\\.body|req\\.query|req\\.params)"
+    message: "User input logged directly - may leak sensitive data or allow log injection"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-117"
+      tags: [logging, vulnerable-node]
+
+  # ============================================
+  # URL Parameter to Template (vulnerable-node)
+  # ============================================
+
+  # URL parameter passed to render without sanitization
+  - id: url-param-to-template
+    pattern-regex: "url\\.parse\\([^)]+\\)\\.query[\\s\\S]{0,50}res\\.render"
+    message: "URL parameter passed to template - sanitize to prevent XSS"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, vulnerable-node]
+
+  # Query string passed directly to template
+  - id: query-to-render-direct
+    patterns:
+      - pattern: |
+          $X = url.parse($REQ.url, true).query
+          ...
+          res.render($TPL, { ..., $FIELD: $X.$PARAM, ... })
+    message: "Query parameter passed to template without validation"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, vulnerable-node]
+
+  # Returnurl parameter (open redirect risk)
+  - id: returnurl-open-redirect
+    pattern-regex: "returnurl|return_url|redirect_url|next_url|continue_url"
+    message: "Return URL parameter - validate against allowlist to prevent open redirect"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect, vulnerable-node]
+
+  # ============================================
+  # Error Handling Anti-Patterns (vulnerable-node)
+  # ============================================
+
+  # Error object passed to template
+  - id: error-object-to-template
+    patterns:
+      - pattern: |
+          res.render($TPL, { ..., error: $ERR, ... })
+      - pattern: |
+          res.render('error', { error: $ERR })
+    message: "Full error object passed to template - may expose stack traces"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, vulnerable-node]
+
+  # Development error handler in production
+  - id: dev-error-handler-conditional
+    pattern-regex: "app\\.get\\(['\"]env['\"]\\)\\s*===\\s*['\"]development['\"]"
+    message: "Development-only error handler - ensure not exposed in production"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-209"
+      tags: [error-handling, vulnerable-node]
+
+  # ============================================
+  # File System Security (vulnerable-node)
+  # ============================================
+
+  # Hardcoded log file path
+  - id: hardcoded-log-path
+    pattern-regex: "createWriteStream\\([^)]*['\"][^'\"]+\\.log['\"]"
+    message: "Hardcoded log file path - ensure proper permissions and rotation"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, vulnerable-node]
+
+  # Log4js file appender without rotation
+  - id: log4js-no-rotation
+    pattern-regex: "log4js\\.addAppender\\(log4js\\.appenders\\.file\\("
+    message: "Log4js file appender - consider adding log rotation to prevent disk exhaustion"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-400"
+      tags: [logging, dos, vulnerable-node]
+
+  # ============================================
+  # Credential Exposure (vulnerable-node)
+  # ============================================
+
+  # Test credentials in comments or code
+  - id: test-credentials-in-code
+    pattern-regex: "admin\\s*:\\s*admin|password\\s*:\\s*password|test\\s*:\\s*test"
+    message: "Test credentials in code - ensure not exposed in production"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      tags: [credentials, vulnerable-node]
+
+  # Default username/password pair
+  - id: default-credentials
+    pattern-regex: "username.*['\"]admin['\"].*password.*['\"]admin['\"]|user.*root.*pass.*root"
+    message: "Default credentials detected - change before production deployment"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A07:2021"
+      tags: [credentials, vulnerable-node]
+
+  # ============================================
+  # Express Security Patterns (vulnerable-node)
+  # ============================================
+
+  # Session logged set to boolean without regeneration
+  - id: session-no-regenerate
+    pattern-regex: "req\\.session\\.logged\\s*=\\s*true"
+    message: "Session flag set without regeneration - call req.session.regenerate() to prevent fixation"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-384"
+      tags: [session-fixation, vulnerable-node]
+
+  # Session cleared without destroy
+  - id: session-clear-no-destroy
+    patterns:
+      - pattern: |
+          req.session.logged = false
+          ...
+          res.redirect($URL)
+    message: "Session cleared without destroy() - call req.session.destroy() for proper logout"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-613"
+      tags: [session, logout, vulnerable-node]
+
+  # User set to null without session destroy
+  - id: logout-incomplete
+    pattern-regex: "req\\.session\\.user\\s*=\\s*null"
+    message: "User set to null - also call req.session.destroy() for complete logout"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-613"
+      tags: [session, logout, vulnerable-node]
