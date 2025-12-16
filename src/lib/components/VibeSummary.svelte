@@ -121,8 +121,9 @@
 	.vibe-summary {
 		background: var(--bg-secondary);
 		border: 1px solid var(--border);
-		padding: 1.5rem;
-		margin-bottom: 2rem;
+		border-top: none;
+		padding: 1.25rem 1.5rem;
+		margin-bottom: 1.5rem;
 	}
 
 	.summary-header {
