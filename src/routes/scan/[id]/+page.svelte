@@ -1810,58 +1810,67 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.6rem;
+		gap: 0.75rem;
 	}
 
 	.vibe-finding-chip {
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
-		padding: 0.35rem 0.75rem;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
 		background: var(--bg-primary);
-		border: 1px solid var(--border);
+		border: 2px solid var(--border);
 	}
 
 	.vibe-finding-chip .chip-count {
 		font-family: 'JetBrains Mono', monospace;
-		font-size: 1rem;
+		font-size: 1.4rem;
 		font-weight: 700;
+		line-height: 1;
 	}
 
 	.vibe-finding-chip .chip-label {
-		font-family: 'Inter', sans-serif;
-		font-size: 0.7rem;
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+		font-size: 0.85rem;
 		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.02em;
-		color: var(--text-tertiary);
+		letter-spacing: 0.01em;
 	}
 
-	/* Chip colors */
+	/* Chip colors - both count and label colored */
 	.vibe-finding-chip.blocker {
 		border-color: #ef4444;
+		background: rgba(239, 68, 68, 0.08);
 	}
-	.vibe-finding-chip.blocker .chip-count { color: #ef4444; }
+	.vibe-finding-chip.blocker .chip-count,
+	.vibe-finding-chip.blocker .chip-label { color: #ef4444; }
 
 	.vibe-finding-chip.high {
 		border-color: #f97316;
+		background: rgba(249, 115, 22, 0.08);
 	}
-	.vibe-finding-chip.high .chip-count { color: #f97316; }
+	.vibe-finding-chip.high .chip-count,
+	.vibe-finding-chip.high .chip-label { color: #f97316; }
 
 	.vibe-finding-chip.medium {
 		border-color: #eab308;
+		background: rgba(234, 179, 8, 0.08);
 	}
-	.vibe-finding-chip.medium .chip-count { color: #eab308; }
+	.vibe-finding-chip.medium .chip-count,
+	.vibe-finding-chip.medium .chip-label { color: #eab308; }
 
 	.vibe-finding-chip.low {
 		border-color: #3b82f6;
+		background: rgba(59, 130, 246, 0.08);
 	}
-	.vibe-finding-chip.low .chip-count { color: #3b82f6; }
+	.vibe-finding-chip.low .chip-count,
+	.vibe-finding-chip.low .chip-label { color: #3b82f6; }
 
 	.vibe-finding-chip.info {
-		border-color: var(--text-tertiary);
+		border-color: #6b7280;
+		background: rgba(107, 114, 128, 0.08);
 	}
-	.vibe-finding-chip.info .chip-count { color: var(--text-tertiary); }
+	.vibe-finding-chip.info .chip-count,
+	.vibe-finding-chip.info .chip-label { color: #6b7280; }
 
 	/* Stack chips in findings row */
 	.vibe-stack-chips {
