@@ -1687,6 +1687,108 @@ Please:
 }
 
 /**
+ * Deduplicate similar findings to reduce noise in the output
+ * Groups findings by same rule+file (different lines) or same rule+pattern
+ */
+function deduplicateFindings(findings: any[]): { deduplicated: any[], duplicateGroups: Map<string, any[]> } {
+	const duplicateGroups = new Map<string, any[]>();
+	const seen = new Map<string, any>();
+	const deduplicated: any[] = [];
+
+	for (const finding of findings) {
+		// Create a deduplication key based on rule and file
+		const ruleId = finding.ruleId || finding.title || '';
+		const file = finding.location?.file || '';
+
+		// For vulnerable dependencies, group by package name
+		if (finding.source === 'trivy' || finding.source === 'npm-audit' ||
+			ruleId.toLowerCase().includes('cve-') || ruleId.toLowerCase().includes('ghsa-')) {
+			const pkgKey = `dep:${finding.packageName || finding.title || ruleId}`;
+			if (!duplicateGroups.has(pkgKey)) {
+				duplicateGroups.set(pkgKey, []);
+				deduplicated.push(finding);
+			}
+			duplicateGroups.get(pkgKey)!.push(finding);
+			continue;
+		}
+
+		// For same rule in same file, group together (show as "X occurrences")
+		const fileRuleKey = `${ruleId}:${file}`;
+		if (file && seen.has(fileRuleKey)) {
+			// Same rule in same file - group it
+			if (!duplicateGroups.has(fileRuleKey)) {
+				duplicateGroups.set(fileRuleKey, [seen.get(fileRuleKey)]);
+			}
+			duplicateGroups.get(fileRuleKey)!.push(finding);
+			continue;
+		}
+
+		// For same rule across different files, still show each file but note pattern
+		const ruleOnlyKey = `rule:${ruleId}`;
+		if (seen.has(ruleOnlyKey) && !file) {
+			// Same rule with no file - definitely a duplicate
+			if (!duplicateGroups.has(ruleOnlyKey)) {
+				duplicateGroups.set(ruleOnlyKey, [seen.get(ruleOnlyKey)]);
+			}
+			duplicateGroups.get(ruleOnlyKey)!.push(finding);
+			continue;
+		}
+
+		// First occurrence - add to results
+		seen.set(fileRuleKey, finding);
+		if (!seen.has(ruleOnlyKey)) {
+			seen.set(ruleOnlyKey, finding);
+		}
+		deduplicated.push(finding);
+	}
+
+	return { deduplicated, duplicateGroups };
+}
+
+/**
+ * Detect if this is an intentionally vulnerable application (for educational purposes)
+ */
+function detectEducationalRepo(findings: any[]): { isEducational: boolean, repoType: string | null } {
+	// Check for common intentionally vulnerable app patterns
+	const allText = findings.map(f =>
+		`${f.location?.file || ''} ${f.title || ''} ${f.message || ''}`
+	).join(' ').toLowerCase();
+
+	const educationalPatterns = [
+		{ pattern: /dvwa|damn vulnerable/i, name: 'DVWA (Damn Vulnerable Web Application)' },
+		{ pattern: /juice.?shop/i, name: 'OWASP Juice Shop' },
+		{ pattern: /nodegoat/i, name: 'OWASP NodeGoat' },
+		{ pattern: /webgoat/i, name: 'OWASP WebGoat' },
+		{ pattern: /railsgoat/i, name: 'OWASP RailsGoat' },
+		{ pattern: /crapi/i, name: 'OWASP crAPI' },
+		{ pattern: /vulnerable.?app/i, name: 'Intentionally Vulnerable Application' },
+		{ pattern: /hackazon/i, name: 'Hackazon' },
+		{ pattern: /altoro.?mutual/i, name: 'Altoro Mutual' },
+		{ pattern: /bwapp/i, name: 'bWAPP' },
+		{ pattern: /mutillidae/i, name: 'OWASP Mutillidae' },
+		{ pattern: /security.?shepherd/i, name: 'OWASP Security Shepherd' },
+	];
+
+	for (const { pattern, name } of educationalPatterns) {
+		if (pattern.test(allText)) {
+			return { isEducational: true, repoType: name };
+		}
+	}
+
+	// High finding count with specific vulnerability patterns might indicate educational
+	const hasExtremeCount = findings.length > 100;
+	const hasObviousVulns = allText.includes('sql injection') &&
+		allText.includes('xss') &&
+		allText.includes('command injection');
+
+	if (hasExtremeCount && hasObviousVulns) {
+		return { isEducational: true, repoType: 'Possibly Intentionally Vulnerable Application' };
+	}
+
+	return { isEducational: false, repoType: null };
+}
+
+/**
  * Generate a master prompt to fix ALL issues at once
  * @param findings - Array of security findings
  * @param includeInfo - Whether to include info-level findings (default: true)
@@ -1701,36 +1803,82 @@ export function generateMasterFixPrompt(findings: any[], includeInfo: boolean = 
 		return '';
 	}
 
+	// Detect if this is an educational/intentionally vulnerable app
+	const { isEducational, repoType } = detectEducationalRepo(actionableFindings);
+
 	// Sort by severity: critical > high > medium > low
 	const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 	const sorted = [...actionableFindings].sort((a, b) =>
 		(severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3)
 	);
 
-	// Group findings by vulnerability type for better organization
-	const grouped = groupFindingsByType(sorted);
+	// Deduplicate similar findings
+	const { deduplicated, duplicateGroups } = deduplicateFindings(sorted);
+
+	// Group deduplicated findings by vulnerability type for better organization
+	const grouped = groupFindingsByType(deduplicated);
 
 	// Generate the detailed fix guide for each group
-	const fixGuides = Object.entries(grouped).map(([type, findings]) => {
-		const guide = getDetailedFixGuide(type, findings);
+	const fixGuides = Object.entries(grouped).map(([type, typeFindings]) => {
+		// For each finding in the group, check if it has duplicates and enhance the output
+		const enhancedFindings = typeFindings.map(f => {
+			const ruleId = f.ruleId || f.title || '';
+			const file = f.location?.file || '';
+			const fileRuleKey = `${ruleId}:${file}`;
+			const depKey = `dep:${f.packageName || f.title || ruleId}`;
+
+			// Check for grouped occurrences
+			const duplicates = duplicateGroups.get(fileRuleKey) || duplicateGroups.get(depKey);
+			if (duplicates && duplicates.length > 1) {
+				return {
+					...f,
+					_occurrenceCount: duplicates.length,
+					_allLines: duplicates.map((d: any) => d.location?.line).filter(Boolean)
+				};
+			}
+			return f;
+		});
+
+		const guide = getDetailedFixGuide(type, enhancedFindings);
 		return guide;
 	}).join('\n\n---\n\n');
 
-	// Summary list for quick reference
-	const summaryList = sorted.map((f, i) => {
+	// Summary list for quick reference - show unique issues with occurrence counts
+	const summaryList = deduplicated.map((f, i) => {
 		const location = f.location?.file
 			? `${f.location.file}${f.location.line ? `:${f.location.line}` : ''}`
 			: 'location unknown';
 		const sev = f.severity?.toUpperCase() || 'INFO';
-		return `${i + 1}. [${sev}] ${f.title} → \`${location}\``;
+
+		// Check for duplicates
+		const ruleId = f.ruleId || f.title || '';
+		const file = f.location?.file || '';
+		const fileRuleKey = `${ruleId}:${file}`;
+		const depKey = `dep:${f.packageName || f.title || ruleId}`;
+		const duplicates = duplicateGroups.get(fileRuleKey) || duplicateGroups.get(depKey);
+
+		const countSuffix = duplicates && duplicates.length > 1 ? ` (${duplicates.length} occurrences)` : '';
+		return `${i + 1}. [${sev}] ${f.title} → \`${location}\`${countSuffix}`;
 	}).join('\n');
+
+	// Calculate deduplication stats
+	const originalCount = sorted.length;
+	const uniqueCount = deduplicated.length;
+	const dedupeNote = originalCount !== uniqueCount
+		? `\n\n> 📊 **Note:** ${originalCount} total findings consolidated into ${uniqueCount} unique issues. Similar findings in the same file are grouped together.`
+		: '';
+
+	// Educational repo warning
+	const educationalWarning = isEducational
+		? `\n\n> ⚠️ **Educational Repository Detected:** This appears to be **${repoType}** - an intentionally vulnerable application for learning purposes. These vulnerabilities are by design. Only fix them if you're using this for practice or adapting the code for production use.`
+		: '';
 
 	return `
 # Security Fix Guide
 
-I need help fixing ${sorted.length} security vulnerabilities in my codebase. This guide contains everything you need to fix each issue.
+I need help fixing ${uniqueCount} security vulnerabilities in my codebase. This guide contains everything you need to fix each issue.${educationalWarning}${dedupeNote}
 
-## Quick Summary (${sorted.length} issues)
+## Quick Summary (${uniqueCount} unique issues)
 
 ${summaryList}
 
@@ -1785,36 +1933,127 @@ function groupFindingsByType(findings: any[]): Record<string, any[]> {
 function categorizeVulnerability(finding: any): string {
 	const searchKey = `${finding.ruleId || ''} ${finding.title || ''} ${finding.message || ''}`.toLowerCase();
 
+	// SQL Injection - database query manipulation
 	if (searchKey.includes('sql') && (searchKey.includes('inject') || searchKey.includes('query'))) return 'sql-injection';
+
+	// NoSQL Injection - includes MongoDB $where injection
+	if (searchKey.includes('nosql') || searchKey.includes('$where') ||
+		(searchKey.includes('mongo') && (searchKey.includes('inject') || searchKey.includes('where') || searchKey.includes('query')))) return 'nosql-injection';
+
+	// XSS - Cross-Site Scripting
 	if (searchKey.includes('xss') || searchKey.includes('innerhtml') || searchKey.includes('dangerously')) return 'xss';
+
+	// Command Injection
 	if (searchKey.includes('command') || searchKey.includes('exec') || searchKey.includes('shell')) return 'command-injection';
+
+	// Path Traversal
 	if (searchKey.includes('path') && searchKey.includes('travers')) return 'path-traversal';
+
+	// SSRF - Server-Side Request Forgery
 	if (searchKey.includes('ssrf') || (searchKey.includes('url') && searchKey.includes('user'))) return 'ssrf';
-	if (searchKey.includes('secret') || searchKey.includes('hardcoded') || searchKey.includes('api_key') || searchKey.includes('password') && searchKey.includes('code')) return 'hardcoded-secrets';
+
+	// User Enumeration - timing attacks, different responses for valid/invalid users
+	if (searchKey.includes('enumerat') || searchKey.includes('user exists') ||
+		searchKey.includes('username valid') || searchKey.includes('timing attack') ||
+		(searchKey.includes('login') && searchKey.includes('message'))) return 'user-enumeration';
+
+	// Session Fixation - session not regenerated after auth
+	if (searchKey.includes('session fixation') || searchKey.includes('session.regenerate') ||
+		(searchKey.includes('session') && (searchKey.includes('regenerat') || searchKey.includes('new session')))) return 'session-fixation';
+
+	// Plaintext Password Storage - passwords not hashed
+	if ((searchKey.includes('password') && (searchKey.includes('plaintext') || searchKey.includes('plain text') ||
+		searchKey.includes('cleartext') || searchKey.includes('clear text') || searchKey.includes('not hash') ||
+		searchKey.includes('unhash') || searchKey.includes('store') || searchKey.includes('database'))) ||
+		(searchKey.includes('bcrypt') || searchKey.includes('argon2') || searchKey.includes('scrypt') || searchKey.includes('pbkdf2'))) return 'plaintext-password';
+
+	// Credential Exposure - credentials in logs, URLs, responses
+	if ((searchKey.includes('credential') && (searchKey.includes('log') || searchKey.includes('expos') || searchKey.includes('leak'))) ||
+		(searchKey.includes('password') && (searchKey.includes('log') || searchKey.includes('url') || searchKey.includes('query string'))) ||
+		searchKey.includes('sensitive data exposure')) return 'credential-exposure';
+
+	// Hardcoded Secrets - API keys, passwords in code
+	if (searchKey.includes('secret') || searchKey.includes('hardcoded') || searchKey.includes('api_key') ||
+		(searchKey.includes('password') && searchKey.includes('code'))) return 'hardcoded-secrets';
+
+	// Broken Authentication
 	if (searchKey.includes('auth') && (searchKey.includes('missing') || searchKey.includes('no-') || searchKey.includes('bypass'))) return 'broken-auth';
-	if (searchKey.includes('idor') || searchKey.includes('authorization') || searchKey.includes('access control')) return 'broken-access-control';
+
+	// Broken Access Control / IDOR
+	if (searchKey.includes('idor') || searchKey.includes('authorization') || searchKey.includes('access control') ||
+		searchKey.includes('insecure direct object')) return 'broken-access-control';
+
+	// CSRF
 	if (searchKey.includes('csrf')) return 'csrf';
+
+	// CORS Misconfiguration
 	if (searchKey.includes('cors')) return 'cors';
+
+	// JWT Issues
 	if (searchKey.includes('jwt')) return 'jwt-issues';
+
+	// Session Security (general)
 	if (searchKey.includes('session')) return 'session-security';
+
+	// Cookie Security
 	if (searchKey.includes('cookie')) return 'cookie-security';
+
+	// Weak Cryptography
 	if (searchKey.includes('crypto') || searchKey.includes('md5') || searchKey.includes('sha1') || searchKey.includes('cipher')) return 'weak-crypto';
+
+	// Insecure Deserialization
 	if (searchKey.includes('deserial') || searchKey.includes('pickle') || searchKey.includes('unserialize')) return 'insecure-deserialization';
+
+	// XXE - XML External Entities
 	if (searchKey.includes('xxe') || searchKey.includes('xml')) return 'xxe';
+
+	// Open Redirect
 	if (searchKey.includes('redirect')) return 'open-redirect';
+
+	// Debug/Verbose Information Exposure
 	if (searchKey.includes('debug') || searchKey.includes('verbose')) return 'debug-exposure';
+
+	// Missing Security Headers
 	if (searchKey.includes('header') || searchKey.includes('helmet')) return 'security-headers';
+
+	// Rate Limiting / Brute Force Protection
 	if (searchKey.includes('rate') || searchKey.includes('brute')) return 'rate-limiting';
-	if (searchKey.includes('cve-') || searchKey.includes('ghsa-') || searchKey.includes('vulnerable') && searchKey.includes('version')) return 'vulnerable-dependency';
+
+	// Vulnerable Dependencies
+	if (searchKey.includes('cve-') || searchKey.includes('ghsa-') ||
+		(searchKey.includes('vulnerable') && searchKey.includes('version'))) return 'vulnerable-dependency';
+
+	// Logging Issues - sensitive data in logs, log injection
 	if (searchKey.includes('log') && (searchKey.includes('sensitive') || searchKey.includes('inject'))) return 'logging-issues';
+
+	// File Security - file upload, file access
 	if (searchKey.includes('file') || searchKey.includes('upload')) return 'file-security';
-	if (searchKey.includes('nosql') || searchKey.includes('mongo')) return 'nosql-injection';
+
+	// Template Injection (SSTI)
 	if (searchKey.includes('template') && searchKey.includes('inject')) return 'template-injection';
-	if (searchKey.includes('eval') || searchKey.includes('code') && searchKey.includes('inject')) return 'code-injection';
+
+	// Code Injection - eval, dynamic code execution
+	if (searchKey.includes('eval') || (searchKey.includes('code') && searchKey.includes('inject'))) return 'code-injection';
+
+	// Prototype Pollution
 	if (searchKey.includes('prototype')) return 'prototype-pollution';
+
+	// ReDoS - Regular Expression DoS
 	if (searchKey.includes('regex') || searchKey.includes('redos')) return 'regex-dos';
+
+	// Weak Random Number Generation
 	if (searchKey.includes('random')) return 'weak-random';
+
+	// TLS/SSL Issues
 	if (searchKey.includes('tls') || searchKey.includes('ssl') || searchKey.includes('certificate')) return 'tls-issues';
+
+	// Mass Assignment - accepting all fields from user input
+	if (searchKey.includes('mass assignment') || searchKey.includes('over-posting') ||
+		(searchKey.includes('bind') && searchKey.includes('all'))) return 'mass-assignment';
+
+	// Information Disclosure - stack traces, error details
+	if (searchKey.includes('information disclosure') || searchKey.includes('stack trace') ||
+		searchKey.includes('error message') || searchKey.includes('verbose error')) return 'information-disclosure';
 
 	return 'other-security';
 }
@@ -1828,7 +2067,13 @@ function getDetailedFixGuide(type: string, findings: any[]): string {
 			? `- \`${f.location.file}${f.location.line ? `:${f.location.line}` : ''}\``
 			: '- Location not specified';
 		const severity = f.severity?.toUpperCase() || 'INFO';
-		return `${loc} [${severity}] ${f.title || ''}`;
+
+		// Show occurrence count if this finding has multiple occurrences
+		const occurrenceNote = f._occurrenceCount && f._occurrenceCount > 1
+			? ` *(${f._occurrenceCount} occurrences${f._allLines?.length ? ` at lines: ${f._allLines.join(', ')}` : ''})*`
+			: '';
+
+		return `${loc} [${severity}] ${f.title || ''}${occurrenceNote}`;
 	}).join('\n');
 
 	const guide = getVulnerabilityGuide(type);
@@ -3093,75 +3338,101 @@ const limiter = rateLimit({
 
 		'vulnerable-dependency': {
 			title: '🟠 Vulnerable Dependencies',
-			problem: 'Project uses packages with known security vulnerabilities.',
-			solution: `Update or replace vulnerable packages:
+			problem: 'Project uses packages with known security vulnerabilities. These can be exploited through your application even if you never directly call the vulnerable code.',
+			solution: `**PRIORITIZATION - Fix in this order:**
 
-**Check and fix vulnerabilities:**
+1. 🔴 **CRITICAL/HIGH with known exploits** - Fix immediately
+   - Remote Code Execution (RCE)
+   - SQL/NoSQL injection in ORM
+   - Prototype pollution affecting your framework
+   - Auth bypass in middleware
+
+2. 🟠 **HIGH without known exploits** - Fix this sprint
+   - ReDoS in input parsing
+   - XSS in template engines
+   - Path traversal in file handlers
+
+3. 🟡 **MEDIUM** - Fix within 30 days
+   - Information disclosure
+   - Denial of Service
+
+4. ⚪ **LOW/Informational** - Next maintenance cycle
+   - Dev-only dependencies
+   - Theoretical vulnerabilities
+
+**For each vulnerability, check if it affects you:**
 \`\`\`bash
-# View vulnerabilities
-npm audit
-
-# Auto-fix what's possible
-npm audit fix
-
-# Force fix (may include breaking changes)
-npm audit fix --force
-
-# Update specific package
-npm update lodash
-
-# Update to latest major version
-npm install lodash@latest
+# 1. Read the CVE/GHSA advisory - understand the attack vector
+# 2. Check if you use the vulnerable function/feature
+# 3. Check if user input reaches the vulnerable code path
 \`\`\`
 
-**If no fix is available:**
+**Node.js - Fixing vulnerabilities:**
 \`\`\`bash
-# Check if vulnerability applies to your usage
-# Read the advisory to understand the attack vector
+# View all vulnerabilities with details
+npm audit
 
-# Option 1: Find alternative package
-npm uninstall vulnerable-package
-npm install safer-alternative
+# Try automatic safe fixes first
+npm audit fix
 
-# Option 2: Override nested dependency (package.json)
+# For specific package updates (check CHANGELOG first!)
+npm update lodash
+
+# For major version updates (breaking changes possible)
+npm install lodash@latest
+
+# For nested/transitive dependencies, use overrides (package.json):
 {
   "overrides": {
-    "vulnerable-package": "^2.0.0"
+    "minimist": "^1.2.8",
+    "glob-parent": "^6.0.2"
   }
 }
 
-# Option 3: If low risk, document and accept
-# Add to .nsprc or similar to ignore
+# Verify the fix
+npm audit
 \`\`\`
 
-**For Python:**
+**If no fix is available:**
+\`\`\`javascript
+// Option 1: Find alternative package
+// Search npmjs.com for alternatives with better security track record
+
+// Option 2: Mitigate at application level
+// If vuln is "XSS when rendering untrusted input"
+// Add input sanitization before calling the library
+
+// Option 3: Accept risk (document it!)
+// .nsprc or package.json:
+{
+  "auditConfig": {
+    "ignore": [{
+      "id": "GHSA-xxxx-yyyy-zzzz",
+      "reason": "Only affects server-side rendering, we use CSR only",
+      "expires": "2025-06-01"
+    }]
+  }
+}
+\`\`\`
+
+**Python:**
 \`\`\`bash
-# Check vulnerabilities
-pip-audit
-
-# Or use safety
-safety check
-
-# Update package
-pip install --upgrade package-name
+pip-audit                              # Check vulnerabilities
+pip install --upgrade package-name     # Update package
+pip install package-name==x.y.z        # Pin to specific safe version
 \`\`\`
 
-**Set up automated checks:**
-\`\`\`yaml
-# .github/workflows/security.yml
-name: Security
-on: [push, pull_request]
-jobs:
-  audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: npm audit --audit-level=high
-\`\`\``,
-			verification: `- Run npm audit and address all high/critical issues
-- Check if fixes break functionality
-- Set up CI/CD to fail on new vulnerabilities
-- Review CHANGELOG when updating major versions`
+**Common vulnerable packages and fixes:**
+- \`lodash\` < 4.17.21 → Update or use native JS methods
+- \`minimist\` < 1.2.6 → Override or use \`yargs\`
+- \`node-fetch\` < 2.6.7 → Update or use native \`fetch\`
+- \`express\` < 4.17.3 → Update (usually safe)
+- \`axios\` SSRF issues → Update + validate URLs`,
+			verification: `- Run \`npm audit\` - should show 0 high/critical
+- Check all overrides still needed after updates
+- Run your test suite after updates
+- For major updates, test critical paths manually
+- Set up Dependabot or Renovate for automated updates`
 		},
 
 		'logging-issues': {
@@ -3677,6 +3948,365 @@ response = requests.get(url, verify='/path/to/ca-bundle.crt')
 			verification: `- Search for disabled verification: \`grep -r "rejectUnauthorized.*false\\|verify.*False\\|NODE_TLS_REJECT" --include="*.js" --include="*.py"\`
 - Remove all SSL verification bypasses
 - For self-signed certs, specify the CA file instead of disabling`
+		},
+
+		'user-enumeration': {
+			title: '🔴 User Enumeration',
+			problem: 'The application reveals whether a username/email exists through different error messages or response timing. Attackers can build lists of valid accounts for targeted attacks.',
+			solution: `Use identical responses for valid and invalid usernames:
+
+**Login Responses:**
+\`\`\`javascript
+// ❌ VULNERABLE - reveals if user exists
+if (!user) {
+  return res.status(401).json({ error: 'User not found' });
+}
+if (!passwordMatch) {
+  return res.status(401).json({ error: 'Incorrect password' });
+}
+
+// ✅ FIXED - same message for all failures
+const user = await User.findByEmail(email);
+const passwordMatch = user && await bcrypt.compare(password, user.passwordHash);
+
+if (!passwordMatch) {
+  // Add constant-time delay to prevent timing attacks
+  await new Promise(r => setTimeout(r, 100 + Math.random() * 100));
+  return res.status(401).json({ error: 'Invalid email or password' });
+}
+\`\`\`
+
+**Password Reset:**
+\`\`\`javascript
+// ❌ VULNERABLE
+if (!user) {
+  return res.json({ error: 'Email not registered' });
+}
+
+// ✅ FIXED - same response whether email exists or not
+await sendResetEmailIfExists(email);
+return res.json({ message: 'If an account exists, you will receive a reset email' });
+\`\`\`
+
+**Registration:**
+\`\`\`javascript
+// ❌ VULNERABLE
+if (existingUser) {
+  return res.json({ error: 'Email already registered' });
+}
+
+// ✅ FIXED - send email with appropriate action
+if (existingUser) {
+  await sendEmail(email, 'Someone tried to register with your email. Was this you?');
+} else {
+  await createUser(email);
+  await sendEmail(email, 'Welcome! Verify your account');
+}
+return res.json({ message: 'Check your email to continue' });
+\`\`\``,
+			verification: `- Test login with valid email + wrong password vs invalid email
+- Ensure both return identical response in same time
+- Check password reset and registration flows too
+- Use \`grep -r "not found\\|already exists\\|invalid user" --include="*.js"\``
+		},
+
+		'session-fixation': {
+			title: '🔴 Session Fixation',
+			problem: 'Session ID is not regenerated after authentication. Attackers can set a known session ID before login, then hijack the session after the user authenticates.',
+			solution: `Regenerate session ID after any privilege change:
+
+**Express.js (express-session):**
+\`\`\`javascript
+// ❌ VULNERABLE - session ID unchanged after login
+app.post('/login', async (req, res) => {
+  const user = await authenticate(req.body);
+  req.session.userId = user.id;  // Same session ID!
+  res.redirect('/dashboard');
+});
+
+// ✅ FIXED - regenerate session on login
+app.post('/login', async (req, res) => {
+  const user = await authenticate(req.body);
+
+  // Regenerate session ID to prevent fixation
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).json({ error: 'Session error' });
+
+    req.session.userId = user.id;
+    req.session.save((err) => {
+      if (err) return res.status(500).json({ error: 'Session error' });
+      res.redirect('/dashboard');
+    });
+  });
+});
+\`\`\`
+
+**Also regenerate on:**
+\`\`\`javascript
+// After logout
+app.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    res.clearCookie('connect.sid');
+    res.redirect('/login');
+  });
+});
+
+// After password change
+app.post('/change-password', async (req, res) => {
+  await updatePassword(req.session.userId, req.body.newPassword);
+  req.session.regenerate((err) => {
+    req.session.userId = userId;
+    req.session.save(() => res.json({ success: true }));
+  });
+});
+
+// After privilege elevation (e.g., becoming admin)
+\`\`\``,
+			verification: `- Test: Note session ID, log in, verify session ID changed
+- Check logout destroys session completely
+- Search: \`grep -r "session.regenerate\\|session.destroy" --include="*.js"\`
+- Verify all auth state changes regenerate session`
+		},
+
+		'plaintext-password': {
+			title: '🔴 Plaintext Password Storage',
+			problem: 'Passwords are stored without hashing or with weak hashing (MD5, SHA1). If the database is breached, all passwords are immediately compromised.',
+			solution: `Use bcrypt, argon2, or scrypt with proper work factors:
+
+**Node.js with bcrypt:**
+\`\`\`javascript
+const bcrypt = require('bcrypt');
+const SALT_ROUNDS = 12;  // Adjust based on server performance
+
+// ❌ VULNERABLE - storing plaintext
+user.password = req.body.password;
+await user.save();
+
+// ❌ ALSO VULNERABLE - weak hashing
+const crypto = require('crypto');
+user.password = crypto.createHash('md5').update(password).digest('hex');
+user.password = crypto.createHash('sha256').update(password).digest('hex');
+
+// ✅ FIXED - use bcrypt
+// Registration
+async function createUser(email, password) {
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+  return User.create({ email, passwordHash });
+}
+
+// Login verification
+async function verifyPassword(password, passwordHash) {
+  return bcrypt.compare(password, passwordHash);
+}
+
+// Password change (re-hash with current work factor)
+async function changePassword(userId, newPassword) {
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await User.update({ passwordHash }, { where: { id: userId } });
+}
+\`\`\`
+
+**Python with bcrypt:**
+\`\`\`python
+import bcrypt
+
+# Registration
+def create_user(email, password):
+    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12))
+    # Store password_hash (bytes) in database
+
+# Verification
+def verify_password(password, password_hash):
+    return bcrypt.checkpw(password.encode(), password_hash)
+\`\`\`
+
+**Work Factor Guidelines:**
+- bcrypt: rounds=12+ (aim for ~250ms hash time)
+- argon2: memory=64MB, iterations=3, parallelism=1
+- scrypt: N=2^14, r=8, p=1`,
+			verification: `- Check database schema - password column should be ~60 chars (bcrypt) not 32 (MD5)
+- Search: \`grep -r "createHash.*md5\\|sha1\\|sha256" --include="*.js"\`
+- Verify registration and password change both use bcrypt
+- Test: Register user, check DB - should see $2b$ prefix (bcrypt)`
+		},
+
+		'credential-exposure': {
+			title: '🔴 Credential Exposure',
+			problem: 'Credentials (passwords, tokens, API keys) are being exposed in logs, URLs, error messages, or responses. This can lead to account takeover.',
+			solution: `Never log, expose, or transmit credentials insecurely:
+
+**Remove from logs:**
+\`\`\`javascript
+// ❌ VULNERABLE - logging credentials
+console.log('Login attempt:', { email, password });
+logger.info('Auth request:', req.body);
+
+// ✅ FIXED - sanitize before logging
+console.log('Login attempt:', { email, password: '[REDACTED]' });
+
+function sanitizeForLogging(obj) {
+  const sensitiveKeys = ['password', 'token', 'secret', 'apiKey', 'authorization'];
+  const sanitized = { ...obj };
+  for (const key of Object.keys(sanitized)) {
+    if (sensitiveKeys.some(s => key.toLowerCase().includes(s))) {
+      sanitized[key] = '[REDACTED]';
+    }
+  }
+  return sanitized;
+}
+logger.info('Auth request:', sanitizeForLogging(req.body));
+\`\`\`
+
+**Never in URLs:**
+\`\`\`javascript
+// ❌ VULNERABLE - password in URL (logged by proxies, browsers)
+fetch(\`/api/login?user=\${user}&password=\${password}\`);
+res.redirect(\`/reset?token=\${resetToken}\`);
+
+// ✅ FIXED - use POST body or headers
+fetch('/api/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ user, password })
+});
+\`\`\`
+
+**Don't echo back:**
+\`\`\`javascript
+// ❌ VULNERABLE - returning password in response
+res.json({ user: { id, email, password } });
+
+// ✅ FIXED - exclude sensitive fields
+res.json({ user: { id, email } });
+// Or use a DTO/serializer that explicitly lists allowed fields
+\`\`\``,
+			verification: `- Search logs: \`grep -r "password\\|token\\|secret" logs/\`
+- Check API responses don't include sensitive fields
+- Verify no credentials in URL query strings
+- Review error handlers for credential leakage`
+		},
+
+		'mass-assignment': {
+			title: '🟠 Mass Assignment',
+			problem: 'User-controlled input is directly assigned to model objects, allowing attackers to set fields they shouldn\'t (like isAdmin, role, balance).',
+			solution: `Explicitly define which fields can be set:
+
+**Node.js/Express:**
+\`\`\`javascript
+// ❌ VULNERABLE - accepts all fields from request
+app.put('/user/:id', (req, res) => {
+  User.update(req.params.id, req.body);  // Can set isAdmin, role, etc!
+});
+
+// ✅ FIXED - allowlist specific fields
+app.put('/user/:id', (req, res) => {
+  const allowedFields = ['name', 'email', 'avatar'];
+  const updates = {};
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updates[field] = req.body[field];
+    }
+  }
+  User.update(req.params.id, updates);
+});
+
+// Or use a validation library
+const updateSchema = Joi.object({
+  name: Joi.string().max(100),
+  email: Joi.string().email(),
+  avatar: Joi.string().uri()
+}).unknown(false);  // Reject unknown fields
+
+app.put('/user/:id', (req, res) => {
+  const { error, value } = updateSchema.validate(req.body);
+  if (error) return res.status(400).json({ error: error.message });
+  User.update(req.params.id, value);
+});
+\`\`\`
+
+**Python/Django:**
+\`\`\`python
+# ❌ VULNERABLE
+user = User.objects.get(id=user_id)
+for key, value in request.data.items():
+    setattr(user, key, value)
+user.save()
+
+# ✅ FIXED
+ALLOWED_FIELDS = ['name', 'email', 'bio']
+for key, value in request.data.items():
+    if key in ALLOWED_FIELDS:
+        setattr(user, key, value)
+user.save()
+\`\`\``,
+			verification: `- Test: Send extra fields like {"name": "test", "isAdmin": true}
+- Verify unauthorized fields are ignored
+- Check all update endpoints use field allowlists
+- Search: \`grep -r "Object.assign.*req.body\\|\\.\\.\\. req.body" --include="*.js"\``
+		},
+
+		'information-disclosure': {
+			title: '🟠 Information Disclosure',
+			problem: 'The application exposes sensitive information through error messages, stack traces, or verbose responses that help attackers understand the system.',
+			solution: `Return generic errors to users, log details server-side:
+
+**Error Handling:**
+\`\`\`javascript
+// ❌ VULNERABLE - exposing internal details
+app.use((err, req, res, next) => {
+  res.status(500).json({
+    error: err.message,
+    stack: err.stack,
+    sql: err.sql,  // Database details!
+    path: err.path  // Internal file paths!
+  });
+});
+
+// ✅ FIXED - generic message to user, details in logs
+app.use((err, req, res, next) => {
+  // Log full error for debugging
+  const errorId = crypto.randomUUID();
+  logger.error('Unhandled error', {
+    errorId,
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    userId: req.user?.id
+  });
+
+  // Return generic error with reference ID
+  const statusCode = err.status || 500;
+  res.status(statusCode).json({
+    error: statusCode === 500 ? 'Internal server error' : err.message,
+    errorId  // User can report this for support
+  });
+});
+\`\`\`
+
+**Production Environment:**
+\`\`\`javascript
+// Disable in production
+if (process.env.NODE_ENV === 'production') {
+  app.disable('x-powered-by');  // Don't reveal Express
+  app.set('trust proxy', true);  // If behind reverse proxy
+}
+
+// Don't expose versions
+// Remove X-Powered-By, Server headers via reverse proxy
+\`\`\`
+
+**API Responses:**
+\`\`\`javascript
+// ❌ VULNERABLE - database IDs, internal structure
+res.json({ id: 12345, internalRef: 'USR_0012345', createdAt: '...' });
+
+// ✅ Consider UUIDs for external-facing IDs
+res.json({ id: 'a1b2c3d4-e5f6-...', createdAt: '...' });
+\`\`\``,
+			verification: `- Test: Trigger a 500 error, verify no stack traces in response
+- Check production doesn't expose debug endpoints
+- Verify X-Powered-By and Server headers removed
+- Search: \`grep -r "err.stack\\|err.message" --include="*.js"\``
 		},
 
 		'other-security': {
