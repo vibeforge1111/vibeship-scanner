@@ -5424,6 +5424,122 @@ rules:
       cwe: "CWE-601"
       tags: [open-redirect, vulnerable-node]
 
+  # ============================================
+  # Plaintext Password / Weak Auth (vulnerable-node)
+  # ============================================
+
+  # SQL query with password in plaintext comparison
+  - id: sql-plaintext-password-comparison
+    pattern-regex: "SELECT.*password\\s*=\\s*['\"]?\\s*\\+|AND\\s+password\\s*=\\s*['\"]"
+    message: "SQL query compares password in plaintext - use hashed passwords with bcrypt/argon2"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      owasp: "A02:2021"
+      tags: [authentication, password, vulnerable-node]
+
+  # Password stored/compared without hashing
+  - id: password-no-hash
+    pattern-regex: "password\\s*=\\s*['\"][^'\"]+['\"]|password:\\s*['\"][^'\"]+['\"]"
+    message: "Hardcoded or plaintext password - passwords should be hashed"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      tags: [password, vulnerable-node]
+
+  # Direct password comparison (no hashing)
+  - id: direct-password-comparison
+    patterns:
+      - pattern: 'if ($USER.password === $INPUT)'
+      - pattern: 'if ($USER.password == $INPUT)'
+      - pattern: '$PASSWORD === req.body.password'
+      - pattern: '$PASSWORD == req.body.password'
+    message: "Direct password comparison - use bcrypt.compare() for secure password verification"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      tags: [authentication, password, vulnerable-node]
+
+  # ============================================
+  # Insecure Comparison Operators (vulnerable-node)
+  # ============================================
+
+  # Double equals with undefined/null (type coercion)
+  - id: double-equals-undefined
+    pattern-regex: "==\\s*undefined|undefined\\s*==|==\\s*null(?![a-zA-Z])|(?<![a-zA-Z])null\\s*=="
+    message: "Use === instead of == for comparison to avoid type coercion issues"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-480"
+      tags: [best-practice, vulnerable-node]
+
+  # Double equals with false (type coercion)
+  - id: double-equals-false
+    pattern-regex: "==\\s*false|false\\s*=="
+    message: "Use === false or !value instead of == false to avoid type coercion"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-480"
+      tags: [best-practice, vulnerable-node]
+
+  # ============================================
+  # HTTP Server Security (vulnerable-node)
+  # ============================================
+
+  # HTTP server without HTTPS
+  - id: http-server-no-tls
+    pattern: 'http.createServer($APP)'
+    message: "HTTP server without TLS - use https.createServer() with certificates for production"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-319"
+      tags: [tls, https, vulnerable-node]
+
+  # Server listening on all interfaces
+  - id: server-listen-all-interfaces
+    patterns:
+      - pattern: 'server.listen($PORT)'
+      - pattern: 'app.listen($PORT)'
+    message: "Server listening on all interfaces (0.0.0.0) - consider binding to specific IP in production"
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-284"
+      tags: [network, vulnerable-node]
+
+  # ============================================
+  # SQL Query Building Patterns (vulnerable-node)
+  # ============================================
+
+  # SQL INSERT with multiple concatenated values
+  - id: sql-insert-multi-concat
+    pattern-regex: "INSERT INTO[^;]+VALUES\\s*\\([^)]*\\+[^)]*\\+[^)]*\\+[^)]*\\)"
+    message: "SQL INSERT with multiple concatenations - high SQL injection risk"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, vulnerable-node]
+
+  # SQL query assigned to var then executed
+  - id: sql-var-execute
+    pattern: |
+      $QUERY = "..." + $VAR + "..."
+      ...
+      $DB.$METHOD($QUERY)
+    message: "SQL query built with concatenation then executed - SQL injection vulnerability"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, vulnerable-node]
+
   # HTTP Parameter Pollution - multiple same params
   - id: hpp-array-param
     patterns:
