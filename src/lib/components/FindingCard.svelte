@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { VibeOutput } from '$lib/vibeTransformer';
-	import { getUrgencyColor, getUrgencyBgColor } from '$lib/vibeTransformer';
 
 	interface Props {
 		finding: VibeOutput;
@@ -33,13 +32,13 @@
 	<button class="card-header" onclick={toggleExpand}>
 		<div class="header-top">
 			<span
-				class="urgency-badge"
-				style="color: {getUrgencyColor(finding.urgency)}; background: {getUrgencyBgColor(
-					finding.urgency
-				)}"
+				class="urgency-badge {finding.urgency}"
 			>
-				{finding.urgencyEmoji}
-				{finding.urgencyLabel}
+				{#if finding.urgency === 'ship-blocker'}Critical
+				{:else if finding.urgency === 'fix-this-week'}High
+				{:else if finding.urgency === 'good-to-fix'}Medium
+				{:else if finding.urgency === 'consider'}Low
+				{:else}Info{/if}
 			</span>
 			<span class="finding-number">#{index + 1}</span>
 		</div>
@@ -208,13 +207,40 @@
 	}
 
 	.urgency-badge {
-		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-		font-size: 0.7rem;
-		font-weight: 700;
-		padding: 0.3rem 0.75rem;
-		border-radius: 2px;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.65rem;
+		font-weight: 500;
+		padding: 0.2rem 0.5rem;
 		text-transform: uppercase;
 		letter-spacing: 0.02em;
+		border: 1px solid var(--border);
+		background: var(--bg-secondary);
+		color: var(--text-tertiary);
+	}
+
+	.urgency-badge.ship-blocker {
+		color: #ef4444;
+		border-color: rgba(239, 68, 68, 0.3);
+	}
+
+	.urgency-badge.fix-this-week {
+		color: #f97316;
+		border-color: rgba(249, 115, 22, 0.3);
+	}
+
+	.urgency-badge.good-to-fix {
+		color: #eab308;
+		border-color: rgba(234, 179, 8, 0.3);
+	}
+
+	.urgency-badge.consider {
+		color: #3b82f6;
+		border-color: rgba(59, 130, 246, 0.3);
+	}
+
+	.urgency-badge.fyi {
+		color: var(--text-tertiary);
+		border-color: var(--border);
 	}
 
 	.finding-number {
