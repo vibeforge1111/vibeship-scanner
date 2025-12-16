@@ -491,3 +491,52 @@ rules:
         - "*.ejs"
         - "*.pug"
         - "*.hbs"
+
+  # ============================================
+  # Stack Trace / Error Disclosure in Templates
+  # ============================================
+
+  # EJS error.stack display
+  - id: ejs-stack-trace-disclosure
+    pattern-regex: "<%[=-]\\s*(?:error|err|exception)\\.stack\\s*%>"
+    message: "Stack trace displayed in template - information disclosure vulnerability (CWE-209)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      owasp: "A01:2021"
+      tags: [information-disclosure, ejs, vulnerable-node]
+    paths:
+      include:
+        - "*.ejs"
+
+  # Jinja2 error stack display
+  - id: jinja2-stack-trace-disclosure
+    pattern-regex: "\\{\\{\\s*(?:error|exception)\\.(?:stack|traceback|__traceback__)\\s*\\}\\}"
+    message: "Stack trace displayed in Jinja2 template - information disclosure (CWE-209)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, jinja2]
+    paths:
+      include:
+        - "*.html"
+        - "*.jinja"
+        - "*.jinja2"
+
+  # Generic error object in template
+  - id: template-error-object-display
+    pattern-regex: "<%[=-]\\s*error\\s*%>|\\{\\{\\s*error\\s*\\}\\}"
+    message: "Error object displayed in template - may expose sensitive details (CWE-209)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure]
+    paths:
+      include:
+        - "*.ejs"
+        - "*.html"
+        - "*.jinja"
+        - "*.hbs"

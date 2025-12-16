@@ -5295,6 +5295,135 @@ rules:
       cwe: "CWE-209"
       tags: [error-handling, vulnerable-node]
 
+  # ============================================
+  # DOM XSS via String Concatenation (vulnerable-node)
+  # ============================================
+
+  # jQuery html() with string concatenation
+  - id: jquery-html-string-concat
+    pattern-regex: "\\$\\([^)]*\\)\\.html\\s*\\([^)]*\\+[^)]*\\)"
+    message: jQuery .html() with string concatenation - DOM XSS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [jquery, xss, dom-xss, vulnerable-node]
+
+  # Building HTML string with + operator
+  - id: html-string-concat-tag
+    pattern-regex: "['\"]<[a-z]+[^'\"]*['\"]\\s*\\+\\s*\\w+\\s*\\+\\s*['\"]</"
+    message: HTML built via string concatenation - XSS risk if variable contains user data
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, dom-xss, vulnerable-node]
+
+  # Modal/dialog created with dynamic content
+  - id: dom-xss-modal-content
+    pattern-regex: "modal\\([^)]*\\)|\\$\\s*\\([^)]*<[^>]*>.*\\+.*\\)"
+    message: Dynamic modal/dialog content - XSS risk if data contains user input
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, dom-xss, vulnerable-node]
+
+  # data.message directly in HTML (common AJAX pattern)
+  - id: ajax-response-html-injection
+    pattern-regex: "['\"]<[^>]+>['\"]\\s*\\+\\s*(?:data|response|result)\\.(message|content|html|text)"
+    message: AJAX response directly in HTML string - XSS if server reflects user input
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, ajax, vulnerable-node]
+
+  # ============================================
+  # Stack Trace / Error Disclosure (vulnerable-node)
+  # ============================================
+
+  # Error stack in template
+  - id: error-stack-disclosure
+    pattern-regex: "error\\.stack|err\\.stack|exception\\.stack"
+    message: Stack trace exposure - may reveal sensitive code paths and versions
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, vulnerable-node]
+
+  # Error object passed to render
+  - id: error-object-render
+    patterns:
+      - pattern: 'res.render($TEMPLATE, {error: $ERR})'
+      - pattern: 'res.render($TEMPLATE, {err: $ERR})'
+      - pattern: 'res.render($TEMPLATE, {..., error: err, ...})'
+    message: Error object passed to template - may expose stack trace to users
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, vulnerable-node]
+
+  # ============================================
+  # SQL ILIKE/LIKE Injection (vulnerable-node)
+  # ============================================
+
+  # SQL ILIKE with string concat (PostgreSQL case-insensitive LIKE)
+  - id: sql-ilike-injection
+    pattern-regex: "ILIKE\\s+['\"]%['\"]\\s*\\+\\s*\\w+|\\+\\s*['\"]%['\"]"
+    message: SQL ILIKE with string concatenation - SQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, postgres, vulnerable-node]
+
+  # SQL LIKE with wildcards and user input
+  - id: sql-like-wildcard-injection
+    pattern-regex: "LIKE\\s+['\"]%['\"]\\s*\\+|\\+\\s*\\w+\\s*\\+\\s*['\"]%['\"]"
+    message: SQL LIKE with wildcards and concatenation - SQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, vulnerable-node]
+
+  # Multiple column LIKE/ILIKE (search functionality)
+  - id: sql-multi-column-search-injection
+    pattern-regex: "(?:LIKE|ILIKE)[^;]+(?:OR|AND)[^;]+(?:LIKE|ILIKE)[^;]+\\+"
+    message: Multi-column search with string concatenation - SQL injection in search
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, search, vulnerable-node]
+
+  # ============================================
+  # Weak Authentication Patterns (vulnerable-node)
+  # ============================================
+
+  # Session check only for undefined/false
+  - id: weak-session-check
+    pattern-regex: "session\\.logged\\s*==\\s*(?:undefined|false|null)"
+    message: Weak session validation - check for truthy value instead of specific false values
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-287"
+      tags: [authentication, session, vulnerable-node]
+
+  # Redirect with req.url (potential open redirect)
+  - id: redirect-req-url
+    pattern: 'res.redirect($PREFIX + req.url)'
+    message: Redirect with request URL - validate URL to prevent open redirect
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect, vulnerable-node]
+
   # HTTP Parameter Pollution - multiple same params
   - id: hpp-array-param
     patterns:
