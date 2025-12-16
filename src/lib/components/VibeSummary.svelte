@@ -19,8 +19,9 @@
 </script>
 
 <!-- Master Fix Prompt Section - Displays only the AI prompt, counts are in parent -->
+{@const actionableCount = results.summary.totalFindings - results.summary.fyi}
 <div class="vibe-summary">
-	{#if results.masterPrompt && results.summary.totalFindings > 0}
+	{#if results.masterPrompt && actionableCount > 0}
 		<div class="master-prompt-section">
 			<button class="master-prompt-toggle" onclick={() => (showMasterPrompt = !showMasterPrompt)}>
 				<div class="toggle-content">
@@ -34,7 +35,7 @@
 					<div class="toggle-text">
 						<span class="toggle-title">Fix All Issues with AI</span>
 						<span class="toggle-subtitle">
-							One prompt to fix {results.summary.totalFindings} issues
+							One prompt to fix {actionableCount} issues
 						</span>
 					</div>
 				</div>

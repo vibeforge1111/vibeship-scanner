@@ -1238,17 +1238,20 @@ Please:
 }
 
 /**
- * Generate a master prompt to fix ALL issues at once
+ * Generate a master prompt to fix ALL issues at once (excluding info-level)
  */
 export function generateMasterFixPrompt(findings: any[]): string {
-	if (findings.length === 0) {
+	// Filter out info-level findings - they're informational, not actionable
+	const actionableFindings = findings.filter(f => f.severity !== 'info');
+
+	if (actionableFindings.length === 0) {
 		return '';
 	}
 
-	// Sort by severity: critical > high > medium > low > info
-	const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
-	const sorted = [...findings].sort((a, b) =>
-		(severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4)
+	// Sort by severity: critical > high > medium > low
+	const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+	const sorted = [...actionableFindings].sort((a, b) =>
+		(severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3)
 	);
 
 	const issueList = sorted.map((f, i) => {
@@ -1269,7 +1272,7 @@ export function generateMasterFixPrompt(findings: any[]): string {
 	}).join('\n\n');
 
 	return `
-I need to fix ${findings.length} security issues in my codebase. Please help me fix all of them systematically, starting with the most critical.
+I need to fix ${sorted.length} security issues in my codebase. Please help me fix all of them systematically, starting with the most critical.
 
 ## Issues to Fix:
 ${issueList}
