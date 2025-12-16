@@ -346,11 +346,13 @@
 
 		.summary-header {
 			flex-direction: column;
-			align-items: flex-start;
+			align-items: center;
+			text-align: center;
 			gap: 0.25rem;
 		}
 
 		.urgency-breakdown {
+			justify-content: center;
 			gap: 0.5rem;
 		}
 
