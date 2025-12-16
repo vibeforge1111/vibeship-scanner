@@ -435,3 +435,59 @@ rules:
         - "*.html"
         - "*.jinja"
         - "*.jinja2"
+
+  # ============================================
+  # Credential Disclosure in Templates
+  # ============================================
+
+  # Hardcoded credentials displayed in HTML/templates
+  - id: html-credential-disclosure
+    pattern-regex: "(?:admin|user|root|test)\\s*[:/]\\s*(?:admin|password|pass|123|test|secret)"
+    message: "Plaintext credentials visible in template - information disclosure (CWE-200)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-200"
+      owasp: "A01:2021"
+      tags: [credential-disclosure, information-disclosure, vulnerable-node]
+    paths:
+      include:
+        - "*.html"
+        - "*.ejs"
+        - "*.pug"
+        - "*.jade"
+        - "*.hbs"
+        - "*.jinja"
+        - "*.jinja2"
+
+  # Password hint/display in templates
+  - id: template-password-display
+    pattern-regex: "(?:<p|<span|<div|<td|<li)[^>]*>.*(?:password|pwd|passwd)\\s*[:=]\\s*\\w+"
+    message: "Password displayed in template - credentials should never be shown in UI (CWE-200)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-200"
+      tags: [credential-disclosure, vulnerable-node]
+    paths:
+      include:
+        - "*.html"
+        - "*.ejs"
+        - "*.pug"
+        - "*.hbs"
+
+  # Demo/test user credentials in templates
+  - id: template-demo-credentials
+    pattern-regex: "(?:demo|test|sample|example)\\s+(?:user|account|login)[^<]*:\\s*\\w+"
+    message: "Demo credentials in template - may be exploited if left in production (CWE-798)"
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      tags: [credential-disclosure]
+    paths:
+      include:
+        - "*.html"
+        - "*.ejs"
+        - "*.pug"
+        - "*.hbs"

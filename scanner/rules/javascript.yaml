@@ -984,6 +984,16 @@ rules:
     metadata:
       tags: [log-injection]
 
+  # Log4js/winston/bunyan logging user input
+  - id: js-logger-user-input
+    pattern-regex: "logger\\.(info|error|warn|debug)\\s*\\([^)]*\\+\\s*(user|username|email|password|req\\.(body|query|params))"
+    message: Logging user input via logger - potential log injection or sensitive data exposure
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+      tags: [log-injection, sensitive-data, vulnerable-node]
+
   - id: js-crlf-header-injection
     patterns:
       - pattern: 'res.setHeader($NAME, req.query.$VALUE)'
@@ -1506,6 +1516,46 @@ rules:
     severity: ERROR
     metadata:
       tags: [postgres, injection, sql]
+
+  # pg-promise SQL injection (db.one, db.many, db.query, db.none)
+  - id: pg-promise-sql-injection
+    patterns:
+      - pattern: 'db.one($Q + $INPUT)'
+      - pattern: 'db.one(`${...}`)'
+      - pattern: 'db.many($Q + $INPUT)'
+      - pattern: 'db.many(`${...}`)'
+      - pattern: 'db.none($Q + $INPUT)'
+      - pattern: 'db.none(`${...}`)'
+      - pattern: 'db.any($Q + $INPUT)'
+      - pattern: 'db.any(`${...}`)'
+      - pattern: 'db.query($Q + $INPUT)'
+      - pattern: 'db.query(`${...}`)'
+    message: pg-promise query with string concatenation - SQL injection risk. Use parameterized queries with $1, $2
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [postgres, pg-promise, injection, sql, vulnerable-node]
+
+  # SQL string built with concatenation then passed to query
+  - id: sql-string-concat-var
+    pattern-regex: "var\\s+\\w+\\s*=\\s*[\"']SELECT[^;]+[\"']\\s*\\+\\s*\\w+"
+    message: SQL query built with string concatenation - SQL injection vulnerability. Use parameterized queries
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, vulnerable-node]
+
+  # SQL INSERT built with concatenation
+  - id: sql-insert-concat-var
+    pattern-regex: "var\\s+\\w+\\s*=\\s*[\"']INSERT\\s+INTO[^;]+[\"']\\s*\\+\\s*"
+    message: SQL INSERT query built with string concatenation - SQL injection vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection, vulnerable-node]
 
   # ============================================
   # XSS - Cross-Site Scripting
@@ -2903,6 +2953,141 @@ rules:
     metadata:
       tags: [idor, bola, prisma]
 
+  # IDOR via url.parse - common in older Node.js apps
+  - id: idor-url-parse-to-db
+    pattern: |
+      $PARAMS = url.parse(req.url, ...).query
+      ...
+      $ID = $PARAMS.$PROP
+      ...
+      $DB.$FUNC($ID)
+    message: URL parameter passed to database function - potential IDOR without authorization check
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, bola, vulnerable-node]
+
+  # IDOR - variable from URL query passed to function
+  - id: idor-url-query-var
+    pattern: |
+      $ID = $PARAMS.id
+      ...
+      $FUNC($ID)
+    message: ID from URL params used in function - verify authorization before accessing resources
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, bola, vulnerable-node]
+
+  # ============================================
+  # Mass Assignment Vulnerability
+  # ============================================
+
+  # Direct assignment of all body params to object
+  - id: mass-assignment-body-spread
+    patterns:
+      - pattern: '$OBJ = {...req.body}'
+      - pattern: '$OBJ = Object.assign({}, req.body)'
+      - pattern: '$OBJ = Object.assign($TARGET, req.body)'
+    message: Mass assignment - all request body fields assigned to object. Whitelist allowed fields to prevent unauthorized property modification
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment, vulnerable-node]
+
+  # Building object from multiple params without validation
+  - id: mass-assignment-params-object
+    pattern: |
+      $OBJ = {
+        ...,
+        $KEY1: params.$PROP1,
+        ...,
+        $KEY2: params.$PROP2,
+        ...
+      }
+    message: Object built from multiple user params - potential mass assignment if price/role/admin fields are included
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-915"
+      tags: [mass-assignment, vulnerable-node]
+
+  # ============================================
+  # Price/Amount Manipulation
+  # ============================================
+
+  # Price from user input
+  - id: price-from-user-input
+    patterns:
+      - pattern: 'price: params.price'
+      - pattern: 'price: req.body.price'
+      - pattern: 'price: req.query.price'
+      - pattern: 'amount: params.amount'
+      - pattern: 'amount: req.body.amount'
+      - pattern: 'total: params.total'
+      - pattern: 'total: req.body.total'
+    message: Price/amount from user input - client-side prices can be manipulated. Always calculate server-side from product database
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-472"
+      tags: [price-manipulation, business-logic, vulnerable-node]
+
+  # Hidden form field for price (often manipulated)
+  - id: hidden-price-field
+    pattern-regex: "<input[^>]*type=[\"']hidden[\"'][^>]*name=[\"'](price|amount|total|cost)[\"']"
+    message: Hidden form field for price/amount - client-side values can be tampered. Recalculate on server
+    languages: [javascript, typescript, html]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-472"
+      tags: [price-manipulation, business-logic]
+
+  # ============================================
+  # Plaintext/Hardcoded Credentials
+  # ============================================
+
+  # Hardcoded password in array/object
+  - id: hardcoded-password-array
+    pattern-regex: "[\"']password[\"']\\s*:\\s*[\"'][^\"']{3,}[\"']"
+    message: Hardcoded password in code - use environment variables or secrets manager
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      tags: [secrets, hardcoded, vulnerable-node]
+
+  # ============================================
+  # Console.log with sensitive data patterns
+  # ============================================
+
+  # console.log in catch block (may leak sensitive errors)
+  - id: console-log-in-catch
+    pattern: |
+      catch($ERR) {
+        console.log($ERR)
+        ...
+      }
+    message: Error logged to console - may expose sensitive information in production. Use proper error handling
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-209"
+      tags: [error-handling, logging, vulnerable-node]
+
+  # console.log with data variable (often contains sensitive info)
+  - id: console-log-data-var
+    pattern: 'console.log(data)'
+    message: Logging data variable - may contain sensitive information. Review what is being logged
+    languages: [javascript, typescript]
+    severity: INFO
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging, vulnerable-node]
+
   # ============================================
   # XSS in Express Views
   # ============================================
@@ -3486,6 +3671,45 @@ rules:
     severity: INFO
     metadata:
       tags: [redirect]
+
+  # Open redirect - variable from request body used in redirect
+  - id: open-redirect-body-var
+    pattern: |
+      $VAR = req.body.$PARAM
+      ...
+      res.redirect($VAR)
+    message: Open redirect - user-controlled redirect destination from request body
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect, vulnerable-node]
+
+  # Open redirect - variable from query used in redirect
+  - id: open-redirect-query-var
+    pattern: |
+      $VAR = req.query.$PARAM
+      ...
+      res.redirect($VAR)
+    message: Open redirect - user-controlled redirect destination from query string
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect, vulnerable-node]
+
+  # Open redirect via url.parse then redirect
+  - id: open-redirect-url-parse
+    pattern: |
+      $PARAMS = url.parse(req.url, ...).query
+      ...
+      res.redirect($PARAMS.$X)
+    message: Open redirect - redirect destination from URL query parameters
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect, vulnerable-node]
 
   # ============================================
   # IDOR/BOLA (Broken Object Level Authorization)
@@ -4962,6 +5186,16 @@ rules:
     metadata:
       cwe: "CWE-22"
       tags: [template, deprecated, nodegoat]
+
+  # bodyParser() deprecated - use bodyParser.json() and bodyParser.urlencoded()
+  - id: express-bodyparser-deprecated
+    pattern: 'app.use(bodyParser())'
+    message: bodyParser() without arguments is deprecated - use bodyParser.json() and bodyParser.urlencoded() separately
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1104"
+      tags: [express, deprecated, vulnerable-node]
 
   # Swig renderFile with variable path
   - id: swig-render-path-traversal
