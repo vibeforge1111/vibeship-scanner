@@ -18,52 +18,9 @@
 	}
 </script>
 
+<!-- Master Fix Prompt Section - Displays only the AI prompt, counts are in parent -->
 <div class="vibe-summary">
-	<div class="summary-header">
-		<h2 class="summary-title">Scan Summary</h2>
-		<span class="total-count">{results.summary.totalFindings} issues found</span>
-	</div>
-
-	<div class="urgency-breakdown">
-		{#if results.summary.shipBlockers > 0}
-			<div class="urgency-item ship-blocker">
-				<span class="urgency-emoji">🔴</span>
-				<span class="urgency-count">{results.summary.shipBlockers}</span>
-				<span class="urgency-label">Fix Before Ship</span>
-			</div>
-		{/if}
-		{#if results.summary.fixThisWeek > 0}
-			<div class="urgency-item fix-week">
-				<span class="urgency-emoji">🟠</span>
-				<span class="urgency-count">{results.summary.fixThisWeek}</span>
-				<span class="urgency-label">Fix This Week</span>
-			</div>
-		{/if}
-		{#if results.summary.goodToFix > 0}
-			<div class="urgency-item good-fix">
-				<span class="urgency-emoji">🟡</span>
-				<span class="urgency-count">{results.summary.goodToFix}</span>
-				<span class="urgency-label">Good to Fix</span>
-			</div>
-		{/if}
-		{#if results.summary.consider > 0}
-			<div class="urgency-item consider">
-				<span class="urgency-emoji">🔵</span>
-				<span class="urgency-count">{results.summary.consider}</span>
-				<span class="urgency-label">Consider</span>
-			</div>
-		{/if}
-		{#if results.summary.fyi > 0}
-			<div class="urgency-item fyi">
-				<span class="urgency-emoji">⚪</span>
-				<span class="urgency-count">{results.summary.fyi}</span>
-				<span class="urgency-label">FYI</span>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Master Fix Prompt Section -->
-	{#if results.masterPrompt}
+	{#if results.masterPrompt && (results.summary.shipBlockers > 0 || results.summary.fixThisWeek > 0)}
 		<div class="master-prompt-section">
 			<button class="master-prompt-toggle" onclick={() => (showMasterPrompt = !showMasterPrompt)}>
 				<div class="toggle-content">
@@ -119,86 +76,14 @@
 
 <style>
 	.vibe-summary {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
-		border-top: none;
-		padding: 1.25rem 1.5rem;
 		margin-bottom: 1.5rem;
-	}
-
-	.summary-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 1rem;
-	}
-
-	.summary-title {
-		font-size: 1.1rem;
-		font-weight: 600;
-		margin: 0;
-		color: var(--text-primary);
-	}
-
-	.total-count {
-		font-size: 0.85rem;
-		color: var(--text-secondary);
-	}
-
-	/* Urgency Breakdown */
-	.urgency-breakdown {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.75rem;
-		margin-bottom: 1.5rem;
-	}
-
-	.urgency-item {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1rem;
-		background: var(--bg-primary);
-		border: 1px solid var(--border);
-	}
-
-	.urgency-emoji {
-		font-size: 1rem;
-	}
-
-	.urgency-count {
-		font-size: 1.25rem;
-		font-weight: 700;
-		font-family: 'JetBrains Mono', monospace;
-	}
-
-	.urgency-label {
-		font-size: 0.75rem;
-		color: var(--text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-	}
-
-	.ship-blocker .urgency-count {
-		color: #ef4444;
-	}
-	.fix-week .urgency-count {
-		color: #f97316;
-	}
-	.good-fix .urgency-count {
-		color: #eab308;
-	}
-	.consider .urgency-count {
-		color: #3b82f6;
-	}
-	.fyi .urgency-count {
-		color: #6b7280;
 	}
 
 	/* Master Prompt Section */
 	.master-prompt-section {
-		border-top: 1px solid var(--border);
-		padding-top: 1rem;
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		padding: 1rem 1.5rem;
 	}
 
 	.master-prompt-toggle {
@@ -341,28 +226,8 @@
 
 	/* Mobile */
 	@media (max-width: 600px) {
-		.vibe-summary {
-			padding: 1rem;
-		}
-
-		.summary-header {
-			flex-direction: column;
-			align-items: center;
-			text-align: center;
-			gap: 0.25rem;
-		}
-
-		.urgency-breakdown {
-			justify-content: center;
-			gap: 0.5rem;
-		}
-
-		.urgency-item {
-			padding: 0.4rem 0.75rem;
-		}
-
-		.urgency-count {
-			font-size: 1.1rem;
+		.master-prompt-section {
+			padding: 0.75rem 1rem;
 		}
 
 		.toggle-content {

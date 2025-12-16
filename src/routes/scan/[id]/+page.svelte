@@ -868,56 +868,88 @@
 				</div>
 			{/if}
 
-			<!-- Unified Header with Score -->
+			<!-- VIBE MODE: Clean unified header -->
 			{#if vibeMode && vibeResults}
-				<!-- VIBE MODE: Integrated header with score and summary -->
-				<div class="vibe-header" class:revealed={showResults}>
-					<div class="vibe-header-top">
-						<div class="score-section-compact">
-							<div class="score-circle-sm {getGradeClass(results.grade)}">
-								<span class="score-number">{displayScore}</span>
-							</div>
-							<div class="score-details">
-								<span class="score-grade">Grade {results.grade}</span>
-								<span class="ship-status-sm">{getShipMessage(results.shipStatus)}</span>
+				<div class="vibe-card" class:revealed={showResults}>
+					<!-- Top Row: Score + Repo + Actions -->
+					<div class="vibe-top-row">
+						<div class="vibe-score-block {getGradeClass(results.grade)}">
+							<span class="vibe-score-num">{displayScore}</span>
+							<div class="vibe-score-meta">
+								<span class="vibe-grade">Grade {results.grade}</span>
+								<span class="vibe-status">{getShipMessage(results.shipStatus)}</span>
 							</div>
 						</div>
-						{#if repoUrl}
-							<div class="repo-info">
-								<a href={repoUrl} target="_blank" rel="noopener noreferrer" class="repo-link-sm">
-									<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+						<div class="vibe-repo-block">
+							{#if repoUrl}
+								<a href={repoUrl} target="_blank" rel="noopener noreferrer" class="vibe-repo-link">
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
 										<path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
 									</svg>
-									{repoUrl.replace('https://github.com/', '')}
+									<span>{repoUrl.replace('https://github.com/', '')}</span>
 								</a>
-								<div class="repo-actions-sm">
-									<button class="action-btn-sm" onclick={rescanRepo} disabled={rescanning || !repoUrl}>
-										<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-											<path d="M23 4v6h-6"/>
-											<path d="M1 20v-6h6"/>
-											<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-										</svg>
-										{rescanning ? 'Starting...' : 'Rescan'}
-									</button>
-									<button class="action-btn-sm" onclick={shareTwitter}>
-										<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-											<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-										</svg>
-									</button>
-								</div>
+							{/if}
+							<div class="vibe-actions">
+								<button class="vibe-action-btn" onclick={rescanRepo} disabled={rescanning || !repoUrl}>
+									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+										<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+									</svg>
+									{rescanning ? 'Scanning...' : 'Rescan'}
+								</button>
+								<button class="vibe-action-btn" onclick={shareTwitter}>
+									<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+										<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+									</svg>
+									Share
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Findings Row: Inline counts -->
+					<div class="vibe-findings-row">
+						{#if vibeResults.summary.shipBlockers > 0}
+							<div class="vibe-finding-chip blocker">
+								<span class="chip-count">{vibeResults.summary.shipBlockers}</span>
+								<span class="chip-label">Critical</span>
+							</div>
+						{/if}
+						{#if vibeResults.summary.fixThisWeek > 0}
+							<div class="vibe-finding-chip high">
+								<span class="chip-count">{vibeResults.summary.fixThisWeek}</span>
+								<span class="chip-label">High</span>
+							</div>
+						{/if}
+						{#if vibeResults.summary.goodToFix > 0}
+							<div class="vibe-finding-chip medium">
+								<span class="chip-count">{vibeResults.summary.goodToFix}</span>
+								<span class="chip-label">Medium</span>
+							</div>
+						{/if}
+						{#if vibeResults.summary.consider > 0}
+							<div class="vibe-finding-chip low">
+								<span class="chip-count">{vibeResults.summary.consider}</span>
+								<span class="chip-label">Low</span>
+							</div>
+						{/if}
+						{#if vibeResults.summary.fyi > 0}
+							<div class="vibe-finding-chip info">
+								<span class="chip-count">{vibeResults.summary.fyi}</span>
+								<span class="chip-label">Info</span>
+							</div>
+						{/if}
+						{#if results.stack?.frameworks?.length > 0 || results.stack?.languages?.length > 0}
+							<div class="vibe-stack-chips">
+								{#each results.stack?.frameworks || [] as fw}
+									<span class="vibe-stack-chip">{fw}</span>
+								{/each}
+								{#each results.stack?.languages || [] as lang}
+									<span class="vibe-stack-chip lang">{lang}</span>
+								{/each}
 							</div>
 						{/if}
 					</div>
-					{#if results.stack?.frameworks?.length > 0 || results.stack?.languages?.length > 0}
-						<div class="stack-row">
-							{#if results.stack?.frameworks?.length > 0}
-								<span class="stack-tag">{results.stack.frameworks.join(', ')}</span>
-							{/if}
-							{#if results.stack?.languages?.length > 0}
-								<span class="stack-tag lang">{results.stack.languages.join(', ')}</span>
-							{/if}
-						</div>
-					{/if}
 				</div>
 			{:else}
 				<!-- CLASSIC MODE: Original header layout -->
@@ -1652,141 +1684,226 @@
 		padding: 0.4rem 0.75rem;
 	}
 
-	/* Vibe Header - Compact unified header */
-	.vibe-header {
+	/* ============================================
+	   VIBE CARD - Clean unified header
+	   ============================================ */
+	.vibe-card {
 		background: var(--bg-secondary);
 		border: 1px solid var(--border);
-		padding: 1.25rem 1.5rem;
-		margin-bottom: 0;
+		padding: 1.5rem;
+		margin-bottom: 1rem;
 		opacity: 0;
 		transform: translateY(-10px);
 		transition: opacity 0.3s ease, transform 0.3s ease;
 	}
 
-	.vibe-header.revealed {
+	.vibe-card.revealed {
 		opacity: 1;
 		transform: translateY(0);
 	}
 
-	.vibe-header-top {
+	/* Top Row: Score + Repo + Actions */
+	.vibe-top-row {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 1rem;
+		align-items: flex-start;
+		gap: 1.5rem;
+		margin-bottom: 1.25rem;
 	}
 
-	.score-section-compact {
+	.vibe-score-block {
 		display: flex;
 		align-items: center;
 		gap: 1rem;
 	}
 
-	.score-circle-sm {
-		width: 60px;
-		height: 60px;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border: 3px solid currentColor;
-	}
-
-	.score-circle-sm .score-number {
+	.vibe-score-num {
 		font-family: 'JetBrains Mono', monospace;
-		font-size: 1.25rem;
-		font-weight: 700;
+		font-size: 3rem;
+		font-weight: 800;
+		line-height: 1;
+		color: currentColor;
 	}
 
-	.score-details {
+	.vibe-score-meta {
 		display: flex;
 		flex-direction: column;
-		gap: 0.15rem;
+		gap: 0.2rem;
 	}
 
-	.score-grade {
-		font-family: 'Inter', sans-serif;
+	.vibe-grade {
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 		font-size: 1.1rem;
 		font-weight: 700;
 		color: var(--text-primary);
 	}
 
-	.ship-status-sm {
-		font-family: 'Inter', sans-serif;
-		font-size: 0.8rem;
+	.vibe-status {
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+		font-size: 0.85rem;
 		color: var(--text-secondary);
 	}
 
-	.repo-info {
+	/* Grade colors for score block */
+	.vibe-score-block.grade-a { color: var(--green); }
+	.vibe-score-block.grade-b { color: #84cc16; }
+	.vibe-score-block.grade-c { color: var(--orange); }
+	.vibe-score-block.grade-d { color: #f97316; }
+	.vibe-score-block.grade-f {
+		color: #dc2626;
+	}
+	.vibe-score-block.grade-f .vibe-score-num {
+		font-size: 4rem;
+		font-weight: 900;
+		text-shadow: 0 0 30px rgba(220, 38, 38, 0.5);
+		animation: pulse-red 2s ease-in-out infinite;
+	}
+	.vibe-score-block.grade-f .vibe-grade {
+		font-size: 1.3rem;
+		color: #dc2626;
+	}
+	.vibe-score-block.grade-f .vibe-status {
+		color: #dc2626;
+		font-weight: 600;
+	}
+
+	@keyframes pulse-red {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.85; }
+	}
+
+	/* Repo Block */
+	.vibe-repo-block {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
-		gap: 0.5rem;
+		gap: 0.6rem;
 	}
 
-	.repo-link-sm {
+	.vibe-repo-link {
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 0.5rem;
+		font-family: 'JetBrains Mono', monospace;
 		font-size: 0.85rem;
 		color: var(--text-secondary);
 		text-decoration: none;
+		transition: color 0.15s;
 	}
 
-	.repo-link-sm:hover {
+	.vibe-repo-link:hover {
 		color: var(--text-primary);
 	}
 
-	.repo-actions-sm {
+	.vibe-actions {
 		display: flex;
 		gap: 0.5rem;
 	}
 
-	.action-btn-sm {
+	.vibe-action-btn {
 		display: flex;
 		align-items: center;
-		gap: 0.35rem;
-		padding: 0.35rem 0.65rem;
+		gap: 0.4rem;
+		padding: 0.4rem 0.75rem;
 		background: transparent;
 		border: 1px solid var(--border);
 		color: var(--text-secondary);
-		font-size: 0.7rem;
+		font-family: 'Inter', sans-serif;
+		font-size: 0.75rem;
 		font-weight: 500;
 		cursor: pointer;
 		transition: all 0.15s;
 	}
 
-	.action-btn-sm:hover {
+	.vibe-action-btn:hover {
 		background: var(--bg-primary);
 		color: var(--text-primary);
 		border-color: var(--text-tertiary);
 	}
 
-	.action-btn-sm:disabled {
+	.vibe-action-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
 
-	.stack-row {
+	/* Findings Row */
+	.vibe-findings-row {
 		display: flex;
-		gap: 0.5rem;
-		margin-top: 1rem;
 		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.6rem;
 	}
 
-	.stack-tag {
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.7rem;
-		padding: 0.25rem 0.6rem;
+	.vibe-finding-chip {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.35rem 0.75rem;
 		background: var(--bg-primary);
 		border: 1px solid var(--border);
-		color: var(--text-secondary);
 	}
 
-	.stack-tag.lang {
+	.vibe-finding-chip .chip-count {
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 1rem;
+		font-weight: 700;
+	}
+
+	.vibe-finding-chip .chip-label {
+		font-family: 'Inter', sans-serif;
+		font-size: 0.7rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: var(--text-tertiary);
+	}
+
+	/* Chip colors */
+	.vibe-finding-chip.blocker {
+		border-color: #ef4444;
+	}
+	.vibe-finding-chip.blocker .chip-count { color: #ef4444; }
+
+	.vibe-finding-chip.high {
+		border-color: #f97316;
+	}
+	.vibe-finding-chip.high .chip-count { color: #f97316; }
+
+	.vibe-finding-chip.medium {
+		border-color: #eab308;
+	}
+	.vibe-finding-chip.medium .chip-count { color: #eab308; }
+
+	.vibe-finding-chip.low {
+		border-color: #3b82f6;
+	}
+	.vibe-finding-chip.low .chip-count { color: #3b82f6; }
+
+	.vibe-finding-chip.info {
+		border-color: var(--text-tertiary);
+	}
+	.vibe-finding-chip.info .chip-count { color: var(--text-tertiary); }
+
+	/* Stack chips in findings row */
+	.vibe-stack-chips {
+		display: flex;
+		gap: 0.4rem;
+		margin-left: auto;
+	}
+
+	.vibe-stack-chip {
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.65rem;
+		padding: 0.25rem 0.5rem;
+		background: var(--bg-primary);
+		border: 1px solid var(--border);
+		color: var(--text-tertiary);
+	}
+
+	.vibe-stack-chip.lang {
 		color: var(--blue);
-		border-color: var(--blue);
-		background: rgba(59, 130, 246, 0.1);
+		border-color: rgba(59, 130, 246, 0.4);
+		background: rgba(59, 130, 246, 0.08);
 	}
 
 	/* View Mode Toggle */
@@ -2909,36 +3026,56 @@
 			align-items: center;
 		}
 
-		/* Vibe Header Mobile */
-		.vibe-header {
-			padding: 1rem;
+		/* Vibe Card Mobile */
+		.vibe-card {
+			padding: 1.25rem 1rem;
 		}
 
-		.vibe-header-top {
+		.vibe-top-row {
 			flex-direction: column;
 			align-items: center;
 			text-align: center;
+			gap: 1rem;
 		}
 
-		.score-section-compact {
+		.vibe-score-block {
 			flex-direction: column;
 			text-align: center;
 		}
 
-		.score-details {
+		.vibe-score-num {
+			font-size: 2.5rem;
+		}
+
+		.vibe-score-block.grade-f .vibe-score-num {
+			font-size: 3.5rem;
+		}
+
+		.vibe-score-block.grade-f .vibe-grade {
+			font-size: 1.2rem;
+		}
+
+		.vibe-score-meta {
 			align-items: center;
 		}
 
-		.repo-info {
+		.vibe-repo-block {
 			align-items: center;
 			width: 100%;
 		}
 
-		.repo-actions-sm {
+		.vibe-actions {
 			justify-content: center;
 		}
 
-		.stack-row {
+		.vibe-findings-row {
+			justify-content: center;
+		}
+
+		.vibe-stack-chips {
+			margin-left: 0;
+			margin-top: 0.5rem;
+			width: 100%;
 			justify-content: center;
 		}
 	}
