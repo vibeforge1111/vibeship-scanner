@@ -1707,42 +1707,2027 @@ export function generateMasterFixPrompt(findings: any[], includeInfo: boolean = 
 		(severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3)
 	);
 
-	const issueList = sorted.map((f, i) => {
+	// Group findings by vulnerability type for better organization
+	const grouped = groupFindingsByType(sorted);
+
+	// Generate the detailed fix guide for each group
+	const fixGuides = Object.entries(grouped).map(([type, findings]) => {
+		const guide = getDetailedFixGuide(type, findings);
+		return guide;
+	}).join('\n\n---\n\n');
+
+	// Summary list for quick reference
+	const summaryList = sorted.map((f, i) => {
 		const location = f.location?.file
 			? `${f.location.file}${f.location.line ? `:${f.location.line}` : ''}`
 			: 'location unknown';
 		const sev = f.severity?.toUpperCase() || 'INFO';
-		return `${i + 1}. [${sev}] **${f.title}** in \`${location}\``;
+		return `${i + 1}. [${sev}] ${f.title} → \`${location}\``;
 	}).join('\n');
 
-	const fixInstructions = sorted.map((f, i) => {
-		const location = f.location?.file || 'the codebase';
-		const fixHint = getFixHint(f);
-		const sev = f.severity?.toUpperCase() || 'INFO';
-		return `**Issue ${i + 1} [${sev}]: ${f.title}**
-   - Location: ${location}${f.location?.line ? ` line ${f.location.line}` : ''}
-   - Fix: ${fixHint}`;
-	}).join('\n\n');
-
 	return `
-I need to fix ${sorted.length} security issues in my codebase. Please help me fix all of them systematically, starting with the most critical.
+# Security Fix Guide
 
-## Issues to Fix:
-${issueList}
+I need help fixing ${sorted.length} security vulnerabilities in my codebase. This guide contains everything you need to fix each issue.
 
-## Details and Fix Approach:
+## Quick Summary (${sorted.length} issues)
 
-${fixInstructions}
+${summaryList}
 
-## How to proceed:
+---
 
-1. **Start with Issue #1** - show me the current vulnerable code and the fixed version
-2. **After each fix**, search for similar patterns in the same file and nearby files
-3. **Move to the next issue** once the current one is fully resolved
-4. **At the end**, give me a summary of all files modified and changes made
+## Detailed Fix Instructions
 
-Let's start with Issue #1. Show me the vulnerable code and how to fix it.
+${fixGuides}
+
+---
+
+## How to Work Through This
+
+1. **Go issue by issue** - Start with the first vulnerability type below
+2. **Read the file** - Open each listed file and find the vulnerable code at the specified line
+3. **Apply the fix pattern** - Use the code examples provided as templates
+4. **Search for similar issues** - After fixing, grep the codebase for similar vulnerable patterns
+5. **Verify the fix** - Make sure the code still works after your changes
+6. **Move to the next** - Continue until all issues are resolved
+
+## After All Fixes
+
+- Run the application and test that everything works
+- Run any existing tests: \`npm test\` or equivalent
+- List all files you modified
+- Summarize what you changed
+
+Let's start! Begin with the first section below.
 `.trim();
+}
+
+/**
+ * Group findings by vulnerability type for organized output
+ */
+function groupFindingsByType(findings: any[]): Record<string, any[]> {
+	const groups: Record<string, any[]> = {};
+
+	for (const finding of findings) {
+		const type = categorizeVulnerability(finding);
+		if (!groups[type]) {
+			groups[type] = [];
+		}
+		groups[type].push(finding);
+	}
+
+	return groups;
+}
+
+/**
+ * Categorize a finding into a vulnerability type
+ */
+function categorizeVulnerability(finding: any): string {
+	const searchKey = `${finding.ruleId || ''} ${finding.title || ''} ${finding.message || ''}`.toLowerCase();
+
+	if (searchKey.includes('sql') && (searchKey.includes('inject') || searchKey.includes('query'))) return 'sql-injection';
+	if (searchKey.includes('xss') || searchKey.includes('innerhtml') || searchKey.includes('dangerously')) return 'xss';
+	if (searchKey.includes('command') || searchKey.includes('exec') || searchKey.includes('shell')) return 'command-injection';
+	if (searchKey.includes('path') && searchKey.includes('travers')) return 'path-traversal';
+	if (searchKey.includes('ssrf') || (searchKey.includes('url') && searchKey.includes('user'))) return 'ssrf';
+	if (searchKey.includes('secret') || searchKey.includes('hardcoded') || searchKey.includes('api_key') || searchKey.includes('password') && searchKey.includes('code')) return 'hardcoded-secrets';
+	if (searchKey.includes('auth') && (searchKey.includes('missing') || searchKey.includes('no-') || searchKey.includes('bypass'))) return 'broken-auth';
+	if (searchKey.includes('idor') || searchKey.includes('authorization') || searchKey.includes('access control')) return 'broken-access-control';
+	if (searchKey.includes('csrf')) return 'csrf';
+	if (searchKey.includes('cors')) return 'cors';
+	if (searchKey.includes('jwt')) return 'jwt-issues';
+	if (searchKey.includes('session')) return 'session-security';
+	if (searchKey.includes('cookie')) return 'cookie-security';
+	if (searchKey.includes('crypto') || searchKey.includes('md5') || searchKey.includes('sha1') || searchKey.includes('cipher')) return 'weak-crypto';
+	if (searchKey.includes('deserial') || searchKey.includes('pickle') || searchKey.includes('unserialize')) return 'insecure-deserialization';
+	if (searchKey.includes('xxe') || searchKey.includes('xml')) return 'xxe';
+	if (searchKey.includes('redirect')) return 'open-redirect';
+	if (searchKey.includes('debug') || searchKey.includes('verbose')) return 'debug-exposure';
+	if (searchKey.includes('header') || searchKey.includes('helmet')) return 'security-headers';
+	if (searchKey.includes('rate') || searchKey.includes('brute')) return 'rate-limiting';
+	if (searchKey.includes('cve-') || searchKey.includes('ghsa-') || searchKey.includes('vulnerable') && searchKey.includes('version')) return 'vulnerable-dependency';
+	if (searchKey.includes('log') && (searchKey.includes('sensitive') || searchKey.includes('inject'))) return 'logging-issues';
+	if (searchKey.includes('file') || searchKey.includes('upload')) return 'file-security';
+	if (searchKey.includes('nosql') || searchKey.includes('mongo')) return 'nosql-injection';
+	if (searchKey.includes('template') && searchKey.includes('inject')) return 'template-injection';
+	if (searchKey.includes('eval') || searchKey.includes('code') && searchKey.includes('inject')) return 'code-injection';
+	if (searchKey.includes('prototype')) return 'prototype-pollution';
+	if (searchKey.includes('regex') || searchKey.includes('redos')) return 'regex-dos';
+	if (searchKey.includes('random')) return 'weak-random';
+	if (searchKey.includes('tls') || searchKey.includes('ssl') || searchKey.includes('certificate')) return 'tls-issues';
+
+	return 'other-security';
+}
+
+/**
+ * Get detailed fix guide for a vulnerability type with code examples
+ */
+function getDetailedFixGuide(type: string, findings: any[]): string {
+	const locations = findings.map(f => {
+		const loc = f.location?.file
+			? `- \`${f.location.file}${f.location.line ? `:${f.location.line}` : ''}\``
+			: '- Location not specified';
+		const severity = f.severity?.toUpperCase() || 'INFO';
+		return `${loc} [${severity}] ${f.title || ''}`;
+	}).join('\n');
+
+	const guide = getVulnerabilityGuide(type);
+
+	return `## ${guide.title}
+
+**Affected Locations:**
+${locations}
+
+**What's Wrong:**
+${guide.problem}
+
+**How to Fix:**
+
+${guide.solution}
+
+**After Fixing:**
+${guide.verification}`;
+}
+
+interface VulnerabilityGuide {
+	title: string;
+	problem: string;
+	solution: string;
+	verification: string;
+}
+
+/**
+ * Comprehensive fix guides for each vulnerability type
+ */
+function getVulnerabilityGuide(type: string): VulnerabilityGuide {
+	const guides: Record<string, VulnerabilityGuide> = {
+		'sql-injection': {
+			title: '🔴 SQL Injection',
+			problem: 'User input is being concatenated directly into SQL queries, allowing attackers to execute arbitrary database commands, steal data, or delete records.',
+			solution: `Use parameterized queries (prepared statements) instead of string concatenation:
+
+**JavaScript (pg/node-postgres):**
+\`\`\`javascript
+// ❌ VULNERABLE
+const result = await db.query("SELECT * FROM users WHERE id = " + userId);
+const result = await db.query(\`SELECT * FROM users WHERE email = '\${email}'\`);
+
+// ✅ FIXED
+const result = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
+const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+\`\`\`
+
+**JavaScript (mysql2):**
+\`\`\`javascript
+// ❌ VULNERABLE
+connection.query("SELECT * FROM users WHERE id = " + userId);
+
+// ✅ FIXED
+const [rows] = await connection.execute('SELECT * FROM users WHERE id = ?', [userId]);
+\`\`\`
+
+**Python:**
+\`\`\`python
+# ❌ VULNERABLE
+cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
+cursor.execute("SELECT * FROM users WHERE id = " + user_id)
+
+# ✅ FIXED
+cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+\`\`\`
+
+**Using an ORM (Prisma, Sequelize, SQLAlchemy):**
+\`\`\`javascript
+// ❌ VULNERABLE - raw query with interpolation
+prisma.$queryRawUnsafe(\`SELECT * FROM users WHERE id = \${userId}\`)
+
+// ✅ FIXED - use the ORM's built-in methods
+const user = await prisma.user.findUnique({ where: { id: userId } });
+// Or if raw SQL is needed:
+const user = await prisma.$queryRaw(Prisma.sql\`SELECT * FROM users WHERE id = \${userId}\`);
+\`\`\``,
+			verification: `- Search for other SQL queries: \`grep -r "query.*\\$\\{" --include="*.js" --include="*.ts"\`
+- Search for string concatenation in queries: \`grep -r "query.*+" --include="*.js"\`
+- Test with a simple payload: Try entering \`' OR '1'='1\` in input fields
+- Ensure no user input reaches SQL without parameterization`
+		},
+
+		'xss': {
+			title: '🔴 Cross-Site Scripting (XSS)',
+			problem: 'User input is rendered in the browser without sanitization, allowing attackers to inject malicious scripts that steal cookies, credentials, or perform actions as the user.',
+			solution: `Never insert untrusted data directly into HTML. Use text content or sanitize:
+
+**Vanilla JavaScript:**
+\`\`\`javascript
+// ❌ VULNERABLE
+element.innerHTML = userInput;
+document.write(userInput);
+
+// ✅ FIXED - for text content
+element.textContent = userInput;
+
+// ✅ FIXED - if you MUST render HTML
+import DOMPurify from 'dompurify';
+element.innerHTML = DOMPurify.sanitize(userInput);
+\`\`\`
+
+**React:**
+\`\`\`jsx
+// ✅ SAFE by default - React escapes content
+<div>{userInput}</div>
+
+// ❌ VULNERABLE
+<div dangerouslySetInnerHTML={{ __html: userInput }} />
+
+// ✅ FIXED - if you must render HTML
+import DOMPurify from 'dompurify';
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userInput) }} />
+\`\`\`
+
+**Vue:**
+\`\`\`vue
+<!-- ✅ SAFE by default -->
+<div>{{ userInput }}</div>
+
+<!-- ❌ VULNERABLE -->
+<div v-html="userInput"></div>
+
+<!-- ✅ FIXED -->
+<div v-html="DOMPurify.sanitize(userInput)"></div>
+\`\`\`
+
+**Svelte:**
+\`\`\`svelte
+<!-- ✅ SAFE by default -->
+<p>{userInput}</p>
+
+<!-- ❌ VULNERABLE -->
+{@html userInput}
+
+<!-- ✅ FIXED -->
+<script>
+  import DOMPurify from 'dompurify';
+  $: safeHtml = DOMPurify.sanitize(userInput);
+</script>
+{@html safeHtml}
+\`\`\`
+
+**Install DOMPurify:** \`npm install dompurify\``,
+			verification: `- Search for innerHTML: \`grep -r "innerHTML" --include="*.js" --include="*.ts"\`
+- Search for dangerous React: \`grep -r "dangerouslySetInnerHTML" --include="*.jsx" --include="*.tsx"\`
+- Search for v-html: \`grep -r "v-html" --include="*.vue"\`
+- Search for @html: \`grep -r "@html" --include="*.svelte"\`
+- Test with: \`<script>alert('xss')</script>\` in input fields`
+		},
+
+		'command-injection': {
+			title: '🔴 Command Injection',
+			problem: 'User input is passed to shell commands, allowing attackers to execute arbitrary system commands on your server.',
+			solution: `Never pass user input to shell commands. Use array arguments or avoid shell entirely:
+
+**Node.js:**
+\`\`\`javascript
+// ❌ VULNERABLE - shell=true allows injection
+const { exec } = require('child_process');
+exec(\`convert \${userFilename} output.png\`);  // Attacker: "; rm -rf /"
+
+// ✅ FIXED - use execFile with array arguments
+const { execFile } = require('child_process');
+execFile('convert', [userFilename, 'output.png'], (error, stdout) => {
+  // handle result
+});
+
+// ✅ FIXED - or use spawn without shell
+const { spawn } = require('child_process');
+const child = spawn('convert', [userFilename, 'output.png']);
+\`\`\`
+
+**Python:**
+\`\`\`python
+# ❌ VULNERABLE
+import os
+os.system(f"convert {user_filename} output.png")
+
+import subprocess
+subprocess.call(f"convert {user_filename} output.png", shell=True)
+
+# ✅ FIXED - use list arguments, shell=False
+import subprocess
+subprocess.run(["convert", user_filename, "output.png"], shell=False)
+\`\`\`
+
+**If you must use shell, validate strictly:**
+\`\`\`javascript
+// Allowlist approach
+const ALLOWED_COMMANDS = ['convert', 'resize', 'compress'];
+if (!ALLOWED_COMMANDS.includes(command)) {
+  throw new Error('Invalid command');
+}
+// Also validate all arguments against expected patterns
+if (!/^[a-zA-Z0-9_.-]+$/.test(filename)) {
+  throw new Error('Invalid filename');
+}
+\`\`\``,
+			verification: `- Search for exec: \`grep -r "exec(" --include="*.js" --include="*.ts"\`
+- Search for spawn with shell: \`grep -r "shell.*true" --include="*.js"\`
+- Search for Python os.system: \`grep -r "os.system\\|subprocess.*shell=True" --include="*.py"\`
+- Never trust user input in shell commands`
+		},
+
+		'hardcoded-secrets': {
+			title: '🔴 Hardcoded Secrets',
+			problem: 'API keys, passwords, or tokens are hardcoded in source code. Anyone with access to the code (including git history) can see these credentials.',
+			solution: `Move all secrets to environment variables:
+
+**Step 1: Create .env file (never commit this!):**
+\`\`\`bash
+# .env
+DATABASE_URL=postgres://user:password@host/database
+API_KEY=sk-your-api-key-here
+JWT_SECRET=your-64-character-random-secret
+STRIPE_SECRET_KEY=sk_live_...
+\`\`\`
+
+**Step 2: Add .env to .gitignore:**
+\`\`\`bash
+# .gitignore
+.env
+.env.local
+.env*.local
+\`\`\`
+
+**Step 3: Update code to use environment variables:**
+\`\`\`javascript
+// ❌ VULNERABLE
+const apiKey = "sk-1234567890abcdef";
+const dbPassword = "supersecret123";
+
+// ✅ FIXED - Node.js
+const apiKey = process.env.API_KEY;
+const dbUrl = process.env.DATABASE_URL;
+
+// ✅ FIXED - with validation
+const apiKey = process.env.API_KEY;
+if (!apiKey) {
+  throw new Error('API_KEY environment variable is required');
+}
+\`\`\`
+
+**For different frameworks:**
+\`\`\`javascript
+// Next.js (server-side)
+const secret = process.env.JWT_SECRET;
+
+// Next.js (client-side - only for non-sensitive values!)
+const publicUrl = process.env.NEXT_PUBLIC_API_URL;
+
+// Vite / SvelteKit
+const apiKey = import.meta.env.VITE_API_KEY;
+\`\`\`
+
+**⚠️ CRITICAL: If secrets were already committed:**
+1. The secret is exposed in git history FOREVER
+2. You MUST rotate/regenerate all exposed secrets immediately
+3. Consider using tools like \`git-filter-repo\` to remove from history
+4. Notify your team and check for unauthorized access`,
+			verification: `- Search for hardcoded strings: \`grep -r "sk-\\|api_key.*=.*['\\"]\\" --include="*.js" --include="*.ts"\`
+- Check git history: \`git log -p | grep -i "password\\|secret\\|api_key"\`
+- Use tools like gitleaks or trufflehog to scan for secrets
+- Verify .env is in .gitignore: \`cat .gitignore | grep env\``
+		},
+
+		'path-traversal': {
+			title: '🔴 Path Traversal',
+			problem: 'User input is used to construct file paths, allowing attackers to access files outside the intended directory using "../" sequences.',
+			solution: `Always validate that the resolved path stays within the allowed directory:
+
+**Node.js:**
+\`\`\`javascript
+const path = require('path');
+const fs = require('fs');
+
+// ❌ VULNERABLE
+app.get('/files/:filename', (req, res) => {
+  const filePath = './uploads/' + req.params.filename;
+  res.sendFile(filePath);  // Attacker: ../../../etc/passwd
+});
+
+// ✅ FIXED
+const UPLOAD_DIR = path.resolve('./uploads');
+
+app.get('/files/:filename', (req, res) => {
+  // Get just the filename, removing any path components
+  const filename = path.basename(req.params.filename);
+
+  // Resolve the full path
+  const filePath = path.resolve(UPLOAD_DIR, filename);
+
+  // Verify the path is still within the allowed directory
+  if (!filePath.startsWith(UPLOAD_DIR)) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  // Check file exists before sending
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  res.sendFile(filePath);
+});
+\`\`\`
+
+**Python:**
+\`\`\`python
+import os
+
+# ❌ VULNERABLE
+def get_file(filename):
+    return open(f"./uploads/{filename}").read()
+
+# ✅ FIXED
+UPLOAD_DIR = os.path.abspath("./uploads")
+
+def get_file(filename):
+    # Get just the filename
+    safe_filename = os.path.basename(filename)
+
+    # Resolve full path
+    file_path = os.path.abspath(os.path.join(UPLOAD_DIR, safe_filename))
+
+    # Verify path is within allowed directory
+    if not file_path.startswith(UPLOAD_DIR):
+        raise PermissionError("Access denied")
+
+    return open(file_path).read()
+\`\`\``,
+			verification: `- Search for file operations with user input: \`grep -r "readFile.*req\\|sendFile.*req" --include="*.js"\`
+- Test with: \`../../../etc/passwd\` or \`....//....//etc/passwd\`
+- Verify path.basename() is used on all user-supplied filenames
+- Check that startsWith() validation is present`
+		},
+
+		'ssrf': {
+			title: '🔴 Server-Side Request Forgery (SSRF)',
+			problem: 'User-controlled URLs are fetched by the server, allowing attackers to access internal services, cloud metadata, or perform port scanning.',
+			solution: `Validate and restrict URLs before fetching:
+
+\`\`\`javascript
+const { URL } = require('url');
+
+// ❌ VULNERABLE
+app.get('/fetch', async (req, res) => {
+  const response = await fetch(req.query.url);  // Attacker: http://169.254.169.254/metadata
+  res.json(await response.json());
+});
+
+// ✅ FIXED
+const ALLOWED_HOSTS = ['api.example.com', 'cdn.example.com'];
+
+function isUrlSafe(urlString) {
+  try {
+    const url = new URL(urlString);
+
+    // Must be HTTPS
+    if (url.protocol !== 'https:') {
+      return false;
+    }
+
+    // Check against allowlist
+    if (!ALLOWED_HOSTS.includes(url.hostname)) {
+      return false;
+    }
+
+    // Block private/internal IPs
+    const blockedPatterns = [
+      /^127\\./,           // Localhost
+      /^10\\./,            // Private Class A
+      /^172\\.(1[6-9]|2[0-9]|3[0-1])\\./,  // Private Class B
+      /^192\\.168\\./,     // Private Class C
+      /^169\\.254\\./,     // Link-local
+      /^0\\./,             // Current network
+      /localhost/i,
+      /internal/i,
+    ];
+
+    for (const pattern of blockedPatterns) {
+      if (pattern.test(url.hostname)) {
+        return false;
+      }
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+app.get('/fetch', async (req, res) => {
+  if (!isUrlSafe(req.query.url)) {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+
+  const response = await fetch(req.query.url);
+  res.json(await response.json());
+});
+\`\`\``,
+			verification: `- Search for fetch/axios with user input: \`grep -r "fetch.*req\\|axios.*req" --include="*.js"\`
+- Test with internal URLs: \`http://localhost\`, \`http://127.0.0.1\`, \`http://169.254.169.254\`
+- Verify URL validation exists before all outbound requests
+- Check that internal IPs are blocked`
+		},
+
+		'broken-auth': {
+			title: '🔴 Broken Authentication',
+			problem: 'Endpoints lack proper authentication, allowing unauthorized access to sensitive functionality or data.',
+			solution: `Add authentication middleware to protected routes:
+
+**Express.js:**
+\`\`\`javascript
+// ❌ VULNERABLE - no auth check
+app.get('/api/user/profile', (req, res) => {
+  res.json(getUserProfile(req.query.userId));
+});
+
+// ✅ FIXED - add auth middleware
+const requireAuth = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// Apply to routes
+app.get('/api/user/profile', requireAuth, (req, res) => {
+  // Now req.user is available
+  res.json(getUserProfile(req.user.id));
+});
+
+// Or apply to all /api routes
+app.use('/api', requireAuth);
+\`\`\`
+
+**Next.js API Routes:**
+\`\`\`typescript
+// middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get('session')?.value;
+
+  if (!token && request.nextUrl.pathname.startsWith('/api/protected')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return NextResponse.next();
+}
+\`\`\`
+
+**SvelteKit:**
+\`\`\`typescript
+// hooks.server.ts
+export const handle = async ({ event, resolve }) => {
+  const session = event.cookies.get('session');
+
+  if (!session && event.url.pathname.startsWith('/api/protected')) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
+  event.locals.user = await validateSession(session);
+  return resolve(event);
+};
+\`\`\``,
+			verification: `- List all API routes and verify each has auth middleware
+- Test endpoints without auth headers - they should return 401
+- Search for routes without middleware: \`grep -r "app.get\\|app.post" --include="*.js" -A2\`
+- Verify sensitive operations check user identity, not just presence of token`
+		},
+
+		'broken-access-control': {
+			title: '🔴 Broken Access Control (IDOR)',
+			problem: 'Users can access or modify resources belonging to other users by changing IDs in requests.',
+			solution: `Always verify the current user owns or has permission to access the requested resource:
+
+\`\`\`javascript
+// ❌ VULNERABLE - trusts user-supplied ID
+app.get('/api/documents/:id', requireAuth, async (req, res) => {
+  const document = await Document.findById(req.params.id);
+  res.json(document);  // Anyone can access any document!
+});
+
+app.delete('/api/documents/:id', requireAuth, async (req, res) => {
+  await Document.findByIdAndDelete(req.params.id);  // Anyone can delete!
+  res.json({ success: true });
+});
+
+// ✅ FIXED - verify ownership
+app.get('/api/documents/:id', requireAuth, async (req, res) => {
+  const document = await Document.findById(req.params.id);
+
+  if (!document) {
+    return res.status(404).json({ error: 'Document not found' });
+  }
+
+  // Check ownership
+  if (document.userId.toString() !== req.user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  res.json(document);
+});
+
+// ✅ BETTER - query with ownership built-in
+app.get('/api/documents/:id', requireAuth, async (req, res) => {
+  const document = await Document.findOne({
+    _id: req.params.id,
+    userId: req.user.id  // Only returns if user owns it
+  });
+
+  if (!document) {
+    return res.status(404).json({ error: 'Document not found' });
+  }
+
+  res.json(document);
+});
+
+// For admin routes, check role
+app.delete('/api/admin/users/:id', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  await User.findByIdAndDelete(req.params.id);
+  res.json({ success: true });
+});
+\`\`\``,
+			verification: `- Test accessing other users' resources by changing IDs
+- Search for findById without ownership check: \`grep -r "findById\\|findOne" --include="*.js" -A5\`
+- Verify every data-modifying endpoint checks ownership
+- Create two test accounts and try to access each other's data`
+		},
+
+		'csrf': {
+			title: '🟠 Cross-Site Request Forgery (CSRF)',
+			problem: 'State-changing requests can be triggered by malicious websites when users are authenticated.',
+			solution: `Implement CSRF protection:
+
+**Express.js with csurf:**
+\`\`\`javascript
+const csrf = require('csurf');
+const csrfProtection = csrf({ cookie: true });
+
+// Apply to state-changing routes
+app.post('/api/transfer', csrfProtection, (req, res) => {
+  // req.csrfToken() generates the token to include in forms
+});
+
+// Include token in forms
+app.get('/transfer', csrfProtection, (req, res) => {
+  res.render('transfer', { csrfToken: req.csrfToken() });
+});
+\`\`\`
+
+**Using SameSite cookies (modern approach):**
+\`\`\`javascript
+// Set SameSite=Strict on all auth cookies
+res.cookie('session', token, {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict',  // Prevents CSRF in modern browsers
+  maxAge: 24 * 60 * 60 * 1000
+});
+\`\`\`
+
+**For SPAs with fetch:**
+\`\`\`javascript
+// Server: Generate and return CSRF token
+app.get('/api/csrf-token', (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
+
+// Client: Include in headers
+const csrfToken = await fetch('/api/csrf-token').then(r => r.json());
+
+fetch('/api/transfer', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-CSRF-Token': csrfToken.csrfToken
+  },
+  body: JSON.stringify(data)
+});
+\`\`\``,
+			verification: `- Verify SameSite=Strict is set on session cookies
+- Test state-changing endpoints from a different origin
+- Check that CSRF tokens are validated on POST/PUT/DELETE
+- Verify CORS doesn't allow all origins with credentials`
+		},
+
+		'cors': {
+			title: '🟠 CORS Misconfiguration',
+			problem: 'Overly permissive CORS settings allow malicious websites to make authenticated requests to your API.',
+			solution: `Configure CORS with specific allowed origins:
+
+\`\`\`javascript
+const cors = require('cors');
+
+// ❌ VULNERABLE - allows any origin
+app.use(cors());
+
+// ❌ VULNERABLE - wildcard with credentials
+app.use(cors({
+  origin: '*',
+  credentials: true  // This combination is dangerous!
+}));
+
+// ✅ FIXED - specific origins
+const allowedOrigins = [
+  'https://myapp.com',
+  'https://app.myapp.com',
+  process.env.NODE_ENV === 'development' && 'http://localhost:3000'
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+\`\`\``,
+			verification: `- Check current CORS config: \`grep -r "cors(" --include="*.js" -A10\`
+- Verify origin is not '*' when credentials: true
+- Test from unauthorized origin - should be blocked
+- List all allowed origins and verify they're all trusted`
+		},
+
+		'jwt-issues': {
+			title: '🟠 JWT Security Issues',
+			problem: 'JWT implementation has weaknesses like missing algorithm validation, no expiration, or weak secrets.',
+			solution: `Implement JWT securely:
+
+\`\`\`javascript
+const jwt = require('jsonwebtoken');
+
+// ❌ VULNERABLE - no algorithm specified in verify
+const decoded = jwt.verify(token, secret);  // Accepts 'none' algorithm!
+
+// ❌ VULNERABLE - no expiration
+const token = jwt.sign({ userId: user.id }, secret);
+
+// ❌ VULNERABLE - weak secret
+const secret = 'mysecret';
+
+// ✅ FIXED - complete secure implementation
+const JWT_SECRET = process.env.JWT_SECRET;  // At least 64 random bytes
+const JWT_ALGORITHM = 'HS256';
+
+// Generate strong secret (run once):
+// node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+
+// Sign with expiration
+function generateToken(user) {
+  return jwt.sign(
+    {
+      userId: user.id,
+      email: user.email,
+      role: user.role
+    },
+    JWT_SECRET,
+    {
+      algorithm: JWT_ALGORITHM,
+      expiresIn: '15m',  // Short-lived access token
+      issuer: 'myapp.com'
+    }
+  );
+}
+
+// Verify with algorithm specified
+function verifyToken(token) {
+  return jwt.verify(token, JWT_SECRET, {
+    algorithms: [JWT_ALGORITHM],  // CRITICAL: specify allowed algorithms
+    issuer: 'myapp.com'
+  });
+}
+
+// Implement refresh tokens for longer sessions
+function generateRefreshToken(user) {
+  return jwt.sign(
+    { userId: user.id, type: 'refresh' },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
+\`\`\``,
+			verification: `- Search for jwt.verify without algorithms: \`grep -r "jwt.verify" --include="*.js" -A3\`
+- Search for jwt.sign without expiresIn: \`grep -r "jwt.sign" --include="*.js" -A5\`
+- Verify JWT_SECRET is from environment, not hardcoded
+- Test with jwt.io - check algorithm and expiration exist`
+		},
+
+		'session-security': {
+			title: '🟠 Session Security Issues',
+			problem: 'Session configuration is insecure, making sessions vulnerable to hijacking, fixation, or theft.',
+			solution: `Configure sessions securely:
+
+\`\`\`javascript
+const session = require('express-session');
+
+// ❌ VULNERABLE
+app.use(session({
+  secret: 'keyboard cat',  // Weak secret
+  cookie: {}  // No security flags
+}));
+
+// ✅ FIXED
+app.use(session({
+  secret: process.env.SESSION_SECRET,  // Strong random secret from env
+  name: 'sessionId',  // Change from default 'connect.sid'
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,     // Prevents JavaScript access
+    secure: true,       // HTTPS only (set false for dev)
+    sameSite: 'strict', // CSRF protection
+    maxAge: 24 * 60 * 60 * 1000  // 24 hours
+  }
+}));
+
+// Regenerate session on login (prevents session fixation)
+app.post('/login', async (req, res) => {
+  const user = await authenticateUser(req.body);
+
+  if (user) {
+    // Regenerate session ID after authentication
+    req.session.regenerate((err) => {
+      if (err) return res.status(500).json({ error: 'Session error' });
+
+      req.session.userId = user.id;
+      res.json({ success: true });
+    });
+  }
+});
+
+// Destroy session properly on logout
+app.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    res.clearCookie('sessionId');
+    res.json({ success: true });
+  });
+});
+\`\`\``,
+			verification: `- Check session config: \`grep -r "session(" --include="*.js" -A15\`
+- Verify cookie has httpOnly, secure, sameSite flags
+- Verify session.regenerate() is called after login
+- Verify session.destroy() is called on logout`
+		},
+
+		'cookie-security': {
+			title: '🟠 Insecure Cookie Configuration',
+			problem: 'Cookies lack security flags, making them vulnerable to theft via XSS or interception.',
+			solution: `Set all security flags on cookies:
+
+\`\`\`javascript
+// ❌ VULNERABLE - no security flags
+res.cookie('session', token);
+res.cookie('auth', value, { httpOnly: true });  // Missing secure/sameSite
+
+// ✅ FIXED - all security flags
+res.cookie('session', token, {
+  httpOnly: true,      // Cannot be accessed by JavaScript (XSS protection)
+  secure: true,        // Only sent over HTTPS
+  sameSite: 'strict',  // Not sent with cross-site requests (CSRF protection)
+  maxAge: 24 * 60 * 60 * 1000,  // Expiration in milliseconds
+  path: '/'            // Cookie scope
+});
+
+// For development (when not using HTTPS)
+const isProduction = process.env.NODE_ENV === 'production';
+
+res.cookie('session', token, {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? 'strict' : 'lax',
+  maxAge: 24 * 60 * 60 * 1000
+});
+\`\`\``,
+			verification: `- Search for res.cookie: \`grep -r "res.cookie\\|cookies.set" --include="*.js" -A5\`
+- Verify all cookies have httpOnly, secure, sameSite
+- Check in browser DevTools > Application > Cookies
+- Test that cookies aren't sent over HTTP`
+		},
+
+		'weak-crypto': {
+			title: '🟠 Weak Cryptography',
+			problem: 'Using outdated or weak cryptographic algorithms that can be broken.',
+			solution: `Use modern, strong cryptographic algorithms:
+
+**For password hashing (ALWAYS use bcrypt or argon2):**
+\`\`\`javascript
+// ❌ VULNERABLE
+const hash = crypto.createHash('md5').update(password).digest('hex');
+const hash = crypto.createHash('sha1').update(password).digest('hex');
+const hash = crypto.createHash('sha256').update(password).digest('hex');  // Still wrong for passwords!
+
+// ✅ FIXED - use bcrypt
+const bcrypt = require('bcrypt');
+const SALT_ROUNDS = 12;  // Minimum 12 for 2024
+
+// Hashing
+const hash = await bcrypt.hash(password, SALT_ROUNDS);
+
+// Verifying
+const isValid = await bcrypt.compare(inputPassword, storedHash);
+\`\`\`
+
+**For general hashing (data integrity, not passwords):**
+\`\`\`javascript
+// ❌ VULNERABLE
+crypto.createHash('md5').update(data).digest('hex');
+crypto.createHash('sha1').update(data).digest('hex');
+
+// ✅ FIXED
+crypto.createHash('sha256').update(data).digest('hex');
+// Or SHA-3:
+crypto.createHash('sha3-256').update(data).digest('hex');
+\`\`\`
+
+**For encryption:**
+\`\`\`javascript
+// ❌ VULNERABLE
+crypto.createCipher('des', key);  // DES is broken
+crypto.createCipher('aes-256-ecb', key);  // ECB mode is insecure
+crypto.createCipher('aes-256-cbc', key);  // Deprecated API
+
+// ✅ FIXED - use AES-256-GCM (authenticated encryption)
+const crypto = require('crypto');
+
+function encrypt(text, key) {
+  const iv = crypto.randomBytes(16);  // Random IV for each encryption
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+
+  const authTag = cipher.getAuthTag();
+
+  // Return IV + authTag + ciphertext (all needed for decryption)
+  return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+}
+
+function decrypt(encryptedData, key) {
+  const [ivHex, authTagHex, encrypted] = encryptedData.split(':');
+  const iv = Buffer.from(ivHex, 'hex');
+  const authTag = Buffer.from(authTagHex, 'hex');
+
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(authTag);
+
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
+}
+\`\`\``,
+			verification: `- Search for weak hashes: \`grep -r "createHash.*md5\\|createHash.*sha1" --include="*.js"\`
+- Search for deprecated cipher: \`grep -r "createCipher(" --include="*.js"\`
+- Verify passwords use bcrypt/argon2, not SHA/MD5
+- Check encryption uses AES-256-GCM with random IV`
+		},
+
+		'insecure-deserialization': {
+			title: '🔴 Insecure Deserialization',
+			problem: 'Deserializing untrusted data can lead to remote code execution.',
+			solution: `Never deserialize untrusted data. Use JSON with schema validation:
+
+**Node.js:**
+\`\`\`javascript
+// ❌ VULNERABLE - node-serialize has RCE vulnerability
+const serialize = require('node-serialize');
+const obj = serialize.unserialize(userInput);  // RCE possible!
+
+// ❌ VULNERABLE - eval-based parsing
+const obj = eval('(' + userInput + ')');
+
+// ✅ FIXED - use JSON.parse with validation
+const Joi = require('joi');
+
+const schema = Joi.object({
+  name: Joi.string().max(100).required(),
+  email: Joi.string().email().required(),
+  age: Joi.number().integer().min(0).max(150)
+});
+
+function parseUserData(input) {
+  const data = JSON.parse(input);  // Safe parsing
+  const { error, value } = schema.validate(data);  // Schema validation
+
+  if (error) {
+    throw new Error('Invalid data format');
+  }
+
+  return value;
+}
+\`\`\`
+
+**Python:**
+\`\`\`python
+# ❌ VULNERABLE - pickle with untrusted data
+import pickle
+obj = pickle.loads(user_input)  # RCE possible!
+
+# ❌ VULNERABLE - yaml.load
+import yaml
+obj = yaml.load(user_input)  # RCE possible!
+
+# ✅ FIXED - use JSON with validation
+import json
+from pydantic import BaseModel
+
+class UserData(BaseModel):
+    name: str
+    email: str
+    age: int
+
+data = json.loads(user_input)
+user = UserData(**data)  # Validates against schema
+\`\`\``,
+			verification: `- Search for dangerous deserializers: \`grep -r "unserialize\\|pickle.loads\\|yaml.load" --include="*.js" --include="*.py"\`
+- Remove node-serialize package if present
+- Verify all data parsing uses JSON.parse with validation
+- Check that yaml uses safe_load, not load`
+		},
+
+		'xxe': {
+			title: '🟠 XML External Entity (XXE) Injection',
+			problem: 'XML parsers process external entities, allowing file disclosure or SSRF.',
+			solution: `Disable external entity processing:
+
+**Node.js:**
+\`\`\`javascript
+// ❌ VULNERABLE - default libxmljs settings
+const libxmljs = require('libxmljs');
+const doc = libxmljs.parseXml(userInput);
+
+// ✅ FIXED - disable external entities
+const doc = libxmljs.parseXml(userInput, {
+  noent: false,      // Don't expand entities
+  nonet: true,       // Don't allow network access
+  noblanks: true,
+  dtdload: false,    // Don't load external DTD
+  dtdvalid: false    // Don't validate against DTD
+});
+
+// ✅ BETTER - use JSON instead of XML when possible
+const data = JSON.parse(userInput);
+\`\`\`
+
+**Python:**
+\`\`\`python
+# ❌ VULNERABLE
+from xml.etree import ElementTree as ET
+tree = ET.parse(user_file)
+
+# ✅ FIXED - use defusedxml
+from defusedxml.ElementTree import parse
+tree = parse(user_file)
+
+# Or configure lxml safely
+from lxml import etree
+parser = etree.XMLParser(
+    resolve_entities=False,
+    no_network=True,
+    dtd_validation=False,
+    load_dtd=False
+)
+tree = etree.parse(user_file, parser)
+\`\`\`
+
+**Java:**
+\`\`\`java
+// ✅ FIXED - disable DTDs and external entities
+DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+\`\`\``,
+			verification: `- Search for XML parsing: \`grep -r "parseXml\\|ElementTree\\|DocumentBuilder" --include="*.js" --include="*.py" --include="*.java"\`
+- Verify external entities are disabled
+- Test with XXE payload to confirm protection
+- Consider replacing XML with JSON where possible`
+		},
+
+		'open-redirect': {
+			title: '🟠 Open Redirect',
+			problem: 'User-controlled redirect URLs can be used for phishing attacks.',
+			solution: `Validate redirect URLs strictly:
+
+\`\`\`javascript
+// ❌ VULNERABLE
+app.get('/redirect', (req, res) => {
+  res.redirect(req.query.url);  // Attacker: ?url=https://evil.com
+});
+
+app.get('/login', (req, res) => {
+  const returnUrl = req.query.returnUrl || '/dashboard';
+  // After login...
+  res.redirect(returnUrl);  // Attacker: ?returnUrl=https://phishing.com
+});
+
+// ✅ FIXED - validate redirect URL
+function isValidRedirectUrl(url) {
+  // Only allow relative paths
+  if (!url.startsWith('/')) {
+    return false;
+  }
+
+  // Block protocol-relative URLs
+  if (url.startsWith('//')) {
+    return false;
+  }
+
+  // Block javascript: URLs
+  if (url.toLowerCase().includes('javascript:')) {
+    return false;
+  }
+
+  return true;
+}
+
+app.get('/redirect', (req, res) => {
+  const url = req.query.url || '/';
+
+  if (!isValidRedirectUrl(url)) {
+    return res.redirect('/');  // Safe default
+  }
+
+  res.redirect(url);
+});
+
+// ✅ ALTERNATIVE - use allowlist for external URLs
+const ALLOWED_REDIRECT_HOSTS = ['myapp.com', 'auth.myapp.com'];
+
+function isAllowedRedirect(urlString) {
+  try {
+    const url = new URL(urlString, 'https://myapp.com');  // Base URL for relative paths
+    return ALLOWED_REDIRECT_HOSTS.includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+\`\`\``,
+			verification: `- Search for redirects: \`grep -r "res.redirect\\|location.*=" --include="*.js"\`
+- Test with external URL: \`?returnUrl=https://evil.com\`
+- Test with protocol-relative: \`?returnUrl=//evil.com\`
+- Verify validation exists before all redirects`
+		},
+
+		'debug-exposure': {
+			title: '🟠 Debug Mode / Verbose Errors Exposed',
+			problem: 'Debug information or detailed error messages are exposed to users, revealing sensitive system information.',
+			solution: `Disable debug mode and sanitize errors in production:
+
+\`\`\`javascript
+// ❌ VULNERABLE - stack traces exposed
+app.use((err, req, res, next) => {
+  res.status(500).json({
+    error: err.message,
+    stack: err.stack  // Exposes internal paths and code
+  });
+});
+
+// ❌ VULNERABLE - debug mode in production
+app.listen(3000, () => {
+  console.log('Debug mode enabled');
+});
+
+// ✅ FIXED - environment-aware error handling
+const isProduction = process.env.NODE_ENV === 'production';
+
+app.use((err, req, res, next) => {
+  // Log full error server-side
+  console.error('Error:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+
+  // Return sanitized error to client
+  res.status(err.status || 500).json({
+    error: isProduction
+      ? 'An unexpected error occurred'
+      : err.message,
+    ...(isProduction ? {} : { stack: err.stack })  // Only in dev
+  });
+});
+
+// For Express, disable x-powered-by header
+app.disable('x-powered-by');
+\`\`\`
+
+**Python Flask:**
+\`\`\`python
+# ❌ VULNERABLE
+app.run(debug=True)  # In production!
+
+# ✅ FIXED
+app.run(debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true')
+\`\`\`
+
+**Django:**
+\`\`\`python
+# settings.py
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
+\`\`\``,
+			verification: `- Check for debug flags: \`grep -r "debug.*true\\|DEBUG.*True" --include="*.js" --include="*.py"\`
+- Search for stack trace exposure: \`grep -r "err.stack\\|traceback" --include="*.js" --include="*.py"\`
+- Test error responses in production mode
+- Verify NODE_ENV=production is set in deployment`
+		},
+
+		'security-headers': {
+			title: '🟠 Missing Security Headers',
+			problem: 'Security headers are not set, leaving the application vulnerable to various attacks.',
+			solution: `Add security headers using Helmet or manually:
+
+\`\`\`javascript
+// ✅ RECOMMENDED - use Helmet (Express)
+const helmet = require('helmet');
+app.use(helmet());
+
+// Helmet sets these headers automatically:
+// - X-Content-Type-Options: nosniff
+// - X-Frame-Options: DENY
+// - X-XSS-Protection: 0 (deprecated, CSP is better)
+// - Strict-Transport-Security
+// - And more...
+
+// ✅ Custom CSP configuration
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],  // Customize as needed
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,  // 1 year
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// ✅ ALTERNATIVE - manual headers (any framework)
+app.use((req, res, next) => {
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+
+  // Prevent MIME sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  // Force HTTPS
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+
+  // Basic CSP
+  res.setHeader('Content-Security-Policy', "default-src 'self'");
+
+  // Referrer policy
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // Permissions policy
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+
+  next();
+});
+\`\`\`
+
+**Install:** \`npm install helmet\``,
+			verification: `- Check for helmet: \`grep -r "helmet" --include="*.js"\`
+- Test headers: \`curl -I https://yoursite.com\`
+- Use securityheaders.com to scan your site
+- Verify CSP is appropriate for your app`
+		},
+
+		'rate-limiting': {
+			title: '🟠 Missing Rate Limiting',
+			problem: 'No rate limiting allows brute force attacks, DoS, and abuse of resources.',
+			solution: `Add rate limiting to sensitive endpoints:
+
+\`\`\`javascript
+// Install: npm install express-rate-limit
+const rateLimit = require('express-rate-limit');
+
+// General API rate limit
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 100,  // 100 requests per window
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/', apiLimiter);
+
+// Strict limit for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 5,  // Only 5 attempts
+  message: { error: 'Too many login attempts, please try again in 15 minutes' },
+  skipSuccessfulRequests: true,  // Don't count successful logins
+});
+
+app.use('/api/login', authLimiter);
+app.use('/api/register', authLimiter);
+app.use('/api/forgot-password', authLimiter);
+
+// Even stricter for password reset
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,  // 1 hour
+  max: 3,  // Only 3 attempts per hour
+});
+
+app.use('/api/reset-password', passwordResetLimiter);
+\`\`\`
+
+**For Redis-backed rate limiting (distributed systems):**
+\`\`\`javascript
+const RedisStore = require('rate-limit-redis');
+const Redis = require('ioredis');
+
+const redisClient = new Redis(process.env.REDIS_URL);
+
+const limiter = rateLimit({
+  store: new RedisStore({
+    sendCommand: (...args) => redisClient.call(...args),
+  }),
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
+\`\`\``,
+			verification: `- Check for rate limiting: \`grep -r "rateLimit\\|rate-limit" --include="*.js"\`
+- Verify auth endpoints have strict limits (5-10 per 15 min)
+- Test by sending many requests rapidly
+- Monitor for brute force attempts in logs`
+		},
+
+		'vulnerable-dependency': {
+			title: '🟠 Vulnerable Dependencies',
+			problem: 'Project uses packages with known security vulnerabilities.',
+			solution: `Update or replace vulnerable packages:
+
+**Check and fix vulnerabilities:**
+\`\`\`bash
+# View vulnerabilities
+npm audit
+
+# Auto-fix what's possible
+npm audit fix
+
+# Force fix (may include breaking changes)
+npm audit fix --force
+
+# Update specific package
+npm update lodash
+
+# Update to latest major version
+npm install lodash@latest
+\`\`\`
+
+**If no fix is available:**
+\`\`\`bash
+# Check if vulnerability applies to your usage
+# Read the advisory to understand the attack vector
+
+# Option 1: Find alternative package
+npm uninstall vulnerable-package
+npm install safer-alternative
+
+# Option 2: Override nested dependency (package.json)
+{
+  "overrides": {
+    "vulnerable-package": "^2.0.0"
+  }
+}
+
+# Option 3: If low risk, document and accept
+# Add to .nsprc or similar to ignore
+\`\`\`
+
+**For Python:**
+\`\`\`bash
+# Check vulnerabilities
+pip-audit
+
+# Or use safety
+safety check
+
+# Update package
+pip install --upgrade package-name
+\`\`\`
+
+**Set up automated checks:**
+\`\`\`yaml
+# .github/workflows/security.yml
+name: Security
+on: [push, pull_request]
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm audit --audit-level=high
+\`\`\``,
+			verification: `- Run npm audit and address all high/critical issues
+- Check if fixes break functionality
+- Set up CI/CD to fail on new vulnerabilities
+- Review CHANGELOG when updating major versions`
+		},
+
+		'logging-issues': {
+			title: '🟠 Logging Security Issues',
+			problem: 'Sensitive data is logged, or logs are vulnerable to injection.',
+			solution: `Never log sensitive data and sanitize log input:
+
+\`\`\`javascript
+// ❌ VULNERABLE - logging sensitive data
+console.log('User login:', { email, password });
+logger.info(\`Payment processed: \${creditCardNumber}\`);
+logger.debug('API response:', apiResponse);  // May contain tokens
+
+// ❌ VULNERABLE - log injection
+logger.info(\`User action: \${userInput}\`);  // Attacker injects newlines
+
+// ✅ FIXED - redact sensitive fields
+const redactSensitive = (obj) => {
+  const sensitiveFields = ['password', 'token', 'secret', 'creditCard', 'ssn', 'apiKey'];
+  const redacted = { ...obj };
+
+  for (const field of sensitiveFields) {
+    if (redacted[field]) {
+      redacted[field] = '[REDACTED]';
+    }
+  }
+
+  return redacted;
+};
+
+logger.info('User login:', redactSensitive({ email, password }));
+// Output: User login: { email: 'user@example.com', password: '[REDACTED]' }
+
+// ✅ FIXED - sanitize log input
+const sanitizeForLog = (input) => {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/[\\n\\r]/g, ' ')  // Remove newlines (prevent injection)
+    .slice(0, 1000);           // Limit length
+};
+
+logger.info('User action:', sanitizeForLog(userInput));
+
+// ✅ USE structured logging
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [new winston.transports.File({ filename: 'app.log' })]
+});
+
+// Structured logs are harder to inject
+logger.info('User action', {
+  action: sanitizeForLog(userInput),
+  userId: user.id,
+  ip: req.ip
+});
+\`\`\``,
+			verification: `- Search for logged secrets: \`grep -r "console.log.*password\\|logger.*token" --include="*.js"\`
+- Verify user input is sanitized before logging
+- Check logs don't contain PII or credentials
+- Test log injection with newline characters`
+		},
+
+		'file-security': {
+			title: '🟠 File Upload / File Handling Security',
+			problem: 'File uploads lack proper validation, allowing malicious file uploads or path manipulation.',
+			solution: `Validate file uploads thoroughly:
+
+\`\`\`javascript
+const multer = require('multer');
+const path = require('path');
+const crypto = require('crypto');
+
+// ❌ VULNERABLE - no validation
+const upload = multer({ dest: 'uploads/' });
+
+// ✅ FIXED - comprehensive validation
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+const MAX_SIZE = 5 * 1024 * 1024;  // 5MB
+
+const storage = multer.diskStorage({
+  destination: './uploads/',
+  filename: (req, file, cb) => {
+    // Generate random filename to prevent overwrites
+    const uniqueName = crypto.randomBytes(16).toString('hex');
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, uniqueName + ext);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Check MIME type
+  if (!ALLOWED_TYPES.includes(file.mimetype)) {
+    return cb(new Error('Invalid file type'), false);
+  }
+
+  // Check extension
+  const ext = path.extname(file.originalname).toLowerCase();
+  const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.pdf'];
+  if (!allowedExts.includes(ext)) {
+    return cb(new Error('Invalid file extension'), false);
+  }
+
+  cb(null, true);
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: MAX_SIZE,
+    files: 1
+  }
+});
+
+// Additional validation after upload - check magic bytes
+const fileType = require('file-type');
+
+app.post('/upload', upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  // Verify actual file type by reading magic bytes
+  const type = await fileType.fromFile(req.file.path);
+
+  if (!type || !ALLOWED_TYPES.includes(type.mime)) {
+    // Delete the uploaded file
+    fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: 'Invalid file content' });
+  }
+
+  res.json({ filename: req.file.filename });
+});
+\`\`\``,
+			verification: `- Search for upload handling: \`grep -r "multer\\|upload\\|multipart" --include="*.js"\`
+- Verify file type is checked by content, not just extension
+- Test uploading a .php file renamed to .jpg
+- Verify upload directory is outside webroot
+- Check file size limits are enforced`
+		},
+
+		'nosql-injection': {
+			title: '🔴 NoSQL Injection',
+			problem: 'User input in NoSQL queries can manipulate query logic using operators like $gt, $ne.',
+			solution: `Validate input types and sanitize MongoDB queries:
+
+\`\`\`javascript
+// ❌ VULNERABLE - user controls query operators
+app.post('/login', async (req, res) => {
+  const user = await User.findOne({
+    email: req.body.email,
+    password: req.body.password  // Attacker sends { "$ne": "" }
+  });
+  // This matches ANY user with non-empty password!
+});
+
+// ✅ FIXED - validate input types
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  // Ensure inputs are strings, not objects
+  if (typeof email !== 'string' || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Invalid input' });
+  }
+
+  // Now safe to query
+  const user = await User.findOne({ email });
+
+  if (!user || !await bcrypt.compare(password, user.passwordHash)) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  // Login successful...
+});
+
+// ✅ ALTERNATIVE - use mongo-sanitize
+const mongoSanitize = require('express-mongo-sanitize');
+
+// Apply to all requests
+app.use(mongoSanitize());
+
+// Or sanitize specific inputs
+const sanitize = require('mongo-sanitize');
+const cleanEmail = sanitize(req.body.email);
+\`\`\`
+
+**Install:** \`npm install express-mongo-sanitize\``,
+			verification: `- Search for MongoDB queries with user input: \`grep -r "findOne.*req.body\\|find.*req.query" --include="*.js"\`
+- Test with: \`{"email": {"$gt": ""}, "password": {"$gt": ""}}\`
+- Verify input type validation exists
+- Consider using mongo-sanitize middleware`
+		},
+
+		'template-injection': {
+			title: '🔴 Server-Side Template Injection (SSTI)',
+			problem: 'User input is passed into template rendering, allowing code execution on the server.',
+			solution: `Never pass user input directly to template engines:
+
+**Python (Flask/Jinja2):**
+\`\`\`python
+# ❌ VULNERABLE
+from flask import render_template_string
+
+@app.route('/hello')
+def hello():
+    template = request.args.get('template')
+    return render_template_string(template)  # Attacker: {{config}}
+
+# ✅ FIXED - use static templates with variables
+from flask import render_template
+
+@app.route('/hello')
+def hello():
+    name = request.args.get('name', 'World')
+    return render_template('hello.html', name=name)
+\`\`\`
+
+**Node.js (EJS, Pug, etc.):**
+\`\`\`javascript
+// ❌ VULNERABLE
+app.get('/page', (req, res) => {
+  const template = req.query.template;
+  res.render(template);  // Path traversal + SSTI
+});
+
+// ❌ VULNERABLE
+const ejs = require('ejs');
+const html = ejs.render(userInput);  // SSTI possible
+
+// ✅ FIXED - only render static templates with user data as variables
+app.get('/page', (req, res) => {
+  res.render('page', {
+    title: req.query.title,
+    content: req.query.content
+  });
+});
+\`\`\``,
+			verification: `- Search for render_template_string: \`grep -r "render_template_string\\|ejs.render" --include="*.py" --include="*.js"\`
+- Verify user input never controls template selection
+- Test with template syntax: \`{{7*7}}\` or \`\${7*7}\`
+- Use static templates with variables only`
+		},
+
+		'code-injection': {
+			title: '🔴 Code Injection (eval)',
+			problem: 'Using eval() or similar functions with user input allows arbitrary code execution.',
+			solution: `Never use eval() with user input. Use safe alternatives:
+
+\`\`\`javascript
+// ❌ VULNERABLE
+const result = eval(req.body.expression);  // RCE!
+const fn = new Function(userInput);  // Also dangerous
+setTimeout(userInput, 1000);  // If userInput is a string
+setInterval(userInput, 1000);
+
+// ✅ FIXED - for math expressions
+const mathjs = require('mathjs');
+const result = mathjs.evaluate(req.body.expression);  // Safe math only
+
+// ✅ FIXED - for JSON parsing
+const data = JSON.parse(req.body.data);  // Safe
+
+// ✅ FIXED - for dynamic property access
+const allowedProps = ['name', 'email', 'age'];
+const prop = req.body.property;
+
+if (allowedProps.includes(prop)) {
+  const value = user[prop];  // Safe with allowlist
+}
+
+// ✅ FIXED - for setTimeout with user delay
+const delay = parseInt(req.body.delay, 10);
+if (isNaN(delay) || delay < 0 || delay > 60000) {
+  throw new Error('Invalid delay');
+}
+setTimeout(() => doSomething(), delay);  // Function reference, not string
+\`\`\`
+
+**Python:**
+\`\`\`python
+# ❌ VULNERABLE
+result = eval(user_input)
+exec(user_input)
+
+# ✅ FIXED - for math
+import ast
+result = ast.literal_eval(user_input)  # Only literals, no code
+
+# Or use a safe math library
+import simpleeval
+result = simpleeval.simple_eval(user_input)
+\`\`\``,
+			verification: `- Search for eval: \`grep -r "eval(\\|new Function\\|exec(" --include="*.js" --include="*.py"\`
+- Search for string-based setTimeout: \`grep -r "setTimeout.*req\\|setInterval.*req" --include="*.js"\`
+- Remove or replace all eval usage
+- Verify no user input reaches code execution functions`
+		},
+
+		'prototype-pollution': {
+			title: '🟠 Prototype Pollution',
+			problem: 'User input can modify Object.prototype, affecting all objects in the application.',
+			solution: `Block dangerous keys and use safe merging:
+
+\`\`\`javascript
+// ❌ VULNERABLE - recursive merge without key filtering
+function merge(target, source) {
+  for (const key in source) {
+    if (typeof source[key] === 'object') {
+      target[key] = merge(target[key] || {}, source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+  return target;
+}
+
+// Attacker sends: {"__proto__": {"isAdmin": true}}
+merge({}, userInput);
+// Now ALL objects have isAdmin === true!
+
+// ✅ FIXED - block dangerous keys
+const DANGEROUS_KEYS = ['__proto__', 'constructor', 'prototype'];
+
+function safeMerge(target, source) {
+  for (const key in source) {
+    if (DANGEROUS_KEYS.includes(key)) {
+      continue;  // Skip dangerous keys
+    }
+
+    if (typeof source[key] === 'object' && source[key] !== null) {
+      target[key] = safeMerge(target[key] || {}, source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+  return target;
+}
+
+// ✅ BETTER - use Map for user-keyed data
+const userData = new Map();
+userData.set(userKey, userValue);  // Safe - Map doesn't pollute prototype
+
+// ✅ ALTERNATIVE - use Object.create(null)
+const safeObj = Object.create(null);  // No prototype chain
+safeObj[userKey] = userValue;  // Safe
+
+// ✅ USE safe libraries
+const _ = require('lodash');  // Updated versions are safe
+_.merge(target, source);  // Lodash blocks __proto__
+\`\`\``,
+			verification: `- Search for recursive merge/extend: \`grep -r "merge\\|extend\\|deepCopy" --include="*.js"\`
+- Test with: \`{"__proto__": {"polluted": true}}\`
+- Check: \`({}).polluted\` should be undefined
+- Use Object.create(null) or Map for user-keyed objects`
+		},
+
+		'regex-dos': {
+			title: '🟠 Regular Expression DoS (ReDoS)',
+			problem: 'Complex regex patterns with nested quantifiers can cause catastrophic backtracking.',
+			solution: `Avoid vulnerable regex patterns and add input limits:
+
+\`\`\`javascript
+// ❌ VULNERABLE - nested quantifiers cause exponential backtracking
+const emailRegex = /^([a-zA-Z0-9]+)+@/;  // (x+)+ is dangerous
+const badRegex = /^(a+)+$/;
+const overlapping = /^(a|a)+$/;
+
+// These can hang with input like: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!"
+
+// ✅ FIXED - use atomic groups / possessive quantifiers (where supported)
+// Or simplify the regex
+const safeEmailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/;
+
+// ✅ FIXED - limit input length before regex
+function validateEmail(input) {
+  if (typeof input !== 'string' || input.length > 254) {
+    return false;
+  }
+  return safeEmailRegex.test(input);
+}
+
+// ✅ FIXED - use regex timeout (Node.js 16+)
+const { RE2 } = require('re2');  // Linear time regex engine
+
+const safeRegex = new RE2('^([a-zA-Z0-9]+)+@');  // RE2 prevents backtracking
+
+// ✅ FIXED - for user-provided regex patterns
+function createSafeRegex(pattern, flags) {
+  // Limit pattern length
+  if (pattern.length > 100) {
+    throw new Error('Pattern too long');
+  }
+
+  // Use RE2 for user patterns
+  return new RE2(pattern, flags);
+}
+\`\`\`
+
+**Test for vulnerable patterns:** Use [recheck](https://makenowjust-labs.github.io/recheck/)`,
+			verification: `- Search for complex regex: \`grep -r "\\(.*+\\).*+" --include="*.js"\`
+- Test suspicious patterns with long input
+- Add input length limits before regex
+- Consider RE2 library for user-provided patterns`
+		},
+
+		'weak-random': {
+			title: '🟠 Weak Random Number Generation',
+			problem: 'Math.random() is not cryptographically secure and can be predicted.',
+			solution: `Use crypto module for security-sensitive random values:
+
+\`\`\`javascript
+// ❌ VULNERABLE - predictable
+const token = Math.random().toString(36).substring(2);
+const sessionId = Math.random().toString();
+
+// ✅ FIXED - cryptographically secure
+const crypto = require('crypto');
+
+// For tokens/secrets (hex string)
+const token = crypto.randomBytes(32).toString('hex');
+
+// For URL-safe tokens
+const urlSafeToken = crypto.randomBytes(32).toString('base64url');
+
+// For session IDs
+const sessionId = crypto.randomUUID();
+
+// For numeric values in a range
+function secureRandomInt(min, max) {
+  const range = max - min;
+  const randomBuffer = crypto.randomBytes(4);
+  const randomValue = randomBuffer.readUInt32BE(0);
+  return min + (randomValue % range);
+}
+
+// For selecting from an array
+function secureRandomChoice(array) {
+  const index = secureRandomInt(0, array.length);
+  return array[index];
+}
+\`\`\`
+
+**Python:**
+\`\`\`python
+# ❌ VULNERABLE
+import random
+token = ''.join(random.choices(string.ascii_letters, k=32))
+
+# ✅ FIXED
+import secrets
+
+token = secrets.token_hex(32)
+url_safe_token = secrets.token_urlsafe(32)
+random_int = secrets.randbelow(100)
+random_choice = secrets.choice(['a', 'b', 'c'])
+\`\`\``,
+			verification: `- Search for Math.random: \`grep -r "Math.random" --include="*.js"\`
+- Search for Python random: \`grep -r "import random\\|from random" --include="*.py"\`
+- Verify security-sensitive values use crypto/secrets module
+- Check token generation for sessions, reset tokens, API keys`
+		},
+
+		'tls-issues': {
+			title: '🟠 TLS/SSL Security Issues',
+			problem: 'TLS certificate validation is disabled or weak protocols are allowed.',
+			solution: `Never disable certificate validation in production:
+
+**Node.js:**
+\`\`\`javascript
+// ❌ VULNERABLE
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+const https = require('https');
+https.get('https://example.com', { rejectUnauthorized: false });
+
+const axios = require('axios');
+axios.get('https://example.com', { httpsAgent: new https.Agent({ rejectUnauthorized: false }) });
+
+// ✅ FIXED - always validate certificates
+// Remove NODE_TLS_REJECT_UNAUTHORIZED from env
+
+const https = require('https');
+https.get('https://example.com');  // Validates by default
+
+// For self-signed certs in development only:
+const agent = new https.Agent({
+  rejectUnauthorized: process.env.NODE_ENV === 'production',
+  // Or specify the CA:
+  ca: fs.readFileSync('path/to/ca-cert.pem')
+});
+\`\`\`
+
+**Python:**
+\`\`\`python
+# ❌ VULNERABLE
+import requests
+response = requests.get(url, verify=False)
+
+import urllib3
+urllib3.disable_warnings()
+
+# ✅ FIXED
+response = requests.get(url)  # verify=True is default
+
+# For self-signed certs:
+response = requests.get(url, verify='/path/to/ca-bundle.crt')
+\`\`\``,
+			verification: `- Search for disabled verification: \`grep -r "rejectUnauthorized.*false\\|verify.*False\\|NODE_TLS_REJECT" --include="*.js" --include="*.py"\`
+- Remove all SSL verification bypasses
+- For self-signed certs, specify the CA file instead of disabling`
+		},
+
+		'other-security': {
+			title: '⚠️ Security Issue',
+			problem: 'A security issue was detected that requires manual review.',
+			solution: `Review the finding and apply appropriate security measures:
+
+**General security principles to apply:**
+
+1. **Input Validation**
+   - Validate all input at system boundaries
+   - Use allowlists over blocklists
+   - Validate type, length, format, and range
+
+2. **Output Encoding**
+   - Encode output based on context (HTML, URL, JavaScript, SQL)
+   - Use framework-provided escaping functions
+
+3. **Authentication & Authorization**
+   - Verify identity on every request
+   - Check permissions before accessing resources
+   - Use established authentication libraries
+
+4. **Cryptography**
+   - Use modern algorithms (AES-256-GCM, bcrypt, SHA-256+)
+   - Never roll your own crypto
+   - Generate strong random values with crypto module
+
+5. **Error Handling**
+   - Log errors server-side with details
+   - Return generic messages to users
+   - Never expose stack traces in production
+
+6. **Dependencies**
+   - Keep dependencies updated
+   - Run npm audit regularly
+   - Remove unused packages
+
+**To fix this specific issue:**
+1. Read the finding title and description carefully
+2. Identify what type of vulnerability it represents
+3. Apply the relevant security principle above
+4. Test that the fix works and doesn't break functionality`,
+			verification: `- Review the specific vulnerability type
+- Apply appropriate security controls
+- Test the fix thoroughly
+- Search for similar patterns in the codebase`
+		}
+	};
+
+	return guides[type] || guides['other-security'];
 }
 
 /**
@@ -2270,12 +4255,60 @@ function getFixHint(finding: any): string {
 		}
 	}
 
-	// === Fallback with more context ===
-	// Instead of generic advice, provide vulnerability-type-specific guidance based on severity
-	const severity = finding.severity?.toLowerCase() || 'medium';
-	if (severity === 'critical' || severity === 'high') {
-		return `Critical security issue - review ${finding.title || 'this code'} immediately. Check OWASP guidelines for ${finding.category || 'this vulnerability type'}`;
+	// === Fallback with category-based specific guidance ===
+	// Extract vulnerability type from title/message for targeted advice
+	const combinedText = `${title} ${message} ${ruleId}`;
+
+	// Dependency vulnerabilities (Trivy/npm audit)
+	if (searchKey.includes('cve-') || searchKey.includes('ghsa-') || searchKey.includes('vulnerable') && searchKey.includes('version')) {
+		return `Update vulnerable package to patched version. Run: npm audit fix or npm update [package]. If no fix available, evaluate alternatives or apply workaround`;
 	}
 
-	return `Review and fix: ${finding.title || 'security issue'}. Apply input validation, output encoding, and least privilege principles`;
+	// Authentication/Authorization patterns
+	if (combinedText.includes('auth') || combinedText.includes('login') || combinedText.includes('permission') || combinedText.includes('access control')) {
+		return 'Add authentication middleware and verify user permissions before processing. Use established auth libraries (passport, next-auth, lucia)';
+	}
+
+	// Input validation patterns
+	if (combinedText.includes('input') || combinedText.includes('validation') || combinedText.includes('sanitiz') || combinedText.includes('untrusted')) {
+		return 'Validate and sanitize all user input. Use schema validation (Zod, Joi, Yup) at API boundaries. Never trust client-side validation alone';
+	}
+
+	// Encryption/cryptography patterns
+	if (combinedText.includes('encrypt') || combinedText.includes('crypto') || combinedText.includes('cipher') || combinedText.includes('hash')) {
+		return 'Use modern cryptography: AES-256-GCM for encryption, bcrypt/argon2 for passwords, SHA-256+ for hashing. Never roll your own crypto';
+	}
+
+	// Network/API security patterns
+	if (combinedText.includes('http') || combinedText.includes('request') || combinedText.includes('fetch') || combinedText.includes('api')) {
+		return 'Use HTTPS only. Validate response data. Set appropriate timeouts. Never expose internal endpoints or sensitive headers';
+	}
+
+	// File system patterns
+	if (combinedText.includes('file') || combinedText.includes('path') || combinedText.includes('directory') || combinedText.includes('read') || combinedText.includes('write')) {
+		return 'Validate file paths stay within allowed directories. Use path.resolve() + startsWith() check. Never use user input directly in file operations';
+	}
+
+	// Database patterns
+	if (combinedText.includes('database') || combinedText.includes('query') || combinedText.includes('sql') || combinedText.includes('mongo')) {
+		return 'Use parameterized queries or ORM methods. Never concatenate user input into queries. Limit query results and use proper indexing';
+	}
+
+	// Configuration/environment patterns
+	if (combinedText.includes('config') || combinedText.includes('environment') || combinedText.includes('setting') || combinedText.includes('production')) {
+		return 'Use environment variables for sensitive config. Disable debug mode in production. Set secure defaults and validate all config values';
+	}
+
+	// Logging/error handling patterns
+	if (combinedText.includes('log') || combinedText.includes('error') || combinedText.includes('exception') || combinedText.includes('stack')) {
+		return 'Never log sensitive data (passwords, tokens, PII). Return generic error messages to users. Log details server-side only for debugging';
+	}
+
+	// Final fallback - still actionable
+	const severity = finding.severity?.toLowerCase() || 'medium';
+	if (severity === 'critical' || severity === 'high') {
+		return `High-priority fix needed. Review the vulnerable code pattern, apply input validation, use secure library functions, and test the fix thoroughly`;
+	}
+
+	return `Review this code for security issues. Apply defense in depth: validate inputs, encode outputs, use least privilege, and prefer established security libraries`;
 }
