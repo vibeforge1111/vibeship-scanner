@@ -325,54 +325,56 @@
 		<h2 class="section-title">AI-Ready Fix Prompts</h2>
 		<p class="ai-fix-subtitle">You built it with AI. Fix it with AI.</p>
 
-		<div class="ai-fix-flow">
-			<div class="ai-fix-step">
-				<div class="ai-fix-step-icon">
-					<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-						<circle cx="11" cy="11" r="8"/>
-						<path d="m21 21-4.35-4.35"/>
+		<div class="ai-fix-flow-wrapper">
+			<div class="ai-fix-flow">
+				<div class="ai-fix-step">
+					<div class="ai-fix-step-icon">
+						<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<circle cx="11" cy="11" r="8"/>
+							<path d="m21 21-4.35-4.35"/>
+						</svg>
+					</div>
+					<div class="ai-fix-step-content">
+						<h4>Scan finds issues</h4>
+						<p>SQL injection, XSS, exposed secrets — we catch it all</p>
+					</div>
+				</div>
+				<div class="ai-fix-arrow">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
-				<div class="ai-fix-step-content">
-					<h4>Scan finds issues</h4>
-					<p>SQL injection, XSS, exposed secrets — we catch it all</p>
+				<div class="ai-fix-step">
+					<div class="ai-fix-step-icon">
+						<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<rect x="8" y="2" width="8" height="4" rx="1"/>
+							<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+							<path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>
+						</svg>
+					</div>
+					<div class="ai-fix-step-content">
+						<h4>Get the fix prompt</h4>
+						<p>One-click copy with file, line, and exact fix instructions</p>
+					</div>
 				</div>
-			</div>
-			<div class="ai-fix-arrow">
-				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-					<path d="M5 12h14M12 5l7 7-7 7"/>
-				</svg>
-			</div>
-			<div class="ai-fix-step">
-				<div class="ai-fix-step-icon">
-					<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-						<rect x="8" y="2" width="8" height="4" rx="1"/>
-						<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-						<path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>
+				<div class="ai-fix-arrow">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
-				<div class="ai-fix-step-content">
-					<h4>Get the fix prompt</h4>
-					<p>One-click copy with file, line, and exact fix instructions</p>
-				</div>
-			</div>
-			<div class="ai-fix-arrow">
-				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-					<path d="M5 12h14M12 5l7 7-7 7"/>
-				</svg>
-			</div>
-			<div class="ai-fix-step">
-				<div class="ai-fix-step-icon">
-					<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-						<path d="M12 8V4H8"/>
-						<rect x="2" y="2" width="20" height="20" rx="5"/>
-						<path d="M8 4l4 4-4 4"/>
-						<path d="m16 12-4 4 4 4"/>
-					</svg>
-				</div>
-				<div class="ai-fix-step-content">
-					<h4>Paste to your AI</h4>
-					<p>Claude, Cursor, ChatGPT, Gemini — they all understand it</p>
+				<div class="ai-fix-step">
+					<div class="ai-fix-step-icon">
+						<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+							<path d="M12 8V4H8"/>
+							<rect x="2" y="2" width="20" height="20" rx="5"/>
+							<path d="M8 4l4 4-4 4"/>
+							<path d="m16 12-4 4 4 4"/>
+						</svg>
+					</div>
+					<div class="ai-fix-step-content">
+						<h4>Paste to your AI</h4>
+						<p>Claude, Cursor, ChatGPT, Gemini — they all understand it</p>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -1101,17 +1103,13 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 	/* AI Fix Section */
 	.ai-fix {
 		padding: 6rem 3rem;
-		background: var(--bg-inverse);
-		color: var(--text-inverse);
+		border-top: 1px solid var(--border);
+		background: var(--bg-primary);
 	}
 
 	.ai-fix-inner {
 		max-width: 1000px;
 		margin: 0 auto;
-	}
-
-	.ai-fix .section-label {
-		color: var(--text-inverse-secondary);
 	}
 
 	.ai-fix .section-title {
@@ -1124,7 +1122,13 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 
 	.ai-fix-subtitle {
 		font-size: 1.1rem;
-		color: var(--text-inverse-secondary);
+		color: var(--text-secondary);
+		margin-bottom: 3rem;
+	}
+
+	.ai-fix-flow-wrapper {
+		background: var(--bg-inverse);
+		padding: 2.5rem 2rem;
 		margin-bottom: 3rem;
 	}
 
@@ -1133,7 +1137,6 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 		align-items: center;
 		justify-content: center;
 		gap: 1.5rem;
-		margin-bottom: 3rem;
 	}
 
 	.ai-fix-step {
@@ -1158,6 +1161,7 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 		font-size: 1.25rem;
 		font-weight: 400;
 		margin-bottom: 0.5rem;
+		color: var(--text-inverse);
 	}
 
 	.ai-fix-step-content p {
@@ -1176,8 +1180,8 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 	}
 
 	.ai-fix-demo {
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		background: rgba(0, 0, 0, 0.2);
+		border: 1px solid var(--border);
+		background: var(--bg-secondary);
 		margin-bottom: 2.5rem;
 		overflow: hidden;
 	}
@@ -1187,14 +1191,14 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.75rem 1.25rem;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-		background: rgba(0, 0, 0, 0.2);
+		border-bottom: 1px solid var(--border);
+		background: var(--bg-primary);
 	}
 
 	.ai-fix-demo-label {
 		font-size: 0.8rem;
 		font-weight: 500;
-		color: var(--text-inverse-secondary);
+		color: var(--text-secondary);
 	}
 
 	.ai-fix-demo-badge {
@@ -1202,7 +1206,7 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--green);
-		background: rgba(0, 196, 154, 0.15);
+		background: rgba(0, 196, 154, 0.1);
 		padding: 0.25rem 0.75rem;
 		border-radius: 20px;
 	}
@@ -1222,17 +1226,17 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 	}
 
 	.ai-fix-demo-content code {
-		color: var(--text-inverse-secondary);
+		color: var(--text-secondary);
 	}
 
 	.prompt-title {
-		color: var(--text-inverse);
+		color: var(--text-primary);
 		font-weight: 600;
 		font-size: 0.9rem;
 	}
 
 	.prompt-meta {
-		color: var(--text-inverse-secondary);
+		color: var(--text-secondary);
 	}
 
 	.prompt-highlight {
@@ -1241,26 +1245,24 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 	}
 
 	.prompt-stats {
-		color: var(--text-inverse-secondary);
+		color: var(--text-tertiary);
 		font-size: 0.75rem;
-		opacity: 0.7;
 	}
 
 	.prompt-section {
-		color: #ff6b6b;
+		color: var(--red);
 		font-weight: 600;
 		margin-top: 0.5rem;
 	}
 
 	.prompt-location {
-		color: var(--text-inverse-secondary);
+		color: var(--text-secondary);
 		font-size: 0.75rem;
 	}
 
 	.prompt-fix {
-		color: var(--text-inverse-secondary);
+		color: var(--text-tertiary);
 		font-size: 0.75rem;
-		opacity: 0.7;
 	}
 
 	.ai-fix-features {
@@ -1275,11 +1277,11 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 		align-items: center;
 		gap: 0.5rem;
 		font-size: 0.9rem;
-		color: var(--text-inverse-secondary);
+		color: var(--text-secondary);
 	}
 
 	.ai-fix-feature-icon {
-		color: var(--text-inverse);
+		color: var(--text-primary);
 	}
 
 	@media (max-width: 1024px) {
@@ -1347,6 +1349,13 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 
 		.ai-fix-subtitle {
 			font-size: 1rem;
+			margin-bottom: 2rem;
+		}
+
+		.ai-fix-flow-wrapper {
+			padding: 2rem 1.5rem;
+			margin-left: -1.5rem;
+			margin-right: -1.5rem;
 			margin-bottom: 2rem;
 		}
 
