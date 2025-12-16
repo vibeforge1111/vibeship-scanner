@@ -1810,30 +1810,29 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 0.5rem;
 	}
 
 	.vibe-finding-chip {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1rem;
+		gap: 0.35rem;
+		padding: 0.4rem 0.7rem;
 		background: var(--bg-primary);
-		border: 2px solid var(--border);
+		border: 1px solid var(--border);
 	}
 
 	.vibe-finding-chip .chip-count {
 		font-family: 'JetBrains Mono', monospace;
-		font-size: 1.4rem;
+		font-size: 1.1rem;
 		font-weight: 700;
 		line-height: 1;
 	}
 
 	.vibe-finding-chip .chip-label {
 		font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-		font-size: 0.85rem;
+		font-size: 0.75rem;
 		font-weight: 600;
-		letter-spacing: 0.01em;
 	}
 
 	/* Chip colors - both count and label colored */
