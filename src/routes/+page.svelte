@@ -397,6 +397,90 @@
 	</div>
 </section>
 
+<section class="ai-fix" id="ai-fix">
+	<div class="ai-fix-inner">
+		<p class="section-label">Built for Vibe Coders</p>
+		<h2 class="section-title">AI-Ready Fix Prompts</h2>
+		<p class="ai-fix-subtitle">You built it with AI. Fix it with AI.</p>
+
+		<div class="ai-fix-flow">
+			<div class="ai-fix-step">
+				<div class="ai-fix-step-icon">🔍</div>
+				<div class="ai-fix-step-content">
+					<h4>Scan finds issues</h4>
+					<p>SQL injection, XSS, exposed secrets — we catch it all</p>
+				</div>
+			</div>
+			<div class="ai-fix-arrow">→</div>
+			<div class="ai-fix-step">
+				<div class="ai-fix-step-icon">📋</div>
+				<div class="ai-fix-step-content">
+					<h4>Get the fix prompt</h4>
+					<p>One-click copy with file, line, and exact fix instructions</p>
+				</div>
+			</div>
+			<div class="ai-fix-arrow">→</div>
+			<div class="ai-fix-step">
+				<div class="ai-fix-step-icon">🤖</div>
+				<div class="ai-fix-step-content">
+					<h4>Paste to your AI</h4>
+					<p>Claude, Cursor, ChatGPT, Gemini — they all understand it</p>
+				</div>
+			</div>
+		</div>
+
+		<div class="ai-fix-demo">
+			<div class="ai-fix-demo-header">
+				<span class="ai-fix-demo-label">Example AI Fix Prompt</span>
+				<span class="ai-fix-demo-badge">Copy & Paste Ready</span>
+			</div>
+			<div class="ai-fix-demo-content">
+				<pre><code><span class="prompt-title"># Security Fix Guide</span>
+
+<span class="prompt-meta">I need help fixing <span class="prompt-highlight">12 security vulnerabilities</span> in my codebase.</span>
+
+<span class="prompt-stats">Severity: 🔴 2 Critical | 🟠 5 High | 🟡 4 Medium | ⚪ 1 Low</span>
+<span class="prompt-stats">⚡ Quick Wins: 4 issues can be fixed with simple changes</span>
+
+<span class="prompt-section">## 🔴 SQL Injection</span>
+
+<span class="prompt-location">- `src/db/users.js:45` [HIGH] SQL query uses string concatenation</span>
+<span class="prompt-location">- `src/api/search.js:23` [HIGH] Unparameterized query</span>
+
+<span class="prompt-fix">**How to Fix:**
+Replace string concatenation with parameterized queries:
+
+```javascript
+// ❌ Vulnerable
+db.query("SELECT * FROM users WHERE id = " + userId)
+
+// ✅ Fixed
+db.query("SELECT * FROM users WHERE id = $1", [userId])
+```</span></code></pre>
+			</div>
+		</div>
+
+		<div class="ai-fix-features">
+			<div class="ai-fix-feature">
+				<span class="ai-fix-feature-icon">⚡</span>
+				<span>Quick wins marked for easy fixes</span>
+			</div>
+			<div class="ai-fix-feature">
+				<span class="ai-fix-feature-icon">📍</span>
+				<span>Exact file and line numbers</span>
+			</div>
+			<div class="ai-fix-feature">
+				<span class="ai-fix-feature-icon">💻</span>
+				<span>Before/after code examples</span>
+			</div>
+			<div class="ai-fix-feature">
+				<span class="ai-fix-feature-icon">🎯</span>
+				<span>Severity-ordered for priority</span>
+			</div>
+		</div>
+	</div>
+</section>
+
 <div class="cta-wrapper">
 	<section class="cta">
 		<div class="cta-inner">
@@ -927,6 +1011,177 @@
 		text-align: right;
 	}
 
+	/* AI Fix Section */
+	.ai-fix {
+		padding: 6rem 3rem;
+		border-top: 1px solid var(--border);
+		background: var(--bg-primary);
+	}
+
+	.ai-fix-inner {
+		max-width: 1000px;
+		margin: 0 auto;
+	}
+
+	.ai-fix .section-title {
+		font-family: 'Instrument Serif', serif;
+		font-size: 2.5rem;
+		font-weight: 400;
+		margin-bottom: 0.5rem;
+		letter-spacing: -0.02em;
+	}
+
+	.ai-fix-subtitle {
+		font-size: 1.1rem;
+		color: var(--text-secondary);
+		margin-bottom: 3rem;
+	}
+
+	.ai-fix-flow {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 1.5rem;
+		margin-bottom: 3rem;
+	}
+
+	.ai-fix-step {
+		display: flex;
+		align-items: flex-start;
+		gap: 1rem;
+		flex: 1;
+		max-width: 250px;
+	}
+
+	.ai-fix-step-icon {
+		font-size: 2rem;
+		flex-shrink: 0;
+	}
+
+	.ai-fix-step-content h4 {
+		font-family: 'Instrument Serif', serif;
+		font-size: 1.25rem;
+		font-weight: 400;
+		margin-bottom: 0.5rem;
+	}
+
+	.ai-fix-step-content p {
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+		line-height: 1.6;
+	}
+
+	.ai-fix-arrow {
+		font-size: 1.5rem;
+		color: var(--text-tertiary);
+		flex-shrink: 0;
+	}
+
+	.ai-fix-demo {
+		border: 1px solid var(--border);
+		background: var(--bg-secondary);
+		margin-bottom: 2.5rem;
+		overflow: hidden;
+	}
+
+	.ai-fix-demo-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.75rem 1.25rem;
+		border-bottom: 1px solid var(--border);
+		background: var(--bg-primary);
+	}
+
+	.ai-fix-demo-label {
+		font-size: 0.8rem;
+		font-weight: 500;
+		color: var(--text-secondary);
+	}
+
+	.ai-fix-demo-badge {
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--green);
+		background: rgba(0, 196, 154, 0.1);
+		padding: 0.25rem 0.75rem;
+		border-radius: 20px;
+	}
+
+	.ai-fix-demo-content {
+		padding: 1.5rem;
+		overflow-x: auto;
+	}
+
+	.ai-fix-demo-content pre {
+		margin: 0;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.8rem;
+		line-height: 1.7;
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+
+	.ai-fix-demo-content code {
+		color: var(--text-secondary);
+	}
+
+	.prompt-title {
+		color: var(--text-primary);
+		font-weight: 600;
+		font-size: 0.9rem;
+	}
+
+	.prompt-meta {
+		color: var(--text-secondary);
+	}
+
+	.prompt-highlight {
+		color: var(--green);
+		font-weight: 500;
+	}
+
+	.prompt-stats {
+		color: var(--text-tertiary);
+		font-size: 0.75rem;
+	}
+
+	.prompt-section {
+		color: var(--red);
+		font-weight: 600;
+		margin-top: 0.5rem;
+	}
+
+	.prompt-location {
+		color: var(--text-secondary);
+		font-size: 0.75rem;
+	}
+
+	.prompt-fix {
+		color: var(--text-tertiary);
+		font-size: 0.75rem;
+	}
+
+	.ai-fix-features {
+		display: flex;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: 1.5rem 2.5rem;
+	}
+
+	.ai-fix-feature {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.9rem;
+		color: var(--text-secondary);
+	}
+
+	.ai-fix-feature-icon {
+		font-size: 1.1rem;
+	}
+
 	@media (max-width: 1024px) {
 		.features-grid {
 			grid-template-columns: 1fr;
@@ -934,6 +1189,20 @@
 
 		.how-grid {
 			grid-template-columns: repeat(2, 1fr);
+		}
+
+		.ai-fix-flow {
+			flex-wrap: wrap;
+			gap: 2rem;
+		}
+
+		.ai-fix-arrow {
+			display: none;
+		}
+
+		.ai-fix-step {
+			max-width: 100%;
+			flex-basis: calc(50% - 1rem);
 		}
 	}
 
@@ -967,8 +1236,56 @@
 
 		.features,
 		.how,
-		.cta {
+		.cta,
+		.ai-fix {
 			padding: 4rem 1.5rem;
+		}
+
+		.ai-fix .section-title {
+			font-size: 2rem;
+		}
+
+		.ai-fix-subtitle {
+			font-size: 1rem;
+			margin-bottom: 2rem;
+		}
+
+		.ai-fix-flow {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 1.5rem;
+		}
+
+		.ai-fix-step {
+			flex-basis: 100%;
+			max-width: 100%;
+		}
+
+		.ai-fix-step-icon {
+			font-size: 1.75rem;
+		}
+
+		.ai-fix-step-content h4 {
+			font-size: 1.1rem;
+		}
+
+		.ai-fix-demo-content {
+			padding: 1rem;
+		}
+
+		.ai-fix-demo-content pre {
+			font-size: 0.7rem;
+			line-height: 1.6;
+		}
+
+		.ai-fix-features {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 1rem;
+		}
+
+		.ai-fix-feature {
+			font-size: 0.85rem;
 		}
 
 		.recent-list {
