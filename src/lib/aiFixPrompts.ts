@@ -1789,6 +1789,54 @@ function detectEducationalRepo(findings: any[]): { isEducational: boolean, repoT
 }
 
 /**
+ * Identify quick-win fixes that are easy to implement
+ * Returns complexity rating and reason
+ */
+function getFixComplexity(finding: any): { complexity: 'quick' | 'moderate' | 'complex', reason: string } {
+	const searchKey = `${finding.ruleId || ''} ${finding.title || ''} ${finding.message || ''}`.toLowerCase();
+	const type = categorizeVulnerability(finding);
+
+	// Quick wins - single line or config changes
+	const quickWinPatterns = [
+		{ match: /httponly|http.?only/i, reason: 'Add httpOnly flag to cookie' },
+		{ match: /secure.?cookie|cookie.?secure/i, reason: 'Add secure flag to cookie' },
+		{ match: /samesite/i, reason: 'Add sameSite attribute to cookie' },
+		{ match: /x-frame-options|clickjack/i, reason: 'Add security header' },
+		{ match: /x-content-type|nosniff/i, reason: 'Add security header' },
+		{ match: /strict-transport|hsts/i, reason: 'Add HSTS header' },
+		{ match: /helmet/i, reason: 'Install and configure helmet' },
+		{ match: /debug.?mode|debug.?true/i, reason: 'Disable debug mode' },
+		{ match: /console\.log|print.*password/i, reason: 'Remove sensitive logging' },
+		{ match: /md5|sha1(?!.*pbkdf)/i, reason: 'Replace weak hash algorithm' },
+	];
+
+	for (const { match, reason } of quickWinPatterns) {
+		if (match.test(searchKey)) {
+			return { complexity: 'quick', reason };
+		}
+	}
+
+	// Type-based complexity
+	const quickTypes = ['cookie-security', 'security-headers', 'debug-exposure', 'cors'];
+	const complexTypes = ['broken-auth', 'broken-access-control', 'session-security', 'insecure-deserialization'];
+
+	if (quickTypes.includes(type)) {
+		return { complexity: 'quick', reason: 'Configuration change' };
+	}
+
+	if (complexTypes.includes(type)) {
+		return { complexity: 'complex', reason: 'Requires architectural changes' };
+	}
+
+	// Vulnerable dependencies - depends on if fix is available
+	if (type === 'vulnerable-dependency') {
+		return { complexity: 'moderate', reason: 'Update package (check for breaking changes)' };
+	}
+
+	return { complexity: 'moderate', reason: 'Code modification required' };
+}
+
+/**
  * Generate a master prompt to fix ALL issues at once
  * @param findings - Array of security findings
  * @param includeInfo - Whether to include info-level findings (default: true)
@@ -1818,8 +1866,32 @@ export function generateMasterFixPrompt(findings: any[], includeInfo: boolean = 
 	// Group deduplicated findings by vulnerability type for better organization
 	const grouped = groupFindingsByType(deduplicated);
 
-	// Generate the detailed fix guide for each group
-	const fixGuides = Object.entries(grouped).map(([type, typeFindings]) => {
+	// Calculate severity counts for summary
+	const severityCounts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+	for (const finding of deduplicated) {
+		const sev = (finding.severity || 'info').toLowerCase();
+		if (sev in severityCounts) {
+			severityCounts[sev as keyof typeof severityCounts]++;
+		}
+	}
+
+	// Sort type groups by their highest severity finding
+	const severityRank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+	const sortedGroups = Object.entries(grouped).sort(([, findingsA], [, findingsB]) => {
+		const getHighestSeverity = (findings: any[]) => {
+			let highest = 4; // default to info
+			for (const f of findings) {
+				const sev = (f.severity || 'info').toLowerCase();
+				const order = severityRank[sev] ?? 4;
+				if (order < highest) highest = order;
+			}
+			return highest;
+		};
+		return getHighestSeverity(findingsA) - getHighestSeverity(findingsB);
+	});
+
+	// Generate the detailed fix guide for each group (now in severity order)
+	const fixGuides = sortedGroups.map(([type, typeFindings]) => {
 		// For each finding in the group, check if it has duplicates and enhance the output
 		const enhancedFindings = typeFindings.map(f => {
 			const ruleId = f.ruleId || f.title || '';
@@ -1843,7 +1915,28 @@ export function generateMasterFixPrompt(findings: any[], includeInfo: boolean = 
 		return guide;
 	}).join('\n\n---\n\n');
 
-	// Summary list for quick reference - show unique issues with occurrence counts
+	// Build severity summary line
+	const severitySummaryParts: string[] = [];
+	if (severityCounts.critical > 0) severitySummaryParts.push(`🔴 ${severityCounts.critical} Critical`);
+	if (severityCounts.high > 0) severitySummaryParts.push(`🟠 ${severityCounts.high} High`);
+	if (severityCounts.medium > 0) severitySummaryParts.push(`🟡 ${severityCounts.medium} Medium`);
+	if (severityCounts.low > 0) severitySummaryParts.push(`⚪ ${severityCounts.low} Low`);
+	if (severityCounts.info > 0) severitySummaryParts.push(`ℹ️ ${severityCounts.info} Info`);
+	const severitySummary = severitySummaryParts.length > 0
+		? `\n\n**Severity Breakdown:** ${severitySummaryParts.join('  |  ')}`
+		: '';
+
+	// Count quick wins
+	let quickWinCount = 0;
+	for (const f of deduplicated) {
+		const { complexity } = getFixComplexity(f);
+		if (complexity === 'quick') quickWinCount++;
+	}
+	const quickWinNote = quickWinCount > 0
+		? `\n\n**⚡ Quick Wins:** ${quickWinCount} issues can be fixed with simple config/code changes (marked with ⚡)`
+		: '';
+
+	// Summary list for quick reference - show unique issues with occurrence counts and complexity
 	const summaryList = deduplicated.map((f, i) => {
 		const location = f.location?.file
 			? `${f.location.file}${f.location.line ? `:${f.location.line}` : ''}`
@@ -1857,8 +1950,12 @@ export function generateMasterFixPrompt(findings: any[], includeInfo: boolean = 
 		const depKey = `dep:${f.packageName || f.title || ruleId}`;
 		const duplicates = duplicateGroups.get(fileRuleKey) || duplicateGroups.get(depKey);
 
+		// Check complexity
+		const { complexity } = getFixComplexity(f);
+		const quickWinIcon = complexity === 'quick' ? ' ⚡' : '';
+
 		const countSuffix = duplicates && duplicates.length > 1 ? ` (${duplicates.length} occurrences)` : '';
-		return `${i + 1}. [${sev}] ${f.title} → \`${location}\`${countSuffix}`;
+		return `${i + 1}. [${sev}]${quickWinIcon} ${f.title} → \`${location}\`${countSuffix}`;
 	}).join('\n');
 
 	// Calculate deduplication stats
@@ -1876,7 +1973,7 @@ export function generateMasterFixPrompt(findings: any[], includeInfo: boolean = 
 	return `
 # Security Fix Guide
 
-I need help fixing ${uniqueCount} security vulnerabilities in my codebase. This guide contains everything you need to fix each issue.${educationalWarning}${dedupeNote}
+I need help fixing ${uniqueCount} security vulnerabilities in my codebase. This guide contains everything you need to fix each issue.${educationalWarning}${severitySummary}${quickWinNote}${dedupeNote}
 
 ## Quick Summary (${uniqueCount} unique issues)
 
@@ -1886,13 +1983,15 @@ ${summaryList}
 
 ## Detailed Fix Instructions
 
+*Sections are ordered by severity - most critical vulnerability types appear first.*
+
 ${fixGuides}
 
 ---
 
 ## How to Work Through This
 
-1. **Go issue by issue** - Start with the first vulnerability type below
+1. **Go section by section** - Start with the first vulnerability type (most critical)
 2. **Read the file** - Open each listed file and find the vulnerable code at the specified line
 3. **Apply the fix pattern** - Use the code examples provided as templates
 4. **Search for similar issues** - After fixing, grep the codebase for similar vulnerable patterns
