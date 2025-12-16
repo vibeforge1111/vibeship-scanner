@@ -49,10 +49,10 @@
 	// Transformed results for AI-friendly output
 	let vibeResults = $state<TransformedResults | null>(null);
 
-	// Transform results when they change
+	// Transform results when they change - use $derived for proper reactivity
 	$effect(() => {
-		if (results?.findings?.length > 0) {
-			vibeResults = transformResults(results.findings);
+		if (results && results.findings !== undefined) {
+			vibeResults = transformResults(results.findings || []);
 		}
 	});
 
@@ -235,6 +235,19 @@
 		} finally {
 			generatingPdf = false;
 		}
+	}
+
+	function downloadMasterPrompt() {
+		if (!vibeResults?.masterPrompt) return;
+		const blob = new Blob([vibeResults.masterPrompt], { type: 'text/plain' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `vibeship-ai-fix-prompt-${scanId}.txt`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
 	}
 
 	function getGradeColor(grade: string): string {
@@ -814,8 +827,8 @@
 				</div>
 			{/if}
 
-			<!-- Clean unified header -->
-			{#if vibeResults}
+			<!-- Clean unified header - show when we have results -->
+			{#if results}
 				<div class="vibe-card" class:revealed={showResults}>
 					<!-- Top Row: Score + Repo + Actions -->
 					<div class="vibe-top-row">
@@ -855,35 +868,37 @@
 
 					<!-- Findings Row: Inline counts -->
 					<div class="vibe-findings-row">
-						{#if vibeResults.summary.shipBlockers > 0}
-							<div class="vibe-finding-chip blocker">
-								<span class="chip-count">{vibeResults.summary.shipBlockers}</span>
-								<span class="chip-label">Critical</span>
-							</div>
-						{/if}
-						{#if vibeResults.summary.fixThisWeek > 0}
-							<div class="vibe-finding-chip high">
-								<span class="chip-count">{vibeResults.summary.fixThisWeek}</span>
-								<span class="chip-label">High</span>
-							</div>
-						{/if}
-						{#if vibeResults.summary.goodToFix > 0}
-							<div class="vibe-finding-chip medium">
-								<span class="chip-count">{vibeResults.summary.goodToFix}</span>
-								<span class="chip-label">Medium</span>
-							</div>
-						{/if}
-						{#if vibeResults.summary.consider > 0}
-							<div class="vibe-finding-chip low">
-								<span class="chip-count">{vibeResults.summary.consider}</span>
-								<span class="chip-label">Low</span>
-							</div>
-						{/if}
-						{#if vibeResults.summary.fyi > 0}
-							<div class="vibe-finding-chip info">
-								<span class="chip-count">{vibeResults.summary.fyi}</span>
-								<span class="chip-label">Info</span>
-							</div>
+						{#if vibeResults?.summary}
+							{#if vibeResults.summary.shipBlockers > 0}
+								<div class="vibe-finding-chip blocker">
+									<span class="chip-count">{vibeResults.summary.shipBlockers}</span>
+									<span class="chip-label">Critical</span>
+								</div>
+							{/if}
+							{#if vibeResults.summary.fixThisWeek > 0}
+								<div class="vibe-finding-chip high">
+									<span class="chip-count">{vibeResults.summary.fixThisWeek}</span>
+									<span class="chip-label">High</span>
+								</div>
+							{/if}
+							{#if vibeResults.summary.goodToFix > 0}
+								<div class="vibe-finding-chip medium">
+									<span class="chip-count">{vibeResults.summary.goodToFix}</span>
+									<span class="chip-label">Medium</span>
+								</div>
+							{/if}
+							{#if vibeResults.summary.consider > 0}
+								<div class="vibe-finding-chip low">
+									<span class="chip-count">{vibeResults.summary.consider}</span>
+									<span class="chip-label">Low</span>
+								</div>
+							{/if}
+							{#if vibeResults.summary.fyi > 0}
+								<div class="vibe-finding-chip info">
+									<span class="chip-count">{vibeResults.summary.fyi}</span>
+									<span class="chip-label">Info</span>
+								</div>
+							{/if}
 						{/if}
 						{#if results.stack?.frameworks?.length > 0 || results.stack?.languages?.length > 0}
 							<div class="vibe-stack-chips">
@@ -897,76 +912,6 @@
 						{/if}
 					</div>
 				</div>
-			{:else}
-				<!-- CLASSIC MODE: Original header layout -->
-				<div class="results-header">
-					<div class="score-section" class:revealed={showResults}>
-						<div class="score-circle {getGradeClass(results.grade)}">
-							<span class="score-number">{displayScore}</span>
-							<span class="score-label">out of 100</span>
-						</div>
-						<p class="ship-status" class:fade-in={revealStage >= 1}>{getShipMessage(results.shipStatus)}</p>
-						{#if repoUrl}
-							<a href={repoUrl} target="_blank" rel="noopener noreferrer" class="repo-link">
-								<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-									<path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-								</svg>
-								{repoUrl.replace('https://github.com/', '')}
-							</a>
-							<div class="repo-actions" class:revealed={showResults}>
-								<button class="action-btn" onclick={rescanRepo} disabled={rescanning || !repoUrl}>
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-										<path d="M23 4v6h-6"/>
-										<path d="M1 20v-6h6"/>
-										<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-									</svg>
-									{rescanning ? 'Starting...' : 'Rescan'}
-								</button>
-								<button class="action-btn" onclick={shareTwitter}>
-									Share on
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-										<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-									</svg>
-								</button>
-							</div>
-						{/if}
-					</div>
-
-					<div class="summary-section" class:revealed={revealStage >= 3}>
-						<div class="summary-counts">
-							{#if results.summary?.critical > 0}
-								<span class="count severity-critical">{results.summary.critical} Critical</span>
-							{/if}
-							{#if results.summary?.high > 0}
-								<span class="count severity-high">{results.summary.high} High</span>
-							{/if}
-							{#if results.summary?.medium > 0}
-								<span class="count severity-medium">{results.summary.medium} Medium</span>
-							{/if}
-							{#if results.summary?.low > 0}
-								<span class="count severity-low">{results.summary.low} Low</span>
-							{/if}
-							{#if results.summary?.info > 0}
-								<span class="count severity-info">{results.summary.info} Info</span>
-							{/if}
-							{#if !results.summary?.critical && !results.summary?.high && !results.summary?.medium && !results.summary?.low && !results.summary?.info}
-								<span class="count severity-info">No issues found</span>
-							{/if}
-						</div>
-						{#if results.stack?.frameworks?.length > 0}
-							<div class="stack-info">
-								<span class="stack-label">Stack detected:</span>
-								<span class="stack-value">{results.stack.frameworks.join(', ')}</span>
-							</div>
-						{/if}
-						{#if results.stack?.languages?.length > 0}
-							<div class="stack-info">
-								<span class="stack-label">Languages:</span>
-								<span class="stack-value">{results.stack.languages.join(', ')}</span>
-							</div>
-						{/if}
-					</div>
-				</div>
 			{/if}
 
 			{#if results.findings?.length > 0}
@@ -974,13 +919,6 @@
 					<div class="findings-header">
 						<h2>Findings ({results.findings.length})</h2>
 						<div class="findings-actions">
-							<button class="export-btn" onclick={copyFullReport}>
-								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-									<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-									<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-								</svg>
-								{copied === 'report' ? 'Copied!' : 'Copy Report'}
-							</button>
 							<button class="export-btn" onclick={downloadPdf} disabled={generatingPdf}>
 								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -989,16 +927,26 @@
 								</svg>
 								{generatingPdf ? 'Generating...' : 'Download Report'}
 							</button>
+							<button class="export-btn primary" onclick={downloadMasterPrompt}>
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+									<polyline points="7 10 12 15 17 10"/>
+									<line x1="12" y1="15" x2="12" y2="3"/>
+								</svg>
+								Download AI Fix Prompt
+							</button>
 						</div>
 					</div>
 
 					<!-- AI-Friendly Finding Cards -->
-					<VibeSummary results={vibeResults} />
-					<div class="findings-list vibe-list">
-						{#each vibeResults.findings as finding, i}
-							<FindingCard {finding} index={i} />
-						{/each}
-					</div>
+					{#if vibeResults}
+						<VibeSummary results={vibeResults} />
+						<div class="findings-list vibe-list">
+							{#each vibeResults.findings as finding, i}
+								<FindingCard {finding} index={i} />
+							{/each}
+						</div>
+					{/if}
 				</div>
 			{:else}
 				<div class="no-findings">
@@ -1280,165 +1228,6 @@
 		animation: fadeUp 0.5s ease;
 	}
 
-	.results-header {
-		position: relative;
-		display: grid;
-		grid-template-columns: auto 1fr;
-		gap: 4rem;
-		margin-bottom: 4rem;
-		padding-bottom: 2rem;
-		border-bottom: 1px solid var(--border);
-	}
-
-	.repo-actions {
-		display: flex;
-		justify-content: center;
-		gap: 0.5rem;
-		margin-top: 0.75rem;
-		opacity: 0;
-		transform: translateY(-10px);
-		transition: opacity 0.3s ease, transform 0.3s ease;
-		pointer-events: none;
-	}
-
-	.repo-actions.revealed {
-		opacity: 1;
-		transform: translateY(0);
-		pointer-events: auto;
-	}
-
-	.action-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1rem;
-		background: transparent;
-		border: 1px solid var(--border);
-		border-radius: 0;
-		color: var(--text-primary);
-		font-size: 0.75rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.action-btn:hover {
-		background: var(--bg-secondary);
-		border-color: var(--text-primary);
-	}
-
-	.action-btn svg {
-		flex-shrink: 0;
-	}
-
-	.action-btn-primary {
-		background: #000;
-		border-color: #333;
-		color: #fff;
-	}
-
-	.action-btn-primary:hover {
-		background: #1a1a1a;
-		border-color: #444;
-	}
-
-	.action-btn-primary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.top-badge-embed {
-		position: absolute;
-		top: 50px;
-		right: 0;
-		z-index: 10;
-		width: 400px;
-		max-width: calc(100vw - 2rem);
-	}
-
-	.score-section {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		text-align: center;
-	}
-
-	.score-circle {
-		width: 150px;
-		height: 150px;
-		border-radius: 50%;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		margin: 0 auto 1rem auto;
-		border: 3px solid;
-	}
-
-	.score-circle.grade-a { border-color: var(--green); }
-	.score-circle.grade-b { border-color: #84cc16; }
-	.score-circle.grade-c { border-color: var(--orange); }
-	.score-circle.grade-d { border-color: #f97316; }
-	.score-circle.grade-f { border-color: var(--red); }
-
-	.score-number {
-		font-size: 3rem;
-		font-weight: 600;
-		line-height: 1;
-	}
-
-	.score-label {
-		font-size: 0.75rem;
-		color: var(--text-secondary);
-	}
-
-	.grade-badge {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 48px;
-		height: 48px;
-		font-size: 1.5rem;
-		font-weight: 600;
-		margin-bottom: 0.5rem;
-	}
-
-	.grade-badge.grade-a { background: var(--green); color: white; }
-	.grade-badge.grade-b { background: #84cc16; color: white; }
-	.grade-badge.grade-c { background: var(--orange); color: var(--bg-inverse); }
-	.grade-badge.grade-d { background: #f97316; color: white; }
-	.grade-badge.grade-f { background: var(--red); color: white; }
-
-	.ship-status {
-		font-size: 1rem;
-		font-weight: 500;
-	}
-
-	.repo-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.4rem 0.75rem;
-		margin-top: 1rem;
-		background: transparent;
-		border: 1px solid var(--border);
-		color: var(--text-secondary);
-		text-decoration: none;
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.75rem;
-		transition: all 0.15s;
-	}
-
-	.repo-link:hover {
-		border-color: var(--text-primary);
-		background: var(--bg-secondary);
-	}
-
-	.repo-link svg {
-		flex-shrink: 0;
-	}
 
 	.scan-meta {
 		display: flex;
@@ -1465,46 +1254,6 @@
 
 	.scan-completed {
 		opacity: 0.7;
-	}
-
-	.summary-section h2 {
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 1rem;
-		font-weight: 500;
-		margin-bottom: 1.5rem;
-	}
-
-	.summary-counts {
-		display: flex;
-		gap: 1rem;
-		flex-wrap: wrap;
-		margin-bottom: 1.5rem;
-	}
-
-	.count {
-		padding: 0.5rem 1rem;
-		font-size: 0.85rem;
-		font-weight: 500;
-		border: 1px solid;
-	}
-
-	.severity-critical { border-color: var(--red); color: var(--red); }
-	.severity-high { border-color: #f97316; color: #f97316; }
-	.severity-medium { border-color: var(--orange); color: var(--orange); }
-	.severity-low { border-color: var(--blue); color: var(--blue); }
-	.severity-info { border-color: var(--text-tertiary); color: var(--text-tertiary); }
-
-	.stack-info {
-		font-size: 0.85rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.stack-label {
-		color: var(--text-secondary);
-	}
-
-	.stack-value {
-		color: var(--text-primary);
 	}
 
 	.findings-header {
@@ -2204,25 +1953,6 @@
 		transform: scale(1);
 	}
 
-	.ship-status {
-		opacity: 0;
-		transition: opacity 0.4s ease;
-	}
-
-	.ship-status.fade-in {
-		opacity: 1;
-	}
-
-	.summary-section {
-		opacity: 0;
-		transform: translateX(20px);
-		transition: all 0.5s ease;
-	}
-
-	.summary-section.revealed {
-		opacity: 1;
-		transform: translateX(0);
-	}
 
 	.findings-section {
 		opacity: 0;
@@ -2281,16 +2011,28 @@
 		font-size: 0.75rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		background: var(--green-dim);
-		border: 1px solid var(--green-dim);
-		color: var(--bg-primary);
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		color: var(--text-secondary);
 		cursor: pointer;
 		transition: all 0.15s;
 	}
 
 	.export-btn:hover {
+		background: var(--bg-secondary);
+		border-color: var(--text-tertiary);
+		color: var(--text-primary);
+	}
+
+	.export-btn.primary {
 		background: var(--green);
-		border-color: var(--green);
+		border: 1px solid var(--green);
+		color: white;
+	}
+
+	.export-btn.primary:hover {
+		background: var(--green-dim);
+		border-color: var(--green-dim);
 	}
 
 	.export-btn:disabled {
@@ -2413,40 +2155,7 @@
 		color: var(--text-primary);
 	}
 
-	.score-number {
-		font-family: 'JetBrains Mono', monospace;
-	}
-
 	@media (max-width: 768px) {
-		.results-header {
-			grid-template-columns: 1fr;
-			gap: 2rem;
-			padding-top: 3rem;
-		}
-
-		.repo-actions {
-			flex-wrap: wrap;
-		}
-
-		.action-btn {
-			font-size: 0.8rem;
-			padding: 0.4rem 0.75rem;
-		}
-
-		.top-badge-embed {
-			position: relative;
-			top: auto;
-			right: auto;
-			width: 100%;
-			margin-bottom: 1rem;
-		}
-
-		.score-section {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-		}
-
 		/* Vibe Card Mobile */
 		.vibe-card {
 			padding: 1.25rem 1rem;
