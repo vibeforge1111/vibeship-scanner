@@ -1763,15 +1763,19 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		padding: 0.4rem 0.75rem;
 		font-family: 'JetBrains Mono', monospace;
 		font-size: 0.85rem;
 		color: var(--text-secondary);
 		text-decoration: none;
-		transition: color 0.15s;
+		background: var(--bg-primary);
+		border: 1px solid var(--border);
+		transition: all 0.15s;
 	}
 
 	.vibe-repo-link:hover {
 		color: var(--text-primary);
+		border-color: var(--text-tertiary);
 	}
 
 	.vibe-actions {
