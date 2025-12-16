@@ -379,34 +379,45 @@
 			</div>
 		</div>
 
-		<div class="ai-fix-demo">
-			<div class="ai-fix-demo-header">
-				<span class="ai-fix-demo-label">Example AI Fix Prompt</span>
-				<span class="ai-fix-demo-badge">Copy & Paste Ready</span>
+		<div class="terminal">
+			<div class="terminal-header">
+				<div class="terminal-dots">
+					<span class="dot red"></span>
+					<span class="dot yellow"></span>
+					<span class="dot green"></span>
+				</div>
+				<span class="terminal-title">master-fix-prompt.md</span>
+				<span class="terminal-badge">Copy & Paste Ready</span>
 			</div>
-			<div class="ai-fix-demo-content">
-				<pre><code><span class="prompt-title"># Security Fix Guide</span>
-
-<span class="prompt-meta">I need help fixing <span class="prompt-highlight">12 security vulnerabilities</span> in my codebase.</span>
-
-<span class="prompt-stats">Severity: 2 Critical | 5 High | 4 Medium | 1 Low</span>
-<span class="prompt-stats">Quick Wins: 4 issues can be fixed with simple changes</span>
-
-<span class="prompt-section">## SQL Injection</span>
-
-<span class="prompt-location">- `src/db/users.js:45` [HIGH] SQL query uses string concatenation</span>
-<span class="prompt-location">- `src/api/search.js:23` [HIGH] Unparameterized query</span>
-
-<span class="prompt-fix">**How to Fix:**
-Replace string concatenation with parameterized queries:
-
-```javascript
-// Vulnerable
-db.query("SELECT * FROM users WHERE id = " + userId)
-
-// Fixed
-db.query("SELECT * FROM users WHERE id = $1", [userId])
-```</span></code></pre>
+			<div class="terminal-body">
+				<div class="terminal-line title">
+					<span class="typing-text"># Security Fix Guide</span>
+				</div>
+				<div class="terminal-line" style="animation-delay: 0.5s">
+					<span class="typing-text">I need help fixing <span class="highlight">8 security vulnerabilities</span> in my codebase.</span>
+				</div>
+				<div class="terminal-line stats" style="animation-delay: 1s">
+					<span class="typing-text"><span class="severity critical">2 Critical</span> <span class="severity high">3 High</span> <span class="severity medium">2 Medium</span> <span class="severity low">1 Low</span></span>
+				</div>
+				<div class="terminal-line quickwin" style="animation-delay: 1.5s">
+					<span class="typing-text">Quick Wins: 3 issues fixable in &lt;5 min each</span>
+				</div>
+				<div class="terminal-line section" style="animation-delay: 2s">
+					<span class="typing-text">## SQL Injection (Critical)</span>
+				</div>
+				<div class="terminal-line location" style="animation-delay: 2.5s">
+					<span class="typing-text">src/api/users.ts:47 → String concatenation in query</span>
+				</div>
+				<div class="terminal-line code-bad" style="animation-delay: 3s">
+					<span class="typing-text">db.query(`SELECT * FROM users WHERE id = ${id}`)</span>
+				</div>
+				<div class="terminal-line code-good" style="animation-delay: 3.5s">
+					<span class="typing-text">db.query('SELECT * FROM users WHERE id = $1', [id])</span>
+				</div>
+				<div class="terminal-line instruction" style="animation-delay: 4s">
+					<span class="typing-text">Search codebase for similar patterns and fix ALL instances.</span>
+				</div>
+				<div class="terminal-cursor" style="animation-delay: 4.5s"></div>
 			</div>
 		</div>
 
@@ -1179,90 +1190,191 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 		display: block;
 	}
 
-	.ai-fix-demo {
-		border: 1px solid var(--border);
-		background: var(--bg-secondary);
-		margin-bottom: 2.5rem;
+	/* Animated Terminal */
+	.terminal {
+		background: #0d1117;
+		border-radius: 8px;
 		overflow: hidden;
+		margin-bottom: 2.5rem;
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 	}
 
-	.ai-fix-demo-header {
+	.terminal-header {
 		display: flex;
-		justify-content: space-between;
 		align-items: center;
-		padding: 0.75rem 1.25rem;
-		border-bottom: 1px solid var(--border);
-		background: var(--bg-primary);
+		padding: 0.75rem 1rem;
+		background: #161b22;
+		border-bottom: 1px solid #30363d;
 	}
 
-	.ai-fix-demo-label {
-		font-size: 0.8rem;
-		font-weight: 500;
-		color: var(--text-secondary);
+	.terminal-dots {
+		display: flex;
+		gap: 6px;
 	}
 
-	.ai-fix-demo-badge {
-		font-size: 0.7rem;
+	.terminal-dots .dot {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+	}
+
+	.terminal-dots .dot.red { background: #ff5f56; }
+	.terminal-dots .dot.yellow { background: #ffbd2e; }
+	.terminal-dots .dot.green { background: #27ca40; }
+
+	.terminal-title {
+		flex: 1;
+		text-align: center;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.75rem;
+		color: #8b949e;
+	}
+
+	.terminal-badge {
+		font-size: 0.65rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--green);
-		background: rgba(0, 196, 154, 0.1);
-		padding: 0.25rem 0.75rem;
-		border-radius: 20px;
+		background: rgba(0, 196, 154, 0.15);
+		padding: 0.2rem 0.6rem;
+		border-radius: 12px;
 	}
 
-	.ai-fix-demo-content {
+	.terminal-body {
 		padding: 1.5rem;
-		overflow-x: auto;
-	}
-
-	.ai-fix-demo-content pre {
-		margin: 0;
 		font-family: 'JetBrains Mono', monospace;
 		font-size: 0.8rem;
-		line-height: 1.7;
-		white-space: pre-wrap;
-		word-break: break-word;
+		line-height: 1.8;
 	}
 
-	.ai-fix-demo-content code {
-		color: var(--text-secondary);
+	.terminal-line {
+		opacity: 0;
+		animation: typeIn 0.4s ease forwards;
 	}
 
-	.prompt-title {
-		color: var(--text-primary);
+	.terminal-line.title {
+		color: #58a6ff;
+		font-size: 1rem;
 		font-weight: 600;
-		font-size: 0.9rem;
+		margin-bottom: 0.75rem;
 	}
 
-	.prompt-meta {
-		color: var(--text-secondary);
-	}
-
-	.prompt-highlight {
+	.terminal-line .highlight {
 		color: var(--green);
-		font-weight: 500;
-	}
-
-	.prompt-stats {
-		color: var(--text-tertiary);
-		font-size: 0.75rem;
-	}
-
-	.prompt-section {
-		color: var(--red);
 		font-weight: 600;
-		margin-top: 0.5rem;
 	}
 
-	.prompt-location {
-		color: var(--text-secondary);
+	.terminal-line.stats {
+		margin: 0.75rem 0;
+	}
+
+	.terminal-line .severity {
+		padding: 0.15rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.7rem;
+		margin-right: 0.5rem;
+	}
+
+	.terminal-line .severity.critical {
+		background: rgba(248, 81, 73, 0.2);
+		color: #f85149;
+	}
+
+	.terminal-line .severity.high {
+		background: rgba(255, 166, 87, 0.2);
+		color: #ffa657;
+	}
+
+	.terminal-line .severity.medium {
+		background: rgba(210, 153, 34, 0.2);
+		color: #d29922;
+	}
+
+	.terminal-line .severity.low {
+		background: rgba(139, 148, 158, 0.2);
+		color: #8b949e;
+	}
+
+	.terminal-line.quickwin {
+		color: var(--green);
+		font-size: 0.75rem;
+		margin-bottom: 1rem;
+	}
+
+	.terminal-line.section {
+		color: #f85149;
+		font-weight: 600;
+		margin-top: 1rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.terminal-line.location {
+		color: #8b949e;
 		font-size: 0.75rem;
 	}
 
-	.prompt-fix {
-		color: var(--text-tertiary);
+	.terminal-line.location::before {
+		content: '→ ';
+		color: #484f58;
+	}
+
+	.terminal-line.code-bad {
+		color: #f85149;
 		font-size: 0.75rem;
+		padding-left: 1rem;
+		opacity: 0.8;
+	}
+
+	.terminal-line.code-bad::before {
+		content: '✗ ';
+	}
+
+	.terminal-line.code-good {
+		color: var(--green);
+		font-size: 0.75rem;
+		padding-left: 1rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.terminal-line.code-good::before {
+		content: '✓ ';
+	}
+
+	.terminal-line.instruction {
+		color: #8b949e;
+		font-size: 0.75rem;
+		font-style: italic;
+	}
+
+	.terminal-cursor {
+		display: inline-block;
+		width: 8px;
+		height: 16px;
+		background: var(--green);
+		opacity: 0;
+		animation: cursorFadeIn 0.3s ease forwards, blink 1s step-end infinite;
+	}
+
+	@keyframes typeIn {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes cursorFadeIn {
+		to {
+			opacity: 1;
+		}
+	}
+
+	@keyframes blink {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0; }
 	}
 
 	.ai-fix-features {
@@ -1379,13 +1491,28 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 			font-size: 1.1rem;
 		}
 
-		.ai-fix-demo-content {
+		.terminal {
+			margin-left: -1.5rem;
+			margin-right: -1.5rem;
+			border-radius: 0;
+		}
+
+		.terminal-body {
 			padding: 1rem;
 		}
 
-		.ai-fix-demo-content pre {
+		.terminal-line {
 			font-size: 0.7rem;
-			line-height: 1.6;
+		}
+
+		.terminal-line.title {
+			font-size: 0.85rem;
+		}
+
+		.terminal-line .severity {
+			font-size: 0.6rem;
+			padding: 0.1rem 0.35rem;
+			margin-right: 0.25rem;
 		}
 
 		.ai-fix-features {
