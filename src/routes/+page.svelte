@@ -393,76 +393,124 @@
 				<div class="terminal-line title">
 					<span class="typing-text"># Security Fix Guide for my-startup-app</span>
 				</div>
-				<div class="terminal-line" style="animation-delay: 0.3s">
+				<div class="terminal-line" style="animation-delay: 0.2s">
 					<span class="typing-text">Fix <span class="highlight">12 security vulnerabilities</span> in priority order.</span>
 				</div>
-				<div class="terminal-line stats" style="animation-delay: 0.6s">
+				<div class="terminal-line stats" style="animation-delay: 0.4s">
 					<span class="typing-text"><span class="severity critical">3 Critical</span> <span class="severity high">4 High</span> <span class="severity medium">3 Medium</span> <span class="severity low">2 Low</span></span>
 				</div>
-				<div class="terminal-line quickwin" style="animation-delay: 0.9s">
+				<div class="terminal-line quickwin" style="animation-delay: 0.6s">
 					<span class="typing-text">Quick Wins: 5 issues fixable in under 5 minutes each</span>
 				</div>
 
-				<div class="terminal-line divider" style="animation-delay: 1.2s">---</div>
+				<div class="terminal-line divider" style="animation-delay: 0.8s">---</div>
 
-				<div class="terminal-line section" style="animation-delay: 1.5s">
+				<div class="terminal-line section" style="animation-delay: 1s">
 					<span class="typing-text">## 1. SQL Injection (Critical)</span>
 				</div>
-				<div class="terminal-line location" style="animation-delay: 1.8s">
+				<div class="terminal-line location" style="animation-delay: 1.2s">
 					<span class="typing-text">src/db/users.ts:47</span>
 				</div>
-				<div class="terminal-line code-bad" style="animation-delay: 2.1s">
+				<div class="terminal-line code-bad" style="animation-delay: 1.4s">
 					<span class="typing-text">db.query(`SELECT * FROM users WHERE id = ${'$'}{'{'}userId{'}'}`)</span>
 				</div>
-				<div class="terminal-line code-good" style="animation-delay: 2.4s">
+				<div class="terminal-line code-good" style="animation-delay: 1.6s">
 					<span class="typing-text">db.query('SELECT * FROM users WHERE id = $1', {'['}userId{']'})</span>
 				</div>
 
-				<div class="terminal-line section high" style="animation-delay: 2.7s">
-					<span class="typing-text">## 2. Hardcoded API Key (Critical)</span>
+				<div class="terminal-line section" style="animation-delay: 1.8s">
+					<span class="typing-text">## 2. Hardcoded Stripe Key (Critical)</span>
 				</div>
-				<div class="terminal-line location" style="animation-delay: 3s">
+				<div class="terminal-line location" style="animation-delay: 2s">
 					<span class="typing-text">src/services/stripe.ts:12</span>
 				</div>
-				<div class="terminal-line code-bad" style="animation-delay: 3.3s">
-					<span class="typing-text">const STRIPE_KEY = 'sk_live_abc123...'</span>
+				<div class="terminal-line code-bad" style="animation-delay: 2.2s">
+					<span class="typing-text">const STRIPE_KEY = 'sk_live_4eC39HqLyjWD...'</span>
 				</div>
-				<div class="terminal-line code-good" style="animation-delay: 3.6s">
+				<div class="terminal-line code-good" style="animation-delay: 2.4s">
 					<span class="typing-text">const STRIPE_KEY = process.env.STRIPE_SECRET_KEY</span>
 				</div>
 
-				<div class="terminal-line section high" style="animation-delay: 3.9s">
-					<span class="typing-text">## 3. XSS Vulnerability (High)</span>
+				<div class="terminal-line section" style="animation-delay: 2.6s">
+					<span class="typing-text">## 3. JWT Secret Exposed (Critical)</span>
 				</div>
-				<div class="terminal-line location" style="animation-delay: 4.2s">
+				<div class="terminal-line location" style="animation-delay: 2.8s">
+					<span class="typing-text">src/auth/jwt.ts:8</span>
+				</div>
+				<div class="terminal-line code-bad" style="animation-delay: 3s">
+					<span class="typing-text">const JWT_SECRET = 'super-secret-key-123'</span>
+				</div>
+				<div class="terminal-line code-good" style="animation-delay: 3.2s">
+					<span class="typing-text">const JWT_SECRET = process.env.JWT_SECRET</span>
+				</div>
+
+				<div class="terminal-line section high" style="animation-delay: 3.4s">
+					<span class="typing-text">## 4. XSS in Comments (High)</span>
+				</div>
+				<div class="terminal-line location" style="animation-delay: 3.6s">
 					<span class="typing-text">src/components/Comment.tsx:28</span>
 				</div>
-				<div class="terminal-line code-bad" style="animation-delay: 4.5s">
+				<div class="terminal-line code-bad" style="animation-delay: 3.8s">
 					<span class="typing-text">dangerouslySetInnerHTML={'{{'}__html: comment{'}}'}</span>
 				</div>
-				<div class="terminal-line code-good" style="animation-delay: 4.8s">
+				<div class="terminal-line code-good" style="animation-delay: 4s">
 					<span class="typing-text">dangerouslySetInnerHTML={'{{'}__html: DOMPurify.sanitize(comment){'}}'}</span>
 				</div>
 
-				<div class="terminal-line section medium" style="animation-delay: 5.1s">
-					<span class="typing-text">## 4. Missing Auth Check (High)</span>
+				<div class="terminal-line section high" style="animation-delay: 4.2s">
+					<span class="typing-text">## 5. Missing Auth on Admin Route (High)</span>
 				</div>
-				<div class="terminal-line location" style="animation-delay: 5.4s">
+				<div class="terminal-line location" style="animation-delay: 4.4s">
 					<span class="typing-text">src/api/admin/users.ts:15</span>
 				</div>
-				<div class="terminal-line instruction" style="animation-delay: 5.7s">
-					<span class="typing-text">Add authentication middleware before handler</span>
+				<div class="terminal-line code-bad" style="animation-delay: 4.6s">
+					<span class="typing-text">export async function GET(req) {'{'} ... {'}'}</span>
+				</div>
+				<div class="terminal-line code-good" style="animation-delay: 4.8s">
+					<span class="typing-text">export async function GET(req) {'{'} await requireAdmin(req); ... {'}'}</span>
 				</div>
 
-				<div class="terminal-line divider" style="animation-delay: 6s">---</div>
+				<div class="terminal-line section high" style="animation-delay: 5s">
+					<span class="typing-text">## 6. Command Injection (High)</span>
+				</div>
+				<div class="terminal-line location" style="animation-delay: 5.2s">
+					<span class="typing-text">src/utils/pdf.ts:34</span>
+				</div>
+				<div class="terminal-line code-bad" style="animation-delay: 5.4s">
+					<span class="typing-text">exec(`convert ${'$'}{'{'}filename{'}'} output.pdf`)</span>
+				</div>
+				<div class="terminal-line code-good" style="animation-delay: 5.6s">
+					<span class="typing-text">execFile('convert', {'['}filename, 'output.pdf'{']'})</span>
+				</div>
 
-				<div class="terminal-line footer" style="animation-delay: 6.3s">
-					<span class="typing-text">After each fix, search codebase for similar patterns.</span>
+				<div class="terminal-line section medium" style="animation-delay: 5.8s">
+					<span class="typing-text">## 7. Path Traversal (Medium)</span>
 				</div>
-				<div class="terminal-line footer" style="animation-delay: 6.6s">
-					<span class="typing-text">Run tests to verify nothing broke.</span>
+				<div class="terminal-line location" style="animation-delay: 6s">
+					<span class="typing-text">src/api/files.ts:22</span>
 				</div>
-				<div class="terminal-cursor" style="animation-delay: 6.9s"></div>
+				<div class="terminal-line code-bad" style="animation-delay: 6.2s">
+					<span class="typing-text">const file = path.join(uploadsDir, req.params.name)</span>
+				</div>
+				<div class="terminal-line code-good" style="animation-delay: 6.4s">
+					<span class="typing-text">const safeName = path.basename(req.params.name)</span>
+				</div>
+
+				<div class="terminal-line divider" style="animation-delay: 6.6s">---</div>
+
+				<div class="terminal-line cta" style="animation-delay: 6.8s">
+					<span class="typing-text">Let me find the security vulnerabilities in your repo too</span>
+				</div>
+				<div class="terminal-line cta" style="animation-delay: 7s">
+					<span class="typing-text">and give you a master prompt to fix it all.</span>
+				</div>
+				<div class="terminal-line cta-sub" style="animation-delay: 7.2s">
+					<span class="typing-text">Get your own scan above. It's free.</span>
+				</div>
+				<div class="terminal-line cta-sub" style="animation-delay: 7.4s">
+					<span class="typing-text">To ship better products with vibe coding!</span>
+				</div>
+				<div class="terminal-cursor" style="animation-delay: 7.6s"></div>
 			</div>
 		</div>
 
@@ -1427,6 +1475,18 @@
 	.terminal-line.footer {
 		color: #6e7681;
 		font-size: 0.7rem;
+		margin-top: 0.25rem;
+	}
+
+	.terminal-line.cta {
+		color: var(--green);
+		font-weight: 600;
+		margin-top: 0.5rem;
+	}
+
+	.terminal-line.cta-sub {
+		color: #8b949e;
+		font-size: 0.75rem;
 		margin-top: 0.25rem;
 	}
 
