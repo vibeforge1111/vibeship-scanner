@@ -391,33 +391,78 @@
 			</div>
 			<div class="terminal-body">
 				<div class="terminal-line title">
-					<span class="typing-text"># Security Fix Guide</span>
+					<span class="typing-text"># Security Fix Guide for my-startup-app</span>
 				</div>
-				<div class="terminal-line" style="animation-delay: 0.5s">
-					<span class="typing-text">I need help fixing <span class="highlight">8 security vulnerabilities</span> in my codebase.</span>
+				<div class="terminal-line" style="animation-delay: 0.3s">
+					<span class="typing-text">Fix <span class="highlight">12 security vulnerabilities</span> in priority order.</span>
 				</div>
-				<div class="terminal-line stats" style="animation-delay: 1s">
-					<span class="typing-text"><span class="severity critical">2 Critical</span> <span class="severity high">3 High</span> <span class="severity medium">2 Medium</span> <span class="severity low">1 Low</span></span>
+				<div class="terminal-line stats" style="animation-delay: 0.6s">
+					<span class="typing-text"><span class="severity critical">3 Critical</span> <span class="severity high">4 High</span> <span class="severity medium">3 Medium</span> <span class="severity low">2 Low</span></span>
 				</div>
-				<div class="terminal-line quickwin" style="animation-delay: 1.5s">
-					<span class="typing-text">Quick Wins: 3 issues fixable in &lt;5 min each</span>
+				<div class="terminal-line quickwin" style="animation-delay: 0.9s">
+					<span class="typing-text">Quick Wins: 5 issues fixable in under 5 minutes each</span>
 				</div>
-				<div class="terminal-line section" style="animation-delay: 2s">
-					<span class="typing-text">## SQL Injection (Critical)</span>
+
+				<div class="terminal-line divider" style="animation-delay: 1.2s">---</div>
+
+				<div class="terminal-line section" style="animation-delay: 1.5s">
+					<span class="typing-text">## 1. SQL Injection (Critical)</span>
 				</div>
-				<div class="terminal-line location" style="animation-delay: 2.5s">
-					<span class="typing-text">src/api/users.ts:47 → String concatenation in query</span>
+				<div class="terminal-line location" style="animation-delay: 1.8s">
+					<span class="typing-text">src/db/users.ts:47</span>
 				</div>
-				<div class="terminal-line code-bad" style="animation-delay: 3s">
-					<span class="typing-text">db.query(`SELECT * FROM users WHERE id = ${id}`)</span>
+				<div class="terminal-line code-bad" style="animation-delay: 2.1s">
+					<span class="typing-text">db.query(`SELECT * FROM users WHERE id = ${'$'}{'{'}userId{'}'}`)</span>
 				</div>
-				<div class="terminal-line code-good" style="animation-delay: 3.5s">
-					<span class="typing-text">db.query('SELECT * FROM users WHERE id = $1', [id])</span>
+				<div class="terminal-line code-good" style="animation-delay: 2.4s">
+					<span class="typing-text">db.query('SELECT * FROM users WHERE id = $1', {'['}userId{']'})</span>
 				</div>
-				<div class="terminal-line instruction" style="animation-delay: 4s">
-					<span class="typing-text">Search codebase for similar patterns and fix ALL instances.</span>
+
+				<div class="terminal-line section high" style="animation-delay: 2.7s">
+					<span class="typing-text">## 2. Hardcoded API Key (Critical)</span>
 				</div>
-				<div class="terminal-cursor" style="animation-delay: 4.5s"></div>
+				<div class="terminal-line location" style="animation-delay: 3s">
+					<span class="typing-text">src/services/stripe.ts:12</span>
+				</div>
+				<div class="terminal-line code-bad" style="animation-delay: 3.3s">
+					<span class="typing-text">const STRIPE_KEY = 'sk_live_abc123...'</span>
+				</div>
+				<div class="terminal-line code-good" style="animation-delay: 3.6s">
+					<span class="typing-text">const STRIPE_KEY = process.env.STRIPE_SECRET_KEY</span>
+				</div>
+
+				<div class="terminal-line section high" style="animation-delay: 3.9s">
+					<span class="typing-text">## 3. XSS Vulnerability (High)</span>
+				</div>
+				<div class="terminal-line location" style="animation-delay: 4.2s">
+					<span class="typing-text">src/components/Comment.tsx:28</span>
+				</div>
+				<div class="terminal-line code-bad" style="animation-delay: 4.5s">
+					<span class="typing-text">dangerouslySetInnerHTML={'{{'}__html: comment{'}}'}</span>
+				</div>
+				<div class="terminal-line code-good" style="animation-delay: 4.8s">
+					<span class="typing-text">dangerouslySetInnerHTML={'{{'}__html: DOMPurify.sanitize(comment){'}}'}</span>
+				</div>
+
+				<div class="terminal-line section medium" style="animation-delay: 5.1s">
+					<span class="typing-text">## 4. Missing Auth Check (High)</span>
+				</div>
+				<div class="terminal-line location" style="animation-delay: 5.4s">
+					<span class="typing-text">src/api/admin/users.ts:15</span>
+				</div>
+				<div class="terminal-line instruction" style="animation-delay: 5.7s">
+					<span class="typing-text">Add authentication middleware before handler</span>
+				</div>
+
+				<div class="terminal-line divider" style="animation-delay: 6s">---</div>
+
+				<div class="terminal-line footer" style="animation-delay: 6.3s">
+					<span class="typing-text">After each fix, search codebase for similar patterns.</span>
+				</div>
+				<div class="terminal-line footer" style="animation-delay: 6.6s">
+					<span class="typing-text">Run tests to verify nothing broke.</span>
+				</div>
+				<div class="terminal-cursor" style="animation-delay: 6.9s"></div>
 			</div>
 		</div>
 
@@ -1245,6 +1290,26 @@
 		font-family: 'JetBrains Mono', monospace;
 		font-size: 0.8rem;
 		line-height: 1.8;
+		max-height: 380px;
+		overflow-y: auto;
+		scroll-behavior: smooth;
+	}
+
+	.terminal-body::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	.terminal-body::-webkit-scrollbar-track {
+		background: #161b22;
+	}
+
+	.terminal-body::-webkit-scrollbar-thumb {
+		background: #30363d;
+		border-radius: 3px;
+	}
+
+	.terminal-body::-webkit-scrollbar-thumb:hover {
+		background: #484f58;
 	}
 
 	.terminal-line {
@@ -1344,6 +1409,25 @@
 		color: #8b949e;
 		font-size: 0.75rem;
 		font-style: italic;
+	}
+
+	.terminal-line.divider {
+		color: #30363d;
+		margin: 0.75rem 0;
+	}
+
+	.terminal-line.section.high {
+		color: #ffa657;
+	}
+
+	.terminal-line.section.medium {
+		color: #d29922;
+	}
+
+	.terminal-line.footer {
+		color: #6e7681;
+		font-size: 0.7rem;
+		margin-top: 0.25rem;
 	}
 
 	.terminal-cursor {
