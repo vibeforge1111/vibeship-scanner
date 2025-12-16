@@ -327,23 +327,49 @@
 
 		<div class="ai-fix-flow">
 			<div class="ai-fix-step">
-				<div class="ai-fix-step-icon">🔍</div>
+				<div class="ai-fix-step-icon">
+					<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<circle cx="11" cy="11" r="8"/>
+						<path d="m21 21-4.35-4.35"/>
+					</svg>
+				</div>
 				<div class="ai-fix-step-content">
 					<h4>Scan finds issues</h4>
 					<p>SQL injection, XSS, exposed secrets — we catch it all</p>
 				</div>
 			</div>
-			<div class="ai-fix-arrow">→</div>
+			<div class="ai-fix-arrow">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path d="M5 12h14M12 5l7 7-7 7"/>
+				</svg>
+			</div>
 			<div class="ai-fix-step">
-				<div class="ai-fix-step-icon">📋</div>
+				<div class="ai-fix-step-icon">
+					<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<rect x="8" y="2" width="8" height="4" rx="1"/>
+						<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+						<path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>
+					</svg>
+				</div>
 				<div class="ai-fix-step-content">
 					<h4>Get the fix prompt</h4>
 					<p>One-click copy with file, line, and exact fix instructions</p>
 				</div>
 			</div>
-			<div class="ai-fix-arrow">→</div>
+			<div class="ai-fix-arrow">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path d="M5 12h14M12 5l7 7-7 7"/>
+				</svg>
+			</div>
 			<div class="ai-fix-step">
-				<div class="ai-fix-step-icon">🤖</div>
+				<div class="ai-fix-step-icon">
+					<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M12 8V4H8"/>
+						<rect x="2" y="2" width="20" height="20" rx="5"/>
+						<path d="M8 4l4 4-4 4"/>
+						<path d="m16 12-4 4 4 4"/>
+					</svg>
+				</div>
 				<div class="ai-fix-step-content">
 					<h4>Paste to your AI</h4>
 					<p>Claude, Cursor, ChatGPT, Gemini — they all understand it</p>
@@ -361,10 +387,10 @@
 
 <span class="prompt-meta">I need help fixing <span class="prompt-highlight">12 security vulnerabilities</span> in my codebase.</span>
 
-<span class="prompt-stats">Severity: 🔴 2 Critical | 🟠 5 High | 🟡 4 Medium | ⚪ 1 Low</span>
-<span class="prompt-stats">⚡ Quick Wins: 4 issues can be fixed with simple changes</span>
+<span class="prompt-stats">Severity: 2 Critical | 5 High | 4 Medium | 1 Low</span>
+<span class="prompt-stats">Quick Wins: 4 issues can be fixed with simple changes</span>
 
-<span class="prompt-section">## 🔴 SQL Injection</span>
+<span class="prompt-section">## SQL Injection</span>
 
 <span class="prompt-location">- `src/db/users.js:45` [HIGH] SQL query uses string concatenation</span>
 <span class="prompt-location">- `src/api/search.js:23` [HIGH] Unparameterized query</span>
@@ -373,10 +399,10 @@
 Replace string concatenation with parameterized queries:
 
 ```javascript
-// ❌ Vulnerable
+// Vulnerable
 db.query("SELECT * FROM users WHERE id = " + userId)
 
-// ✅ Fixed
+// Fixed
 db.query("SELECT * FROM users WHERE id = $1", [userId])
 ```</span></code></pre>
 			</div>
@@ -384,19 +410,30 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 
 		<div class="ai-fix-features">
 			<div class="ai-fix-feature">
-				<span class="ai-fix-feature-icon">⚡</span>
+				<svg class="ai-fix-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+				</svg>
 				<span>Quick wins marked for easy fixes</span>
 			</div>
 			<div class="ai-fix-feature">
-				<span class="ai-fix-feature-icon">📍</span>
+				<svg class="ai-fix-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+					<circle cx="12" cy="10" r="3"/>
+				</svg>
 				<span>Exact file and line numbers</span>
 			</div>
 			<div class="ai-fix-feature">
-				<span class="ai-fix-feature-icon">💻</span>
+				<svg class="ai-fix-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<polyline points="16 18 22 12 16 6"/>
+					<polyline points="8 6 2 12 8 18"/>
+				</svg>
 				<span>Before/after code examples</span>
 			</div>
 			<div class="ai-fix-feature">
-				<span class="ai-fix-feature-icon">🎯</span>
+				<svg class="ai-fix-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+					<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+					<polyline points="22 4 12 14.01 9 11.01"/>
+				</svg>
 				<span>Severity-ordered for priority</span>
 			</div>
 		</div>
@@ -409,47 +446,93 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 		<h2 class="section-title">What we scan</h2>
 		<div class="features-grid">
 			<div class="feature-card">
-				<div class="feature-icon">🔐</div>
+				<div class="feature-icon">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<rect x="3" y="11" width="18" height="11" rx="2"/>
+						<path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+					</svg>
+				</div>
 				<h3>Code Security</h3>
 				<p>SQL injection, XSS, insecure auth patterns, and 2000+ vulnerability checks using Semgrep.</p>
 			</div>
 			<div class="feature-card">
-				<div class="feature-icon">🔑</div>
+				<div class="feature-icon">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+					</svg>
+				</div>
 				<h3>Exposed Secrets</h3>
 				<p>API keys, database URLs, JWT secrets, and credentials that shouldn't be in your code.</p>
 			</div>
 			<div class="feature-card">
-				<div class="feature-icon">📦</div>
+				<div class="feature-icon">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+						<polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+						<line x1="12" y1="22.08" x2="12" y2="12"/>
+					</svg>
+				</div>
 				<h3>Dependencies</h3>
 				<p>Known CVEs in your npm, pip, or cargo packages with upgrade recommendations.</p>
 			</div>
 			<div class="feature-card">
-				<div class="feature-icon">🛡️</div>
+				<div class="feature-icon">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+					</svg>
+				</div>
 				<h3>Authentication</h3>
 				<p>Weak password policies, missing rate limiting, insecure session handling, and auth bypasses.</p>
 			</div>
 			<div class="feature-card">
-				<div class="feature-icon">🗄️</div>
+				<div class="feature-icon">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<ellipse cx="12" cy="5" rx="9" ry="3"/>
+						<path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+						<path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+					</svg>
+				</div>
 				<h3>Database Security</h3>
 				<p>NoSQL injection, ORM misuse, unparameterized queries, and data exposure risks.</p>
 			</div>
 			<div class="feature-card">
-				<div class="feature-icon">🌐</div>
+				<div class="feature-icon">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<circle cx="12" cy="12" r="10"/>
+						<line x1="2" y1="12" x2="22" y2="12"/>
+						<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+					</svg>
+				</div>
 				<h3>API Security</h3>
 				<p>CORS misconfigurations, missing auth on endpoints, and insecure data serialization.</p>
 			</div>
 			<div class="feature-card">
-				<div class="feature-icon">📁</div>
+				<div class="feature-icon">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+						<polyline points="14 2 14 8 20 8"/>
+					</svg>
+				</div>
 				<h3>File Handling</h3>
 				<p>Path traversal, unrestricted uploads, insecure file permissions, and directory exposure.</p>
 			</div>
 			<div class="feature-card">
-				<div class="feature-icon">⚡</div>
+				<div class="feature-icon">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+					</svg>
+				</div>
 				<h3>Injection Attacks</h3>
 				<p>Command injection, LDAP injection, template injection, and code execution vulnerabilities.</p>
 			</div>
 			<div class="feature-card">
-				<div class="feature-icon">🔒</div>
+				<div class="feature-icon">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<rect x="3" y="11" width="18" height="11" rx="2"/>
+						<path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+						<circle cx="12" cy="16" r="1"/>
+					</svg>
+				</div>
 				<h3>Cryptography</h3>
 				<p>Weak algorithms, hardcoded keys, improper random generation, and insecure hashing.</p>
 			</div>
@@ -750,8 +833,12 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 	}
 
 	.feature-icon {
-		font-size: 2rem;
 		margin-bottom: 1.5rem;
+		color: var(--text-primary);
+	}
+
+	.feature-icon svg {
+		display: block;
 	}
 
 	.feature-card h3 {
@@ -1014,13 +1101,17 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 	/* AI Fix Section */
 	.ai-fix {
 		padding: 6rem 3rem;
-		border-top: 1px solid var(--border);
-		background: var(--bg-primary);
+		background: var(--bg-inverse);
+		color: var(--text-inverse);
 	}
 
 	.ai-fix-inner {
 		max-width: 1000px;
 		margin: 0 auto;
+	}
+
+	.ai-fix .section-label {
+		color: var(--text-inverse-secondary);
 	}
 
 	.ai-fix .section-title {
@@ -1033,7 +1124,7 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 
 	.ai-fix-subtitle {
 		font-size: 1.1rem;
-		color: var(--text-secondary);
+		color: var(--text-inverse-secondary);
 		margin-bottom: 3rem;
 	}
 
@@ -1054,8 +1145,12 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 	}
 
 	.ai-fix-step-icon {
-		font-size: 2rem;
 		flex-shrink: 0;
+		color: var(--text-inverse);
+	}
+
+	.ai-fix-step-icon svg {
+		display: block;
 	}
 
 	.ai-fix-step-content h4 {
@@ -1067,19 +1162,22 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 
 	.ai-fix-step-content p {
 		font-size: 0.85rem;
-		color: var(--text-secondary);
+		color: var(--text-inverse-secondary);
 		line-height: 1.6;
 	}
 
 	.ai-fix-arrow {
-		font-size: 1.5rem;
-		color: var(--text-tertiary);
+		color: var(--text-inverse-secondary);
 		flex-shrink: 0;
 	}
 
+	.ai-fix-arrow svg {
+		display: block;
+	}
+
 	.ai-fix-demo {
-		border: 1px solid var(--border);
-		background: var(--bg-secondary);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: rgba(0, 0, 0, 0.2);
 		margin-bottom: 2.5rem;
 		overflow: hidden;
 	}
@@ -1089,14 +1187,14 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.75rem 1.25rem;
-		border-bottom: 1px solid var(--border);
-		background: var(--bg-primary);
+		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		background: rgba(0, 0, 0, 0.2);
 	}
 
 	.ai-fix-demo-label {
 		font-size: 0.8rem;
 		font-weight: 500;
-		color: var(--text-secondary);
+		color: var(--text-inverse-secondary);
 	}
 
 	.ai-fix-demo-badge {
@@ -1104,7 +1202,7 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--green);
-		background: rgba(0, 196, 154, 0.1);
+		background: rgba(0, 196, 154, 0.15);
 		padding: 0.25rem 0.75rem;
 		border-radius: 20px;
 	}
@@ -1124,17 +1222,17 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 	}
 
 	.ai-fix-demo-content code {
-		color: var(--text-secondary);
+		color: var(--text-inverse-secondary);
 	}
 
 	.prompt-title {
-		color: var(--text-primary);
+		color: var(--text-inverse);
 		font-weight: 600;
 		font-size: 0.9rem;
 	}
 
 	.prompt-meta {
-		color: var(--text-secondary);
+		color: var(--text-inverse-secondary);
 	}
 
 	.prompt-highlight {
@@ -1143,24 +1241,26 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 	}
 
 	.prompt-stats {
-		color: var(--text-tertiary);
+		color: var(--text-inverse-secondary);
 		font-size: 0.75rem;
+		opacity: 0.7;
 	}
 
 	.prompt-section {
-		color: var(--red);
+		color: #ff6b6b;
 		font-weight: 600;
 		margin-top: 0.5rem;
 	}
 
 	.prompt-location {
-		color: var(--text-secondary);
+		color: var(--text-inverse-secondary);
 		font-size: 0.75rem;
 	}
 
 	.prompt-fix {
-		color: var(--text-tertiary);
+		color: var(--text-inverse-secondary);
 		font-size: 0.75rem;
+		opacity: 0.7;
 	}
 
 	.ai-fix-features {
@@ -1175,11 +1275,11 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 		align-items: center;
 		gap: 0.5rem;
 		font-size: 0.9rem;
-		color: var(--text-secondary);
+		color: var(--text-inverse-secondary);
 	}
 
 	.ai-fix-feature-icon {
-		font-size: 1.1rem;
+		color: var(--text-inverse);
 	}
 
 	@media (max-width: 1024px) {
@@ -1261,8 +1361,9 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 			max-width: 100%;
 		}
 
-		.ai-fix-step-icon {
-			font-size: 1.75rem;
+		.ai-fix-step-icon svg {
+			width: 24px;
+			height: 24px;
 		}
 
 		.ai-fix-step-content h4 {
