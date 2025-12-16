@@ -208,12 +208,13 @@
 	}
 
 	.urgency-badge {
-		font-size: 0.75rem;
-		font-weight: 600;
-		padding: 0.25rem 0.75rem;
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-size: 0.7rem;
+		font-weight: 700;
+		padding: 0.3rem 0.75rem;
 		border-radius: 2px;
 		text-transform: uppercase;
-		letter-spacing: 0.03em;
+		letter-spacing: 0.02em;
 	}
 
 	.finding-number {
@@ -223,12 +224,14 @@
 	}
 
 	.headline {
-		font-size: 1rem;
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-size: 1.05rem;
 		font-weight: 600;
 		color: var(--text-primary);
 		margin: 0;
 		padding-right: 2rem;
-		line-height: 1.4;
+		line-height: 1.5;
+		letter-spacing: -0.01em;
 	}
 
 	.location {
@@ -287,16 +290,18 @@
 	}
 
 	.section-title {
-		font-size: 0.7rem;
-		font-weight: 600;
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-size: 0.75rem;
+		font-weight: 700;
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		letter-spacing: 0.04em;
 		color: var(--text-tertiary);
 		margin: 0 0 0.5rem 0;
 	}
 
 	.whats-wrong {
-		font-size: 0.9rem;
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-size: 0.95rem;
 		line-height: 1.6;
 		color: var(--text-secondary);
 		margin: 0;
@@ -312,10 +317,11 @@
 	.consequences li {
 		position: relative;
 		padding-left: 1.25rem;
-		font-size: 0.85rem;
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-size: 0.9rem;
 		color: var(--text-secondary);
-		margin-bottom: 0.35rem;
-		line-height: 1.4;
+		margin-bottom: 0.4rem;
+		line-height: 1.5;
 	}
 
 	.consequences li::before {
