@@ -5,7 +5,7 @@
 	import { supabase } from '$lib/supabase';
 	import { explanationMode, type ExplanationMode } from '$lib/stores/preferences';
 	import { getFixTemplate, type FixTemplate } from '$lib/fixTemplates';
-	import { getCWEFromRuleId, getCVSSColor, getCVSSLabel, type CWEInfo } from '$lib/cweDatabase';
+	import { getCWEFromRuleId, getCVSSLabel, type CWEInfo } from '$lib/cweDatabase';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import { trackPageView, trackScanCompleted, trackScanResultsViewed } from '$lib/analytics';
 	import { auth } from '$lib/stores/auth';
@@ -38,7 +38,6 @@
 	let revealStage = $state(0);
 	let confettiParticles = $state<Array<{id: number, x: number, delay: number, color: string, size: number}>>([]);
 	let mode = $state<ExplanationMode>('founder');
-	let expandedFindings = $state<Set<string>>(new Set());
 	let copied = $state<string | null>(null);
 	let showBadgeEmbed = $state(false);
 	let generatingPdf = $state(false);
@@ -47,8 +46,7 @@
 	let progressPollInterval: ReturnType<typeof setInterval> | null = null;
 	const SCAN_TIMEOUT_MS = 15 * 60 * 1000;
 
-	// Vibe mode - show AI-friendly output
-	let vibeMode = $state(true);
+	// Transformed results for AI-friendly output
 	let vibeResults = $state<TransformedResults | null>(null);
 
 	// Transform results when they change
@@ -107,22 +105,6 @@
 		if (!dateStr) return '';
 		const date = new Date(dateStr);
 		return date.toLocaleString();
-	}
-
-	function isUnhelpfulSnippet(code: string): boolean {
-		const trimmed = code.trim().toLowerCase();
-		const unhelpfulPatterns = [
-			'requires login',
-			'login required',
-			'authentication required',
-			'please login',
-			'please sign in',
-			'sign in required',
-			'access denied',
-			'unauthorized',
-			'forbidden'
-		];
-		return unhelpfulPatterns.some(pattern => trimmed === pattern || trimmed === pattern + '.');
 	}
 
 	function generateReportText(): string {
@@ -563,17 +545,6 @@
 		}
 	});
 
-	function getSeverityClass(severity: string): string {
-		const classes: Record<string, string> = {
-			critical: 'severity-critical',
-			high: 'severity-high',
-			medium: 'severity-medium',
-			low: 'severity-low',
-			info: 'severity-info'
-		};
-		return classes[severity] || '';
-	}
-
 	function getGradeClass(grade: string): string {
 		const classes: Record<string, string> = {
 			A: 'grade-a',
@@ -593,31 +564,6 @@
 			danger: '🔧 Fix Required'
 		};
 		return messages[status] || '';
-	}
-
-	function copyFix(template: string) {
-		navigator.clipboard.writeText(template);
-		copied = 'fix';
-		setTimeout(() => copied = null, 2000);
-	}
-
-	function getDifficultyColor(difficulty: string): string {
-		const colors: Record<string, string> = {
-			easy: 'var(--green)',
-			medium: 'var(--orange)',
-			hard: 'var(--red)'
-		};
-		return colors[difficulty] || 'var(--text-secondary)';
-	}
-
-	function toggleFinding(id: string) {
-		if (expandedFindings.has(id)) {
-			expandedFindings.delete(id);
-			expandedFindings = new Set(expandedFindings);
-		} else {
-			expandedFindings.add(id);
-			expandedFindings = new Set(expandedFindings);
-		}
 	}
 
 	function getExplanation(finding: any): string {
@@ -868,8 +814,8 @@
 				</div>
 			{/if}
 
-			<!-- VIBE MODE: Clean unified header -->
-			{#if vibeMode && vibeResults}
+			<!-- Clean unified header -->
+			{#if vibeResults}
 				<div class="vibe-card" class:revealed={showResults}>
 					<!-- Top Row: Score + Repo + Actions -->
 					<div class="vibe-top-row">
@@ -1028,25 +974,6 @@
 					<div class="findings-header">
 						<h2>Findings ({results.findings.length})</h2>
 						<div class="findings-actions">
-							<!-- View Mode Toggle -->
-							<div class="view-toggle">
-								<button
-									class="toggle-btn"
-									class:active={vibeMode}
-									onclick={() => vibeMode = true}
-								>
-									<span class="toggle-icon">🤖</span>
-									AI Mode
-								</button>
-								<button
-									class="toggle-btn"
-									class:active={!vibeMode}
-									onclick={() => vibeMode = false}
-								>
-									<span class="toggle-icon">🔐</span>
-									Classic
-								</button>
-							</div>
 							<button class="export-btn" onclick={copyFullReport}>
 								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 									<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -1065,96 +992,13 @@
 						</div>
 					</div>
 
-					<!-- VIBE MODE: AI-Friendly Cards -->
-					{#if vibeMode && vibeResults}
-						<VibeSummary results={vibeResults} />
-						<div class="findings-list vibe-list">
-							{#each vibeResults.findings as finding, i}
-								<FindingCard {finding} index={i} />
-							{/each}
-						</div>
-					{:else}
-						<!-- CLASSIC MODE: Traditional Security View -->
-						<div class="findings-list">
-							{#each results.findings as finding, i}
-								{@const findingId = finding.id || `finding-${i}`}
-								{@const isExpanded = expandedFindings.has(findingId)}
-								{@const cweInfo = getCWEFromRuleId(finding.ruleId || finding.title || '')}
-								<div class="finding-card-classic" class:expanded={isExpanded}>
-									<button class="finding-toggle" onclick={() => toggleFinding(findingId)}>
-										<div class="finding-header">
-											<span class="severity-badge {getSeverityClass(finding.severity)}">
-												{finding.severity.toUpperCase()}
-											</span>
-											<span class="finding-category">{finding.category}</span>
-											{#if cweInfo}
-												<span class="finding-cwe">{cweInfo.id}</span>
-											{/if}
-											<span class="finding-chevron" class:rotated={isExpanded}>▼</span>
-										</div>
-										<h3 class="finding-title">{finding.title}</h3>
-									</button>
-
-									{#if isExpanded}
-										<div class="finding-details">
-											<p class="finding-explanation">{getExplanation(finding)}</p>
-
-											{#if finding.location?.file}
-												<div class="finding-location">
-													<code>{finding.location.file}{finding.location.line ? `:${finding.location.line}` : ''}</code>
-												</div>
-											{/if}
-
-											{#if finding.snippet?.code && finding.snippet.code.trim() && finding.snippet.code.length > 10 && !isUnhelpfulSnippet(finding.snippet.code)}
-												<pre class="finding-code"><code>{finding.snippet.code}</code></pre>
-											{/if}
-
-											{#if getFixTemplate(finding)}
-												{@const fixTemplate = getFixTemplate(finding)}
-												<details class="fix-details">
-													<summary class="fix-summary">
-														<span>How to fix</span>
-													</summary>
-													<div class="fix-content">
-														<div class="fix-comparison">
-															<div class="fix-before">
-																<span class="fix-label-bad">Before</span>
-																<pre><code>{fixTemplate.before}</code></pre>
-															</div>
-															<div class="fix-after">
-																<span class="fix-label-good">After</span>
-																<button class="btn-copy-sm" onclick={() => copyFix(fixTemplate.after)}>
-																	{copied === 'fix' ? '✓' : 'Copy'}
-																</button>
-																<pre><code>{fixTemplate.after}</code></pre>
-															</div>
-														</div>
-														{#if cweInfo?.references?.[0]}
-															<a href={cweInfo.references[0]} target="_blank" rel="noopener noreferrer" class="fix-learn-more">
-																Learn more →
-															</a>
-														{/if}
-													</div>
-												</details>
-											{:else if finding.fix?.available && finding.fix?.template}
-												<details class="fix-details">
-													<summary class="fix-summary">
-														<span>Suggested fix</span>
-													</summary>
-													<div class="fix-content">
-														<pre><code>{finding.fix.template}</code></pre>
-														<button class="btn-copy-sm" onclick={() => copyFix(finding.fix.template)}>
-															{copied === 'fix' ? '✓' : 'Copy'}
-														</button>
-													</div>
-												</details>
-											{/if}
-										</div>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					{/if}
+					<!-- AI-Friendly Finding Cards -->
+					<VibeSummary results={vibeResults} />
+					<div class="findings-list vibe-list">
+						{#each vibeResults.findings as finding, i}
+							<FindingCard {finding} index={i} />
+						{/each}
+					</div>
 				</div>
 			{:else}
 				<div class="no-findings">
@@ -1718,11 +1562,12 @@
 	}
 
 	.vibe-score-num {
-		font-family: 'JetBrains Mono', monospace;
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 		font-size: 3rem;
-		font-weight: 800;
+		font-weight: 700;
 		line-height: 1;
 		color: currentColor;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.vibe-score-meta {
@@ -1898,65 +1743,9 @@
 		color: var(--text-tertiary);
 	}
 
-	/* View Mode Toggle */
-	.view-toggle {
-		display: flex;
-		border: 1px solid var(--border);
-		border-radius: 0;
-	}
-
-	.toggle-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-		padding: 0.4rem 0.75rem;
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.7rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		background: transparent;
-		border: none;
-		color: var(--text-tertiary);
-		cursor: pointer;
-		transition: all 0.15s;
-	}
-
-	.toggle-btn:first-child {
-		border-right: 1px solid var(--border);
-	}
-
-	.toggle-btn:hover {
-		color: var(--text-primary);
-		background: var(--bg-secondary);
-	}
-
-	.toggle-btn.active {
-		color: var(--green);
-		background: var(--bg-secondary);
-	}
-
-	.toggle-icon {
-		font-size: 0.85rem;
-	}
-
 	/* Vibe List */
 	.vibe-list {
 		gap: 0;
-	}
-
-	/* Classic mode card styles */
-	.finding-card-classic {
-		border: 1px solid var(--border);
-		background: var(--bg-primary);
-		transition: border-color 0.15s;
-	}
-
-	.finding-card-classic:hover {
-		border-color: var(--text-tertiary);
-	}
-
-	.finding-card-classic.expanded {
-		border-color: var(--text-secondary);
 	}
 
 	.findings-section h2,
@@ -1965,45 +1754,6 @@
 		font-size: 1.125rem;
 		font-weight: 500;
 		margin-bottom: 0;
-	}
-
-	.mode-toggle {
-		display: flex;
-		border: 1px solid var(--border);
-	}
-
-	.mode-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1rem;
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		background: transparent;
-		border: none;
-		color: var(--text-secondary);
-		cursor: pointer;
-		transition: all 0.15s;
-	}
-
-	.mode-btn:first-child {
-		border-right: 1px solid var(--border);
-	}
-
-	.mode-btn:hover {
-		color: var(--text-primary);
-		background: var(--bg-secondary);
-	}
-
-	.mode-btn.active {
-		color: var(--green-dim);
-		background: var(--bg-secondary);
-	}
-
-	.mode-icon {
-		font-size: 0.9rem;
 	}
 
 	.no-findings {
@@ -2021,217 +1771,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
-	}
-
-	.finding-card {
-		border: 1px solid var(--border);
-		background: var(--bg-primary);
-		transition: border-color 0.15s;
-	}
-
-	.finding-card:hover {
-		border-color: var(--border-strong);
-	}
-
-	.finding-card.expanded {
-		border-color: var(--green-dim);
-	}
-
-	.finding-toggle {
-		width: 100%;
-		padding: 1.5rem;
-		background: transparent;
-		border: none;
-		cursor: pointer;
-		text-align: left;
-	}
-
-	.finding-header {
-		display: flex;
-		gap: 1rem;
-		align-items: center;
-		margin-bottom: 0.75rem;
-	}
-
-	.finding-chevron {
-		margin-left: auto;
-		font-size: 0.7rem;
-		color: var(--text-tertiary);
-		transition: transform 0.2s;
-	}
-
-	.finding-chevron.rotated {
-		transform: rotate(180deg);
-	}
-
-	.finding-details {
-		padding: 1rem 1.5rem 1.5rem;
-		border-top: 1px solid var(--border);
-		animation: slideDown 0.15s ease;
-	}
-
-	@keyframes slideDown {
-		from { opacity: 0; transform: translateY(-5px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
-
-	.finding-explanation {
-		font-size: 0.9rem;
-		line-height: 1.6;
-		color: var(--text-secondary);
-		margin: 0 0 1rem 0;
-	}
-
-	.finding-location {
-		margin: 0.75rem 0;
-	}
-
-	.finding-location code {
-		font-size: 0.8rem;
-		background: var(--bg-tertiary);
-		padding: 0.25rem 0.5rem;
-		color: var(--text-secondary);
-	}
-
-	.finding-code {
-		margin: 0.75rem 0;
-		padding: 0.75rem 1rem;
-		background: var(--bg-inverse);
-		color: var(--text-inverse);
-		font-size: 0.8rem;
-		line-height: 1.5;
-		overflow-x: auto;
-		border-left: 3px solid var(--red);
-	}
-
-	.finding-code code {
-		background: transparent;
-		padding: 0;
-	}
-
-	.fix-details {
-		margin-top: 1rem;
-		border: 1px solid var(--border);
-	}
-
-	.fix-summary {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 0.75rem 1rem;
-		background: var(--bg-tertiary);
-		cursor: pointer;
-		font-size: 0.85rem;
-		font-weight: 500;
-		color: var(--green-dim);
-		list-style: none;
-	}
-
-	.fix-summary::-webkit-details-marker {
-		display: none;
-	}
-
-	.fix-summary::before {
-		content: '▶';
-		font-size: 0.6rem;
-		margin-right: 0.5rem;
-		transition: transform 0.15s;
-	}
-
-	.fix-details[open] .fix-summary::before {
-		transform: rotate(90deg);
-	}
-
-	.fix-summary:hover {
-		background: var(--bg-secondary);
-	}
-
-	.fix-meta {
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.7rem;
-		color: var(--text-tertiary);
-	}
-
-	.fix-content {
-		padding: 1rem;
-		background: var(--bg-secondary);
-	}
-
-	.fix-comparison {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 0.5rem;
-	}
-
-	@media (max-width: 700px) {
-		.fix-comparison {
-			grid-template-columns: 1fr;
-		}
-	}
-
-	.fix-before, .fix-after {
-		position: relative;
-	}
-
-	.fix-label-bad, .fix-label-good {
-		display: block;
-		font-size: 0.65rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		margin-bottom: 0.25rem;
-	}
-
-	.fix-label-bad { color: var(--red); }
-	.fix-label-good { color: var(--green); }
-
-	.fix-before pre, .fix-after pre {
-		margin: 0;
-		padding: 0.75rem;
-		background: var(--bg-inverse);
-		color: var(--text-inverse);
-		font-size: 0.75rem;
-		line-height: 1.4;
-		overflow-x: auto;
-		max-height: 200px;
-	}
-
-	.fix-before pre { border-left: 2px solid var(--red); }
-	.fix-after pre { border-left: 2px solid var(--green); }
-
-	.fix-before pre code, .fix-after pre code {
-		background: transparent;
-		padding: 0;
-	}
-
-	.btn-copy-sm {
-		position: absolute;
-		top: -0.25rem;
-		right: 0;
-		padding: 0.25rem 0.5rem;
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.6rem;
-		background: var(--bg-tertiary);
-		border: 1px solid var(--border);
-		color: var(--text-secondary);
-		cursor: pointer;
-	}
-
-	.btn-copy-sm:hover {
-		background: var(--bg-secondary);
-		color: var(--text-primary);
-	}
-
-	.fix-learn-more {
-		display: inline-block;
-		margin-top: 0.75rem;
-		font-size: 0.8rem;
-		color: var(--blue);
-		text-decoration: none;
-	}
-
-	.fix-learn-more:hover {
-		text-decoration: underline;
 	}
 
 	.code-snippet {
@@ -2262,116 +1801,6 @@
 	.code-snippet code {
 		background: transparent;
 		padding: 0;
-	}
-
-	.severity-badge {
-		padding: 0.25rem 0.5rem;
-		font-size: 0.7rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.severity-badge.severity-critical { background: var(--red); color: white; }
-	.severity-badge.severity-high { background: #f97316; color: white; }
-	.severity-badge.severity-medium { background: var(--orange); color: var(--bg-inverse); }
-	.severity-badge.severity-low { background: var(--blue); color: white; }
-
-	.finding-category {
-		font-size: 0.75rem;
-		color: var(--text-tertiary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.finding-title {
-		font-family: 'Inter', sans-serif;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--text-primary);
-		margin: 0;
-	}
-
-	.finding-location {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		margin: 1rem 0;
-	}
-
-	.location-label {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--text-secondary);
-	}
-
-	.finding-location code {
-		font-size: 0.8rem;
-		background: var(--bg-tertiary);
-		padding: 0.25rem 0.5rem;
-	}
-
-	.finding-fix {
-		margin-top: 1rem;
-		border: 1px solid var(--border);
-		overflow: hidden;
-	}
-
-	.fix-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 0.5rem 1rem;
-		background: var(--bg-tertiary);
-	}
-
-	.fix-label {
-		font-size: 0.7rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--green-dim);
-	}
-
-	pre.fix-code {
-		padding: 1rem;
-		margin: 0;
-		background: var(--bg-inverse);
-		color: var(--text-inverse);
-		overflow-x: auto;
-		font-size: 0.8rem;
-		line-height: 1.5;
-	}
-
-	pre.fix-code code {
-		background: transparent;
-		padding: 0;
-	}
-
-	.btn-copy {
-		padding: 0.5rem 1rem;
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.7rem;
-		text-transform: uppercase;
-		background: transparent;
-		border: 1px solid var(--border);
-		color: var(--text-primary);
-		cursor: pointer;
-		transition: all 0.15s;
-	}
-
-	.btn-copy:hover {
-		border-color: var(--text-primary);
-	}
-
-	.finding-cwe {
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 0.7rem;
-		padding: 0.2rem 0.5rem;
-		background: var(--bg-tertiary);
-		border: 1px solid var(--border);
-		color: var(--text-secondary);
 	}
 
 	.cwe-info-box {
