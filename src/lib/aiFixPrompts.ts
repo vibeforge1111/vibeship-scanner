@@ -1238,34 +1238,38 @@ Please:
 }
 
 /**
- * Generate a master prompt to fix ALL critical/high issues at once
+ * Generate a master prompt to fix ALL issues at once
  */
 export function generateMasterFixPrompt(findings: any[]): string {
-	const criticalAndHigh = findings.filter(
-		f => f.severity === 'critical' || f.severity === 'high'
-	);
-
-	if (criticalAndHigh.length === 0) {
+	if (findings.length === 0) {
 		return '';
 	}
 
-	const issueList = criticalAndHigh.map((f, i) => {
+	// Sort by severity: critical > high > medium > low > info
+	const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+	const sorted = [...findings].sort((a, b) =>
+		(severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4)
+	);
+
+	const issueList = sorted.map((f, i) => {
 		const location = f.location?.file
 			? `${f.location.file}${f.location.line ? `:${f.location.line}` : ''}`
 			: 'location unknown';
-		return `${i + 1}. **${f.title}** in \`${location}\``;
+		const sev = f.severity?.toUpperCase() || 'INFO';
+		return `${i + 1}. [${sev}] **${f.title}** in \`${location}\``;
 	}).join('\n');
 
-	const fixInstructions = criticalAndHigh.map((f, i) => {
+	const fixInstructions = sorted.map((f, i) => {
 		const location = f.location?.file || 'the codebase';
 		const fixHint = getFixHint(f);
-		return `**Issue ${i + 1}: ${f.title}**
+		const sev = f.severity?.toUpperCase() || 'INFO';
+		return `**Issue ${i + 1} [${sev}]: ${f.title}**
    - Location: ${location}${f.location?.line ? ` line ${f.location.line}` : ''}
    - Fix: ${fixHint}`;
 	}).join('\n\n');
 
 	return `
-I need to fix ${criticalAndHigh.length} critical security issues in my codebase. Please help me fix all of them systematically.
+I need to fix ${findings.length} security issues in my codebase. Please help me fix all of them systematically, starting with the most critical.
 
 ## Issues to Fix:
 ${issueList}

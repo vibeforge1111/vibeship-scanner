@@ -20,15 +20,21 @@
 
 <!-- Master Fix Prompt Section - Displays only the AI prompt, counts are in parent -->
 <div class="vibe-summary">
-	{#if results.masterPrompt && (results.summary.shipBlockers > 0 || results.summary.fixThisWeek > 0)}
+	{#if results.masterPrompt && results.summary.totalFindings > 0}
 		<div class="master-prompt-section">
 			<button class="master-prompt-toggle" onclick={() => (showMasterPrompt = !showMasterPrompt)}>
 				<div class="toggle-content">
-					<span class="toggle-icon">🤖</span>
+					<span class="toggle-icon">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M12 2L2 7l10 5 10-5-10-5z"/>
+							<path d="M2 17l10 5 10-5"/>
+							<path d="M2 12l10 5 10-5"/>
+						</svg>
+					</span>
 					<div class="toggle-text">
-						<span class="toggle-title">Fix All Critical Issues with AI</span>
+						<span class="toggle-title">Fix All Issues with AI</span>
 						<span class="toggle-subtitle">
-							One prompt to fix {results.summary.shipBlockers + results.summary.fixThisWeek} issues
+							One prompt to fix {results.summary.totalFindings} issues
 						</span>
 					</div>
 				</div>
@@ -109,7 +115,10 @@
 	}
 
 	.toggle-icon {
-		font-size: 1.5rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--green);
 	}
 
 	.toggle-text {
