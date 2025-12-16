@@ -319,84 +319,6 @@
 	</section>
 </div>
 
-<section class="features" id="features">
-	<div class="features-inner">
-		<p class="section-label">Security Analysis</p>
-		<h2 class="section-title">What we scan</h2>
-		<div class="features-grid">
-			<div class="feature-card">
-				<div class="feature-icon">🔐</div>
-				<h3>Code Security</h3>
-				<p>SQL injection, XSS, insecure auth patterns, and 2000+ vulnerability checks using Semgrep.</p>
-			</div>
-			<div class="feature-card">
-				<div class="feature-icon">🔑</div>
-				<h3>Exposed Secrets</h3>
-				<p>API keys, database URLs, JWT secrets, and credentials that shouldn't be in your code.</p>
-			</div>
-			<div class="feature-card">
-				<div class="feature-icon">📦</div>
-				<h3>Dependencies</h3>
-				<p>Known CVEs in your npm, pip, or cargo packages with upgrade recommendations.</p>
-			</div>
-			<div class="feature-card">
-				<div class="feature-icon">🛡️</div>
-				<h3>Authentication</h3>
-				<p>Weak password policies, missing rate limiting, insecure session handling, and auth bypasses.</p>
-			</div>
-			<div class="feature-card">
-				<div class="feature-icon">🗄️</div>
-				<h3>Database Security</h3>
-				<p>NoSQL injection, ORM misuse, unparameterized queries, and data exposure risks.</p>
-			</div>
-			<div class="feature-card">
-				<div class="feature-icon">🌐</div>
-				<h3>API Security</h3>
-				<p>CORS misconfigurations, missing auth on endpoints, and insecure data serialization.</p>
-			</div>
-			<div class="feature-card">
-				<div class="feature-icon">📁</div>
-				<h3>File Handling</h3>
-				<p>Path traversal, unrestricted uploads, insecure file permissions, and directory exposure.</p>
-			</div>
-			<div class="feature-card">
-				<div class="feature-icon">⚡</div>
-				<h3>Injection Attacks</h3>
-				<p>Command injection, LDAP injection, template injection, and code execution vulnerabilities.</p>
-			</div>
-			<div class="feature-card">
-				<div class="feature-icon">🔒</div>
-				<h3>Cryptography</h3>
-				<p>Weak algorithms, hardcoded keys, improper random generation, and insecure hashing.</p>
-			</div>
-		</div>
-	</div>
-</section>
-
-<section class="how" id="how">
-	<div class="how-inner">
-		<p class="section-label">Simple Process</p>
-		<h2 class="section-title">How it works</h2>
-		<div class="how-grid">
-			<div class="how-step">
-				<p class="how-step-number">01</p>
-				<h4>Paste your repo URL</h4>
-				<p>Public GitHub or GitLab repos. No signup, no OAuth, just paste and scan.</p>
-			</div>
-			<div class="how-step">
-				<p class="how-step-number">02</p>
-				<h4>We scan everything</h4>
-				<p>Industry-standard security tools and vulnerability databases.</p>
-			</div>
-			<div class="how-step">
-				<p class="how-step-number">03</p>
-				<h4>Ship the fix</h4>
-				<p>Get clear recommendations for each issue, or just point your AI to it and let it cook.</p>
-			</div>
-		</div>
-	</div>
-</section>
-
 <section class="ai-fix" id="ai-fix">
 	<div class="ai-fix-inner">
 		<p class="section-label">Built for Vibe Coders</p>
@@ -476,6 +398,84 @@ db.query("SELECT * FROM users WHERE id = $1", [userId])
 			<div class="ai-fix-feature">
 				<span class="ai-fix-feature-icon">🎯</span>
 				<span>Severity-ordered for priority</span>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="features" id="features">
+	<div class="features-inner">
+		<p class="section-label">Security Analysis</p>
+		<h2 class="section-title">What we scan</h2>
+		<div class="features-grid">
+			<div class="feature-card">
+				<div class="feature-icon">🔐</div>
+				<h3>Code Security</h3>
+				<p>SQL injection, XSS, insecure auth patterns, and 2000+ vulnerability checks using Semgrep.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">🔑</div>
+				<h3>Exposed Secrets</h3>
+				<p>API keys, database URLs, JWT secrets, and credentials that shouldn't be in your code.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">📦</div>
+				<h3>Dependencies</h3>
+				<p>Known CVEs in your npm, pip, or cargo packages with upgrade recommendations.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">🛡️</div>
+				<h3>Authentication</h3>
+				<p>Weak password policies, missing rate limiting, insecure session handling, and auth bypasses.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">🗄️</div>
+				<h3>Database Security</h3>
+				<p>NoSQL injection, ORM misuse, unparameterized queries, and data exposure risks.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">🌐</div>
+				<h3>API Security</h3>
+				<p>CORS misconfigurations, missing auth on endpoints, and insecure data serialization.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">📁</div>
+				<h3>File Handling</h3>
+				<p>Path traversal, unrestricted uploads, insecure file permissions, and directory exposure.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">⚡</div>
+				<h3>Injection Attacks</h3>
+				<p>Command injection, LDAP injection, template injection, and code execution vulnerabilities.</p>
+			</div>
+			<div class="feature-card">
+				<div class="feature-icon">🔒</div>
+				<h3>Cryptography</h3>
+				<p>Weak algorithms, hardcoded keys, improper random generation, and insecure hashing.</p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="how" id="how">
+	<div class="how-inner">
+		<p class="section-label">Simple Process</p>
+		<h2 class="section-title">How it works</h2>
+		<div class="how-grid">
+			<div class="how-step">
+				<p class="how-step-number">01</p>
+				<h4>Paste your repo URL</h4>
+				<p>Public GitHub or GitLab repos. No signup, no OAuth, just paste and scan.</p>
+			</div>
+			<div class="how-step">
+				<p class="how-step-number">02</p>
+				<h4>We scan everything</h4>
+				<p>Industry-standard security tools and vulnerability databases.</p>
+			</div>
+			<div class="how-step">
+				<p class="how-step-number">03</p>
+				<h4>Ship the fix</h4>
+				<p>Get clear recommendations for each issue, or just point your AI to it and let it cook.</p>
 			</div>
 		</div>
 	</div>
