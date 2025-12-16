@@ -1749,28 +1749,7 @@
 	.vibe-score-block.grade-b { color: #84cc16; }
 	.vibe-score-block.grade-c { color: var(--orange); }
 	.vibe-score-block.grade-d { color: #f97316; }
-	.vibe-score-block.grade-f {
-		color: #dc2626;
-	}
-	.vibe-score-block.grade-f .vibe-score-num {
-		font-size: 4rem;
-		font-weight: 900;
-		text-shadow: 0 0 30px rgba(220, 38, 38, 0.5);
-		animation: pulse-red 2s ease-in-out infinite;
-	}
-	.vibe-score-block.grade-f .vibe-grade {
-		font-size: 1.3rem;
-		color: #dc2626;
-	}
-	.vibe-score-block.grade-f .vibe-status {
-		color: #dc2626;
-		font-weight: 600;
-	}
-
-	@keyframes pulse-red {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.85; }
-	}
+	.vibe-score-block.grade-f { color: #ef4444; }
 
 	/* Repo Block */
 	.vibe-repo-block {
@@ -3045,14 +3024,6 @@
 
 		.vibe-score-num {
 			font-size: 2.5rem;
-		}
-
-		.vibe-score-block.grade-f .vibe-score-num {
-			font-size: 3.5rem;
-		}
-
-		.vibe-score-block.grade-f .vibe-grade {
-			font-size: 1.2rem;
 		}
 
 		.vibe-score-meta {
