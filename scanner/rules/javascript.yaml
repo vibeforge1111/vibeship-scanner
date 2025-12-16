@@ -5219,6 +5219,82 @@ rules:
       cwe: "CWE-1333"
       tags: [redos, nodegoat]
 
+  # ============================================
+  # ReDoS - Additional Patterns (vulnerable-node)
+  # ============================================
+
+  # ReDoS via .test() on user input with vulnerable regex
+  - id: redos-test-user-input
+    pattern: |
+      $RE = /.../
+      ...
+      $RE.test($USER_INPUT)
+    message: Regex .test() on variable - if user-controlled and regex has nested quantifiers, ReDoS is possible
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, vulnerable-node]
+
+  # Email validation regex with nested quantifiers (common ReDoS pattern)
+  - id: redos-email-validation
+    pattern-regex: "/.*\\([a-zA-Z0-9]\\+\\)\\*.*@"
+    message: Email validation regex with nested quantifiers - potential ReDoS vulnerability
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, email, vulnerable-node]
+
+  # Regex literal with optional group followed by quantifier ((x)?y)+
+  - id: redos-optional-quantifier
+    pattern-regex: "/[^/]*\\([^)]*\\)\\?[^)]*[+*][^/]*/"
+    message: Regex with optional group followed by quantifier - may cause exponential backtracking
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, vulnerable-node]
+
+  # ============================================
+  # Error Message Reflection (vulnerable-node)
+  # ============================================
+
+  # Error message reflected in redirect URL
+  - id: error-message-in-redirect
+    pattern: 'res.redirect($URL + "..." + $ERR.message)'
+    message: Error message reflected in redirect URL - may leak sensitive info or enable XSS
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, vulnerable-node]
+
+  # Error message in query string redirect
+  - id: error-redirect-query-string
+    pattern-regex: "res\\.redirect\\s*\\([^)]*\\+[^)]*err\\.message"
+    message: Error message appended to redirect URL - information disclosure and potential XSS
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [information-disclosure, vulnerable-node]
+
+  # Catch block redirecting with error
+  - id: catch-redirect-error
+    pattern: |
+      catch($ERR) {
+        ...
+        res.redirect($URL + $ERR)
+        ...
+      }
+    message: Error redirected in catch block - may expose sensitive error details
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [error-handling, vulnerable-node]
+
   # HTTP Parameter Pollution - multiple same params
   - id: hpp-array-param
     patterns:
