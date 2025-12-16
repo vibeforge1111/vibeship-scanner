@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Force rebuild: v2.2 - Added GitHub login for private repos in error state
+	// Force rebuild: v2.3 - Added vibe-coder friendly UI with AI fix prompts
 	import { page } from '$app/stores';
 	import { onMount, onDestroy } from 'svelte';
 	import { supabase } from '$lib/supabase';
@@ -9,6 +9,11 @@
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import { trackPageView, trackScanCompleted, trackScanResultsViewed } from '$lib/analytics';
 	import { auth } from '$lib/stores/auth';
+
+	// Vibe-coder friendly components
+	import { transformResults, type TransformedResults } from '$lib/vibeTransformer';
+	import FindingCard from '$lib/components/FindingCard.svelte';
+	import VibeSummary from '$lib/components/VibeSummary.svelte';
 
 	let scanId = $derived($page.params.id);
 	let status = $state<'queued' | 'scanning' | 'complete' | 'failed'>('queued');
@@ -41,6 +46,17 @@
 	let timeoutCheckInterval: ReturnType<typeof setInterval> | null = null;
 	let progressPollInterval: ReturnType<typeof setInterval> | null = null;
 	const SCAN_TIMEOUT_MS = 15 * 60 * 1000;
+
+	// Vibe mode - show AI-friendly output
+	let vibeMode = $state(true);
+	let vibeResults = $state<TransformedResults | null>(null);
+
+	// Transform results when they change
+	$effect(() => {
+		if (results?.findings?.length > 0) {
+			vibeResults = transformResults(results.findings);
+		}
+	});
 
 	explanationMode.subscribe(value => {
 		mode = value;
@@ -926,6 +942,25 @@
 					<div class="findings-header">
 						<h2>Findings ({results.findings.length})</h2>
 						<div class="findings-actions">
+							<!-- View Mode Toggle -->
+							<div class="view-toggle">
+								<button
+									class="toggle-btn"
+									class:active={vibeMode}
+									onclick={() => vibeMode = true}
+								>
+									<span class="toggle-icon">🤖</span>
+									AI Mode
+								</button>
+								<button
+									class="toggle-btn"
+									class:active={!vibeMode}
+									onclick={() => vibeMode = false}
+								>
+									<span class="toggle-icon">🔐</span>
+									Classic
+								</button>
+							</div>
 							<button class="export-btn" onclick={copyFullReport}>
 								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 									<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -943,85 +978,97 @@
 							</button>
 						</div>
 					</div>
-					<div class="findings-list">
-						{#each results.findings as finding, i}
-							{@const findingId = finding.id || `finding-${i}`}
-							{@const isExpanded = expandedFindings.has(findingId)}
-							{@const cweInfo = getCWEFromRuleId(finding.ruleId || finding.title || '')}
-							<div class="finding-card" class:expanded={isExpanded}>
-								<button class="finding-toggle" onclick={() => toggleFinding(findingId)}>
-									<div class="finding-header">
-										<span class="severity-badge {getSeverityClass(finding.severity)}">
-											{finding.severity.toUpperCase()}
-										</span>
-										<span class="finding-category">{finding.category}</span>
-										{#if cweInfo}
-											<span class="finding-cwe">{cweInfo.id}</span>
-										{/if}
-										<span class="finding-chevron" class:rotated={isExpanded}>▼</span>
-									</div>
-									<h3 class="finding-title">{finding.title}</h3>
-								</button>
 
-								{#if isExpanded}
-									<div class="finding-details">
-										<p class="finding-explanation">{getExplanation(finding)}</p>
+					<!-- VIBE MODE: AI-Friendly Cards -->
+					{#if vibeMode && vibeResults}
+						<VibeSummary results={vibeResults} />
+						<div class="findings-list vibe-list">
+							{#each vibeResults.findings as finding, i}
+								<FindingCard {finding} index={i} />
+							{/each}
+						</div>
+					{:else}
+						<!-- CLASSIC MODE: Traditional Security View -->
+						<div class="findings-list">
+							{#each results.findings as finding, i}
+								{@const findingId = finding.id || `finding-${i}`}
+								{@const isExpanded = expandedFindings.has(findingId)}
+								{@const cweInfo = getCWEFromRuleId(finding.ruleId || finding.title || '')}
+								<div class="finding-card-classic" class:expanded={isExpanded}>
+									<button class="finding-toggle" onclick={() => toggleFinding(findingId)}>
+										<div class="finding-header">
+											<span class="severity-badge {getSeverityClass(finding.severity)}">
+												{finding.severity.toUpperCase()}
+											</span>
+											<span class="finding-category">{finding.category}</span>
+											{#if cweInfo}
+												<span class="finding-cwe">{cweInfo.id}</span>
+											{/if}
+											<span class="finding-chevron" class:rotated={isExpanded}>▼</span>
+										</div>
+										<h3 class="finding-title">{finding.title}</h3>
+									</button>
 
-										{#if finding.location?.file}
-											<div class="finding-location">
-												<code>{finding.location.file}{finding.location.line ? `:${finding.location.line}` : ''}</code>
-											</div>
-										{/if}
+									{#if isExpanded}
+										<div class="finding-details">
+											<p class="finding-explanation">{getExplanation(finding)}</p>
 
-										{#if finding.snippet?.code && finding.snippet.code.trim() && finding.snippet.code.length > 10 && !isUnhelpfulSnippet(finding.snippet.code)}
-											<pre class="finding-code"><code>{finding.snippet.code}</code></pre>
-										{/if}
+											{#if finding.location?.file}
+												<div class="finding-location">
+													<code>{finding.location.file}{finding.location.line ? `:${finding.location.line}` : ''}</code>
+												</div>
+											{/if}
 
-										{#if getFixTemplate(finding)}
-											{@const fixTemplate = getFixTemplate(finding)}
-											<details class="fix-details">
-												<summary class="fix-summary">
-													<span>How to fix</span>
-												</summary>
-												<div class="fix-content">
-													<div class="fix-comparison">
-														<div class="fix-before">
-															<span class="fix-label-bad">Before</span>
-															<pre><code>{fixTemplate.before}</code></pre>
+											{#if finding.snippet?.code && finding.snippet.code.trim() && finding.snippet.code.length > 10 && !isUnhelpfulSnippet(finding.snippet.code)}
+												<pre class="finding-code"><code>{finding.snippet.code}</code></pre>
+											{/if}
+
+											{#if getFixTemplate(finding)}
+												{@const fixTemplate = getFixTemplate(finding)}
+												<details class="fix-details">
+													<summary class="fix-summary">
+														<span>How to fix</span>
+													</summary>
+													<div class="fix-content">
+														<div class="fix-comparison">
+															<div class="fix-before">
+																<span class="fix-label-bad">Before</span>
+																<pre><code>{fixTemplate.before}</code></pre>
+															</div>
+															<div class="fix-after">
+																<span class="fix-label-good">After</span>
+																<button class="btn-copy-sm" onclick={() => copyFix(fixTemplate.after)}>
+																	{copied === 'fix' ? '✓' : 'Copy'}
+																</button>
+																<pre><code>{fixTemplate.after}</code></pre>
+															</div>
 														</div>
-														<div class="fix-after">
-															<span class="fix-label-good">After</span>
-															<button class="btn-copy-sm" onclick={() => copyFix(fixTemplate.after)}>
-																{copied === 'fix' ? '✓' : 'Copy'}
-															</button>
-															<pre><code>{fixTemplate.after}</code></pre>
-														</div>
+														{#if cweInfo?.references?.[0]}
+															<a href={cweInfo.references[0]} target="_blank" rel="noopener noreferrer" class="fix-learn-more">
+																Learn more →
+															</a>
+														{/if}
 													</div>
-													{#if cweInfo?.references?.[0]}
-														<a href={cweInfo.references[0]} target="_blank" rel="noopener noreferrer" class="fix-learn-more">
-															Learn more →
-														</a>
-													{/if}
-												</div>
-											</details>
-										{:else if finding.fix?.available && finding.fix?.template}
-											<details class="fix-details">
-												<summary class="fix-summary">
-													<span>Suggested fix</span>
-												</summary>
-												<div class="fix-content">
-													<pre><code>{finding.fix.template}</code></pre>
-													<button class="btn-copy-sm" onclick={() => copyFix(finding.fix.template)}>
-														{copied === 'fix' ? '✓' : 'Copy'}
-													</button>
-												</div>
-											</details>
-										{/if}
-									</div>
-								{/if}
-							</div>
-						{/each}
-					</div>
+												</details>
+											{:else if finding.fix?.available && finding.fix?.template}
+												<details class="fix-details">
+													<summary class="fix-summary">
+														<span>Suggested fix</span>
+													</summary>
+													<div class="fix-content">
+														<pre><code>{finding.fix.template}</code></pre>
+														<button class="btn-copy-sm" onclick={() => copyFix(finding.fix.template)}>
+															{copied === 'fix' ? '✓' : 'Copy'}
+														</button>
+													</div>
+												</details>
+											{/if}
+										</div>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			{:else}
 				<div class="no-findings">
@@ -1542,11 +1589,74 @@
 	.findings-actions {
 		display: flex;
 		gap: 0.5rem;
+		flex-wrap: wrap;
+		align-items: center;
 	}
 
 	.findings-actions .export-btn {
 		font-size: 0.75rem;
 		padding: 0.4rem 0.75rem;
+	}
+
+	/* View Mode Toggle */
+	.view-toggle {
+		display: flex;
+		border: 1px solid var(--border);
+		border-radius: 0;
+	}
+
+	.toggle-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.4rem 0.75rem;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		background: transparent;
+		border: none;
+		color: var(--text-tertiary);
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.toggle-btn:first-child {
+		border-right: 1px solid var(--border);
+	}
+
+	.toggle-btn:hover {
+		color: var(--text-primary);
+		background: var(--bg-secondary);
+	}
+
+	.toggle-btn.active {
+		color: var(--green);
+		background: var(--bg-secondary);
+	}
+
+	.toggle-icon {
+		font-size: 0.85rem;
+	}
+
+	/* Vibe List */
+	.vibe-list {
+		gap: 0;
+	}
+
+	/* Classic mode card styles */
+	.finding-card-classic {
+		border: 1px solid var(--border);
+		background: var(--bg-primary);
+		transition: border-color 0.15s;
+	}
+
+	.finding-card-classic:hover {
+		border-color: var(--text-tertiary);
+	}
+
+	.finding-card-classic.expanded {
+		border-color: var(--text-secondary);
 	}
 
 	.findings-section h2,
