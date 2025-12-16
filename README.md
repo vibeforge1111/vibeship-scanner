@@ -2,13 +2,45 @@
 
 A security scanning tool designed for vibe coders. Analyzes GitHub repositories for vulnerabilities and generates AI-ready fix prompts.
 
+## Try It Free
+
+**[vibeship.co](https://vibeship.co)** — Paste any public GitHub repo URL and get a full security scan in minutes. No signup required.
+
+## How AI Fix Prompts Work
+
+Vibe coding with AI assistants is great for building fast, but security vulnerabilities can slip through. Vibeship Scanner bridges that gap:
+
+1. **Scan your repo** — The scanner runs Opengrep (SAST), Trivy (dependencies), Gitleaks (secrets), and npm audit against your codebase
+2. **Get findings in plain English** — No security jargon, just clear explanations of what's wrong and why it matters
+3. **Copy the AI fix prompt** — Each finding includes a ready-to-paste prompt for Claude, Cursor, ChatGPT, or any AI coding assistant
+4. **Let your AI fix it** — The prompt contains the exact file, line number, vulnerable code pattern, and specific fix instructions
+
+### Example AI Fix Prompt
+
+```
+Fix the SQL injection vulnerability in src/db/users.js at line 45.
+
+The code uses string concatenation to build a SQL query:
+  const query = "SELECT * FROM users WHERE id = " + userId;
+
+This allows attackers to inject malicious SQL. Replace with parameterized queries:
+  const query = "SELECT * FROM users WHERE id = ?";
+  db.query(query, [userId]);
+```
+
+The prompts are designed to give your AI assistant everything it needs to make the fix correctly on the first try.
+
+### Master Fix Prompt
+
+For repos with multiple findings, copy or download the **Master Fix Prompt** — a single prompt that instructs your AI to systematically work through all vulnerabilities one by one.
+
 ## Features
 
 - **Multi-Scanner Analysis**: Combines Opengrep (SAST), Trivy (dependency scanning), Gitleaks (secret detection), and npm audit
 - **AI-Ready Fix Prompts**: Every finding includes a copy-paste prompt for Claude, Cursor, or ChatGPT
 - **Vibe-Friendly Output**: Plain English explanations instead of security jargon
 - **Master Fix Prompt**: One prompt to fix all issues systematically
-- **100+ Vulnerability Patterns**: SQL injection, XSS, SSRF, secrets, auth issues, and more
+- **2,200+ Security Rules**: SQL injection, XSS, SSRF, secrets, auth issues, and more across 15+ languages
 
 ## Tech Stack
 
@@ -59,7 +91,7 @@ PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ## Scanner Rules
 
-The scanner includes 100+ custom security rules covering:
+The scanner includes **2,200+ custom security rules** across **15+ languages** covering:
 
 - **Injection**: SQL, NoSQL, Command, Template (SSTI)
 - **XSS**: DOM, Stored, React, Vue, Svelte, Angular, jQuery
