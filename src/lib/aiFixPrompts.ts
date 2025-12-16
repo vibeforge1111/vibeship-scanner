@@ -1106,6 +1106,422 @@ After fixing:
 3. Show me the changes
 `.trim();
 
+/**
+ * XXE - XML External Entity
+ */
+const xxePrompt: PromptGenerator = (ctx) => `
+Fix the XXE (XML External Entity) vulnerability in ${ctx.file}${ctx.line ? ` at line ${ctx.line}` : ''}.
+
+${ctx.code ? `The vulnerable code:
+\`\`\`${ctx.language || 'javascript'}
+${ctx.code}
+\`\`\`` : 'Find where XML is being parsed without disabling external entities.'}
+
+**The Problem:** XXE allows attackers to read server files, access internal services, or cause denial of service.
+
+**For Node.js (libxmljs):**
+\`\`\`javascript
+// Instead of: libxmljs.parseXml(xml, { noent: true })
+const doc = libxmljs.parseXml(xml, { noent: false, nonet: true });
+\`\`\`
+
+**For Java:**
+\`\`\`java
+DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+// Disable DTDs entirely (most secure)
+dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+// Or disable external entities
+dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+\`\`\`
+
+**For Python:**
+\`\`\`python
+# Use defusedxml instead of xml.etree
+from defusedxml.ElementTree import parse, fromstring
+doc = parse(xml_file)  # Safe from XXE
+
+# Or disable entities manually:
+from lxml import etree
+parser = etree.XMLParser(resolve_entities=False, no_network=True)
+\`\`\`
+
+**Best practice:** Use JSON instead of XML when possible.
+
+After fixing:
+1. Search for all XML parsing in the codebase
+2. Ensure external entities are disabled everywhere
+3. Consider migrating to JSON format
+`.trim();
+
+/**
+ * IDOR - Insecure Direct Object Reference
+ */
+const idorPrompt: PromptGenerator = (ctx) => `
+Fix the IDOR (Insecure Direct Object Reference) vulnerability in ${ctx.file}${ctx.line ? ` at line ${ctx.line}` : ''}.
+
+${ctx.code ? `The vulnerable code:
+\`\`\`${ctx.language || 'javascript'}
+${ctx.code}
+\`\`\`` : 'Find where user-supplied IDs are used to fetch resources without authorization.'}
+
+**The Problem:** Attackers can access other users' data by changing IDs in the URL or request body.
+
+**The Fix - Add Authorization Checks:**
+\`\`\`javascript
+// Express example - ALWAYS verify ownership
+app.get('/api/documents/:id', requireAuth, async (req, res) => {
+  const document = await Document.findById(req.params.id);
+
+  if (!document) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
+  // CRITICAL: Check if user owns this resource
+  if (document.userId.toString() !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  res.json(document);
+});
+\`\`\`
+
+**For list endpoints:**
+\`\`\`javascript
+// Only return resources belonging to the user
+app.get('/api/documents', requireAuth, async (req, res) => {
+  // Filter by user ID - never return all records
+  const documents = await Document.find({ userId: req.user.id });
+  res.json(documents);
+});
+\`\`\`
+
+**For Prisma/ORMs:**
+\`\`\`javascript
+const document = await prisma.document.findFirst({
+  where: {
+    id: req.params.id,
+    userId: req.user.id  // Always include user filter
+  }
+});
+\`\`\`
+
+After fixing:
+1. Search for all endpoints that accept IDs from user input
+2. Add authorization checks to every single one
+3. Never trust user-supplied IDs without verification
+`.trim();
+
+/**
+ * Mass Assignment
+ */
+const massAssignmentPrompt: PromptGenerator = (ctx) => `
+Fix the mass assignment vulnerability in ${ctx.file}${ctx.line ? ` at line ${ctx.line}` : ''}.
+
+${ctx.code ? `The vulnerable code:
+\`\`\`${ctx.language || 'javascript'}
+${ctx.code}
+\`\`\`` : 'Find where request body is directly assigned to a model without filtering.'}
+
+**The Problem:** Attackers can set fields they shouldn't (like isAdmin, role, balance) by adding them to the request.
+
+**The Fix - Use Allowlists:**
+\`\`\`javascript
+// Instead of: User.create(req.body) or { ...req.body }
+
+// Explicitly pick allowed fields
+const { name, email, bio } = req.body;
+const user = await User.create({ name, email, bio });
+
+// Or use a validation library (recommended)
+import { z } from 'zod';
+
+const createUserSchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  bio: z.string().max(500).optional()
+  // Note: isAdmin, role, balance are NOT included
+});
+
+const validData = createUserSchema.parse(req.body);
+const user = await User.create(validData);
+\`\`\`
+
+**For Mongoose:**
+\`\`\`javascript
+// Define allowed fields in schema
+const userSchema = new Schema({
+  name: String,
+  email: String,
+  isAdmin: { type: Boolean, default: false }  // Never from user input
+});
+
+// Use pick/select for updates
+const allowedFields = ['name', 'email', 'bio'];
+const updates = pick(req.body, allowedFields);
+await User.findByIdAndUpdate(userId, updates);
+\`\`\`
+
+**Fields to NEVER accept from users:**
+- isAdmin, role, permissions
+- userId, ownerId (for other users)
+- balance, credits, price
+- verified, approved, status
+- createdAt, updatedAt
+
+After fixing:
+1. Search for req.body spreads and direct assignments
+2. Add explicit field allowlists to all create/update operations
+3. Use schema validation (Zod, Joi) for all inputs
+`.trim();
+
+/**
+ * Rate Limiting
+ */
+const rateLimitPrompt: PromptGenerator = (ctx) => `
+Add rate limiting to the endpoint in ${ctx.file}${ctx.line ? ` at line ${ctx.line}` : ''}.
+
+${ctx.code ? `The unprotected endpoint:
+\`\`\`${ctx.language || 'javascript'}
+${ctx.code}
+\`\`\`` : 'Find the authentication or sensitive endpoint lacking rate limiting.'}
+
+**The Problem:** Without rate limiting, attackers can brute-force passwords, enumerate users, or abuse APIs.
+
+**For Express.js:**
+\`\`\`javascript
+import rateLimit from 'express-rate-limit';
+
+// Strict limit for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: { error: 'Too many attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply to auth routes
+app.post('/api/login', authLimiter, loginHandler);
+app.post('/api/register', authLimiter, registerHandler);
+app.post('/api/reset-password', authLimiter, resetHandler);
+
+// General API limiter
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+});
+app.use('/api/', apiLimiter);
+\`\`\`
+
+**For Next.js:**
+\`\`\`javascript
+// Use Upstash rate limit or similar
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(5, '15 m'),
+});
+
+export async function POST(request) {
+  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success } = await ratelimit.limit(ip);
+
+  if (!success) {
+    return Response.json({ error: 'Rate limited' }, { status: 429 });
+  }
+  // ... handle request
+}
+\`\`\`
+
+After fixing:
+1. Add rate limiting to ALL auth endpoints (login, register, password reset)
+2. Add general rate limiting to the API
+3. Consider adding account lockout after failed attempts
+`.trim();
+
+/**
+ * ReDoS - Regular Expression Denial of Service
+ */
+const redosPrompt: PromptGenerator = (ctx) => `
+Fix the ReDoS vulnerability in ${ctx.file}${ctx.line ? ` at line ${ctx.line}` : ''}.
+
+${ctx.code ? `The vulnerable regex:
+\`\`\`${ctx.language || 'javascript'}
+${ctx.code}
+\`\`\`` : 'Find the regular expression with dangerous patterns.'}
+
+**The Problem:** Certain regex patterns can cause exponential backtracking, freezing your server with crafted input.
+
+**Dangerous patterns to avoid:**
+- Nested quantifiers: \`(a+)+\`, \`(a*)*\`, \`(a|aa)+\`
+- Overlapping alternations: \`(.*a){10}\`
+- Quantifiers on groups with overlapping: \`([a-zA-Z]+)*\`
+
+**Safe alternatives:**
+\`\`\`javascript
+// Instead of: /^(a+)+$/  (vulnerable)
+const safe = /^a+$/;  // No nested quantifier
+
+// Instead of: /(.*a){10}/  (vulnerable)
+const safe = /(?:[^a]*a){10}/;  // More specific, no .* inside group
+
+// For email validation, use a simple pattern or library:
+const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;  // Simple and safe
+// Or use: validator.isEmail(input)
+\`\`\`
+
+**Best practices:**
+\`\`\`javascript
+// 1. Limit input length BEFORE regex
+if (input.length > 1000) {
+  throw new Error('Input too long');
+}
+
+// 2. Use RE2 for user-provided patterns (no backtracking)
+import RE2 from 're2';
+const safeRegex = new RE2(pattern);
+
+// 3. Add timeout to regex operations
+import { execWithTimeout } from 'safe-regex';
+const result = execWithTimeout(regex, input, 1000); // 1s timeout
+\`\`\`
+
+After fixing:
+1. Review ALL regex patterns in the codebase
+2. Test with redos-detector or regex101's "debugger"
+3. Add input length limits before regex matching
+`.trim();
+
+/**
+ * Security Headers / Helmet
+ */
+const securityHeadersPrompt: PromptGenerator = (ctx) => `
+Add security headers to your application in ${ctx.file}${ctx.line ? ` at line ${ctx.line}` : ''}.
+
+**The Problem:** Missing security headers expose your app to clickjacking, XSS, and other attacks.
+
+**For Express.js - Use Helmet:**
+\`\`\`javascript
+import helmet from 'helmet';
+
+app.use(helmet()); // Adds all recommended headers
+
+// Or configure individually:
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],  // Tighten in production
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,  // 1 year
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+\`\`\`
+
+**Manual headers (for other frameworks):**
+\`\`\`javascript
+// Add to all responses
+res.setHeader('X-Content-Type-Options', 'nosniff');
+res.setHeader('X-Frame-Options', 'DENY');
+res.setHeader('X-XSS-Protection', '1; mode=block');
+res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+res.setHeader('Content-Security-Policy', "default-src 'self'");
+res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+res.setHeader('Permissions-Policy', 'geolocation=(), microphone=()');
+\`\`\`
+
+**For Next.js (next.config.js):**
+\`\`\`javascript
+module.exports = {
+  async headers() {
+    return [{
+      source: '/:path*',
+      headers: [
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+      ],
+    }];
+  },
+};
+\`\`\`
+
+After fixing:
+1. Install helmet: npm install helmet
+2. Add to your Express app setup
+3. Test with securityheaders.com
+`.trim();
+
+/**
+ * Debug Mode in Production
+ */
+const debugModePrompt: PromptGenerator = (ctx) => `
+Disable debug mode in production in ${ctx.file}${ctx.line ? ` at line ${ctx.line}` : ''}.
+
+${ctx.code ? `The vulnerable code:
+\`\`\`${ctx.language || 'javascript'}
+${ctx.code}
+\`\`\`` : 'Find where debug mode is enabled in production code.'}
+
+**The Problem:** Debug mode exposes stack traces, internal errors, and potentially sensitive information.
+
+**For Express/Node.js:**
+\`\`\`javascript
+// Use environment variable
+if (process.env.NODE_ENV === 'production') {
+  app.set('env', 'production');
+}
+
+// Never enable debug output in production
+const DEBUG = process.env.NODE_ENV !== 'production';
+\`\`\`
+
+**For Flask (Python):**
+\`\`\`python
+# Never do: app.run(debug=True) in production
+
+import os
+DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+
+if __name__ == '__main__':
+    app.run(debug=DEBUG)
+
+# In production, use a proper WSGI server:
+# gunicorn -w 4 app:app
+\`\`\`
+
+**For Django:**
+\`\`\`python
+# settings.py
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
+
+# In production: DJANGO_DEBUG=False
+\`\`\`
+
+**Environment-based configuration:**
+\`\`\`javascript
+// config.js
+export const config = {
+  debug: process.env.NODE_ENV !== 'production',
+  logLevel: process.env.NODE_ENV === 'production' ? 'error' : 'debug',
+};
+\`\`\`
+
+After fixing:
+1. Remove all hardcoded debug=true settings
+2. Use environment variables for configuration
+3. Verify production deployments have correct env vars
+`.trim();
+
 // Export all prompt generators
 export const promptGenerators: Record<string, PromptGenerator> = {
 	'sql-injection': sqlInjectionPrompt,
@@ -1173,6 +1589,39 @@ export const promptGenerators: Record<string, PromptGenerator> = {
 	'information_disclosure': infoDisclosurePrompt,
 	'error': infoDisclosurePrompt,
 	'stack-trace': infoDisclosurePrompt,
+	// XXE
+	'xxe': xxePrompt,
+	'xml-external': xxePrompt,
+	'external-entity': xxePrompt,
+	// IDOR
+	'idor': idorPrompt,
+	'direct-object': idorPrompt,
+	'insecure-direct': idorPrompt,
+	// Mass Assignment
+	'mass-assignment': massAssignmentPrompt,
+	'mass_assignment': massAssignmentPrompt,
+	'over-posting': massAssignmentPrompt,
+	// Rate Limiting
+	'rate-limit': rateLimitPrompt,
+	'rate_limit': rateLimitPrompt,
+	'brute-force': rateLimitPrompt,
+	'brute_force': rateLimitPrompt,
+	// ReDoS
+	'redos': redosPrompt,
+	'regex-dos': redosPrompt,
+	'regex_dos': redosPrompt,
+	'catastrophic-backtracking': redosPrompt,
+	// Security Headers
+	'helmet': securityHeadersPrompt,
+	'security-headers': securityHeadersPrompt,
+	'security_headers': securityHeadersPrompt,
+	'csp': securityHeadersPrompt,
+	'content-security-policy': securityHeadersPrompt,
+	// Debug Mode
+	'debug': debugModePrompt,
+	'debug-mode': debugModePrompt,
+	'debug_mode': debugModePrompt,
+	'development-mode': debugModePrompt,
 };
 
 /**
@@ -1296,25 +1745,272 @@ Let's start with Issue #1. Show me the vulnerable code and how to fix it.
 `.trim();
 }
 
+/**
+ * Get a specific, actionable fix hint for a security finding
+ * These hints are designed to be token-efficient while providing clear guidance
+ */
 function getFixHint(finding: any): string {
 	const ruleId = finding.ruleId?.toLowerCase() || '';
 	const title = finding.title?.toLowerCase() || '';
-	const searchKey = `${ruleId} ${title}`;
+	const message = finding.message?.toLowerCase() || '';
+	const searchKey = `${ruleId} ${title} ${message}`;
+	const file = finding.location?.file?.toLowerCase() || '';
 
-	if (searchKey.includes('sql')) return 'Use parameterized queries instead of string concatenation';
-	if (searchKey.includes('xss') || searchKey.includes('innerhtml')) return 'Use textContent or sanitize with DOMPurify';
-	if (searchKey.includes('secret') || searchKey.includes('hardcoded') || searchKey.includes('api_key')) return 'Move to environment variables';
-	if (searchKey.includes('command') || searchKey.includes('exec')) return 'Use execFile with separate arguments, not exec()';
-	if (searchKey.includes('path') || searchKey.includes('traversal')) return 'Validate paths stay within allowed directory';
-	if (searchKey.includes('ssrf')) return 'Validate URLs and block private IP ranges';
-	if (searchKey.includes('auth')) return 'Add authentication middleware';
-	if (searchKey.includes('redirect')) return 'Validate redirect URLs against whitelist';
-	if (searchKey.includes('cookie') || searchKey.includes('session')) return 'Add httpOnly, secure, sameSite flags';
-	if (searchKey.includes('crypto') || searchKey.includes('hash') || searchKey.includes('md5')) return 'Use bcrypt for passwords, SHA-256 for hashing';
-	if (searchKey.includes('eval')) return 'Remove eval(), use JSON.parse or safe alternatives';
-	if (searchKey.includes('cors')) return 'Restrict to specific allowed origins';
-	if (searchKey.includes('jwt')) return 'Add expiration, use strong secret';
-	if (searchKey.includes('csrf')) return 'Add CSRF token validation';
+	// Detect language for language-specific hints
+	const isPython = file.endsWith('.py');
+	const isJava = file.endsWith('.java');
+	const isGo = file.endsWith('.go');
+	const isPHP = file.endsWith('.php');
+	const isRuby = file.endsWith('.rb');
 
-	return 'Review the code and apply security best practices';
+	// === SQL Injection ===
+	if (searchKey.includes('sql') && (searchKey.includes('inject') || searchKey.includes('concat') || searchKey.includes('template') || searchKey.includes('interpolat'))) {
+		if (isPython) return 'Use parameterized queries: cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))';
+		if (isJava) return 'Use PreparedStatement: stmt = conn.prepareStatement("SELECT * FROM users WHERE id = ?"); stmt.setInt(1, userId);';
+		if (isPHP) return 'Use PDO prepared statements: $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?"); $stmt->execute([$id]);';
+		if (isRuby) return 'Use parameterized queries: User.where("id = ?", params[:id]) or User.find_by(id: params[:id])';
+		return 'Use parameterized queries: db.query("SELECT * FROM users WHERE id = $1", [userId]) - never concatenate user input into SQL';
+	}
+
+	// === XSS Vulnerabilities ===
+	if (searchKey.includes('xss') || searchKey.includes('innerhtml') || searchKey.includes('dangerously') || searchKey.includes('v-html') || searchKey.includes('@html')) {
+		if (searchKey.includes('react') || searchKey.includes('dangerously')) return 'Remove dangerouslySetInnerHTML or sanitize: dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}';
+		if (searchKey.includes('vue') || searchKey.includes('v-html')) return 'Replace v-html with {{ }} interpolation, or sanitize: v-html="DOMPurify.sanitize(content)"';
+		if (searchKey.includes('svelte') || searchKey.includes('@html')) return 'Replace {@html} with {text}, or sanitize: {@html DOMPurify.sanitize(content)}';
+		if (searchKey.includes('angular')) return 'Use Angular\'s built-in sanitization or DomSanitizer.sanitize() with SecurityContext.HTML';
+		if (searchKey.includes('jquery')) return 'Replace .html(userInput) with .text(userInput) to prevent script execution';
+		return 'Use element.textContent instead of innerHTML, or sanitize with DOMPurify.sanitize(userInput) before rendering';
+	}
+
+	// === Stored XSS ===
+	if (searchKey.includes('stored') && searchKey.includes('xss')) {
+		return 'Sanitize content before storing in DB AND before rendering: DOMPurify.sanitize(). Encode output based on context (HTML/JS/URL)';
+	}
+
+	// === Template Injection / SSTI ===
+	if (searchKey.includes('template') && (searchKey.includes('inject') || searchKey.includes('ssti') || searchKey.includes('user'))) {
+		if (isPython) return 'Never pass user input to render_template_string(). Use render_template() with separate template files';
+		return 'Never include user input in template strings. Use template variables: render("template.html", { data: userInput })';
+	}
+
+	// === Hardcoded Secrets ===
+	if (searchKey.includes('secret') || searchKey.includes('hardcoded') || searchKey.includes('api_key') || searchKey.includes('password') || searchKey.includes('credential')) {
+		if (searchKey.includes('jwt')) return 'Move JWT secret to env var: process.env.JWT_SECRET. Generate with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"';
+		if (searchKey.includes('database') || searchKey.includes('db')) return 'Move DB credentials to env vars. Use: DATABASE_URL=postgres://user:pass@host/db in .env file';
+		return 'Move to environment variables: process.env.API_KEY. Add .env to .gitignore. Rotate any exposed secrets immediately';
+	}
+
+	// === Command Injection ===
+	if (searchKey.includes('command') || searchKey.includes('exec') || searchKey.includes('spawn') || searchKey.includes('shell')) {
+		if (searchKey.includes('shell=true') || isPython) return 'Use subprocess.run(["cmd", arg], shell=False) with list arguments. Never shell=True with user input';
+		return 'Use execFile() with array args: execFile("convert", [filename, "out.png"]). Avoid exec() which invokes shell';
+	}
+
+	// === Path Traversal ===
+	if (searchKey.includes('path') && (searchKey.includes('traversal') || searchKey.includes('user') || searchKey.includes('variable'))) {
+		return 'Validate path stays in allowed dir: const safePath = path.resolve(baseDir, path.basename(userInput)); if (!safePath.startsWith(baseDir)) throw Error';
+	}
+
+	// === SSRF ===
+	if (searchKey.includes('ssrf') || (searchKey.includes('fetch') && searchKey.includes('user')) || (searchKey.includes('url') && searchKey.includes('user'))) {
+		return 'Validate URLs: block private IPs (127.0.0.1, 10.x, 172.16-31.x, 192.168.x, 169.254.x), require HTTPS, use allowlist of domains';
+	}
+
+	// === Missing Authentication ===
+	if (searchKey.includes('no-auth') || searchKey.includes('missing') && searchKey.includes('auth') || searchKey.includes('no_auth')) {
+		return 'Add auth middleware: router.get("/api/data", requireAuth, handler). Check session/token before processing request';
+	}
+
+	// === IDOR / Broken Access Control ===
+	if (searchKey.includes('idor') || searchKey.includes('direct object') || searchKey.includes('owner') || searchKey.includes('authorization')) {
+		return 'Add ownership check: if (resource.userId !== req.user.id) return res.status(403). Never trust user-supplied IDs without authorization';
+	}
+
+	// === Open Redirect ===
+	if (searchKey.includes('redirect') && (searchKey.includes('open') || searchKey.includes('user') || searchKey.includes('param'))) {
+		return 'Validate redirect URL: only allow relative paths (/dashboard) or allowlist of domains. Block external URLs';
+	}
+
+	// === Cookie Security ===
+	if (searchKey.includes('cookie') && (searchKey.includes('httponly') || searchKey.includes('secure') || searchKey.includes('samesite'))) {
+		return 'Set all flags: res.cookie("session", token, { httpOnly: true, secure: true, sameSite: "strict", maxAge: 3600000 })';
+	}
+
+	// === Session Security ===
+	if (searchKey.includes('session') && (searchKey.includes('insecure') || searchKey.includes('fixation') || searchKey.includes('regenerate'))) {
+		if (searchKey.includes('fixation') || searchKey.includes('regenerate')) return 'Regenerate session ID after login: req.session.regenerate(). Destroy old session on logout';
+		return 'Configure session: { secret: process.env.SECRET, cookie: { httpOnly: true, secure: true, sameSite: "strict", maxAge: 86400000 } }';
+	}
+
+	// === Weak Cryptography ===
+	if (searchKey.includes('md5') || searchKey.includes('sha1') || searchKey.includes('weak') && searchKey.includes('hash')) {
+		if (searchKey.includes('password')) return 'Use bcrypt: await bcrypt.hash(password, 12) for hashing, await bcrypt.compare(input, hash) for verification';
+		return 'Replace with SHA-256 minimum: crypto.createHash("sha256").update(data).digest("hex"). For passwords, always use bcrypt';
+	}
+
+	// === Weak Cipher ===
+	if (searchKey.includes('cipher') || searchKey.includes('des') || searchKey.includes('rc4') || searchKey.includes('ecb')) {
+		return 'Use AES-256-GCM: crypto.createCipheriv("aes-256-gcm", key, iv). Never use DES, RC4, or ECB mode';
+	}
+
+	// === Math.random for Security ===
+	if (searchKey.includes('math.random') || searchKey.includes('weak') && searchKey.includes('random')) {
+		return 'Use crypto.randomBytes(32).toString("hex") for tokens/secrets. Math.random() is predictable';
+	}
+
+	// === Eval / Code Injection ===
+	if (searchKey.includes('eval') || searchKey.includes('new function') || searchKey.includes('settimeout') && searchKey.includes('string')) {
+		return 'Remove eval(). For JSON: JSON.parse(). For math: mathjs.evaluate(). For dynamic props: obj[key]. Never execute user strings';
+	}
+
+	// === Dangerous Deserialization ===
+	if (searchKey.includes('deserialize') || searchKey.includes('pickle') || searchKey.includes('unserialize') || searchKey.includes('yaml') && searchKey.includes('load')) {
+		if (isPython) return 'Never pickle.loads() untrusted data. Use json.loads() with schema validation (e.g., Pydantic)';
+		if (searchKey.includes('yaml')) return 'Use yaml.safe_load() instead of yaml.load(). Never deserialize untrusted YAML';
+		return 'Use JSON.parse() with schema validation (Zod/Joi). Never deserialize untrusted data with node-serialize or similar';
+	}
+
+	// === CORS ===
+	if (searchKey.includes('cors') && (searchKey.includes('wildcard') || searchKey.includes('*') || searchKey.includes('credentials'))) {
+		return 'Set specific origins: cors({ origin: ["https://app.example.com"], credentials: true }). Never use "*" with credentials';
+	}
+
+	// === Prototype Pollution ===
+	if (searchKey.includes('prototype') || searchKey.includes('__proto__') || searchKey.includes('constructor.prototype')) {
+		return 'Block dangerous keys: if (["__proto__", "constructor", "prototype"].includes(key)) throw Error. Use Map for user-keyed data';
+	}
+
+	// === JWT Issues ===
+	if (searchKey.includes('jwt')) {
+		if (searchKey.includes('none') || searchKey.includes('algorithm')) return 'Specify algorithm in verify: jwt.verify(token, secret, { algorithms: ["HS256"] }). Never allow "none"';
+		if (searchKey.includes('expir') || searchKey.includes('exp')) return 'Add expiration: jwt.sign(payload, secret, { expiresIn: "15m" }). Use short-lived access + refresh tokens';
+		if (searchKey.includes('secret') || searchKey.includes('hardcoded')) return 'Use env var for secret: process.env.JWT_SECRET. Generate 64+ random bytes';
+		return 'Set expiration, specify algorithm in verify, use strong secret from env vars';
+	}
+
+	// === NoSQL Injection ===
+	if (searchKey.includes('nosql') || searchKey.includes('mongodb') && searchKey.includes('inject')) {
+		return 'Validate input type: if (typeof input !== "string") throw Error. Use express-mongo-sanitize middleware. Never allow $ operators from user input';
+	}
+
+	// === CSRF ===
+	if (searchKey.includes('csrf') || searchKey.includes('cross-site request')) {
+		return 'Add CSRF protection: use csurf middleware for Express, SameSite=Strict cookies, or include CSRF token in forms/headers';
+	}
+
+	// === XXE ===
+	if (searchKey.includes('xxe') || searchKey.includes('xml') && (searchKey.includes('external') || searchKey.includes('entity'))) {
+		if (isPython) return 'Use defusedxml: from defusedxml.ElementTree import parse. Never use xml.etree directly with untrusted XML';
+		if (isJava) return 'Disable DTDs: factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)';
+		return 'Disable external entities: parser.setFeature("disallow-doctype-decl"). Use JSON instead of XML when possible';
+	}
+
+	// === Information Disclosure / Error Handling ===
+	if (searchKey.includes('stack') && searchKey.includes('trace') || searchKey.includes('verbose') && searchKey.includes('error') || searchKey.includes('error') && searchKey.includes('detail')) {
+		return 'Return generic errors in production: res.status(500).json({ error: "Internal error" }). Log details server-side only';
+	}
+
+	// === Rate Limiting ===
+	if (searchKey.includes('rate') && searchKey.includes('limit') || searchKey.includes('brute') || searchKey.includes('no-rate')) {
+		return 'Add rate limiting: app.use("/login", rateLimit({ windowMs: 15*60*1000, max: 5 })). Essential for auth endpoints';
+	}
+
+	// === User Enumeration ===
+	if (searchKey.includes('enumeration') || searchKey.includes('user') && searchKey.includes('exist')) {
+		return 'Use generic messages: "Invalid credentials" for both wrong user and wrong password. Same response time for all cases';
+	}
+
+	// === Mass Assignment ===
+	if (searchKey.includes('mass assignment') || searchKey.includes('mass_assignment') || searchKey.includes('body') && searchKey.includes('spread')) {
+		return 'Use allowlist: const { name, email } = req.body; User.create({ name, email }). Never spread req.body directly into model';
+	}
+
+	// === ReDoS ===
+	if (searchKey.includes('redos') || searchKey.includes('regex') && (searchKey.includes('dos') || searchKey.includes('catastrophic'))) {
+		return 'Avoid nested quantifiers like (a+)+. Use RE2 library for untrusted patterns. Add input length limits and timeouts';
+	}
+
+	// === Missing Helmet/Security Headers ===
+	if (searchKey.includes('helmet') || searchKey.includes('security header') || searchKey.includes('hsts') || searchKey.includes('x-frame')) {
+		return 'Add security headers: app.use(helmet()). Or manually set X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security';
+	}
+
+	// === Debug Mode in Production ===
+	if (searchKey.includes('debug') && (searchKey.includes('true') || searchKey.includes('production') || searchKey.includes('enabled'))) {
+		return 'Disable debug in production: DEBUG=False (Django), app.run(debug=False) (Flask), NODE_ENV=production (Node)';
+	}
+
+	// === TLS/SSL Certificate Validation ===
+	if (searchKey.includes('tls') || searchKey.includes('ssl') || searchKey.includes('verify') && searchKey.includes('false') || searchKey.includes('reject') && searchKey.includes('unauthorized')) {
+		return 'Never disable cert validation in production. Remove verify=False (Python) or rejectUnauthorized: false (Node)';
+	}
+
+	// === Insecure Password Storage ===
+	if (searchKey.includes('password') && (searchKey.includes('plain') || searchKey.includes('cleartext') || searchKey.includes('storage'))) {
+		return 'Hash with bcrypt before storage: const hash = await bcrypt.hash(password, 12). Never store plaintext passwords';
+	}
+
+	// === Timing Attacks ===
+	if (searchKey.includes('timing') || searchKey.includes('constant') && searchKey.includes('time')) {
+		return 'Use constant-time comparison: crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)). Never use === for secrets';
+	}
+
+	// === File Upload ===
+	if (searchKey.includes('upload') || searchKey.includes('multer') && searchKey.includes('filter')) {
+		return 'Validate file type by content (magic bytes), not just extension. Limit size, store outside webroot, rename files';
+	}
+
+	// === Zip Slip ===
+	if (searchKey.includes('zip') && (searchKey.includes('slip') || searchKey.includes('extract') || searchKey.includes('path'))) {
+		return 'Validate extracted paths: const dest = path.join(outDir, entry); if (!dest.startsWith(outDir)) throw Error';
+	}
+
+	// === Log Injection ===
+	if (searchKey.includes('log') && (searchKey.includes('inject') || searchKey.includes('user') || searchKey.includes('input'))) {
+		return 'Sanitize log input: remove newlines, encode special chars. Never log sensitive data (passwords, tokens)';
+	}
+
+	// === Sensitive Data Exposure ===
+	if (searchKey.includes('sensitive') && searchKey.includes('data') || searchKey.includes('password') && searchKey.includes('response') || searchKey.includes('token') && searchKey.includes('response')) {
+		return 'Never return sensitive fields in API responses. Use select/projection to exclude: User.findById(id).select("-password -token")';
+	}
+
+	// === Admin/Privileged Route Missing Auth ===
+	if (searchKey.includes('admin') && (searchKey.includes('no') && searchKey.includes('auth') || searchKey.includes('check'))) {
+		return 'Add role check: if (req.user.role !== "admin") return res.status(403). Verify permissions for all privileged operations';
+	}
+
+	// === Deprecated/Vulnerable Dependencies ===
+	if (searchKey.includes('lodash') || searchKey.includes('vulnerable') && searchKey.includes('version')) {
+		return 'Update to latest version: npm update [package]. Use npm audit fix. Remove unused dependencies';
+	}
+
+	// === bcrypt Low Rounds ===
+	if (searchKey.includes('bcrypt') && (searchKey.includes('rounds') || searchKey.includes('cost'))) {
+		return 'Use minimum 12 rounds: bcrypt.hash(password, 12). Higher rounds = slower brute force. 10 is outdated';
+	}
+
+	// === HTTP without HTTPS ===
+	if (searchKey.includes('http') && searchKey.includes('https') || searchKey.includes('no') && searchKey.includes('tls')) {
+		return 'Redirect HTTP to HTTPS: app.use((req, res, next) => { if (!req.secure) res.redirect("https://" + req.host + req.url); })';
+	}
+
+	// === Default or empty key catch-all ===
+	if (searchKey.includes('default') || searchKey.includes('empty') || searchKey.includes('unsafe')) {
+		// Try to extract useful context from the title/message
+		if (finding.message && finding.message.length > 20) {
+			// Truncate and use as hint
+			const msg = finding.message.slice(0, 100).replace(/\s+/g, ' ').trim();
+			return `Address: ${msg}`;
+		}
+	}
+
+	// === Fallback with more context ===
+	// Instead of generic advice, provide vulnerability-type-specific guidance based on severity
+	const severity = finding.severity?.toLowerCase() || 'medium';
+	if (severity === 'critical' || severity === 'high') {
+		return `Critical security issue - review ${finding.title || 'this code'} immediately. Check OWASP guidelines for ${finding.category || 'this vulnerability type'}`;
+	}
+
+	return `Review and fix: ${finding.title || 'security issue'}. Apply input validation, output encoding, and least privilege principles`;
 }
