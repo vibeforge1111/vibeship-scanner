@@ -1995,6 +1995,271 @@ function getFixHint(finding: any): string {
 		return 'Redirect HTTP to HTTPS: app.use((req, res, next) => { if (!req.secure) res.redirect("https://" + req.host + req.url); })';
 	}
 
+	// === setTimeout/setInterval with string ===
+	if ((searchKey.includes('settimeout') || searchKey.includes('setinterval')) && searchKey.includes('string')) {
+		return 'Pass function reference, not string: setTimeout(() => doSomething(), 1000) instead of setTimeout("doSomething()", 1000)';
+	}
+
+	// === document.write ===
+	if (searchKey.includes('document.write') || searchKey.includes('document-write')) {
+		return 'Replace document.write with DOM manipulation: element.textContent = text or element.appendChild(node). document.write is unsafe and blocks parsing';
+	}
+
+	// === insertAdjacentHTML / outerHTML ===
+	if (searchKey.includes('insertadjacenthtml') || searchKey.includes('outerhtml')) {
+		return 'Sanitize input before using: element.insertAdjacentHTML("beforeend", DOMPurify.sanitize(html)) or use DOM methods instead';
+	}
+
+	// === jQuery DOM XSS patterns ===
+	if (searchKey.includes('jquery') && (searchKey.includes('html') || searchKey.includes('append') || searchKey.includes('prepend') || searchKey.includes('after') || searchKey.includes('before'))) {
+		return 'Use .text() instead of .html() for user data: $(el).text(userInput). For HTML, sanitize: $(el).html(DOMPurify.sanitize(content))';
+	}
+
+	// === React href javascript: ===
+	if (searchKey.includes('href') && searchKey.includes('javascript')) {
+		return 'Never use javascript: in href. Use onClick handler: <button onClick={handleClick}> or validate URL starts with https://';
+	}
+
+	// === Vue compile dynamic ===
+	if (searchKey.includes('vue') && searchKey.includes('compile')) {
+		return 'Never compile user-provided templates. Use pre-compiled templates only. If dynamic rendering needed, use render functions with sanitized data';
+	}
+
+	// === Angular bypassSecurity ===
+	if (searchKey.includes('angular') && searchKey.includes('bypass')) {
+		return 'Avoid bypassSecurityTrust*() functions. Use Angular sanitization or pipe through DomSanitizer.sanitize() with appropriate SecurityContext';
+	}
+
+	// === Next.js specific ===
+	if (searchKey.includes('nextjs') || searchKey.includes('next.js') || searchKey.includes('next-')) {
+		if (searchKey.includes('getserverside') && searchKey.includes('html')) return 'Sanitize in getServerSideProps before passing to dangerouslySetInnerHTML: return { props: { html: DOMPurify.sanitize(data) } }';
+		if (searchKey.includes('api') && searchKey.includes('sql')) return 'Use parameterized queries in Next.js API routes: await db.query("SELECT * FROM users WHERE id = $1", [req.query.id])';
+		if (searchKey.includes('header')) return 'Set security headers in next.config.js: headers: [{ source: "/(.*)", headers: securityHeaders }]';
+		if (searchKey.includes('middleware')) return 'Validate authorization in middleware.ts: if (!token) return NextResponse.redirect("/login")';
+	}
+
+	// === SvelteKit specific ===
+	if (searchKey.includes('sveltekit') || searchKey.includes('svelte')) {
+		if (searchKey.includes('@html') || searchKey.includes('html-inject')) return 'Avoid {@html}. Use text interpolation {variable} or sanitize: {@html DOMPurify.sanitize(content)}';
+		if (searchKey.includes('load')) return 'Validate user data in load functions: if (!locals.user) throw redirect(303, "/login")';
+		if (searchKey.includes('form') || searchKey.includes('action')) return 'Use SvelteKit form actions with CSRF protection built-in. Validate all form data server-side';
+	}
+
+	// === Node.js child_process ===
+	if (searchKey.includes('child_process') || searchKey.includes('spawn') || searchKey.includes('execfile')) {
+		if (searchKey.includes('spawn') && searchKey.includes('shell')) return 'Use spawn without shell: spawn("cmd", args, { shell: false }). shell: true enables injection';
+		return 'Use execFile with array args: execFile("convert", [inputFile, outputFile]). Validate/sanitize all arguments';
+	}
+
+	// === Node.js fs path operations ===
+	if (searchKey.includes('fs') && (searchKey.includes('readfile') || searchKey.includes('writefile') || searchKey.includes('unlink'))) {
+		return 'Validate path: const safe = path.join(BASE_DIR, path.basename(input)); if (!safe.startsWith(BASE_DIR)) throw new Error("Path traversal")';
+	}
+
+	// === Express sendFile ===
+	if (searchKey.includes('sendfile') || searchKey.includes('send-file')) {
+		return 'Use root option and validate: res.sendFile(filename, { root: path.join(__dirname, "public") }). Never use absolute paths from user input';
+	}
+
+	// === node-serialize vulnerability ===
+	if (searchKey.includes('node-serialize') || searchKey.includes('unserialize')) {
+		return 'Remove node-serialize entirely - it has RCE vulnerability. Use JSON.parse() with schema validation (Zod/Joi)';
+	}
+
+	// === js-yaml unsafe load ===
+	if (searchKey.includes('yaml') && searchKey.includes('load') && !searchKey.includes('safe')) {
+		return 'Use yaml.load(data, { schema: yaml.SAFE_SCHEMA }) or yaml.safeLoad(). Never yaml.load() with untrusted YAML';
+	}
+
+	// === UUID v1 predictable ===
+	if (searchKey.includes('uuid') && (searchKey.includes('v1') || searchKey.includes('predictable'))) {
+		return 'Use UUIDv4 for unpredictable IDs: import { v4 as uuidv4 } from "uuid"; uuidv4(). UUIDv1 is time-based and predictable';
+	}
+
+	// === Express session hardcoded secret ===
+	if (searchKey.includes('session') && searchKey.includes('hardcoded')) {
+		return 'Move session secret to env: session({ secret: process.env.SESSION_SECRET }). Generate: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"';
+	}
+
+	// === Static IV / hardcoded IV ===
+	if (searchKey.includes('static') && searchKey.includes('iv') || searchKey.includes('hardcoded') && searchKey.includes('iv')) {
+		return 'Generate random IV per encryption: const iv = crypto.randomBytes(16). Store IV with ciphertext (it can be public)';
+	}
+
+	// === crypto.createCipher deprecated ===
+	if (searchKey.includes('createcipher') && !searchKey.includes('iv')) {
+		return 'Use createCipheriv with random IV: crypto.createCipheriv("aes-256-gcm", key, crypto.randomBytes(16)). createCipher is deprecated';
+	}
+
+	// === MongoDB specific ===
+	if (searchKey.includes('mongodb') || searchKey.includes('mongo')) {
+		if (searchKey.includes('localhost') || searchKey.includes('no-auth')) return 'Enable MongoDB auth: use connection string with credentials and authSource. Never expose DB without authentication';
+		if (searchKey.includes('findone') && searchKey.includes('unfiltered')) return 'Select only needed fields: User.findOne({ _id: id }, { password: 0, __v: 0 }). Never return full documents with sensitive fields';
+		if (searchKey.includes('error') || searchKey.includes('disclosure')) return 'Catch and sanitize MongoDB errors: catch(e) { res.status(500).json({ error: "Database error" }) }. Never expose raw errors';
+	}
+
+	// === MySQL hardcoded credentials ===
+	if (searchKey.includes('mysql') && searchKey.includes('hardcoded')) {
+		return 'Use env vars for DB connection: mysql.createConnection({ host: process.env.DB_HOST, user: process.env.DB_USER, password: process.env.DB_PASS })';
+	}
+
+	// === Cookie parser unsigned ===
+	if (searchKey.includes('cookie') && searchKey.includes('parser') && searchKey.includes('unsigned')) {
+		return 'Sign cookies: app.use(cookieParser(process.env.COOKIE_SECRET)). Set signed cookies: res.cookie("name", value, { signed: true })';
+	}
+
+	// === Credit card exposure ===
+	if (searchKey.includes('credit') && searchKey.includes('card') || searchKey.includes('card') && searchKey.includes('number')) {
+		return 'Never store full card numbers. Use tokenization (Stripe/Braintree). Mask display: **** **** **** 1234. Log only last 4 digits';
+	}
+
+	// === SSN exposure ===
+	if (searchKey.includes('ssn') || searchKey.includes('social') && searchKey.includes('security')) {
+		return 'Encrypt SSN at rest with AES-256-GCM. Mask in UI: ***-**-1234. Strict access controls and audit logging. Consider not storing if possible';
+	}
+
+	// === Password in console.log ===
+	if (searchKey.includes('console') && (searchKey.includes('password') || searchKey.includes('secret') || searchKey.includes('token') || searchKey.includes('key'))) {
+		return 'Remove sensitive data logging. Use structured logger with redaction: logger.info({ user: username, password: "[REDACTED]" })';
+	}
+
+	// === WebSocket insecure ===
+	if (searchKey.includes('websocket') && (searchKey.includes('insecure') || searchKey.includes('ws://') || searchKey.includes('wss'))) {
+		return 'Use wss:// (WebSocket Secure): new WebSocket("wss://example.com/socket"). Add authentication on connect';
+	}
+
+	// === HTTP password in URL ===
+	if (searchKey.includes('password') && searchKey.includes('url')) {
+		return 'Never put credentials in URLs - they appear in logs, history, referrer. Use Authorization header or POST body';
+	}
+
+	// === localStorage/sessionStorage for passwords ===
+	if ((searchKey.includes('localstorage') || searchKey.includes('sessionstorage')) && (searchKey.includes('password') || searchKey.includes('token') || searchKey.includes('secret'))) {
+		return 'Never store sensitive data in localStorage/sessionStorage - accessible to XSS. Use httpOnly cookies for tokens';
+	}
+
+	// === Loose comparison for passwords ===
+	if (searchKey.includes('password') && searchKey.includes('loose') || searchKey.includes('==') && searchKey.includes('password')) {
+		return 'Use bcrypt.compare() for password verification, never === or ==. bcrypt.compare handles timing attacks';
+	}
+
+	// === Empty string success check ===
+	if (searchKey.includes('empty') && searchKey.includes('string') && searchKey.includes('success')) {
+		return 'Check for explicit success condition, not absence of error: if (result.success === true) not if (!error)';
+	}
+
+	// === Missing error handler in AJAX ===
+	if (searchKey.includes('ajax') && searchKey.includes('error')) {
+		return 'Always handle errors: $.ajax({ url, success, error: (xhr, status, err) => { /* handle gracefully */ } })';
+	}
+
+	// === Regex injection ===
+	if (searchKey.includes('regex') && searchKey.includes('inject')) {
+		return 'Escape user input in regex: new RegExp(input.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")). Or use literal string search';
+	}
+
+	// === HTTP script src / no SRI ===
+	if (searchKey.includes('script') && (searchKey.includes('http://') || searchKey.includes('integrity') || searchKey.includes('sri'))) {
+		return 'Use HTTPS for scripts and add SRI: <script src="https://cdn.example/lib.js" integrity="sha384-..." crossorigin="anonymous">';
+	}
+
+	// === X-Powered-By header ===
+	if (searchKey.includes('x-powered-by') || searchKey.includes('powered-by')) {
+		return 'Disable X-Powered-By: app.disable("x-powered-by") or use helmet() which does this automatically';
+	}
+
+	// === Long session expiry ===
+	if (searchKey.includes('session') && (searchKey.includes('expiry') || searchKey.includes('maxage') || searchKey.includes('long'))) {
+		return 'Set reasonable session expiry: maxAge: 24 * 60 * 60 * 1000 (24h max). For sensitive apps, use 15-30 minutes';
+	}
+
+	// === Session no destroy on logout ===
+	if (searchKey.includes('logout') && (searchKey.includes('destroy') || searchKey.includes('incomplete'))) {
+		return 'Properly destroy session on logout: req.session.destroy((err) => { res.clearCookie("connect.sid"); res.redirect("/"); })';
+	}
+
+	// === Session no regenerate ===
+	if (searchKey.includes('session') && searchKey.includes('regenerate')) {
+		return 'Regenerate session after login: req.session.regenerate((err) => { req.session.userId = user.id; }). Prevents session fixation';
+	}
+
+	// === Test/default credentials in code ===
+	if (searchKey.includes('test') && searchKey.includes('credential') || searchKey.includes('default') && searchKey.includes('password')) {
+		return 'Remove test/default credentials from code. Use environment variables. Ensure CI/CD uses test-specific env files';
+	}
+
+	// === bodyParser deprecated ===
+	if (searchKey.includes('bodyparser') && searchKey.includes('deprecated')) {
+		return 'Use Express built-in: app.use(express.json()); app.use(express.urlencoded({ extended: true })); instead of body-parser';
+	}
+
+	// === returnUrl open redirect ===
+	if (searchKey.includes('returnurl') || searchKey.includes('return_url') || searchKey.includes('redirect_uri')) {
+		return 'Validate returnUrl is relative path or in allowlist: if (!returnUrl.startsWith("/") || returnUrl.startsWith("//")) returnUrl = "/"';
+	}
+
+	// === Error object to template ===
+	if (searchKey.includes('error') && searchKey.includes('template')) {
+		return 'Never pass error objects to templates: res.render("error", { message: "An error occurred" }) not { error: err }';
+	}
+
+	// === Hardcoded log path ===
+	if (searchKey.includes('log') && searchKey.includes('path') && searchKey.includes('hardcoded')) {
+		return 'Use environment variables for log paths: process.env.LOG_PATH || "/var/log/app". Ensure path is within allowed directory';
+	}
+
+	// === No log rotation ===
+	if (searchKey.includes('log') && searchKey.includes('rotation')) {
+		return 'Configure log rotation to prevent disk fill: winston with winston-daily-rotate-file or use logrotate system utility';
+	}
+
+	// === Python specific patterns ===
+	if (isPython) {
+		if (searchKey.includes('flask') && searchKey.includes('debug')) return 'Set debug=False in production: app.run(debug=False) or use FLASK_ENV=production';
+		if (searchKey.includes('django') && searchKey.includes('debug')) return 'Set DEBUG=False in settings.py for production. Also set ALLOWED_HOSTS properly';
+		if (searchKey.includes('request') && searchKey.includes('verify')) return 'Never disable SSL verification: requests.get(url, verify=True). For self-signed certs, use verify="/path/to/cert.pem"';
+		if (searchKey.includes('random') && !searchKey.includes('secrets')) return 'Use secrets module: secrets.token_hex(32) for tokens, secrets.choice() for secure random. Never use random module for security';
+		if (searchKey.includes('marshal')) return 'Never use marshal.loads() with untrusted data - RCE risk. Use json.loads() with validation';
+		if (searchKey.includes('shelve')) return 'shelve uses pickle internally - RCE risk with untrusted data. Use JSON or SQLite instead';
+		if (searchKey.includes('lxml')) return 'Disable external entities: parser = etree.XMLParser(resolve_entities=False, no_network=True)';
+		if (searchKey.includes('fernet') && searchKey.includes('hardcoded')) return 'Store Fernet key in env var: key = os.environ["FERNET_KEY"]. Generate: Fernet.generate_key()';
+		if (searchKey.includes('rsa') && searchKey.includes('weak')) return 'Use minimum 2048-bit RSA keys: rsa.generate_private_key(public_exponent=65537, key_size=2048)';
+	}
+
+	// === Java specific patterns ===
+	if (isJava) {
+		if (searchKey.includes('xml') && searchKey.includes('factory')) return 'Disable XXE: factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true); factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)';
+		if (searchKey.includes('objectinputstream')) return 'Never deserialize untrusted data. Use JSON with validation. If required, use look-ahead ObjectInputStream with class allowlist';
+		if (searchKey.includes('spring') && searchKey.includes('csrf')) return 'Enable CSRF in Spring Security: http.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())';
+		if (searchKey.includes('preparedstatement')) return 'Always use PreparedStatement: PreparedStatement ps = conn.prepareStatement("SELECT * FROM users WHERE id = ?"); ps.setInt(1, id);';
+	}
+
+	// === PHP specific patterns ===
+	if (isPHP) {
+		if (searchKey.includes('mysqli') && searchKey.includes('escape')) return 'Use prepared statements: $stmt = $mysqli->prepare("SELECT * FROM users WHERE id = ?"); $stmt->bind_param("i", $id);';
+		if (searchKey.includes('eval') || searchKey.includes('preg_replace') && searchKey.includes('/e')) return 'Never use eval() or preg_replace with /e modifier. Use preg_replace_callback() instead';
+		if (searchKey.includes('include') || searchKey.includes('require')) return 'Never include user input directly. Use allowlist: if (in_array($page, ["home", "about"])) include "$page.php";';
+		if (searchKey.includes('unserialize')) return 'Never unserialize untrusted data - RCE risk. Use JSON: json_decode($data, true)';
+		if (searchKey.includes('extract')) return 'Avoid extract() with user input - overwrites variables. Use explicit assignment: $name = $_POST["name"];';
+	}
+
+	// === Go specific patterns ===
+	if (isGo) {
+		if (searchKey.includes('sql') && searchKey.includes('sprintf')) return 'Use parameterized queries: db.Query("SELECT * FROM users WHERE id = $1", id). Never fmt.Sprintf for SQL';
+		if (searchKey.includes('template') && searchKey.includes('html')) return 'Use html/template (auto-escapes) not text/template: template.HTMLEscapeString() for manual escaping';
+		if (searchKey.includes('exec') && searchKey.includes('command')) return 'Use exec.Command with separate args: exec.Command("ls", "-la", path). Never shell with user input';
+		if (searchKey.includes('tls') && searchKey.includes('insecure')) return 'Never InsecureSkipVerify in production: tls.Config{InsecureSkipVerify: false}';
+	}
+
+	// === Ruby specific patterns ===
+	if (isRuby) {
+		if (searchKey.includes('system') || searchKey.includes('backtick') || searchKey.includes('exec')) return 'Use array form: system("ls", "-la", user_input). Never interpolate in shell strings';
+		if (searchKey.includes('erb') && searchKey.includes('raw')) return 'Use <%=h variable %> or ERB::Util.html_escape. raw() bypasses escaping - use only for pre-sanitized HTML';
+		if (searchKey.includes('yaml') && searchKey.includes('load')) return 'Use YAML.safe_load(data, permitted_classes: []). Never YAML.load with untrusted data - RCE risk';
+		if (searchKey.includes('mass') && searchKey.includes('assignment')) return 'Use strong parameters: params.require(:user).permit(:name, :email). Never params.permit!';
+		if (searchKey.includes('send') || searchKey.includes('public_send')) return 'Validate method name before send(): ALLOWED_METHODS.include?(method_name) ? object.public_send(method_name) : raise';
+	}
+
 	// === Default or empty key catch-all ===
 	if (searchKey.includes('default') || searchKey.includes('empty') || searchKey.includes('unsafe')) {
 		// Try to extract useful context from the title/message
