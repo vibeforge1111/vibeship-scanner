@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { TransformedResults } from '$lib/vibeTransformer';
-	import { getUrgencyColor } from '$lib/vibeTransformer';
+	import { generateMasterFixPrompt } from '$lib/aiFixPrompts';
 
 	interface Props {
 		results: TransformedResults;
@@ -10,18 +10,31 @@
 
 	let showMasterPrompt = $state(false);
 	let copied = $state(false);
+	let includeInfo = $state(true);
+
+	// Extract original findings from transformed results
+	let originalFindings = $derived(results.findings.map((f) => f.originalFinding));
+
+	// Dynamically generate prompt based on toggle
+	let masterPrompt = $derived(generateMasterFixPrompt(originalFindings, includeInfo));
+
+	// Count based on toggle state
+	let issueCount = $derived(
+		includeInfo
+			? results.summary.totalFindings
+			: results.summary.totalFindings - results.summary.fyi
+	);
 
 	function copyMasterPrompt() {
-		navigator.clipboard.writeText(results.masterPrompt);
+		navigator.clipboard.writeText(masterPrompt);
 		copied = true;
 		setTimeout(() => (copied = false), 2000);
 	}
 </script>
 
 <!-- Master Fix Prompt Section - Displays only the AI prompt, counts are in parent -->
-{@const actionableCount = results.summary.totalFindings - results.summary.fyi}
 <div class="vibe-summary">
-	{#if results.masterPrompt && actionableCount > 0}
+	{#if masterPrompt && issueCount > 0}
 		<div class="master-prompt-section">
 			<button class="master-prompt-toggle" onclick={() => (showMasterPrompt = !showMasterPrompt)}>
 				<div class="toggle-content">
@@ -35,7 +48,7 @@
 					<div class="toggle-text">
 						<span class="toggle-title">Fix All Issues with AI</span>
 						<span class="toggle-subtitle">
-							One prompt to fix {actionableCount} issues
+							One prompt to fix {issueCount} issues
 						</span>
 					</div>
 				</div>
@@ -48,18 +61,27 @@
 
 			{#if showMasterPrompt}
 				<div class="master-prompt-content">
-					<div class="prompt-instructions">
-						<p><strong>How to use:</strong></p>
-						<ol>
-							<li>Copy the prompt below</li>
-							<li>Paste into Claude Code, Cursor, or ChatGPT</li>
-							<li>The AI will fix each issue one by one</li>
-							<li>Review and approve each fix</li>
-						</ol>
+					<div class="prompt-header-row">
+						<div class="prompt-instructions">
+							<p><strong>How to use:</strong></p>
+							<ol>
+								<li>Copy the prompt below</li>
+								<li>Paste into Claude Code, Cursor, or ChatGPT</li>
+								<li>The AI will fix each issue one by one</li>
+								<li>Review and approve each fix</li>
+							</ol>
+						</div>
+
+						{#if results.summary.fyi > 0}
+							<label class="info-toggle">
+								<input type="checkbox" bind:checked={includeInfo} />
+								<span class="toggle-label">Include {results.summary.fyi} info items</span>
+							</label>
+						{/if}
 					</div>
 
 					<div class="prompt-box">
-						<pre class="prompt-text">{results.masterPrompt}</pre>
+						<pre class="prompt-text">{masterPrompt}</pre>
 						<button class="copy-master-btn" class:copied onclick={copyMasterPrompt}>
 							{#if copied}
 								<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -168,8 +190,47 @@
 		}
 	}
 
-	.prompt-instructions {
+	.prompt-header-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: 1rem;
 		margin-bottom: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.prompt-instructions {
+		flex: 1;
+		min-width: 200px;
+	}
+
+	.info-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+		padding: 0.5rem 0.75rem;
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		flex-shrink: 0;
+	}
+
+	.info-toggle input[type='checkbox'] {
+		width: 16px;
+		height: 16px;
+		accent-color: var(--green);
+		cursor: pointer;
+	}
+
+	.info-toggle .toggle-label {
+		font-size: 0.8rem;
+		color: var(--text-secondary);
+		white-space: nowrap;
+	}
+
+	.info-toggle:hover {
+		background: var(--bg-tertiary);
 	}
 
 	.prompt-instructions p {
@@ -250,6 +311,15 @@
 
 		.toggle-subtitle {
 			font-size: 0.75rem;
+		}
+
+		.prompt-header-row {
+			flex-direction: column;
+		}
+
+		.info-toggle {
+			width: 100%;
+			justify-content: center;
 		}
 
 		.prompt-text {

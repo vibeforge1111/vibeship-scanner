@@ -1788,18 +1788,18 @@
 		align-items: center;
 		gap: 0.4rem;
 		padding: 0.4rem 0.75rem;
-		background: transparent;
+		background: var(--bg-primary);
 		border: 1px solid var(--border);
 		color: var(--text-secondary);
-		font-family: 'Inter', sans-serif;
+		font-family: 'JetBrains Mono', monospace;
 		font-size: 0.75rem;
 		font-weight: 500;
 		cursor: pointer;
 		transition: all 0.15s;
+		text-decoration: none;
 	}
 
 	.vibe-action-btn:hover {
-		background: var(--bg-primary);
 		color: var(--text-primary);
 		border-color: var(--text-tertiary);
 	}
@@ -1875,7 +1875,7 @@
 	.vibe-finding-chip.info .chip-count,
 	.vibe-finding-chip.info .chip-label { color: #6b7280; }
 
-	/* Stack chips in findings row */
+	/* Stack chips in findings row - consistent subdued style */
 	.vibe-stack-chips {
 		display: flex;
 		gap: 0.4rem;
@@ -1892,9 +1892,10 @@
 	}
 
 	.vibe-stack-chip.lang {
-		color: var(--blue);
-		border-color: rgba(59, 130, 246, 0.4);
-		background: rgba(59, 130, 246, 0.08);
+		/* Same style as frameworks - no special colors */
+		background: var(--bg-primary);
+		border: 1px solid var(--border);
+		color: var(--text-tertiary);
 	}
 
 	/* View Mode Toggle */

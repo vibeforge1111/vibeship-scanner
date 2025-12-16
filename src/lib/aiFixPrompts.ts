@@ -1238,11 +1238,15 @@ Please:
 }
 
 /**
- * Generate a master prompt to fix ALL issues at once (excluding info-level)
+ * Generate a master prompt to fix ALL issues at once
+ * @param findings - Array of security findings
+ * @param includeInfo - Whether to include info-level findings (default: true)
  */
-export function generateMasterFixPrompt(findings: any[]): string {
-	// Filter out info-level findings - they're informational, not actionable
-	const actionableFindings = findings.filter(f => f.severity !== 'info');
+export function generateMasterFixPrompt(findings: any[], includeInfo: boolean = true): string {
+	// Filter findings based on includeInfo setting
+	const actionableFindings = includeInfo
+		? findings
+		: findings.filter(f => f.severity !== 'info');
 
 	if (actionableFindings.length === 0) {
 		return '';
