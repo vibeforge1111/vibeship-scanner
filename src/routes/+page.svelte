@@ -495,16 +495,16 @@
 
 				<div class="terminal-line divider" style="animation-delay: 6.6s">---</div>
 
-				<div class="terminal-line cta" style="animation-delay: 6.8s">
+				<div class="terminal-line" style="animation-delay: 6.8s">
 					<span class="typing-text">Let me find the security vulnerabilities in your repo too</span>
 				</div>
-				<div class="terminal-line cta" style="animation-delay: 7s">
+				<div class="terminal-line" style="animation-delay: 7s">
 					<span class="typing-text">and give you a master prompt to fix it all.</span>
 				</div>
-				<div class="terminal-line cta-sub" style="animation-delay: 7.2s">
+				<div class="terminal-line" style="animation-delay: 7.2s">
 					<span class="typing-text">Get your own scan above. It's free.</span>
 				</div>
-				<div class="terminal-line cta-sub" style="animation-delay: 7.4s">
+				<div class="terminal-line" style="animation-delay: 7.4s">
 					<span class="typing-text">To ship better products with vibe coding!</span>
 				</div>
 				<div class="terminal-cursor" style="animation-delay: 7.6s"></div>
@@ -1488,18 +1488,6 @@
 	.terminal-line.footer {
 		color: #6e7681;
 		font-size: 0.7rem;
-		margin-top: 0.25rem;
-	}
-
-	.terminal-line.cta {
-		color: var(--green);
-		font-weight: 600;
-		margin-top: 0.5rem;
-	}
-
-	.terminal-line.cta-sub {
-		color: #8b949e;
-		font-size: 0.75rem;
 		margin-top: 0.25rem;
 	}
 
