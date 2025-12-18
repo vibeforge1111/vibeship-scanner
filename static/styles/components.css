@@ -840,7 +840,7 @@ textarea.form-input {
 .site-footer-inner {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 1.5rem;
+    padding: 1.5rem 0.44rem;
 }
 
 .footer-top {
