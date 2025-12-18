@@ -3,30 +3,30 @@
    Dark/Light mode with CSS custom properties
    ============================================ */
 
-/* Light Theme (Default) - Terminal Style */
+/* Light Theme - Matches vibeship.co */
 :root,
 [data-theme="light"] {
-    /* Backgrounds - Pure monochrome */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8f8f8;
-    --bg-tertiary: #f0f0f0;
-    --bg-inverse: #000000;
+    /* Backgrounds - Warm Gray Tones */
+    --bg-primary: #e8e8e8;
+    --bg-secondary: #dedede;
+    --bg-tertiary: #d4d4d4;
+    --bg-inverse: #0e1016;
 
-    /* Text - High contrast monochrome */
-    --text-primary: #000000;
-    --text-secondary: #4a4a4a;
-    --text-tertiary: #6b6b6b;
-    --text-inverse: #ffffff;
+    /* Text - High Contrast */
+    --text-primary: #1a1a1a;
+    --text-secondary: #3d3d3d;
+    --text-tertiary: #5a5a5a;
+    --text-inverse: #e8e8e8;
     --text-inverse-secondary: #b0b0b0;
 
     /* Borders */
-    --border: #e0e0e0;
-    --border-strong: #c0c0c0;
+    --border: #c8c8c8;
+    --border-strong: #a8a8a8;
 
     /* Accent Colors - Vibeship Palette */
     --green: #2ECC71;       /* Terminal Green - success/fixed */
-    --green-dim: #00C49A;   /* Vibe Teal - primary accent */
-    --orange: #FFB020;      /* Compile Amber - warning/running */
+    --green-dim: #0d847a;   /* Darker teal for light mode readability */
+    --orange: #D97757;      /* Claude coral for light mode */
     --orange-dim: #d97706;
     --red: #FF4D4D;         /* Debug Red - error/critical */
     --blue: #3399FF;        /* Docker Blue - general */
@@ -34,13 +34,13 @@
     --pink: #FF66C4;        /* Hot Pink - high priority */
 
     /* Grays (for components) */
-    --gray-100: #f8f8f8;
-    --gray-200: #f0f0f0;
-    --gray-300: #e0e0e0;
-    --gray-400: #c0c0c0;
-    --gray-500: #9a9a9a;
-    --gray-600: #6b6b6b;
-    --gray-700: #4a4a4a;
+    --gray-100: #e0e0e0;
+    --gray-200: #d4d4d4;
+    --gray-300: #c8c8c8;
+    --gray-400: #a8a8a8;
+    --gray-500: #888888;
+    --gray-600: #5a5a5a;
+    --gray-700: #3d3d3d;
     --gray-800: #2a2a2a;
     --gray-900: #1a1a1a;
 

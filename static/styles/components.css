@@ -107,6 +107,24 @@
     color: var(--bg-primary);
 }
 
+.theme-toggle {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.theme-toggle:hover {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
 .navbar-github-btn {
     display: inline-flex;
     align-items: center;
@@ -179,23 +197,26 @@
 
 /* Theme Toggle */
 .theme-toggle {
-    width: 36px;
-    height: 36px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.15s;
 }
 
 .theme-toggle:hover {
-    border-color: var(--text-primary);
+    border-color: var(--green-dim);
+    color: var(--green-dim);
 }
 
 .theme-toggle svg {
-    color: var(--text-primary);
+    color: currentColor;
 }
 
 [data-theme="light"] .icon-moon {
@@ -260,15 +281,15 @@
 }
 
 .btn-glow {
-    background: var(--green-dim);
-    border: 2px solid var(--green-dim);
-    color: white;
+    background: transparent;
+    border: 1px solid var(--green-dim);
+    color: var(--green-dim);
 }
 
 .btn-glow:hover {
     background: var(--green-dim);
-    border-color: #fff;
-    box-shadow: 0 0 25px rgba(0, 196, 154, 0.4);
+    color: var(--bg-primary);
+    box-shadow: 0 0 20px rgba(0, 196, 154, 0.3);
 }
 
 .btn-sm {

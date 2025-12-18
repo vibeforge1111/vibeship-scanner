@@ -674,10 +674,13 @@
 	<section class="cta">
 		<div class="cta-inner">
 			<h2>Ready to ship with confidence?</h2>
-			<p>Free. No signup required.</p>
+			<p>Free. No signup required on public repos.</p>
 			<button class="btn btn-glow btn-lg" onclick={() => { trackButtonClick('CTA Scan Now'); document.querySelector<HTMLInputElement>('.scan-input')?.focus(); }}>
-				Scan Your Repo Now
+				Scan Your Repo & Get Master Fix Prompt
 			</button>
+			<p class="cta-tagline">
+				<span class="typewriter">for vibe coders</span>
+			</p>
 		</div>
 	</section>
 </div>
@@ -1061,6 +1064,35 @@
 		font-size: 1rem;
 		color: var(--text-secondary);
 		margin-bottom: 2.5rem;
+	}
+
+	.cta-tagline {
+		margin-top: 1.5rem;
+		margin-bottom: 0;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.9rem;
+		color: #ffffff;
+	}
+
+	.typewriter {
+		display: inline-block;
+		overflow: hidden;
+		white-space: nowrap;
+		border-right: 2px solid var(--green-dim);
+		animation: typing 1.5s steps(15, end) forwards, blink-caret 0.75s step-end infinite;
+		width: 0;
+		animation-delay: 0.5s;
+		padding-right: 0.15em;
+	}
+
+	@keyframes typing {
+		from { width: 0; }
+		to { width: calc(15ch + 0.15em); }
+	}
+
+	@keyframes blink-caret {
+		from, to { border-color: transparent; }
+		50% { border-color: var(--green-dim); }
 	}
 
 	.cta-coming-soon {
@@ -1693,5 +1725,26 @@
 		.recent-time {
 			display: none;
 		}
+	}
+
+	/* Light mode - remove background images for clean look */
+	:global([data-theme="light"]) .hero-wrapper,
+	:global(:root:not([data-theme="dark"])) .hero-wrapper {
+		background-image: none;
+	}
+
+	:global([data-theme="light"]) .hero-wrapper::before,
+	:global(:root:not([data-theme="dark"])) .hero-wrapper::before {
+		display: none;
+	}
+
+	:global([data-theme="light"]) .cta-wrapper,
+	:global(:root:not([data-theme="dark"])) .cta-wrapper {
+		background-image: none;
+	}
+
+	:global([data-theme="light"]) .cta-wrapper::before,
+	:global(:root:not([data-theme="dark"])) .cta-wrapper::before {
+		display: none;
 	}
 </style>
