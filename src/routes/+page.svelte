@@ -1637,9 +1637,9 @@
 		}
 
 		.terminal {
-			margin-left: -1.5rem;
-			margin-right: -1.5rem;
-			border-radius: 0;
+			margin-left: 0;
+			margin-right: 0;
+			border-radius: 8px;
 		}
 
 		.terminal-body {
