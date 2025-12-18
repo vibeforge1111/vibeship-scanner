@@ -138,6 +138,13 @@
     transition: all 0.15s;
 }
 
+.navbar-github-btn.with-text {
+    width: auto;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    font-size: 0.8rem;
+}
+
 .navbar-github-btn:hover {
     border-color: var(--text-primary);
     color: var(--text-primary);
@@ -827,6 +834,10 @@ textarea.form-input {
    ============================================ */
 
 .site-footer {
+    border-top: 1px solid var(--border);
+}
+
+.site-footer-inner {
     max-width: 1200px;
     margin: 0 auto;
     padding: 1.5rem;
@@ -836,18 +847,16 @@ textarea.form-input {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
 }
 
 .footer-nav {
     display: flex;
     align-items: center;
-    gap: 2rem;
+    gap: 1.5rem;
 }
 
 .footer-nav a {
-    font-family: 'JetBrains Mono', monospace;
     font-size: 0.8rem;
     color: var(--text-secondary);
     text-decoration: none;
@@ -869,7 +878,8 @@ textarea.form-input {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
+    height: 32px;
+    padding: 0 0.75rem;
     color: var(--text-secondary);
     border: 1px solid var(--border);
     text-decoration: none;
@@ -883,8 +893,8 @@ textarea.form-input {
 }
 
 .footer-icon-only {
-    padding: 0.5rem;
-    height: 34px;
+    width: 32px;
+    padding: 0;
 }
 
 .footer-bottom {
@@ -892,6 +902,8 @@ textarea.form-input {
     justify-content: space-between;
     align-items: center;
     padding-top: 1rem;
+    margin-top: 1rem;
+    border-top: 1px solid var(--border);
 }
 
 .footer-logo {
@@ -902,14 +914,14 @@ textarea.form-input {
 }
 
 .footer-logo-icon {
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     filter: invert(var(--logo-invert, 0));
 }
 
 .footer-logo span {
     font-family: 'Instrument Serif', Georgia, serif;
-    font-size: 1rem;
+    font-size: 1.18rem;
     color: var(--text-primary);
 }
 
