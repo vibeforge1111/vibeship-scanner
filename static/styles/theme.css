@@ -44,8 +44,8 @@
     --gray-800: #2a2a2a;
     --gray-900: #1a1a1a;
 
-    /* Logo invert for dark backgrounds */
-    --logo-invert: 0;
+    /* Logo - invert white logo to black on light background */
+    --logo-invert: 1;
 }
 
 /* Dark Theme - Bluish Black */
@@ -88,8 +88,8 @@
     --gray-800: #dce1eb;
     --gray-900: #f0f2f5;
 
-    /* Logo invert for dark backgrounds */
-    --logo-invert: 1;
+    /* Logo - keep white logo on dark background */
+    --logo-invert: 0;
 }
 
 /* ============================================
