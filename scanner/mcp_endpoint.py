@@ -1,5 +1,5 @@
 """
-MCP (Model Context Protocol) HTTP Endpoint for VibeShip Scanner
+MCP (Model Context Protocol) HTTP Endpoint for Vibeship Scanner
 
 Exposes scanner functionality via JSON-RPC over HTTP for use with mcp-remote.
 This enables Claude Code plugins to trigger scans, check status, and get fix prompts.
@@ -246,7 +246,7 @@ def execute_scan(args):
         "status": "started",
         "message": f"Scan started for {repo_url}",
         "check_status": f"Use scanner_status with scan_id: {scan_id}",
-        "view_results": f"https://vibeship.co/scan/{scan_id}"
+        "view_results": f"https://scanner.vibeship.co/scan/{scan_id}"
     }
 
 
@@ -285,7 +285,7 @@ def execute_status(args):
             },
             "findings_preview": findings[:10],  # First 10 findings
             "has_more": len(findings) > 10,
-            "view_all": f"https://vibeship.co/scan/{scan_id}",
+            "view_all": f"https://scanner.vibeship.co/scan/{scan_id}",
             "get_fix_prompt": "Use scanner_master_prompt to get a comprehensive fix guide"
         }
     elif status == 'scanning':
