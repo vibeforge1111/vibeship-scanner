@@ -29,6 +29,7 @@ RUN pip install -r requirements.txt
 
 COPY scan.py /scanner/scan.py
 COPY server.py /scanner/server.py
+COPY mcp_endpoint.py /scanner/mcp_endpoint.py
 COPY rules/ /scanner/rules/
 COPY benchmark/ /scanner/benchmark/
 COPY gitleaks.toml /scanner/gitleaks.toml
