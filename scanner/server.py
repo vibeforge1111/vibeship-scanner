@@ -20,7 +20,10 @@ from scan import (
     calculate_score, calculate_grade, calculate_ship_status, deduplicate_findings
 )
 
+from mcp_endpoint import mcp_bp
+
 app = Flask(__name__)
+app.register_blueprint(mcp_bp)
 CORS(app, origins=['https://vibeship.co', 'https://www.vibeship.co', 'http://localhost:5173', 'http://localhost:3000'])
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
