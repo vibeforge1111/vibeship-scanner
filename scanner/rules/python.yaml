@@ -418,6 +418,44 @@ rules:
     languages: [python]
     severity: ERROR
 
+  - id: py-aes-hardcoded-key
+    patterns:
+      - pattern: 'AES.new(b"...", ...)'
+      - pattern: "AES.new(b'...', ...)"
+    message: Hardcoded AES encryption key - use environment variable or key derivation (CWE-321)
+    languages: [python]
+    severity: ERROR
+
+  - id: py-aes-hardcoded-key-var
+    pattern: |
+      $KEY = b"..."
+      ...
+      AES.new($KEY, ...)
+    message: Hardcoded AES key in variable - encryption keys should be derived from secure sources (CWE-321)
+    languages: [python]
+    severity: ERROR
+
+  - id: py-cipher-hardcoded-key
+    pattern: |
+      $KEY = b"..."
+      ...
+      $CIPHER.new($KEY, ...)
+    message: Hardcoded encryption key detected - use key derivation or secure key management (CWE-321)
+    languages: [python]
+    severity: ERROR
+
+  - id: py-crypto-key-literal
+    pattern-regex: "key\\s*=\\s*b['\"][^'\"]{8,}['\"]"
+    message: Hardcoded cryptographic key - use environment variables or key derivation (CWE-321)
+    languages: [python]
+    severity: ERROR
+
+  - id: py-crypto-no-kdf
+    pattern: 'AES.new($KEY, $MODE)'
+    message: AES cipher without key derivation function - consider using PBKDF2 or scrypt for key derivation
+    languages: [python]
+    severity: INFO
+
   # ============================================
   # TLS/SSL Issues
   # ============================================

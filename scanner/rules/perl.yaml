@@ -1,0 +1,263 @@
+# Perl Security Rules
+rules:
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: perl-sql-variable-interpolation
+    pattern: '"SELECT $... FROM $... WHERE $... = $VAR"'
+    message: Perl SQL injection via variable interpolation - use parameterized queries (CWE-89)
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-sql-interpolation-insert
+    pattern: '"INSERT INTO $... VALUES ($VAR"'
+    message: Perl SQL injection via variable interpolation in INSERT
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-sql-interpolation-update
+    pattern: '"UPDATE $... SET $... = $VAR"'
+    message: Perl SQL injection via variable interpolation in UPDATE
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-sql-interpolation-delete
+    pattern: '"DELETE FROM $... WHERE $... = $VAR"'
+    message: Perl SQL injection via variable interpolation in DELETE
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-execute-variable
+    pattern: $STH->execute($QUERY)
+    message: Perl SQL execution - ensure parameterized queries
+    languages: [perl]
+    severity: WARNING
+
+  - id: perl-prepare-interpolation
+    pattern: '$DBH->prepare("$...$$VAR$...")'
+    message: Perl SQL injection in prepare statement
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-do-interpolation
+    pattern: '$DBH->do("$...$$VAR$...")'
+    message: Perl SQL injection in do statement
+    languages: [perl]
+    severity: ERROR
+
+  # ============================================
+  # XSS
+  # ============================================
+
+  - id: perl-html-variable-interpolation
+    pattern: 'print "<$TAG>$VAR</$TAG>"'
+    message: Perl XSS via variable interpolation in HTML - escape output (CWE-79)
+    languages: [perl]
+    severity: WARNING
+
+  - id: perl-html-h1-interpolation
+    pattern: 'print "<h1>$...$VAR$...</h1>"'
+    message: Perl XSS via interpolation in heading
+    languages: [perl]
+    severity: WARNING
+
+  - id: perl-html-div-interpolation
+    pattern: 'print "<div>$...$VAR$...</div>"'
+    message: Perl XSS via interpolation in div
+    languages: [perl]
+    severity: WARNING
+
+  - id: perl-cgi-param-print
+    pattern: 'print $CGI->param($X)'
+    message: Perl XSS - printing CGI param without escaping
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-cgi-param-in-html
+    pattern: 'print "<$...", $CGI->param($X), "$..."'
+    message: Perl XSS - CGI param in HTML output
+    languages: [perl]
+    severity: ERROR
+
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: perl-system-variable
+    pattern: system($VAR)
+    message: Perl command injection via system() (CWE-78)
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-exec-variable
+    pattern: exec($VAR)
+    message: Perl command injection via exec() (CWE-78)
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-backtick-variable
+    pattern: '`$VAR`'
+    message: Perl command injection via backticks (CWE-78)
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-open-pipe
+    pattern: 'open($FH, "|$VAR")'
+    message: Perl command injection via open pipe (CWE-78)
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-open-pipe-read
+    pattern: 'open($FH, "$VAR|")'
+    message: Perl command injection via open pipe read (CWE-78)
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-qx-variable
+    pattern: qx($VAR)
+    message: Perl command injection via qx (CWE-78)
+    languages: [perl]
+    severity: ERROR
+
+  # ============================================
+  # File Inclusion
+  # ============================================
+
+  - id: perl-require-variable
+    pattern: require $VAR
+    message: Perl arbitrary file inclusion via require
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-do-variable
+    pattern: do $VAR
+    message: Perl arbitrary file execution via do
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-eval-variable
+    pattern: eval $VAR
+    message: Perl code injection via eval (CWE-95)
+    languages: [perl]
+    severity: ERROR
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: perl-open-variable
+    pattern: 'open($FH, $VAR)'
+    message: Perl path traversal via open (CWE-22)
+    languages: [perl]
+    severity: WARNING
+
+  - id: perl-open-read-variable
+    pattern: 'open($FH, "<", $VAR)'
+    message: Perl path traversal via open read (CWE-22)
+    languages: [perl]
+    severity: WARNING
+
+  - id: perl-open-write-variable
+    pattern: 'open($FH, ">", $VAR)'
+    message: Perl path traversal via open write (CWE-22)
+    languages: [perl]
+    severity: WARNING
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: perl-hardcoded-password
+    pattern: '$password = "..."'
+    message: Perl hardcoded password detected (CWE-798)
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-hardcoded-secret
+    pattern: '$secret = "..."'
+    message: Perl hardcoded secret detected (CWE-798)
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-hardcoded-api-key
+    pattern: '$api_key = "..."'
+    message: Perl hardcoded API key detected (CWE-798)
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-dbi-connect-password
+    pattern: 'DBI->connect($DSN, $USER, "...")'
+    message: Perl hardcoded database password in DBI connect
+    languages: [perl]
+    severity: ERROR
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: perl-md5-digest
+    pattern: Digest::MD5::md5_hex($X)
+    message: Perl MD5 is weak - use SHA-256 or better
+    languages: [perl]
+    severity: WARNING
+
+  - id: perl-md5-new
+    pattern: Digest::MD5->new
+    message: Perl MD5 is weak - use SHA-256 or better
+    languages: [perl]
+    severity: WARNING
+
+  - id: perl-sha1-digest
+    pattern: Digest::SHA1::sha1_hex($X)
+    message: Perl SHA1 is weak - use SHA-256 or better
+    languages: [perl]
+    severity: WARNING
+
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: perl-storable-thaw
+    pattern: Storable::thaw($DATA)
+    message: Perl insecure deserialization via Storable::thaw
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-storable-retrieve
+    pattern: Storable::retrieve($FILE)
+    message: Perl insecure deserialization via Storable::retrieve
+    languages: [perl]
+    severity: WARNING
+
+  # ============================================
+  # LDAP Injection
+  # ============================================
+
+  - id: perl-ldap-search-filter
+    pattern: '$LDAP->search(filter => "$...$VAR$...")'
+    message: Perl LDAP injection via filter interpolation
+    languages: [perl]
+    severity: ERROR
+
+  # ============================================
+  # CGI Specific Issues
+  # ============================================
+
+  - id: perl-cgi-param-eval
+    pattern: eval($CGI->param($X))
+    message: Perl code injection via CGI param in eval
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-cgi-param-system
+    pattern: system($CGI->param($X))
+    message: Perl command injection via CGI param in system
+    languages: [perl]
+    severity: ERROR
+
+  - id: perl-cgi-param-open
+    pattern: 'open($FH, $CGI->param($X))'
+    message: Perl path traversal via CGI param in open
+    languages: [perl]
+    severity: ERROR

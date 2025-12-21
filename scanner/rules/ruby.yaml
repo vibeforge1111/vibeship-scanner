@@ -339,3 +339,66 @@ rules:
     message: Ruby XSS - direct params in render inline
     languages: [ruby]
     severity: ERROR
+
+  # ============================================
+  # String Interpolation SQL Injection
+  # ============================================
+
+  - id: ruby-sql-interpolation
+    pattern: '"SELECT $...WHERE $... = #{$VAR}"'
+    message: Ruby SQL injection via string interpolation - use parameterized queries
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-sql-interpolation-insert
+    pattern: '"INSERT INTO $... VALUES (#{$VAR}"'
+    message: Ruby SQL injection via string interpolation in INSERT
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-sql-interpolation-update
+    pattern: '"UPDATE $... SET $... = #{$VAR}"'
+    message: Ruby SQL injection via string interpolation in UPDATE
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-sql-interpolation-delete
+    pattern: '"DELETE FROM $... WHERE $... = #{$VAR}"'
+    message: Ruby SQL injection via string interpolation in DELETE
+    languages: [ruby]
+    severity: ERROR
+
+  - id: ruby-execute-interpolation
+    pattern: |
+      $DB.execute("... #{$VAR} ...")
+    message: Ruby SQL injection - string interpolation in execute
+    languages: [ruby]
+    severity: ERROR
+
+  # ============================================
+  # String Interpolation XSS
+  # ============================================
+
+  - id: ruby-html-interpolation
+    pattern: '"<$TAG>#{$VAR}</$TAG>"'
+    message: Ruby XSS via HTML string interpolation - escape user data
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-html-h1-interpolation
+    pattern: '"<h1>$...#{$VAR}$...</h1>"'
+    message: Ruby XSS via HTML interpolation in heading
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-html-div-interpolation
+    pattern: '"<div>$...#{$VAR}$...</div>"'
+    message: Ruby XSS via HTML interpolation in div
+    languages: [ruby]
+    severity: WARNING
+
+  - id: ruby-html-span-interpolation
+    pattern: '"<span>$...#{$VAR}$...</span>"'
+    message: Ruby XSS via HTML interpolation in span
+    languages: [ruby]
+    severity: WARNING

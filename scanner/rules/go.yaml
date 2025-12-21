@@ -422,3 +422,77 @@ rules:
     message: Go map with user-controlled keys - verify key validation
     languages: [go]
     severity: INFO
+
+  # ============================================
+  # fmt.Sprintf SQL Injection Patterns
+  # ============================================
+
+  - id: go-sql-sprintf-select
+    pattern: 'fmt.Sprintf("SELECT $... FROM $... WHERE $... = %s", $VAR)'
+    message: Go SQL injection via fmt.Sprintf - use parameterized queries (CWE-89)
+    languages: [go]
+    severity: ERROR
+
+  - id: go-sql-sprintf-select-v
+    pattern: 'fmt.Sprintf("SELECT $... FROM $... WHERE $... = %v", $VAR)'
+    message: Go SQL injection via fmt.Sprintf - use parameterized queries (CWE-89)
+    languages: [go]
+    severity: ERROR
+
+  - id: go-sql-sprintf-insert
+    pattern: 'fmt.Sprintf("INSERT INTO $... VALUES (%s", $VAR)'
+    message: Go SQL injection via fmt.Sprintf in INSERT
+    languages: [go]
+    severity: ERROR
+
+  - id: go-sql-sprintf-update
+    pattern: 'fmt.Sprintf("UPDATE $... SET $... = %s", $VAR)'
+    message: Go SQL injection via fmt.Sprintf in UPDATE
+    languages: [go]
+    severity: ERROR
+
+  - id: go-sql-sprintf-delete
+    pattern: 'fmt.Sprintf("DELETE FROM $... WHERE $... = %s", $VAR)'
+    message: Go SQL injection via fmt.Sprintf in DELETE
+    languages: [go]
+    severity: ERROR
+
+  - id: go-sql-sprintf-generic
+    pattern: 'fmt.Sprintf("$...SELECT$...%s$...", ...)'
+    message: Go potential SQL injection via fmt.Sprintf
+    languages: [go]
+    severity: WARNING
+
+  # ============================================
+  # fmt.Fprintf XSS Patterns
+  # ============================================
+
+  - id: go-xss-fprintf
+    pattern: fmt.Fprintf($W, $TEMPLATE, $USER_INPUT)
+    message: Go XSS via fmt.Fprintf - use html/template for escaping (CWE-79)
+    languages: [go]
+    severity: WARNING
+
+  - id: go-xss-fprintf-html
+    pattern: 'fmt.Fprintf($W, "<$...", $VAR)'
+    message: Go XSS - raw HTML output via fmt.Fprintf (CWE-79)
+    languages: [go]
+    severity: ERROR
+
+  - id: go-xss-sprintf-html
+    pattern: 'fmt.Sprintf("<$...", $VAR)'
+    message: Go XSS - raw HTML output via fmt.Sprintf (CWE-79)
+    languages: [go]
+    severity: WARNING
+
+  - id: go-xss-write-html
+    pattern: '$W.Write([]byte("<$..." + $VAR))'
+    message: Go XSS - raw HTML concatenation to response (CWE-79)
+    languages: [go]
+    severity: ERROR
+
+  - id: go-xss-writestring-html
+    pattern: '$W.WriteString("<$..." + $VAR)'
+    message: Go XSS - raw HTML concatenation to response (CWE-79)
+    languages: [go]
+    severity: ERROR
