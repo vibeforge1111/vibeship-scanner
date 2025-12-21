@@ -120,6 +120,17 @@ TOOLS = [
             },
             "required": ["scan_id"]
         }
+    },
+    {
+        "name": "scanner_export_report",
+        "description": "Export a full security report as markdown. Includes UTC timestamp, repository info, git commit reference, severity breakdown, and all vulnerabilities with locations and details.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "scan_id": {"type": "string", "description": "Scan ID to export"}
+            },
+            "required": ["scan_id"]
+        }
     }
 ]
 
@@ -237,6 +248,8 @@ def handle_tools_call(params, github_token=None):
             result = execute_get_fix(arguments)
         elif tool_name == 'scanner_master_prompt':
             result = execute_master_prompt(arguments)
+        elif tool_name == 'scanner_export_report':
+            result = execute_export_report(arguments)
         else:
             return {
                 "content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}],
@@ -413,12 +426,14 @@ def execute_status(args):
     if status == 'complete':
         findings = scan.get('findings', [])
         counts = scan.get('finding_counts', {})
+        repo_url = scan.get('target_url', 'Unknown')
 
         return {
             "status": "complete",
             "score": scan.get('score'),
             "grade": scan.get('grade'),
             "ship_status": scan.get('ship_status'),
+            "repository": repo_url,
             "summary": {
                 "total_findings": len(findings),
                 "critical": counts.get('critical', 0),
@@ -430,7 +445,36 @@ def execute_status(args):
             "findings_preview": findings[:10],  # First 10 findings
             "has_more": len(findings) > 10,
             "view_all": f"https://scanner.vibeship.co/scan/{scan_id}",
-            "get_fix_prompt": "Use scanner_master_prompt to get a comprehensive fix guide"
+            "output_options": {
+                "message": "How would you like the scan results?",
+                "options": [
+                    {
+                        "choice": "1",
+                        "name": "Full Security Report",
+                        "description": "Markdown file with UTC timestamp, git commit reference, all vulnerabilities with locations and severity",
+                        "action": f"Call scanner_export_report with scan_id: {scan_id}, then save the result to vibeship_scanner_report.md"
+                    },
+                    {
+                        "choice": "2",
+                        "name": "Master AI Fix Prompt",
+                        "description": "Markdown file with actionable fix instructions you can use to remediate all issues",
+                        "action": f"Call scanner_master_prompt with scan_id: {scan_id}, then save the result to vibeship_scanner_master_fix_prompt.md"
+                    },
+                    {
+                        "choice": "3",
+                        "name": "Both Reports",
+                        "description": "Get both the Full Security Report and the Master AI Fix Prompt",
+                        "action": f"Call scanner_export_report with scan_id: {scan_id} and save to vibeship_scanner_report.md, then call scanner_master_prompt with scan_id: {scan_id} and save to vibeship_scanner_master_fix_prompt.md"
+                    },
+                    {
+                        "choice": "4",
+                        "name": "View Online Only",
+                        "description": "Just view results in the web dashboard",
+                        "action": f"Open: https://scanner.vibeship.co/scan/{scan_id}"
+                    }
+                ],
+                "prompt": "Reply with 1, 2, 3, or 4 (or just check the link above)"
+            }
         }
     elif status == 'scanning':
         return {
@@ -728,8 +772,16 @@ def execute_master_prompt(args):
     if not findings:
         return "No security findings to fix! Your code looks clean. 🎉"
 
-    # Filter by severity
+    # Calculate ORIGINAL raw counts from ALL findings (before any filtering)
     severity_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'info': 4}
+    original_counts = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0}
+    for f in findings:
+        sev = f.get('severity', 'info').lower()
+        if sev in original_counts:
+            original_counts[sev] += 1
+    total_original = len(findings)
+
+    # Filter by severity
     min_severity = {'all': 4, 'critical': 0, 'high': 1, 'medium': 2}.get(severity_filter, 4)
 
     filtered = [f for f in findings if severity_order.get(f.get('severity', 'info').lower(), 4) <= min_severity]
@@ -813,32 +865,61 @@ def execute_master_prompt(args):
 **After Fixing:**
 {guide['verification']}""")
 
-    # Build severity summary
-    severity_parts = []
+    # Build ORIGINAL severity summary (raw scan results)
+    original_parts = []
+    if original_counts['critical'] > 0:
+        original_parts.append(f"🔴 {original_counts['critical']} Critical")
+    if original_counts['high'] > 0:
+        original_parts.append(f"🟠 {original_counts['high']} High")
+    if original_counts['medium'] > 0:
+        original_parts.append(f"🟡 {original_counts['medium']} Medium")
+    if original_counts['low'] > 0:
+        original_parts.append(f"⚪ {original_counts['low']} Low")
+    if original_counts['info'] > 0:
+        original_parts.append(f"ℹ️ {original_counts['info']} Info")
+
+    original_summary = ' | '.join(original_parts) if original_parts else "No findings"
+
+    # Build DEDUPLICATED severity summary (actionable issues)
+    dedup_parts = []
     if severity_counts['critical'] > 0:
-        severity_parts.append(f"🔴 {severity_counts['critical']} Critical")
+        dedup_parts.append(f"🔴 {severity_counts['critical']} Critical")
     if severity_counts['high'] > 0:
-        severity_parts.append(f"🟠 {severity_counts['high']} High")
+        dedup_parts.append(f"🟠 {severity_counts['high']} High")
     if severity_counts['medium'] > 0:
-        severity_parts.append(f"🟡 {severity_counts['medium']} Medium")
+        dedup_parts.append(f"🟡 {severity_counts['medium']} Medium")
     if severity_counts['low'] > 0:
-        severity_parts.append(f"⚪ {severity_counts['low']} Low")
+        dedup_parts.append(f"⚪ {severity_counts['low']} Low")
     if severity_counts['info'] > 0:
-        severity_parts.append(f"ℹ️ {severity_counts['info']} Info")
+        dedup_parts.append(f"ℹ️ {severity_counts['info']} Info")
 
-    severity_summary = f"\n\n**Severity Breakdown:** {' | '.join(severity_parts)}" if severity_parts else ""
+    dedup_summary = ' | '.join(dedup_parts) if dedup_parts else "No actionable issues"
 
-    # Dedup note
-    original_count = len(sorted_findings)
     unique_count = len(deduplicated)
-    dedup_note = f"\n\n> 📊 **Note:** {original_count} total findings consolidated into {unique_count} unique issues." if original_count != unique_count else ""
 
     # Final prompt
     return f"""# Security Fix Guide
 
-I need help fixing {unique_count} security vulnerabilities in my codebase.
+I need help fixing security vulnerabilities in my codebase.
 
-**Repository:** {repo_url}{severity_summary}{dedup_note}
+**Repository:** {repo_url}
+
+---
+
+## Scan Results
+
+**Raw Findings:** {total_original} total
+{original_summary}
+
+---
+
+## Actionable Issues
+
+After consolidating duplicate findings (same vulnerability in same file) and excluding informational items, you have **{unique_count} unique issues** to fix:
+
+{dedup_summary}
+
+---
 
 ## Quick Summary ({unique_count} unique issues)
 
@@ -869,6 +950,164 @@ I need help fixing {unique_count} security vulnerabilities in my codebase.
 - Summarize what you changed
 
 Let's start! Begin with the first section above."""
+
+
+def execute_export_report(args):
+    """Generate full security report markdown"""
+    from datetime import datetime, timezone
+
+    scan_id = args.get('scan_id')
+
+    if not scan_id:
+        return {"error": "scan_id is required"}
+
+    # Fetch scan from Supabase
+    supabase = get_supabase()
+    result = supabase.table('scans').select('*').eq('id', scan_id).execute()
+
+    if not result.data:
+        return {"error": f"Scan not found: {scan_id}"}
+
+    scan = result.data[0]
+    findings = scan.get('findings', [])
+    counts = scan.get('finding_counts', {})
+    repo_url = scan.get('target_url', 'Unknown repository')
+    branch = scan.get('target_branch', 'main')
+    score = scan.get('score', 'N/A')
+    grade = scan.get('grade', 'N/A')
+    ship_status = scan.get('ship_status', 'N/A')
+    created_at = scan.get('created_at', '')
+
+    # Generate UTC timestamp
+    utc_now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+    # Parse repo for git reference
+    repo_parts = repo_url.replace('https://github.com/', '').split('/')
+    repo_name = '/'.join(repo_parts[:2]) if len(repo_parts) >= 2 else repo_url
+
+    # Build severity breakdown
+    severity_breakdown = []
+    if counts.get('critical', 0) > 0:
+        severity_breakdown.append(f"- **Critical:** {counts['critical']}")
+    if counts.get('high', 0) > 0:
+        severity_breakdown.append(f"- **High:** {counts['high']}")
+    if counts.get('medium', 0) > 0:
+        severity_breakdown.append(f"- **Medium:** {counts['medium']}")
+    if counts.get('low', 0) > 0:
+        severity_breakdown.append(f"- **Low:** {counts['low']}")
+    if counts.get('info', 0) > 0:
+        severity_breakdown.append(f"- **Info:** {counts['info']}")
+
+    severity_section = '\n'.join(severity_breakdown) if severity_breakdown else "No vulnerabilities found"
+
+    # Sort findings by severity
+    severity_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'info': 4}
+    sorted_findings = sorted(findings, key=lambda f: severity_order.get(f.get('severity', 'info').lower(), 4))
+
+    # Build findings table
+    findings_rows = []
+    for i, f in enumerate(sorted_findings, 1):
+        sev = f.get('severity', 'info').upper()
+        title = f.get('title', 'Unknown')
+        loc = f.get('location', {})
+        file_path = loc.get('file', 'unknown')
+        line = loc.get('line', '')
+        location_str = f"`{file_path}:{line}`" if line else f"`{file_path}`"
+        rule_id = f.get('ruleId', '-')
+        scanner = f.get('scanner', '-')
+
+        findings_rows.append(f"| {i} | {sev} | {title} | {location_str} | {scanner} |")
+
+    findings_table = '\n'.join(findings_rows) if findings_rows else "| - | - | No vulnerabilities found | - | - |"
+
+    # Build detailed findings section
+    detailed_findings = []
+    for i, f in enumerate(sorted_findings, 1):
+        sev = f.get('severity', 'info').upper()
+        title = f.get('title', 'Unknown')
+        message = f.get('message', 'No description available')
+        loc = f.get('location', {})
+        file_path = loc.get('file', 'unknown')
+        line = loc.get('line', '')
+        rule_id = f.get('ruleId', 'N/A')
+        scanner = f.get('scanner', 'N/A')
+        cwe = f.get('cwe', '')
+
+        location_str = f"{file_path}:{line}" if line else file_path
+        cwe_line = f"\n- **CWE:** {cwe}" if cwe else ""
+
+        detailed_findings.append(f"""### {i}. [{sev}] {title}
+
+- **Location:** `{location_str}`
+- **Rule ID:** {rule_id}
+- **Scanner:** {scanner}{cwe_line}
+
+**Description:** {message}
+""")
+
+    detailed_section = '\n'.join(detailed_findings) if detailed_findings else "No vulnerabilities found."
+
+    # Generate the full report
+    return f"""# Security Scan Report
+
+**Generated:** {utc_now}
+**Scan ID:** `{scan_id}`
+
+---
+
+## Repository Information
+
+| Field | Value |
+|-------|-------|
+| Repository | [{repo_name}]({repo_url}) |
+| Branch | `{branch}` |
+| Scan Date | {created_at[:10] if created_at else 'N/A'} |
+
+---
+
+## Security Score
+
+| Metric | Value |
+|--------|-------|
+| Score | **{score}/100** |
+| Grade | **{grade}** |
+| Status | **{ship_status}** |
+
+---
+
+## Severity Breakdown
+
+{severity_section}
+
+**Total Findings:** {len(findings)}
+
+---
+
+## Findings Summary
+
+| # | Severity | Finding | Location | Scanner |
+|---|----------|---------|----------|---------|
+{findings_table}
+
+---
+
+## Detailed Findings
+
+{detailed_section}
+
+---
+
+## Next Steps
+
+1. **Prioritize Critical/High findings** - These pose the greatest risk
+2. **Use `scanner_master_prompt`** - Get actionable fix instructions for all issues
+3. **Re-scan after fixes** - Verify vulnerabilities are resolved
+4. **View online:** https://scanner.vibeship.co/scan/{scan_id}
+
+---
+
+*Report generated by [Vibeship Scanner](https://vibeship.co)*
+"""
 
 
 # =============================================================================
