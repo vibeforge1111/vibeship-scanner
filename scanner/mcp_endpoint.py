@@ -985,18 +985,18 @@ def execute_export_report(args):
     repo_parts = repo_url.replace('https://github.com/', '').split('/')
     repo_name = '/'.join(repo_parts[:2]) if len(repo_parts) >= 2 else repo_url
 
-    # Build severity breakdown
+    # Build severity breakdown with colors
     severity_breakdown = []
     if counts.get('critical', 0) > 0:
-        severity_breakdown.append(f"- **Critical:** {counts['critical']}")
+        severity_breakdown.append(f"- 🔴 **Critical:** {counts['critical']}")
     if counts.get('high', 0) > 0:
-        severity_breakdown.append(f"- **High:** {counts['high']}")
+        severity_breakdown.append(f"- 🟠 **High:** {counts['high']}")
     if counts.get('medium', 0) > 0:
-        severity_breakdown.append(f"- **Medium:** {counts['medium']}")
+        severity_breakdown.append(f"- 🟡 **Medium:** {counts['medium']}")
     if counts.get('low', 0) > 0:
-        severity_breakdown.append(f"- **Low:** {counts['low']}")
+        severity_breakdown.append(f"- ⚪ **Low:** {counts['low']}")
     if counts.get('info', 0) > 0:
-        severity_breakdown.append(f"- **Info:** {counts['info']}")
+        severity_breakdown.append(f"- ℹ️ **Info:** {counts['info']}")
 
     severity_section = '\n'.join(severity_breakdown) if severity_breakdown else "No vulnerabilities found"
 
@@ -1004,10 +1004,21 @@ def execute_export_report(args):
     severity_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'info': 4}
     sorted_findings = sorted(findings, key=lambda f: severity_order.get(f.get('severity', 'info').lower(), 4))
 
+    # Severity color mapping
+    severity_colors = {
+        'critical': '🔴',
+        'high': '🟠',
+        'medium': '🟡',
+        'low': '⚪',
+        'info': 'ℹ️'
+    }
+
     # Build findings table
     findings_rows = []
     for i, f in enumerate(sorted_findings, 1):
-        sev = f.get('severity', 'info').upper()
+        sev = f.get('severity', 'info').lower()
+        sev_color = severity_colors.get(sev, '⚪')
+        sev_display = f"{sev_color} {sev.upper()}"
         title = f.get('title', 'Unknown')
         loc = f.get('location', {})
         file_path = loc.get('file', 'unknown')
@@ -1016,14 +1027,16 @@ def execute_export_report(args):
         rule_id = f.get('ruleId', '-')
         scanner = f.get('scanner', '-')
 
-        findings_rows.append(f"| {i} | {sev} | {title} | {location_str} | {scanner} |")
+        findings_rows.append(f"| {i} | {sev_display} | {title} | {location_str} | {scanner} |")
 
     findings_table = '\n'.join(findings_rows) if findings_rows else "| - | - | No vulnerabilities found | - | - |"
 
     # Build detailed findings section
     detailed_findings = []
     for i, f in enumerate(sorted_findings, 1):
-        sev = f.get('severity', 'info').upper()
+        sev = f.get('severity', 'info').lower()
+        sev_color = severity_colors.get(sev, '⚪')
+        sev_display = f"{sev_color} {sev.upper()}"
         title = f.get('title', 'Unknown')
         message = f.get('message', 'No description available')
         loc = f.get('location', {})
@@ -1036,7 +1049,7 @@ def execute_export_report(args):
         location_str = f"{file_path}:{line}" if line else file_path
         cwe_line = f"\n- **CWE:** {cwe}" if cwe else ""
 
-        detailed_findings.append(f"""### {i}. [{sev}] {title}
+        detailed_findings.append(f"""### {i}. [{sev_display}] {title}
 
 - **Location:** `{location_str}`
 - **Rule ID:** {rule_id}
