@@ -28,6 +28,51 @@ rules:
     languages: [python]
     severity: ERROR
 
+  - id: py-subprocess-check-output
+    pattern: subprocess.check_output(...)
+    message: "subprocess.check_output() - verify user input is validated before use (CWE-78)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+
+  - id: py-subprocess-check-call
+    pattern: subprocess.check_call(...)
+    message: "subprocess.check_call() - verify user input is validated before use (CWE-78)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+
+  - id: py-subprocess-call-no-shell
+    pattern: subprocess.call(...)
+    message: "subprocess.call() - verify user input is validated before use (CWE-78)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+
+  - id: py-subprocess-popen-no-shell
+    pattern: subprocess.Popen(...)
+    message: "subprocess.Popen() - verify user input is validated before use (CWE-78)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+
+  - id: py-subprocess-run-no-shell
+    pattern: subprocess.run(...)
+    message: "subprocess.run() - verify user input is validated before use (CWE-78)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021 Injection"
+
   # ============================================
   # Code Injection
   # ============================================
@@ -5676,6 +5721,79 @@ rules:
     metadata:
       cwe: "CWE-89"
       tags: [sqli]
+
+  # SQL string concatenation patterns
+  - id: py-sqli-select-concat-double
+    pattern-regex: '"SELECT[^"]*"\\s*\\+\\s*\\w+'
+    message: "SQL injection - SELECT query built with string concatenation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sqli-select-concat-single
+    pattern-regex: "'SELECT[^']*'\\s*\\+\\s*\\w+"
+    message: "SQL injection - SELECT query built with string concatenation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sqli-query-var-concat
+    pattern-regex: "query\\s*=.*SELECT.*\\+\\s*\\w+"
+    message: "SQL injection - query variable built with string concatenation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sqli-string-plus-var
+    pattern-regex: "\".*SELECT.*\"\\s*\\+\\s*\\w+"
+    message: "SQL injection - SELECT query concatenated with variable (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sqli-insert-concat
+    pattern-regex: "[\"']INSERT[^\"']*[\"']\\s*\\+\\s*\\w+"
+    message: "SQL injection - INSERT query built with string concatenation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sqli-update-concat
+    pattern-regex: "[\"']UPDATE[^\"']*[\"']\\s*\\+\\s*\\w+"
+    message: "SQL injection - UPDATE query built with string concatenation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sqli-delete-concat
+    pattern-regex: "[\"']DELETE[^\"']*[\"']\\s*\\+\\s*\\w+"
+    message: "SQL injection - DELETE query built with string concatenation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+
+  - id: py-sqli-where-concat
+    pattern-regex: "[\"'].*WHERE[^\"']*[\"']\\s*\\+\\s*\\w+"
+    message: "SQL injection - WHERE clause built with string concatenation (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
 
   # ============================================
   # WTForms / Form Validation Issues
