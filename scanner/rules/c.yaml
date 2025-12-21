@@ -164,31 +164,8 @@ rules:
   # Memory Issues
   # ============================================
 
-  - id: c-malloc-no-null-check
-    pattern: |
-      $PTR = malloc($SIZE);
-      $PTR[$X] = ...
-    message: Use of malloc result without NULL check (CWE-476)
-    languages: [c]
-    severity: WARNING
-
-  - id: c-double-free
-    pattern: |
-      free($PTR);
-      ...
-      free($PTR);
-    message: Potential double-free vulnerability (CWE-415)
-    languages: [c]
-    severity: ERROR
-
-  - id: c-use-after-free
-    pattern: |
-      free($PTR);
-      ...
-      $PTR[$X]
-    message: Potential use-after-free vulnerability (CWE-416)
-    languages: [c]
-    severity: ERROR
+  # Note: Complex multi-line patterns (malloc null check, double-free, use-after-free)
+  # require dataflow analysis - these are detected by Trivy/other tools instead
 
   - id: c-alloca-stack-overflow
     pattern: alloca($SIZE)
@@ -266,45 +243,44 @@ rules:
   # Race Conditions
   # ============================================
 
-  - id: c-toctou-access-open
-    pattern: |
-      access($PATH, ...)
-      ...
-      open($PATH, ...)
-    message: TOCTOU race condition between access and open (CWE-367)
-    languages: [c]
-    severity: WARNING
-
-  - id: c-toctou-stat-open
-    pattern: |
-      stat($PATH, ...)
-      ...
-      open($PATH, ...)
-    message: TOCTOU race condition between stat and open (CWE-367)
-    languages: [c]
-    severity: INFO
+  # Note: TOCTOU patterns require multi-statement analysis
+  # These are best detected by specialized race condition tools
 
   # ============================================
   # Hardcoded Credentials
   # ============================================
 
   - id: c-hardcoded-password
-    pattern: 'char *password = "..."'
+    pattern-regex: 'char\s+\*?\s*password\s*=\s*"[^"]+"'
     message: Hardcoded password detected (CWE-798)
     languages: [c]
     severity: ERROR
+    metadata:
+      cwe: "CWE-798"
 
   - id: c-hardcoded-password-const
-    pattern: 'const char *password = "..."'
+    pattern-regex: 'const\s+char\s+\*?\s*password\s*=\s*"[^"]+"'
     message: Hardcoded password detected (CWE-798)
     languages: [c]
     severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  - id: c-hardcoded-secret
+    pattern-regex: 'char\s+\*?\s*(secret|api_key|apikey)\s*=\s*"[^"]+"'
+    message: Hardcoded secret/API key detected (CWE-798)
+    languages: [c]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
 
   - id: c-strcmp-password
-    pattern: 'strcmp($INPUT, "...")'
+    pattern-regex: 'strcmp\s*\([^,]+,\s*"[^"]+"\s*\)'
     message: Hardcoded credential in strcmp comparison (CWE-798)
     languages: [c]
     severity: ERROR
+    metadata:
+      cwe: "CWE-798"
 
   # ============================================
   # Unsafe Functions

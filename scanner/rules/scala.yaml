@@ -74,7 +74,7 @@ rules:
       cwe: "CWE-79"
 
   - id: scala-twirl-raw
-    pattern: '@Html($INPUT)'
+    pattern-regex: '@Html\s*\([^)]+\)'
     message: Scala Twirl @Html bypasses escaping - XSS risk (CWE-79)
     languages: [scala]
     severity: ERROR
