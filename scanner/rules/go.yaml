@@ -123,7 +123,7 @@ rules:
     severity: WARNING
 
   - id: go-json-unmarshal-interface
-    pattern: json.Unmarshal($DATA, &interface{})
+    pattern-regex: 'json\.Unmarshal\s*\([^,]+,\s*&interface\s*\{\s*\}\s*\)'
     message: Go JSON unmarshal to interface{} - type confusion risk
     languages: [go]
     severity: INFO
@@ -239,15 +239,12 @@ rules:
   # ============================================
 
   - id: go-goroutine-closure
-    pattern: |
-      for $VAR := range $ITER {
-        go func() {
-          ... $VAR ...
-        }()
-      }
-    message: Go closure captures loop variable - race condition risk
+    pattern-regex: 'for\s+\w+\s*:=\s*range\s+\w+\s*\{[^}]*go\s+func\s*\(\s*\)\s*\{'
+    message: Go closure captures loop variable - race condition risk (CWE-362)
     languages: [go]
     severity: WARNING
+    metadata:
+      cwe: "CWE-362"
 
   # ============================================
   # Hardcoded Credentials
@@ -255,21 +252,67 @@ rules:
 
   - id: go-hardcoded-password
     pattern: 'password := "..."'
-    message: Go hardcoded password detected
+    message: Go hardcoded password detected (CWE-798)
     languages: [go]
     severity: ERROR
+    metadata:
+      cwe: "CWE-798"
 
   - id: go-hardcoded-secret
     pattern: 'secret := "..."'
-    message: Go hardcoded secret detected
+    message: Go hardcoded secret detected (CWE-798)
     languages: [go]
     severity: ERROR
+    metadata:
+      cwe: "CWE-798"
 
   - id: go-hardcoded-apikey
     pattern: 'apiKey := "..."'
-    message: Go hardcoded API key detected
+    message: Go hardcoded API key detected (CWE-798)
     languages: [go]
     severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  - id: go-const-password
+    pattern-regex: 'const\s+(db)?[pP]assword\s*=\s*"[^"]+"'
+    message: Go hardcoded password in const (CWE-798)
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  - id: go-const-apikey
+    pattern-regex: 'const\s+[aA]pi[Kk]ey\s*=\s*"[^"]+"'
+    message: Go hardcoded API key in const (CWE-798)
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  - id: go-const-secret
+    pattern-regex: 'const\s+[sS]ecret\s*=\s*"[^"]+"'
+    message: Go hardcoded secret in const (CWE-798)
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  - id: go-var-password
+    pattern-regex: 'var\s+(db)?[pP]assword\s*=\s*"[^"]+"'
+    message: Go hardcoded password in var (CWE-798)
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  - id: go-sql-open-hardcoded
+    pattern-regex: 'sql\.Open\s*\(\s*"[^"]+"\s*,\s*"[^"]*:[^"]*@'
+    message: Go hardcoded database credentials in sql.Open (CWE-798)
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
 
   # ============================================
   # JWT Security

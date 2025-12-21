@@ -1,0 +1,213 @@
+# CoffeeScript Security Rules
+rules:
+  # ============================================
+  # SQL Injection via String Interpolation
+  # ============================================
+
+  - id: coffee-sql-interpolation
+    pattern: '"SELECT $...#{$VAR}$..."'
+    message: CoffeeScript SQL injection via string interpolation - use parameterized queries (CWE-89)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-sql-interpolation-insert
+    pattern: '"INSERT INTO $...#{$VAR}$..."'
+    message: CoffeeScript SQL injection via interpolation in INSERT (CWE-89)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-sql-interpolation-update
+    pattern: '"UPDATE $...#{$VAR}$..."'
+    message: CoffeeScript SQL injection via interpolation in UPDATE (CWE-89)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-sql-interpolation-delete
+    pattern: '"DELETE FROM $...#{$VAR}$..."'
+    message: CoffeeScript SQL injection via interpolation in DELETE (CWE-89)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-sql-interpolation-where
+    pattern: '"$...WHERE $... = #{$VAR}$..."'
+    message: CoffeeScript SQL injection in WHERE clause (CWE-89)
+    languages: [javascript]
+    severity: ERROR
+
+  # ============================================
+  # XSS via String Interpolation
+  # ============================================
+
+  - id: coffee-xss-html-interpolation
+    pattern: '"<$TAG>#{$VAR}</$TAG>"'
+    message: CoffeeScript XSS via HTML string interpolation - escape output (CWE-79)
+    languages: [javascript]
+    severity: WARNING
+
+  - id: coffee-xss-res-send-interpolation
+    pattern: 'res.send "#{$VAR}"'
+    message: CoffeeScript XSS - user input in response (CWE-79)
+    languages: [javascript]
+    severity: WARNING
+
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: coffee-exec-interpolation
+    pattern: 'exec "#{$VAR}"'
+    message: CoffeeScript command injection via exec with interpolation (CWE-78)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-spawn-interpolation
+    pattern: 'spawn "#{$VAR}"'
+    message: CoffeeScript command injection via spawn with interpolation (CWE-78)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-child-process-exec
+    pattern: 'child_process.exec $CMD'
+    message: CoffeeScript command execution - validate input (CWE-78)
+    languages: [javascript]
+    severity: WARNING
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: coffee-path-interpolation
+    pattern: 'fs.readFile "#{$VAR}"'
+    message: CoffeeScript path traversal - validate file path (CWE-22)
+    languages: [javascript]
+    severity: WARNING
+
+  - id: coffee-path-readfile
+    pattern: 'fs.readFileSync "#{$VAR}"'
+    message: CoffeeScript path traversal in readFileSync (CWE-22)
+    languages: [javascript]
+    severity: WARNING
+
+  # ============================================
+  # Eval / Code Injection
+  # ============================================
+
+  - id: coffee-eval-interpolation
+    pattern: 'eval "#{$VAR}"'
+    message: CoffeeScript code injection via eval with interpolation (CWE-95)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-eval-variable
+    pattern: eval $VAR
+    message: CoffeeScript code injection via eval with variable (CWE-95)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-function-constructor
+    pattern: 'new Function "#{$VAR}"'
+    message: CoffeeScript code injection via Function constructor (CWE-95)
+    languages: [javascript]
+    severity: ERROR
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: coffee-hardcoded-password
+    pattern: 'password = "..."'
+    message: CoffeeScript hardcoded password detected (CWE-798)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-hardcoded-secret
+    pattern: 'secret = "..."'
+    message: CoffeeScript hardcoded secret detected (CWE-798)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-hardcoded-apikey
+    pattern: 'apiKey = "..."'
+    message: CoffeeScript hardcoded API key detected (CWE-798)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-hardcoded-api-key
+    pattern: 'api_key = "..."'
+    message: CoffeeScript hardcoded API key detected (CWE-798)
+    languages: [javascript]
+    severity: ERROR
+
+  # ============================================
+  # SSRF
+  # ============================================
+
+  - id: coffee-request-interpolation
+    pattern: 'request "#{$VAR}"'
+    message: CoffeeScript SSRF - validate URL before request (CWE-918)
+    languages: [javascript]
+    severity: WARNING
+
+  - id: coffee-http-get-interpolation
+    pattern: 'http.get "#{$VAR}"'
+    message: CoffeeScript SSRF - validate URL in http.get (CWE-918)
+    languages: [javascript]
+    severity: WARNING
+
+  # ============================================
+  # Regex DoS
+  # ============================================
+
+  - id: coffee-regex-dos
+    pattern: 'new RegExp "#{$VAR}"'
+    message: CoffeeScript ReDoS - user input in regex can cause denial of service (CWE-1333)
+    languages: [javascript]
+    severity: WARNING
+
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: coffee-json-parse-unsafe
+    pattern: JSON.parse $USER_INPUT
+    message: JSON.parse with unvalidated input - verify source is trusted
+    languages: [javascript]
+    severity: INFO
+
+  - id: coffee-yaml-load
+    pattern: yaml.load $DATA
+    message: YAML load can execute arbitrary code - use yaml.safeLoad (CWE-502)
+    languages: [javascript]
+    severity: ERROR
+
+  # ============================================
+  # MongoDB NoSQL Injection
+  # ============================================
+
+  - id: coffee-mongodb-find-interpolation
+    pattern: '$COLLECTION.find "#{$VAR}"'
+    message: CoffeeScript NoSQL injection - use parameterized queries (CWE-943)
+    languages: [javascript]
+    severity: ERROR
+
+  - id: coffee-mongodb-findone-interpolation
+    pattern: '$COLLECTION.findOne "#{$VAR}"'
+    message: CoffeeScript NoSQL injection in findOne (CWE-943)
+    languages: [javascript]
+    severity: ERROR
+
+  # ============================================
+  # Express/Connect Specific
+  # ============================================
+
+  - id: coffee-express-no-csurf
+    pattern: 'app.use bodyParser'
+    message: CoffeeScript Express app uses bodyParser - ensure CSRF protection is enabled
+    languages: [javascript]
+    severity: INFO
+
+  - id: coffee-express-static-root
+    pattern: 'express.static "/"'
+    message: CoffeeScript Express serving static files from root - restrict path
+    languages: [javascript]
+    severity: ERROR

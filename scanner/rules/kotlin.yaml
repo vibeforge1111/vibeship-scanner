@@ -202,11 +202,15 @@ rules:
     languages: [kotlin]
     severity: INFO
 
+  # Note: android:exported is XML, moved to yaml-config.yaml for XML scanning
+  # Using regex to catch exported=true in Kotlin code annotations/comments
   - id: kotlin-android-exported-true
-    pattern: 'android:exported="true"'
-    message: Kotlin Android exported component - verify access control
+    pattern-regex: 'exported\s*=\s*true'
+    message: Android exported component - verify access control (CWE-926)
     languages: [kotlin]
     severity: WARNING
+    metadata:
+      cwe: "CWE-926"
 
   - id: kotlin-android-world-readable
     pattern: MODE_WORLD_READABLE

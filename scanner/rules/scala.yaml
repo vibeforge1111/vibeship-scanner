@@ -1,0 +1,285 @@
+# Scala Security Rules
+rules:
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: scala-sql-interpolation
+    pattern-regex: 's"SELECT\s+[^"]*\$\w+'
+    message: Scala SQL string interpolation - SQL injection risk (CWE-89)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+
+  - id: scala-sql-concat
+    pattern: '"SELECT " + $VAR'
+    message: Scala SQL concatenation - SQL injection risk (CWE-89)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: scala-slick-sql-raw
+    pattern: sql"$QUERY".as[$TYPE]
+    message: Slick raw SQL - ensure parameterized queries
+    languages: [scala]
+    severity: WARNING
+
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: scala-process-run
+    pattern: $CMD.!
+    message: Scala Process execution - command injection risk (CWE-78)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+
+  - id: scala-process-run-alt
+    pattern: Process($CMD).!
+    message: Scala Process execution - command injection risk (CWE-78)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+
+  - id: scala-runtime-exec
+    pattern: Runtime.getRuntime().exec($CMD)
+    message: Scala Runtime.exec - command injection risk (CWE-78)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+
+  - id: scala-sys-process
+    pattern: sys.process.Process($CMD)
+    message: Scala sys.process - command injection risk
+    languages: [scala]
+    severity: WARNING
+
+  # ============================================
+  # XSS
+  # ============================================
+
+  - id: scala-play-html-raw
+    pattern: Html($INPUT)
+    message: Scala Play Html() bypasses escaping - XSS risk (CWE-79)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+
+  - id: scala-twirl-raw
+    pattern: '@Html($INPUT)'
+    message: Scala Twirl @Html bypasses escaping - XSS risk (CWE-79)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+
+  # ============================================
+  # Deserialization
+  # ============================================
+
+  - id: scala-objectinputstream
+    pattern: new ObjectInputStream(...)
+    message: Scala ObjectInputStream - insecure deserialization (CWE-502)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+
+  - id: scala-java-serialization
+    pattern: $OBJ.readObject()
+    message: Scala Java deserialization - insecure deserialization risk
+    languages: [scala]
+    severity: WARNING
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: scala-md5
+    pattern: 'MessageDigest.getInstance("MD5")'
+    message: Scala MD5 is weak - use SHA-256 or better (CWE-327)
+    languages: [scala]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327"
+
+  - id: scala-sha1
+    pattern: 'MessageDigest.getInstance("SHA-1")'
+    message: Scala SHA-1 is deprecated - use SHA-256 or better (CWE-327)
+    languages: [scala]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327"
+
+  - id: scala-des
+    pattern: 'Cipher.getInstance("DES")'
+    message: Scala DES is weak - use AES (CWE-327)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+
+  - id: scala-ecb-mode
+    pattern: 'Cipher.getInstance("AES/ECB/$PADDING")'
+    message: Scala ECB mode is insecure - use GCM or CBC (CWE-327)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+
+  - id: scala-random-insecure
+    pattern: new Random()
+    message: Scala Random not cryptographically secure - use SecureRandom
+    languages: [scala]
+    severity: WARNING
+
+  - id: scala-random-util
+    pattern: scala.util.Random
+    message: Scala util.Random not cryptographically secure - use SecureRandom
+    languages: [scala]
+    severity: WARNING
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: scala-file-user
+    pattern: new File($USER_INPUT)
+    message: Scala File with user input - path traversal risk (CWE-22)
+    languages: [scala]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  - id: scala-paths-get
+    pattern: Paths.get($USER_INPUT)
+    message: Scala Paths.get with user input - path traversal risk (CWE-22)
+    languages: [scala]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  # ============================================
+  # SSRF
+  # ============================================
+
+  - id: scala-url-user
+    pattern: new URL($USER_INPUT)
+    message: Scala URL with user input - potential SSRF (CWE-918)
+    languages: [scala]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  - id: scala-http-get
+    pattern: Http($URL).asString
+    message: Scala HTTP request - validate URL for SSRF
+    languages: [scala]
+    severity: INFO
+
+  # ============================================
+  # XXE
+  # ============================================
+
+  - id: scala-xxe-saxparser
+    pattern: SAXParserFactory.newInstance()
+    message: Scala SAX parser may be vulnerable to XXE (CWE-611)
+    languages: [scala]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+
+  - id: scala-xxe-documentbuilder
+    pattern: DocumentBuilderFactory.newInstance()
+    message: Scala XML parser may be vulnerable to XXE (CWE-611)
+    languages: [scala]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: scala-hardcoded-password
+    pattern: 'val password = "..."'
+    message: Scala hardcoded password detected (CWE-798)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  - id: scala-hardcoded-secret
+    pattern: 'val secret = "..."'
+    message: Scala hardcoded secret detected (CWE-798)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  - id: scala-hardcoded-apikey
+    pattern: 'val apiKey = "..."'
+    message: Scala hardcoded API key detected (CWE-798)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  # ============================================
+  # SSL/TLS Issues
+  # ============================================
+
+  - id: scala-ssl-trust-all
+    pattern-regex: 'TrustManager\s*\{[^}]*checkServerTrusted[^}]*\{\s*\}'
+    message: Scala trust all certificates - MITM risk (CWE-295)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+
+  - id: scala-hostname-verifier
+    pattern-regex: 'HostnameVerifier\s*\{[^}]*=>\s*true'
+    message: Scala hostname verification disabled - MITM risk (CWE-295)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+
+  # ============================================
+  # Play Framework Security
+  # ============================================
+
+  - id: scala-play-csrf-disabled
+    pattern-regex: 'csrf\s*\.\s*disable'
+    message: Play Framework CSRF protection disabled (CWE-352)
+    languages: [scala]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-352"
+
+  - id: scala-play-security-headers-disabled
+    pattern-regex: 'securityHeaders\s*\.\s*disable'
+    message: Play Framework security headers disabled
+    languages: [scala]
+    severity: WARNING
+
+  # ============================================
+  # Akka HTTP Security
+  # ============================================
+
+  - id: scala-akka-cors-all
+    pattern-regex: 'allowedOrigins\s*=\s*HttpOriginRange\.\*'
+    message: Akka HTTP CORS allows all origins (CWE-942)
+    languages: [scala]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-942"
+

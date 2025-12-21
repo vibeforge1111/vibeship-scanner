@@ -11,13 +11,15 @@ rules:
     severity: WARNING
 
   - id: dart-http-client-insecure
-    pattern: 'HttpClient()..badCertificateCallback = $CALLBACK'
-    message: SSL certificate validation disabled - MITM risk
+    pattern-regex: 'badCertificateCallback\s*=\s*\(\s*[^)]*\)\s*=>\s*true'
+    message: SSL certificate validation disabled - MITM risk (CWE-295)
     languages: [dart]
     severity: ERROR
+    metadata:
+      cwe: "CWE-295"
 
   - id: dart-dio-insecure
-    pattern: 'Dio()..options.validateStatus = $FUNC'
+    pattern-regex: 'validateStatus\s*:\s*\(\s*[^)]*\)\s*=>\s*true'
     message: Custom status validation may bypass security checks
     languages: [dart]
     severity: WARNING
@@ -79,10 +81,12 @@ rules:
     severity: ERROR
 
   - id: dart-firebase-key-exposed
-    pattern: 'apiKey: "AIza$KEY"'
-    message: Firebase API key exposed - move to environment config
+    pattern-regex: 'apiKey\s*[:=]\s*["\x27]AIza[a-zA-Z0-9_-]{30,}["\x27]'
+    message: Firebase API key exposed - move to environment config (CWE-798)
     languages: [dart]
     severity: ERROR
+    metadata:
+      cwe: "CWE-798"
 
   # ============================================
   # Insecure Storage
@@ -227,7 +231,7 @@ rules:
     severity: INFO
 
   - id: dart-biometric-bypass
-    pattern: 'biometricOnly: false'
+    pattern-regex: 'biometricOnly\s*:\s*false'
     message: Biometric fallback enabled - ensure PIN/pattern is secure
     languages: [dart]
     severity: INFO

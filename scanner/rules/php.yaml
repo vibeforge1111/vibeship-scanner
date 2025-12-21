@@ -327,22 +327,28 @@ rules:
     severity: ERROR
 
   - id: php-echo-get
-    pattern: echo $_GET[$X]
-    message: PHP XSS - direct echo of $_GET without escaping
+    pattern-regex: 'echo\s+\$_GET\s*\['
+    message: PHP XSS - direct echo of $_GET without escaping (CWE-79)
     languages: [php]
     severity: ERROR
+    metadata:
+      cwe: "CWE-79"
 
   - id: php-echo-post
-    pattern: echo $_POST[$X]
-    message: PHP XSS - direct echo of $_POST without escaping
+    pattern-regex: 'echo\s+\$_POST\s*\['
+    message: PHP XSS - direct echo of $_POST without escaping (CWE-79)
     languages: [php]
     severity: ERROR
+    metadata:
+      cwe: "CWE-79"
 
   - id: php-echo-request
-    pattern: echo $_REQUEST[$X]
-    message: PHP XSS - direct echo of $_REQUEST without escaping
+    pattern-regex: 'echo\s+\$_REQUEST\s*\['
+    message: PHP XSS - direct echo of $_REQUEST without escaping (CWE-79)
     languages: [php]
     severity: ERROR
+    metadata:
+      cwe: "CWE-79"
 
   - id: php-print-get
     pattern: print($_GET[$X])
@@ -373,32 +379,40 @@ rules:
     severity: WARNING
 
   - id: php-laravel-blade-unescape
-    pattern: '{!! $VAR !!}'
-    message: Laravel Blade unescaped output - XSS risk
+    pattern-regex: '\{!!\s*\$\w+\s*!!\}'
+    message: Laravel Blade unescaped output - XSS risk (CWE-79)
     languages: [php]
     severity: ERROR
+    metadata:
+      cwe: "CWE-79"
 
   - id: php-laravel-debug-true
-    pattern: "'debug' => true"
-    message: Laravel debug mode enabled - disable in production
+    pattern-regex: '["\x27]debug["\x27]\s*=>\s*true'
+    message: Laravel debug mode enabled - disable in production (CWE-489)
     languages: [php]
     severity: WARNING
+    metadata:
+      cwe: "CWE-489"
 
   # ============================================
   # Symfony Security
   # ============================================
 
   - id: php-symfony-raw-filter
-    pattern: '{{ $VAR|raw }}'
-    message: Symfony Twig raw filter - XSS risk
+    pattern-regex: '\{\{\s*\w+\s*\|\s*raw\s*\}\}'
+    message: Symfony Twig raw filter - XSS risk (CWE-79)
     languages: [php]
     severity: WARNING
+    metadata:
+      cwe: "CWE-79"
 
   - id: php-symfony-csrf-disabled
-    pattern: "'csrf_protection' => false"
-    message: Symfony CSRF protection disabled
+    pattern-regex: '["\x27]csrf_protection["\x27]\s*=>\s*false'
+    message: Symfony CSRF protection disabled (CWE-352)
     languages: [php]
     severity: ERROR
+    metadata:
+      cwe: "CWE-352"
 
   # ============================================
   # Type Juggling
@@ -421,26 +435,32 @@ rules:
   # ============================================
 
   - id: php-jwt-none-algorithm
-    pattern: '"alg":"none"'
-    message: PHP JWT none algorithm - authentication bypass
+    pattern-regex: '"alg"\s*:\s*"none"'
+    message: PHP JWT none algorithm - authentication bypass (CWE-287)
     languages: [php]
     severity: ERROR
+    metadata:
+      cwe: "CWE-287"
 
   # ============================================
   # Object Injection
   # ============================================
 
   - id: php-wakeup-magic
-    pattern: 'function __wakeup()'
-    message: PHP __wakeup magic method - review for object injection
+    pattern-regex: 'function\s+__wakeup\s*\('
+    message: PHP __wakeup magic method - review for object injection (CWE-502)
     languages: [php]
     severity: INFO
+    metadata:
+      cwe: "CWE-502"
 
   - id: php-destruct-magic
-    pattern: 'function __destruct()'
-    message: PHP __destruct magic method - review for object injection
+    pattern-regex: 'function\s+__destruct\s*\('
+    message: PHP __destruct magic method - review for object injection (CWE-502)
     languages: [php]
     severity: INFO
+    metadata:
+      cwe: "CWE-502"
 
   # ============================================
   # Additional SSRF

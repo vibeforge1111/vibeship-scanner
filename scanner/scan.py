@@ -48,6 +48,12 @@ LANGUAGE_RULES = {
     'Solidity': 'solidity.yaml',
     'Dart': 'dart.yaml',
     'YAML': 'yaml-config.yaml',
+    'Scala': 'scala.yaml',
+    'Groovy': 'groovy.yaml',
+    'Perl': 'perl.yaml',
+    'CoffeeScript': 'coffeescript.yaml',
+    'C': 'c.yaml',
+    'C++': 'c.yaml',
 }
 
 # Shared rules that apply to ALL scans regardless of language
@@ -167,6 +173,25 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
         '.zsh': 'Bash',
         '.sol': 'Solidity',
         '.dart': 'Dart',
+        # C/C++
+        '.c': 'C',
+        '.h': 'C',
+        '.cpp': 'C++',
+        '.cc': 'C++',
+        '.cxx': 'C++',
+        '.hpp': 'C++',
+        '.hxx': 'C++',
+        '.hh': 'C++',
+        # JVM languages
+        '.scala': 'Scala',
+        '.sc': 'Scala',
+        '.groovy': 'Groovy',
+        '.gvy': 'Groovy',
+        '.gradle': 'Groovy',
+        # Scripting
+        '.pl': 'Perl',
+        '.pm': 'Perl',
+        '.coffee': 'CoffeeScript',
     }
 
     # Special filenames that indicate languages (no extension needed)

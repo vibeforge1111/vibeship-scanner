@@ -1,0 +1,341 @@
+# C Security Rules
+rules:
+  # ============================================
+  # Buffer Overflow
+  # ============================================
+
+  - id: c-strcpy-buffer-overflow
+    pattern: strcpy($DEST, $SRC)
+    message: Buffer overflow risk - strcpy has no bounds checking, use strncpy or strlcpy (CWE-120)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-strcat-buffer-overflow
+    pattern: strcat($DEST, $SRC)
+    message: Buffer overflow risk - strcat has no bounds checking, use strncat or strlcat (CWE-120)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-gets-buffer-overflow
+    pattern: gets($BUF)
+    message: Buffer overflow - gets() is unsafe and deprecated, use fgets() (CWE-120)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-sprintf-buffer-overflow
+    pattern: sprintf($BUF, ...)
+    message: Buffer overflow risk - sprintf has no bounds checking, use snprintf (CWE-120)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-vsprintf-buffer-overflow
+    pattern: vsprintf($BUF, ...)
+    message: Buffer overflow risk - vsprintf has no bounds checking, use vsnprintf (CWE-120)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-scanf-buffer-overflow
+    pattern: 'scanf("%s", $BUF)'
+    message: Buffer overflow risk - scanf %s has no length limit, use %Ns with buffer size (CWE-120)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-fscanf-buffer-overflow
+    pattern: 'fscanf($FILE, "%s", $BUF)'
+    message: Buffer overflow risk - fscanf %s has no length limit (CWE-120)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-memcpy-overflow
+    pattern: memcpy($DEST, $SRC, $SIZE)
+    message: Potential buffer overflow - verify destination size >= copy size (CWE-120)
+    languages: [c]
+    severity: INFO
+
+  - id: c-memmove-overflow
+    pattern: memmove($DEST, $SRC, $SIZE)
+    message: Potential buffer overflow - verify destination size >= copy size (CWE-120)
+    languages: [c]
+    severity: INFO
+
+  # ============================================
+  # Format String Vulnerabilities
+  # ============================================
+
+  - id: c-printf-format-string
+    pattern: printf($USER_INPUT)
+    message: Format string vulnerability - never pass user input directly to printf (CWE-134)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-fprintf-format-string
+    pattern: fprintf($FILE, $USER_INPUT)
+    message: Format string vulnerability - never pass user input directly to fprintf (CWE-134)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-sprintf-format-string
+    pattern: sprintf($BUF, $USER_INPUT)
+    message: Format string vulnerability - never pass user input directly to sprintf (CWE-134)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-syslog-format-string
+    pattern: syslog($PRIORITY, $USER_INPUT)
+    message: Format string vulnerability in syslog (CWE-134)
+    languages: [c]
+    severity: ERROR
+
+  # ============================================
+  # SQL Injection (via sprintf/snprintf)
+  # ============================================
+
+  - id: c-sql-sprintf
+    pattern: 'sprintf($BUF, "SELECT $...", $VAR)'
+    message: SQL injection via sprintf - use parameterized queries (CWE-89)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-sql-sprintf-insert
+    pattern: 'sprintf($BUF, "INSERT $...", $VAR)'
+    message: SQL injection via sprintf in INSERT statement (CWE-89)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-sql-sprintf-update
+    pattern: 'sprintf($BUF, "UPDATE $...", $VAR)'
+    message: SQL injection via sprintf in UPDATE statement (CWE-89)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-sql-sprintf-delete
+    pattern: 'sprintf($BUF, "DELETE $...", $VAR)'
+    message: SQL injection via sprintf in DELETE statement (CWE-89)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-sql-snprintf
+    pattern: 'snprintf($BUF, $SIZE, "SELECT $...", $VAR)'
+    message: SQL injection via snprintf - use parameterized queries (CWE-89)
+    languages: [c]
+    severity: ERROR
+
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: c-system-command
+    pattern: system($CMD)
+    message: Command injection risk - avoid system() with user input (CWE-78)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-popen-command
+    pattern: popen($CMD, $MODE)
+    message: Command injection risk - validate input to popen (CWE-78)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-execl-command
+    pattern: execl($PATH, ...)
+    message: Command execution - validate path and arguments (CWE-78)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-execv-command
+    pattern: execv($PATH, $ARGV)
+    message: Command execution - validate path and arguments (CWE-78)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-execve-command
+    pattern: execve($PATH, $ARGV, $ENVP)
+    message: Command execution - validate path and arguments (CWE-78)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-execlp-command
+    pattern: execlp($FILE, ...)
+    message: Command execution via PATH - validate input (CWE-78)
+    languages: [c]
+    severity: WARNING
+
+  # ============================================
+  # Memory Issues
+  # ============================================
+
+  - id: c-malloc-no-null-check
+    pattern: |
+      $PTR = malloc($SIZE);
+      $PTR[$X] = ...
+    message: Use of malloc result without NULL check (CWE-476)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-double-free
+    pattern: |
+      free($PTR);
+      ...
+      free($PTR);
+    message: Potential double-free vulnerability (CWE-415)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-use-after-free
+    pattern: |
+      free($PTR);
+      ...
+      $PTR[$X]
+    message: Potential use-after-free vulnerability (CWE-416)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-alloca-stack-overflow
+    pattern: alloca($SIZE)
+    message: alloca can cause stack overflow with large sizes (CWE-770)
+    languages: [c]
+    severity: WARNING
+
+  # ============================================
+  # Integer Overflow
+  # ============================================
+
+  - id: c-integer-overflow-malloc
+    pattern: malloc($A * $B)
+    message: Potential integer overflow in malloc size calculation (CWE-190)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-integer-overflow-realloc
+    pattern: realloc($PTR, $A * $B)
+    message: Potential integer overflow in realloc size calculation (CWE-190)
+    languages: [c]
+    severity: WARNING
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: c-fopen-user-input
+    pattern: fopen($PATH, $MODE)
+    message: File open - validate path if user-controlled (CWE-22)
+    languages: [c]
+    severity: INFO
+
+  - id: c-open-user-input
+    pattern: open($PATH, $FLAGS)
+    message: File open - validate path if user-controlled (CWE-22)
+    languages: [c]
+    severity: INFO
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: c-rand-insecure
+    pattern: rand()
+    message: rand() is not cryptographically secure - use a CSPRNG (CWE-338)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-srand-time-seed
+    pattern: srand(time($X))
+    message: Predictable random seed from time() (CWE-337)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-des-weak
+    pattern: DES_set_key($KEY, $SCHEDULE)
+    message: DES is weak - use AES instead (CWE-327)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-md5-weak
+    pattern: MD5_Init($CTX)
+    message: MD5 is cryptographically broken - use SHA-256+ (CWE-328)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-sha1-weak
+    pattern: SHA1_Init($CTX)
+    message: SHA1 is weak - use SHA-256+ (CWE-328)
+    languages: [c]
+    severity: WARNING
+
+  # ============================================
+  # Race Conditions
+  # ============================================
+
+  - id: c-toctou-access-open
+    pattern: |
+      access($PATH, ...)
+      ...
+      open($PATH, ...)
+    message: TOCTOU race condition between access and open (CWE-367)
+    languages: [c]
+    severity: WARNING
+
+  - id: c-toctou-stat-open
+    pattern: |
+      stat($PATH, ...)
+      ...
+      open($PATH, ...)
+    message: TOCTOU race condition between stat and open (CWE-367)
+    languages: [c]
+    severity: INFO
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: c-hardcoded-password
+    pattern: 'char *password = "..."'
+    message: Hardcoded password detected (CWE-798)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-hardcoded-password-const
+    pattern: 'const char *password = "..."'
+    message: Hardcoded password detected (CWE-798)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-strcmp-password
+    pattern: 'strcmp($INPUT, "...")'
+    message: Hardcoded credential in strcmp comparison (CWE-798)
+    languages: [c]
+    severity: ERROR
+
+  # ============================================
+  # Unsafe Functions
+  # ============================================
+
+  - id: c-mktemp-unsafe
+    pattern: mktemp($TEMPLATE)
+    message: mktemp is unsafe - use mkstemp instead (CWE-377)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-tmpnam-unsafe
+    pattern: tmpnam($BUF)
+    message: tmpnam is unsafe - use mkstemp instead (CWE-377)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-tempnam-unsafe
+    pattern: tempnam($DIR, $PREFIX)
+    message: tempnam is unsafe - use mkstemp instead (CWE-377)
+    languages: [c]
+    severity: ERROR
+
+  - id: c-realpath-overflow
+    pattern: realpath($PATH, $RESOLVED)
+    message: realpath buffer overflow if resolved_path is not NULL and < PATH_MAX (CWE-120)
+    languages: [c]
+    severity: INFO
+
+  - id: c-getwd-overflow
+    pattern: getwd($BUF)
+    message: getwd can overflow - use getcwd with size parameter (CWE-120)
+    languages: [c]
+    severity: WARNING

@@ -354,3 +354,102 @@ Use the `security-rule-development` skill when:
 - Improving scanner coverage
 
 Skill location: `~/.claude/skills/security-rule-development/`
+
+## Visual Scan Reporting Format
+
+When presenting scan results or comparing scans, ALWAYS use this visual format:
+
+### 1. Scan Comparison Header
+```
+╔══════════════════════════════════════════════════════════════════╗
+║  SCAN COMPARISON: [Repo Name]                                    ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Before: [scan-id-1]  →  After: [scan-id-2]                      ║
+╚══════════════════════════════════════════════════════════════════╝
+```
+
+### 2. Severity Distribution Chart
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  SEVERITY DISTRIBUTION                                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  CRITICAL  ████████████████████  25  (+3)                       │
+│  HIGH      ████████████████████████████████████████  75  (+5)   │
+│  MEDIUM    ██████████████████████████  49  (=)                  │
+│  LOW       ███  5  (-1)                                         │
+│  INFO      ████████████████████  38  (+2)                       │
+│                                                                 │
+│  TOTAL: 192 findings  (was: 189, Δ +3)                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 3. Scanner Breakdown
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  SCANNER BREAKDOWN                                              │
+├──────────────┬─────────┬─────────┬──────────────────────────────┤
+│  Scanner     │  Before │  After  │  Change                      │
+├──────────────┼─────────┼─────────┼──────────────────────────────┤
+│  Opengrep    │   100   │   103   │  +3 (new rules working)      │
+│  Trivy       │    77   │    77   │   = (no change)              │
+│  Gitleaks    │    19   │    19   │   = (no change)              │
+│  npm audit   │     0   │     0   │   = (no package.json)        │
+├──────────────┼─────────┼─────────┼──────────────────────────────┤
+│  TOTAL       │   189   │   192   │  +3                          │
+└──────────────┴─────────┴─────────┴──────────────────────────────┘
+```
+
+### 4. Coverage Gap Analysis
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  VULNERABILITY COVERAGE                                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ✅ SQL Injection        [████████████████████] 100%  (15/15)   │
+│  ✅ XSS                   [████████████████████]  95%  (19/20)   │
+│  ✅ Command Injection     [████████████████████] 100%  (8/8)     │
+│  ⚠️  Path Traversal       [████████████░░░░░░░░]  60%  (3/5)     │
+│  ✅ Hardcoded Secrets     [████████████████████] 100%  (19/19)   │
+│  ⚠️  SSRF                 [████████░░░░░░░░░░░░]  40%  (2/5)     │
+│  ❌ XXE                   [░░░░░░░░░░░░░░░░░░░░]   0%  (0/2)     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 5. Missing Detections & Recommendations
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  RECOMMENDED NEW RULES                                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. [PRIORITY: HIGH] XXE Detection                              │
+│     └─ Languages: Java, PHP, Python                             │
+│     └─ Pattern: XML parser without disabling external entities  │
+│                                                                 │
+│  2. [PRIORITY: MEDIUM] SSRF via URL parsing                     │
+│     └─ Languages: Python, JavaScript, Go                        │
+│     └─ Pattern: User input in URL/HTTP request construction     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 6. Rule Health Status
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  RULE HEALTH                                                    │
+├─────────────────────────────────────────────────────────────────┤
+│  Total Rules:     2204                                          │
+│  Rules Applied:   2108                                          │
+│  Parse Errors:    0  ✅ (was: 20)                               │
+│  Files Scanned:   36                                            │
+│  Scan Duration:   105s                                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Usage
+- Use this format after EVERY scan comparison
+- Update the bar charts proportionally (1 block ≈ 2-5 findings)
+- Always show delta (+/-) when comparing scans
+- Highlight gaps with ⚠️ or ❌ symbols
+- End with actionable recommendations

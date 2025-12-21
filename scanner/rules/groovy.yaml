@@ -1,0 +1,333 @@
+# Groovy Security Rules
+rules:
+  # ============================================
+  # SQL Injection
+  # ============================================
+
+  - id: groovy-sql-gstring
+    pattern-regex: 'sql\.(execute|executeQuery|executeUpdate)\s*\(\s*"[^"]*\$\{'
+    message: Groovy SQL GString interpolation - SQL injection risk (CWE-89)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+
+  - id: groovy-sql-concat
+    pattern: '"SELECT " + $VAR'
+    message: Groovy SQL concatenation - SQL injection risk (CWE-89)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: groovy-sql-execute
+    pattern: $SQL.execute($QUERY)
+    message: Groovy SQL execute - ensure parameterized queries
+    languages: [generic]
+    severity: WARNING
+
+  - id: groovy-sql-executequery
+    pattern: $SQL.executeQuery($QUERY)
+    message: Groovy SQL executeQuery - ensure parameterized queries
+    languages: [generic]
+    severity: WARNING
+
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: groovy-execute-string
+    pattern: $CMD.execute()
+    message: Groovy String.execute() - command injection risk (CWE-78)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+
+  - id: groovy-runtime-exec
+    pattern: Runtime.getRuntime().exec($CMD)
+    message: Groovy Runtime.exec - command injection risk (CWE-78)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+
+  - id: groovy-processbuilder
+    pattern: new ProcessBuilder($CMD)
+    message: Groovy ProcessBuilder - command injection risk (CWE-78)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-78"
+
+  - id: groovy-gstring-execute
+    pattern-regex: '"[^"]*\$\{[^}]+\}[^"]*"\.execute\(\)'
+    message: Groovy GString execute - command injection risk (CWE-78)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+
+  # ============================================
+  # Code Injection
+  # ============================================
+
+  - id: groovy-eval
+    pattern: Eval.me($CODE)
+    message: Groovy Eval.me - code injection risk (CWE-94)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  - id: groovy-eval-x
+    pattern: Eval.x($BINDING, $CODE)
+    message: Groovy Eval.x - code injection risk (CWE-94)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  - id: groovy-shell-evaluate
+    pattern: new GroovyShell().evaluate($CODE)
+    message: Groovy GroovyShell.evaluate - code injection risk (CWE-94)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  - id: groovy-classloader-parse
+    pattern: new GroovyClassLoader().parseClass($CODE)
+    message: Groovy dynamic class loading - code injection risk (CWE-94)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  # ============================================
+  # XSS
+  # ============================================
+
+  - id: groovy-markup-yieldunescaped
+    pattern: yieldUnescaped($INPUT)
+    message: Groovy yieldUnescaped - XSS risk (CWE-79)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+
+  - id: groovy-markup-mkp-raw
+    pattern: mkp.yieldUnescaped($INPUT)
+    message: Groovy mkp.yieldUnescaped - XSS risk (CWE-79)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+
+  # ============================================
+  # Deserialization
+  # ============================================
+
+  - id: groovy-objectinputstream
+    pattern: new ObjectInputStream(...)
+    message: Groovy ObjectInputStream - insecure deserialization (CWE-502)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+
+  - id: groovy-xstream
+    pattern: new XStream()
+    message: Groovy XStream - insecure deserialization without security config (CWE-502)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: groovy-md5
+    pattern: 'MessageDigest.getInstance("MD5")'
+    message: Groovy MD5 is weak - use SHA-256 or better (CWE-327)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327"
+
+  - id: groovy-sha1
+    pattern: 'MessageDigest.getInstance("SHA-1")'
+    message: Groovy SHA-1 is deprecated - use SHA-256 or better (CWE-327)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327"
+
+  - id: groovy-des
+    pattern: 'Cipher.getInstance("DES")'
+    message: Groovy DES is weak - use AES (CWE-327)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+
+  - id: groovy-ecb-mode
+    pattern: 'Cipher.getInstance("AES/ECB/$PADDING")'
+    message: Groovy ECB mode is insecure - use GCM or CBC (CWE-327)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+
+  - id: groovy-random-insecure
+    pattern: new Random()
+    message: Groovy Random not cryptographically secure - use SecureRandom
+    languages: [generic]
+    severity: WARNING
+
+  # ============================================
+  # Path Traversal
+  # ============================================
+
+  - id: groovy-file-user
+    pattern: new File($USER_INPUT)
+    message: Groovy File with user input - path traversal risk (CWE-22)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  - id: groovy-paths-get
+    pattern: Paths.get($USER_INPUT)
+    message: Groovy Paths.get with user input - path traversal risk (CWE-22)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+
+  # ============================================
+  # SSRF
+  # ============================================
+
+  - id: groovy-url-user
+    pattern: new URL($USER_INPUT)
+    message: Groovy URL with user input - potential SSRF (CWE-918)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+
+  - id: groovy-url-tourl
+    pattern: $URL.toURL().text
+    message: Groovy URL fetch - validate URL for SSRF
+    languages: [generic]
+    severity: WARNING
+
+  # ============================================
+  # XXE
+  # ============================================
+
+  - id: groovy-xxe-saxparser
+    pattern: SAXParserFactory.newInstance()
+    message: Groovy SAX parser may be vulnerable to XXE (CWE-611)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+
+  - id: groovy-xxe-documentbuilder
+    pattern: DocumentBuilderFactory.newInstance()
+    message: Groovy XML parser may be vulnerable to XXE (CWE-611)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+
+  - id: groovy-xxe-xmlslurper
+    pattern: new XmlSlurper()
+    message: Groovy XmlSlurper - ensure external entities are disabled (CWE-611)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+
+  - id: groovy-xxe-xmlparser
+    pattern: new XmlParser()
+    message: Groovy XmlParser - ensure external entities are disabled (CWE-611)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+
+  # ============================================
+  # Hardcoded Credentials
+  # ============================================
+
+  - id: groovy-hardcoded-password
+    pattern: 'def password = "..."'
+    message: Groovy hardcoded password detected (CWE-798)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  - id: groovy-hardcoded-secret
+    pattern: 'def secret = "..."'
+    message: Groovy hardcoded secret detected (CWE-798)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  - id: groovy-hardcoded-apikey
+    pattern: 'def apiKey = "..."'
+    message: Groovy hardcoded API key detected (CWE-798)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  # ============================================
+  # SSL/TLS Issues
+  # ============================================
+
+  - id: groovy-ssl-trust-all
+    pattern-regex: 'checkServerTrusted\s*\([^)]*\)\s*\{\s*\}'
+    message: Groovy trust all certificates - MITM risk (CWE-295)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+
+  - id: groovy-hostname-verifier-bypass
+    pattern-regex: 'verify\s*\([^)]*\)\s*\{\s*(return\s+)?true\s*\}'
+    message: Groovy hostname verification disabled - MITM risk (CWE-295)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+
+  # ============================================
+  # Jenkins/Grails Security
+  # ============================================
+
+  - id: groovy-jenkins-sh-user
+    pattern: sh($USER_INPUT)
+    message: Jenkins sh step with user input - command injection risk
+    languages: [generic]
+    severity: ERROR
+
+  - id: groovy-jenkins-script-approval
+    pattern-regex: '@NonCPS'
+    message: Jenkins @NonCPS - review for sandbox bypass
+    languages: [generic]
+    severity: INFO
+
+  - id: groovy-grails-raw-sql
+    pattern: '$SESSION.createSQLQuery($QUERY)'
+    message: Grails raw SQL query - SQL injection risk
+    languages: [generic]
+    severity: WARNING
+

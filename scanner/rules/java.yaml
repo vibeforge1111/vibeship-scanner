@@ -189,10 +189,12 @@ rules:
   # ============================================
 
   - id: java-jwt-none-algorithm
-    pattern: '"alg":"none"'
-    message: JWT none algorithm - authentication bypass vulnerability
+    pattern-regex: '"alg"\s*:\s*"none"'
+    message: JWT none algorithm - authentication bypass vulnerability (CWE-287)
     languages: [java]
     severity: ERROR
+    metadata:
+      cwe: "CWE-287"
 
   - id: java-jwt-algorithm-none
     pattern: Algorithm.none()
@@ -441,14 +443,18 @@ rules:
   # ============================================
 
   - id: java-cors-allow-all
-    pattern: '.allowedOrigins("*")'
-    message: Java CORS allows all origins - restrict in production
+    pattern-regex: '\.allowedOrigins\s*\(\s*"\*"\s*\)'
+    message: Java CORS allows all origins - restrict in production (CWE-942)
     languages: [java]
     severity: WARNING
+    metadata:
+      cwe: "CWE-942"
 
   - id: java-cors-credentials-wildcard
-    pattern: '.allowedOrigins("*").allowCredentials(true)'
-    message: Java CORS wildcard with credentials - security risk
+    pattern-regex: '\.allowedOrigins\s*\(\s*"\*"\s*\)[^;]*\.allowCredentials\s*\(\s*true\s*\)'
+    message: Java CORS wildcard with credentials - security risk (CWE-942)
     languages: [java]
     severity: ERROR
+    metadata:
+      cwe: "CWE-942"
 
