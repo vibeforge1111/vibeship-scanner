@@ -7835,3 +7835,122 @@ rules:
       cwe: "CWE-285"
       owasp: "A01:2021 Broken Access Control"
       tags: [authorization, bola]
+
+  # ============================================
+  # BOLA/IDOR (Broken Object Level Authorization)
+  # ============================================
+
+  # BOLA - Returning database item without ownership check
+  - id: py-bola-return-db-item
+    pattern: |
+      if $ITEM is None:
+          ...
+      return $ITEM
+    message: "BOLA vulnerability - returning item without ownership verification (CWE-285)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-285"
+      owasp: "API1:2023 Broken Object Level Authorization"
+      tags: [bola, idor, authorization]
+
+  # BOLA - FastAPI route with ID parameter
+  - id: py-bola-fastapi-id-route
+    pattern-regex: "@router\\.(get|post|put|delete|patch)\\([^)]*\\{id\\}"
+    message: "API endpoint with ID parameter - ensure object-level authorization is enforced (BOLA)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-285"
+      owasp: "API1:2023 Broken Object Level Authorization"
+      tags: [bola, idor, fastapi]
+
+  # ============================================
+  # Weak URL Validation (SSRF Bypass)
+  # ============================================
+
+  # Weak regex for domain validation - can be bypassed
+  - id: py-ssrf-weak-domain-regex
+    pattern-regex: "re\\.compile\\(r?['\"]\\.\\.?\\.\\w+\\.\\w+"
+    message: "Weak domain regex validation - pattern like '.*\\.domain\\.com' can be bypassed with 'domain.com.evil.com' (CWE-918)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      tags: [ssrf, regex, bypass]
+
+  # Regex domain validation without end anchor
+  - id: py-ssrf-regex-no-anchor
+    pattern-regex: "valid.*re.*=.*re\\.compile.*\\.com[^$]"
+    message: "Domain regex without end anchor ($) - may allow bypass via subdomains (CWE-918)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf, regex]
+
+  # ============================================
+  # Weak Authentication Patterns
+  # ============================================
+
+  # Naive bearer token extraction
+  - id: py-auth-naive-bearer-split
+    pattern: $VAR.split(" ")[-1]
+    message: "Naive bearer token extraction - validate 'Bearer' prefix before extracting token (CWE-287)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-287"
+      owasp: "A07:2021 Identification and Authentication Failures"
+      tags: [authentication, bearer, jwt]
+
+  # Authorization header without Bearer validation
+  - id: py-auth-header-no-bearer-check
+    pattern-regex: "authorization.*split.*\\[-1\\]"
+    message: "Authorization header parsed without Bearer prefix validation (CWE-287)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-287"
+      owasp: "A07:2021 Identification and Authentication Failures"
+      tags: [authentication, authorization]
+
+  # Missing None check before split
+  - id: py-auth-split-no-none-check
+    pattern-regex: "Header\\(\\).*\\.split"
+    message: "Header value split without None check - may raise AttributeError"
+    languages: [python]
+    severity: INFO
+    metadata:
+      tags: [error-handling, authentication]
+
+  # ============================================
+  # FastAPI Security Misconfiguration
+  # ============================================
+
+  # FastAPI returning JSONResponse with error details
+  - id: py-fastapi-jsonresponse-error-detail
+    pattern: |
+      JSONResponse(
+          status_code=...,
+          content={"error": ...}
+      )
+    message: "JSONResponse with error message - ensure sensitive info is not leaked in errors"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-209"
+      tags: [fastapi, error-handling, info-disclosure]
+
+  # Pydantic model without field validation
+  - id: py-pydantic-url-no-validation
+    pattern: |
+      class $CLASS(BaseModel):
+          url: str
+    message: "Pydantic model with URL field - consider using HttpUrl type for validation"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-20"
+      tags: [pydantic, validation, ssrf]
