@@ -31,8 +31,28 @@ def get_supabase() -> Client:
 
 TOOLS = [
     {
+        "name": "scanner_auth",
+        "description": "Authenticate to enable private repo scanning. Returns a URL - open it in your browser to sign in with GitHub. Then use scanner_auth_status to check when complete.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "scanner_auth_status",
+        "description": "Check if authentication is complete. Call this after the user has opened the auth URL. Returns the GitHub token when authenticated.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "token": {"type": "string", "description": "The auth token from scanner_auth"}
+            },
+            "required": ["token"]
+        }
+    },
+    {
         "name": "scanner_scan",
-        "description": "Start a security scan on a GitHub repository. Returns scan ID to check status. Scans for vulnerabilities using Opengrep (SAST), Trivy (dependencies), and Gitleaks (secrets).",
+        "description": "Start a security scan on a GitHub repository. Returns scan ID to check status. Scans for vulnerabilities using Opengrep (SAST), Trivy (dependencies), and Gitleaks (secrets). For private repos, authenticate first with scanner_auth.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -116,8 +136,11 @@ def mcp_handler():
         response = jsonify({})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-GitHub-Token'
         return response
+
+    # Extract GitHub token from header (passed by proxy when API key is validated)
+    github_token = request.headers.get('X-GitHub-Token')
 
     try:
         data = request.get_json()
@@ -131,7 +154,7 @@ def mcp_handler():
         elif method == 'tools/list':
             result = handle_tools_list()
         elif method == 'tools/call':
-            result = handle_tools_call(params)
+            result = handle_tools_call(params, github_token=github_token)
         else:
             return jsonify_response(request_id, error={"code": -32601, "message": f"Method not found: {method}"})
 
@@ -178,14 +201,18 @@ def handle_tools_list():
     return {"tools": TOOLS}
 
 
-def handle_tools_call(params):
+def handle_tools_call(params, github_token=None):
     """Execute a tool call"""
     tool_name = params.get('name')
     arguments = params.get('arguments', {})
 
     try:
-        if tool_name == 'scanner_scan':
-            result = execute_scan(arguments)
+        if tool_name == 'scanner_auth':
+            result = execute_auth(arguments)
+        elif tool_name == 'scanner_auth_status':
+            result = execute_auth_status(arguments)
+        elif tool_name == 'scanner_scan':
+            result = execute_scan(arguments, github_token=github_token)
         elif tool_name == 'scanner_status':
             result = execute_status(arguments)
         elif tool_name == 'scanner_lookup_cve':
@@ -220,7 +247,99 @@ def handle_tools_call(params):
 # Tool Implementations
 # =============================================================================
 
-def execute_scan(args):
+# Base URL for the SvelteKit API
+API_BASE_URL = "https://scanner.vibeship.co"
+
+
+def execute_auth(args):
+    """Start device authentication flow - returns URL for user to visit"""
+    try:
+        response = requests.post(f"{API_BASE_URL}/api/auth/device", timeout=10)
+
+        if response.status_code != 200:
+            return {"error": f"Failed to start auth: {response.text}"}
+
+        data = response.json()
+
+        return {
+            "status": "pending",
+            "auth_url": data.get("auth_url"),
+            "token": data.get("token"),
+            "expires_in": data.get("expires_in", 600),
+            "message": "Open the auth_url in your browser to sign in with GitHub. Then use scanner_auth_status to check when complete.",
+            "next_step": f"After opening the URL, call scanner_auth_status with token: {data.get('token')}"
+        }
+
+    except requests.exceptions.Timeout:
+        return {"error": "Auth service timeout - try again"}
+    except Exception as e:
+        return {"error": f"Failed to start auth: {str(e)}"}
+
+
+def execute_auth_status(args):
+    """Check if device authentication is complete - returns GitHub token when done"""
+    token = args.get("token")
+
+    if not token:
+        return {"error": "token is required - use the token from scanner_auth"}
+
+    try:
+        response = requests.get(
+            f"{API_BASE_URL}/api/auth/device/poll",
+            params={"token": token},
+            timeout=10
+        )
+
+        if response.status_code == 404:
+            return {"error": "Token not found or expired - start a new auth with scanner_auth"}
+
+        if response.status_code != 200:
+            return {"error": f"Failed to check auth status: {response.text}"}
+
+        data = response.json()
+        status = data.get("status")
+
+        if status == "pending":
+            return {
+                "status": "pending",
+                "message": "Waiting for user to authenticate in browser...",
+                "tip": "User should open the auth_url and sign in with GitHub. Check again in a few seconds."
+            }
+        elif status == "authenticated":
+            github_token = data.get("github_token")
+            if github_token:
+                return {
+                    "status": "authenticated",
+                    "github_token": github_token,
+                    "message": "Authentication successful! You can now scan private repos.",
+                    "note": "The GitHub token is now available for private repo scanning."
+                }
+            else:
+                return {
+                    "status": "authenticated",
+                    "message": "Authenticated but no GitHub token received",
+                    "error": "Token may have already been retrieved"
+                }
+        elif status == "expired":
+            return {
+                "status": "expired",
+                "message": "Auth link expired. Start a new auth with scanner_auth."
+            }
+        elif status == "used":
+            return {
+                "status": "used",
+                "message": "Token already used. Start a new auth with scanner_auth if needed."
+            }
+        else:
+            return {"status": status, "message": data.get("message", "Unknown status")}
+
+    except requests.exceptions.Timeout:
+        return {"error": "Auth service timeout - try again"}
+    except Exception as e:
+        return {"error": f"Failed to check auth status: {str(e)}"}
+
+
+def execute_scan(args, github_token=None):
     """Start a new security scan"""
     # Import here to avoid circular import - server.py imports mcp_endpoint
     # We need the run_scan function which handles the full scan pipeline
@@ -237,14 +356,22 @@ def execute_scan(args):
     # Generate scan ID
     scan_id = str(uuid.uuid4())
 
+    # Determine if this is a private repo scan
+    is_private = github_token is not None
+
     # Start scan in background thread (same as /scan endpoint)
-    thread = threading.Thread(target=run_scan, args=(scan_id, repo_url, branch, None))
+    thread = threading.Thread(target=run_scan, args=(scan_id, repo_url, branch, github_token))
     thread.start()
+
+    message = f"Scan started for {repo_url}"
+    if is_private:
+        message += " (private repo - using your GitHub token)"
 
     return {
         "scan_id": scan_id,
         "status": "started",
-        "message": f"Scan started for {repo_url}",
+        "message": message,
+        "is_private": is_private,
         "check_status": f"Use scanner_status with scan_id: {scan_id}",
         "view_results": f"https://scanner.vibeship.co/scan/{scan_id}"
     }
