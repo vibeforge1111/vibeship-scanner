@@ -52,12 +52,13 @@ TOOLS = [
     },
     {
         "name": "scanner_scan",
-        "description": "Start a security scan on a GitHub repository. Returns scan ID to check status. Scans for vulnerabilities using Opengrep (SAST), Trivy (dependencies), and Gitleaks (secrets). For private repos, authenticate first with scanner_auth.",
+        "description": "Start a security scan on a GitHub repository. Returns scan ID to check status. Scans for vulnerabilities using Opengrep (SAST), Trivy (dependencies), and Gitleaks (secrets). For private repos, pass the github_token from scanner_auth_status.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "repo_url": {"type": "string", "description": "GitHub repository URL (e.g., https://github.com/owner/repo)"},
-                "branch": {"type": "string", "description": "Branch to scan (default: main)"}
+                "branch": {"type": "string", "description": "Branch to scan (default: main)"},
+                "github_token": {"type": "string", "description": "GitHub token for private repos (get from scanner_auth_status after authenticating)"}
             },
             "required": ["repo_url"]
         }
@@ -350,6 +351,9 @@ def execute_scan(args, github_token=None):
     repo_url = args.get('repo_url')
     branch = args.get('branch', 'main')
 
+    # GitHub token can come from args (device auth) or header (legacy)
+    token = args.get('github_token') or github_token
+
     if not repo_url:
         return {"error": "repo_url is required"}
 
@@ -357,10 +361,10 @@ def execute_scan(args, github_token=None):
     scan_id = str(uuid.uuid4())
 
     # Determine if this is a private repo scan
-    is_private = github_token is not None
+    is_private = token is not None
 
     # Start scan in background thread (same as /scan endpoint)
-    thread = threading.Thread(target=run_scan, args=(scan_id, repo_url, branch, github_token))
+    thread = threading.Thread(target=run_scan, args=(scan_id, repo_url, branch, token))
     thread.start()
 
     message = f"Scan started for {repo_url}"
