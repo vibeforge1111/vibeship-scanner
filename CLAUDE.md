@@ -312,25 +312,38 @@ fly deploy --remote-only --no-cache
 
 ## MCP Servers Configuration
 
-The project has MCP servers configured in `.mcp.json`:
+### Public MCP Endpoint (No Install Required)
+**URL:** `https://scanner.vibeship.co/mcp`
 
-### vibeship-scanner MCP (Custom)
+Add to Claude Desktop config (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "vibeship-scanner": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://scanner.vibeship.co/mcp"]
+    }
+  }
+}
+```
+
+**Available Tools:**
+- `scanner_scan` - Start a security scan on a GitHub repo
+- `scanner_status` - Get scan status and results
+- `scanner_lookup_cve` - Look up CVE details from NVD
+- `scanner_lookup_cwe` - Look up CWE weakness details
+- `scanner_get_fix` - Get fix guide for a specific finding
+- `scanner_master_prompt` - Get comprehensive fix guide for all findings
+
+### Local Development MCP
 **Location:** `~/.claude/mcp-servers/vibeship-scanner/`
-**Python:** `~/.claude/mcp-servers/vibeship-scanner/.venv/Scripts/python.exe`
 
-Tools:
-- `scan_repo` - Trigger security scan on GitHub repo
-- `get_scan_status` - Check scan progress
-- `lookup_cve` - Query NVD for CVE details
-- `lookup_ghsa` - Query GitHub Security Advisories
-- `get_cwe_info` - Get CWE weakness details + OWASP mapping
+Additional tools for rule development:
 - `validate_opengrep_rule` - Validate rule YAML before deployment
 
-### fetch MCP
-HTTP requests for custom API queries.
-
-### github MCP
-Repository operations, PR creation (requires GITHUB_TOKEN env var).
+### Other MCP Servers
+- **fetch** - HTTP requests for custom API queries
+- **github** - Repository operations, PR creation (requires GITHUB_TOKEN)
 
 ## Security Rule Development Skill
 
