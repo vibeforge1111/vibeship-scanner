@@ -5052,12 +5052,9 @@ rules:
       owasp: "A01:2021 Broken Access Control"
       tags: [information-disclosure, password]
 
-  # Generic database exception handler that retries
+  # Generic database exception handler that retries (using regex for complex patterns)
   - id: py-db-exception-retry-dangerous
-    pattern: |
-      except $EXCEPTION:
-          ...
-          return await $FUNC($ARGS)
+    pattern-regex: "except\\s+\\w+.*:\\s*\\n.*return await"
     message: "Database exception with recursive retry - may cause infinite loops or mask errors (CWE-755)"
     languages: [python]
     severity: WARNING
@@ -5143,9 +5140,7 @@ rules:
 
   # KeyboardInterrupt except (unusual pattern)
   - id: py-keyboard-interrupt-catch
-    pattern: |
-      except KeyboardInterrupt:
-          ...
+    pattern-regex: "except\\s+KeyboardInterrupt"
     message: "Catching KeyboardInterrupt may prevent clean shutdown - use signal handlers instead"
     languages: [python]
     severity: INFO
@@ -5198,14 +5193,10 @@ rules:
     metadata:
       tags: [sqlite, schema, type-safety]
 
-  # FastAPI endpoint returning dict directly
+  # FastAPI endpoint returning dict directly (simplified pattern)
   - id: py-fastapi-return-dict
     pattern: |
-      @app.$METHOD(...)
-      $DECORATOR
-      def $FUNC(...):
-          ...
-          return {...}
+      return {"$KEY": ...}
     message: "FastAPI endpoint returning dict - consider using response_model for schema validation"
     languages: [python]
     severity: INFO
@@ -5683,7 +5674,7 @@ rules:
 
   # Triple-quoted f-string SQL
   - id: py-sqli-triple-quote-fstring
-    pattern-regex: 'text\\(f"""'
+    pattern-regex: "text\\(f\"\"\""
     message: "SQL injection - triple-quoted f-string in text() allows SQL injection (CWE-89)"
     languages: [python]
     severity: ERROR
@@ -7774,3 +7765,73 @@ rules:
       cwe: "CWE-89"
       owasp: "A03:2021"
       tags: [sql-injection, django, authentication]
+
+  # ============================================
+  # FastAPI Security Patterns
+  # ============================================
+
+  # CWE-22: Path Traversal - open() with variable (any variable, not just request)
+  - id: py-path-traversal-open-var
+    pattern: open($VAR, ...)
+    message: "File open with variable path - validate path to prevent path traversal (CWE-22)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [path-traversal, file-operations]
+
+  # CWE-23: Path Traversal - open(os.path.join(...)) with any variable
+  - id: py-path-traversal-open-join
+    pattern: open(os.path.join(...), ...)
+    message: "File open with os.path.join() - validate path segments to prevent relative path traversal (CWE-23)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-23"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [path-traversal, file-operations]
+
+  # CWE-918: SSRF - requests.get with object attribute (e.g., ssrf_data.url)
+  - id: py-ssrf-requests-obj-attr
+    pattern: requests.get($OBJ.$ATTR)
+    message: "SSRF - requests.get() with object attribute - validate URL against allowlist (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      tags: [ssrf, requests]
+
+  # SSRF - requests.post with object attribute
+  - id: py-ssrf-requests-post-obj-attr
+    pattern: requests.post($OBJ.$ATTR, ...)
+    message: "SSRF - requests.post() with object attribute - validate URL against allowlist (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      tags: [ssrf, requests]
+
+  # SSRF - any requests method with object attribute
+  - id: py-ssrf-requests-method-obj-attr
+    pattern: requests.$METHOD($OBJ.$ATTR, ...)
+    message: "SSRF - requests.$METHOD() with object attribute - validate URL against allowlist (CWE-918)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-918"
+      owasp: "A10:2021 Server-Side Request Forgery"
+      tags: [ssrf, requests]
+
+  # CWE-285: Authorization - returning item without checking user permissions
+  - id: py-fastapi-return-item-no-auth
+    pattern: return $ITEM
+    message: "Returning item directly - verify user has access to this item before returning (CWE-285)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-285"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [authorization, bola]
