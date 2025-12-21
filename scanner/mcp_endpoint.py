@@ -128,7 +128,7 @@ TOOLS = [
 # MCP HTTP Endpoint
 # =============================================================================
 
-@mcp_bp.route('/mcp', methods=['POST', 'OPTIONS'])
+@mcp_bp.route('/mcp', methods=['GET', 'POST', 'OPTIONS'])
 def mcp_handler():
     """Handle MCP JSON-RPC requests"""
 
@@ -136,8 +136,21 @@ def mcp_handler():
     if request.method == 'OPTIONS':
         response = jsonify({})
         response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-GitHub-Token'
+        return response
+
+    # GET request - return server info / health check
+    if request.method == 'GET':
+        response = jsonify({
+            "name": "vibeship-scanner",
+            "version": "1.0.0",
+            "status": "ok",
+            "protocol": "MCP JSON-RPC over HTTP",
+            "usage": "POST JSON-RPC requests to this endpoint",
+            "tools": [t["name"] for t in TOOLS]
+        })
+        response.headers['Access-Control-Allow-Origin'] = '*'
         return response
 
     # Extract GitHub token from header (passed by proxy when API key is validated)
