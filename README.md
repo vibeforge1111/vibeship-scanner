@@ -4,7 +4,7 @@ A security scanning tool designed for vibe coders. Analyzes GitHub repositories 
 
 ## Try It Free
 
-**[vibeship.co](https://vibeship.co)** — Paste any public GitHub repo URL and get a full security scan in minutes. No signup required.
+**[scanner.vibeship.co](https://scanner.vibeship.co)** — Paste any public GitHub repo URL and get a full security scan in minutes. No signup required.
 
 ## How AI Fix Prompts Work
 
@@ -113,7 +113,7 @@ curl -X POST https://scanner-empty-field-5676.fly.dev/scan \
 ### View Results
 
 Results are available at:
-- Production: `https://vibeship.co/scan/{scanId}`
+- Production: `https://scanner.vibeship.co/scan/{scanId}`
 - Local: `http://localhost:5173/scan/{scanId}`
 
 ## Contributing
@@ -133,5 +133,5 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## Links
 
-- **Live App**: [vibeship.co](https://vibeship.co)
+- **Live App**: [scanner.vibeship.co](https://scanner.vibeship.co)
 - **GitHub**: [github.com/vibeforge1111/vibeship-scanner](https://github.com/vibeforge1111/vibeship-scanner)
