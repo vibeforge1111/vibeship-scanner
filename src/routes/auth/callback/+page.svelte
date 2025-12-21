@@ -18,14 +18,44 @@
 		}
 
 		if (data.session) {
-			message = 'Sign in successful! Redirecting...';
+			message = 'Sign in successful!';
 			// Store the GitHub token for private repo cloning
 			if (data.session.provider_token) {
 				localStorage.setItem('vibeship_github_token', data.session.provider_token);
 				console.log('GitHub token stored');
+
+				// Check for pending device auth (MCP authentication flow)
+				const pendingDeviceAuth = localStorage.getItem('pending_device_auth');
+				if (pendingDeviceAuth) {
+					message = 'Completing MCP authentication...';
+					try {
+						const res = await fetch('/api/auth/device/complete', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								token: pendingDeviceAuth,
+								githubToken: data.session.provider_token
+							})
+						});
+
+						if (res.ok) {
+							localStorage.removeItem('pending_device_auth');
+							// Redirect back to the auth link page to show success
+							goto(`/auth/link/${pendingDeviceAuth}`);
+							return;
+						} else {
+							console.error('Failed to complete device auth:', await res.text());
+							localStorage.removeItem('pending_device_auth');
+						}
+					} catch (e) {
+						console.error('Device auth completion error:', e);
+						localStorage.removeItem('pending_device_auth');
+					}
+				}
 			}
 			// Initialize auth store to pick up the new session
 			await auth.initialize();
+			message = 'Redirecting...';
 			setTimeout(() => goto('/'), 500);
 		} else {
 			message = 'No session found. Redirecting...';

@@ -65,6 +65,8 @@
 
 	async function handleLogin() {
 		try {
+			// Store the device token so callback can complete the auth
+			localStorage.setItem('pending_device_auth', token);
 			await auth.signInWithGitHub();
 		} catch (e) {
 			error = 'Failed to sign in with GitHub';
