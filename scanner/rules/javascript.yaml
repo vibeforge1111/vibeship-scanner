@@ -9672,3 +9672,168 @@ rules:
     metadata:
       cwe: "CWE-613"
       tags: [session, logout, vulnerable-node]
+
+  # ============================================
+  # pg-promise SQL Injection (vulnerable-node)
+  # ============================================
+
+  # pg-promise db.one/any/none/many/query with string concatenation
+  - id: pg-promise-sql-injection-concat
+    patterns:
+      - pattern: db.one($Q + $INPUT)
+      - pattern: db.any($Q + $INPUT)
+      - pattern: db.none($Q + $INPUT)
+      - pattern: db.many($Q + $INPUT)
+      - pattern: db.query($Q + $INPUT)
+      - pattern: db.one($Q + $INPUT, ...)
+      - pattern: db.any($Q + $INPUT, ...)
+      - pattern: db.none($Q + $INPUT, ...)
+      - pattern: db.many($Q + $INPUT, ...)
+      - pattern: db.query($Q + $INPUT, ...)
+    message: "pg-promise SQL injection - string concatenation in query. Use parameterized queries with $1, $2, etc (CWE-89)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, pg-promise, vulnerable-node]
+
+  # pg-promise db methods with template literal
+  - id: pg-promise-sql-injection-template
+    patterns:
+      - pattern: 'db.one(`${...}...`)'
+      - pattern: 'db.any(`${...}...`)'
+      - pattern: 'db.none(`${...}...`)'
+      - pattern: 'db.many(`${...}...`)'
+      - pattern: 'db.query(`${...}...`)'
+    message: "pg-promise SQL injection - template literal in query. Use parameterized queries (CWE-89)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, pg-promise, vulnerable-node]
+
+  # SQL variable built with concatenation then used in db call
+  - id: pg-promise-sql-var-concat
+    patterns:
+      - pattern: |
+          $Q = $A + $B
+          ...
+          db.one($Q)
+      - pattern: |
+          $Q = $A + $B
+          ...
+          db.any($Q)
+      - pattern: |
+          $Q = $A + $B
+          ...
+          db.none($Q)
+      - pattern: |
+          $Q = $A + $B
+          ...
+          db.many($Q)
+      - pattern: |
+          $Q = $A + $B + $C
+          ...
+          db.one($Q)
+      - pattern: |
+          $Q = "..." + $VAR + "..."
+          ...
+          db.one($Q)
+      - pattern: |
+          $Q = "..." + $VAR + "..."
+          ...
+          db.any($Q)
+      - pattern: |
+          $Q = "..." + $VAR + "..."
+          ...
+          db.none($Q)
+    message: "pg-promise SQL injection - query variable built with string concatenation. Use parameterized queries with $1, $2 placeholders (CWE-89)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, pg-promise, vulnerable-node]
+
+  # Generic SQL string variable with concatenation (regex-based)
+  - id: sql-string-concat-variable
+    pattern-regex: "[\"']SELECT\\s+.*[\"']\\s*\\+\\s*\\w+"
+    message: "SQL SELECT query built with string concatenation - use parameterized queries to prevent SQL injection (CWE-89)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, vulnerable-node]
+
+  # SQL INSERT with concatenation
+  - id: sql-insert-concat-variable
+    pattern-regex: "[\"']INSERT\\s+INTO\\s+.*[\"']\\s*\\+\\s*\\w+"
+    message: "SQL INSERT query built with string concatenation - use parameterized queries (CWE-89)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, vulnerable-node]
+
+  # SQL ILIKE/LIKE with concatenation (PostgreSQL-specific)
+  - id: sql-like-injection
+    pattern-regex: "ILIKE\\s+[\"']%[\"']\\s*\\+\\s*\\w+|LIKE\\s+[\"']%[\"']\\s*\\+\\s*\\w+"
+    message: "SQL LIKE/ILIKE with concatenation - use parameterized queries (CWE-89)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, postgresql, vulnerable-node]
+
+  # SQL VALUES with concatenation (INSERT statements)
+  - id: sql-values-injection
+    pattern-regex: "VALUES\\s*\\(\\s*[\"'][^\"']*[\"']\\s*\\+|values\\s*\\(\\s*[\"'][^\"']*[\"']\\s*\\+"
+    message: "SQL VALUES with string concatenation - use parameterized queries (CWE-89)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, vulnerable-node]
+
+  # ============================================
+  # Open Redirect with Variable (vulnerable-node)
+  # ============================================
+
+  # returnurl/return_url variable in redirect without validation
+  - id: open-redirect-returnurl-var
+    patterns:
+      - pattern: |
+          $RETURN = req.body.$PARAM
+          ...
+          res.redirect($RETURN)
+      - pattern: |
+          $RETURN = req.query.$PARAM
+          ...
+          res.redirect($RETURN)
+      - pattern: |
+          $RETURN = $URL
+          ...
+          res.redirect($RETURN)
+    message: "Open redirect - validate redirect URL against allowlist before use (CWE-601)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A01:2021"
+      tags: [open-redirect, vulnerable-node]
+
+  # Redirect with returnurl from body/query
+  - id: express-returnurl-redirect
+    pattern-regex: "returnurl\\s*=\\s*(?:req\\.body|req\\.query|params)\\."
+    message: "Return URL from user input - validate against allowlist to prevent open redirect (CWE-601)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect, vulnerable-node]

@@ -709,3 +709,67 @@ rules:
     paths:
       include:
         - "*.ejs"
+
+  # ============================================
+  # Django Template XSS (DjangoGoat)
+  # ============================================
+
+  # Django template |safe filter
+  - id: django-template-safe-filter
+    pattern-regex: "\\{\\{\\s*\\w+[^}]*\\|\\s*safe\\s*\\}\\}"
+    message: "Django template |safe filter - XSS vulnerability if content is user-controlled (CWE-79)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, django, template, djangogoat]
+    paths:
+      include:
+        - "*.html"
+        - "*.django"
+        - "*.jinja2"
+
+  # Django template autoescape off
+  - id: django-template-autoescape-off
+    pattern-regex: "\\{%\\s*autoescape\\s+off\\s*%\\}"
+    message: "Django template autoescape disabled - XSS vulnerability (CWE-79)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021"
+      tags: [xss, django, template, djangogoat]
+    paths:
+      include:
+        - "*.html"
+        - "*.django"
+        - "*.jinja2"
+
+  # Django template variable in onclick/event handler
+  - id: django-template-event-handler
+    pattern-regex: "(onclick|onerror|onload|onmouseover)\\s*=\\s*[\"'][^\"']*\\{\\{"
+    message: "Django template variable in event handler - XSS vulnerability (CWE-79)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, django, template]
+    paths:
+      include:
+        - "*.html"
+        - "*.django"
+
+  # Django template mark_safe in template tag
+  - id: django-template-mark-safe
+    pattern-regex: "mark_safe\\s*\\("
+    message: "Django mark_safe() - XSS risk if input is user-controlled (CWE-79)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, django, template]
+    paths:
+      include:
+        - "*.py"
+        - "*.html"

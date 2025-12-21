@@ -7387,3 +7387,123 @@ rules:
     metadata:
       cwe: "CWE-22"
       tags: [path-traversal, file-operations]
+
+  # ============================================
+  # Django Security - DjangoGoat Patterns
+  # ============================================
+
+  # Django raw SQL with string formatting (% operator)
+  - id: py-django-raw-sql-format
+    pattern-regex: "objects\\.raw\\s*\\([^)]*%\\s*\\("
+    message: "Django raw SQL with string formatting (%) - use parameterized queries to prevent SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, django, djangogoat]
+
+  # Django raw SQL with f-string
+  - id: py-django-raw-fstring
+    pattern-regex: "objects\\.raw\\s*\\(\\s*f['\"]"
+    message: "Django raw SQL with f-string - use parameterized queries to prevent SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, django, djangogoat]
+
+  # Django raw with query variable built from user input
+  - id: py-django-raw-query-var
+    patterns:
+      - pattern: |
+          $QUERY = "..." % $VARS
+          ...
+          $MODEL.objects.raw($QUERY)
+      - pattern: |
+          $QUERY = f"..."
+          ...
+          $MODEL.objects.raw($QUERY)
+    message: "Django raw SQL with user-controlled query - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, django, djangogoat]
+
+  # Empty password validators
+  - id: py-django-no-password-validators
+    pattern: "AUTH_PASSWORD_VALIDATORS = []"
+    message: "Django password validators disabled - weak passwords will be allowed (CWE-521)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-521"
+      owasp: "A07:2021"
+      tags: [authentication, password, django, djangogoat]
+
+  # SESSION_COOKIE_HTTPONLY disabled
+  - id: py-django-session-cookie-httponly-false
+    pattern: "SESSION_COOKIE_HTTPONLY = False"
+    message: "Django session cookie HttpOnly disabled - XSS can steal session cookies (CWE-1004)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1004"
+      owasp: "A05:2021"
+      tags: [session, cookie, django, djangogoat]
+
+  # SESSION_COOKIE_SECURE disabled
+  - id: py-django-session-cookie-secure-false
+    pattern: "SESSION_COOKIE_SECURE = False"
+    message: "Django session cookie Secure flag disabled - cookies sent over HTTP (CWE-614)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-614"
+      tags: [session, cookie, django]
+
+  # Cleartext password field in model
+  - id: py-django-cleartext-password-field
+    pattern-regex: "cleartext_password|plain_password|password_plaintext|raw_password"
+    message: "Cleartext password field detected - passwords must be hashed (CWE-256)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-256"
+      owasp: "A02:2021"
+      tags: [password, plaintext, django, djangogoat]
+
+  # Django serve() for media files without auth
+  - id: py-django-serve-media
+    pattern-regex: "serve\\s*,\\s*\\{\\s*['\"]document_root['\"]"
+    message: "Django serve() for media files - ensure access control is implemented (CWE-552)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-552"
+      tags: [file-access, media, django, djangogoat]
+
+  # Django ALLOWED_HOSTS wildcard
+  - id: py-django-allowed-hosts-wildcard
+    patterns:
+      - pattern: "ALLOWED_HOSTS = ['*']"
+      - pattern: 'ALLOWED_HOSTS = ["*"]'
+    message: "Django ALLOWED_HOSTS allows all hosts - configure specific hosts (CWE-16)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-16"
+      tags: [configuration, django]
+
+  # Django CSRF_COOKIE_SECURE disabled
+  - id: py-django-csrf-cookie-secure-false
+    pattern: "CSRF_COOKIE_SECURE = False"
+    message: "Django CSRF cookie not secure - CSRF token sent over HTTP (CWE-352)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
+      tags: [csrf, cookie, django]
