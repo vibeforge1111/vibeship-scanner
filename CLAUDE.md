@@ -80,7 +80,7 @@ curl -X POST https://scanner-empty-field-5676.fly.dev/scan \
 
 # 3. Provide the scan URLs to the user
 echo "View at: http://localhost:5173/scan/$SCAN_ID"
-echo "View at: https://vibeship.co/scan/$SCAN_ID"
+echo "View at: https://scanner.vibeship.co/scan/$SCAN_ID"
 ```
 
 ### Quick One-Liner Template
@@ -88,7 +88,7 @@ echo "View at: https://vibeship.co/scan/$SCAN_ID"
 SCAN_ID=$(python -c "import uuid; print(uuid.uuid4())") && \
 echo "Scan ID: $SCAN_ID" && \
 echo "View at: http://localhost:5173/scan/$SCAN_ID" && \
-echo "View at: https://vibeship.co/scan/$SCAN_ID" && \
+echo "View at: https://scanner.vibeship.co/scan/$SCAN_ID" && \
 curl -X POST https://scanner-empty-field-5676.fly.dev/scan \
   -H "Content-Type: application/json" \
   -d "{\"scanId\": \"$SCAN_ID\", \"repoUrl\": \"https://github.com/OWNER/REPO\"}"
@@ -96,7 +96,7 @@ curl -X POST https://scanner-empty-field-5676.fly.dev/scan \
 
 ### View Results At
 - **Local dev**: `http://localhost:5173/scan/<scanId>`
-- **Production**: `https://vibeship.co/scan/<scanId>`
+- **Production**: `https://scanner.vibeship.co/scan/<scanId>`
 
 ### Why This Matters
 1. Results are saved to Supabase and viewable in the web UI

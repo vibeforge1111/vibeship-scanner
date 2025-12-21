@@ -7507,3 +7507,152 @@ rules:
     metadata:
       cwe: "CWE-352"
       tags: [csrf, cookie, django]
+
+  # ============================================
+  # Django Security - DjangoGoat Deep Analysis
+  # ============================================
+
+  # Hardcoded SECRET_KEY (CWE-798)
+  - id: py-django-hardcoded-secret-key
+    pattern-regex: "SECRET_KEY\\s*=\\s*['\"][^'\"]{20,}['\"]"
+    message: "Django SECRET_KEY is hardcoded - use environment variables for secrets (CWE-798)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A02:2021"
+      tags: [secrets, django, hardcoded-credentials]
+
+  # Missing SECURE_SSL_REDIRECT
+  - id: py-django-ssl-redirect-false
+    pattern: "SECURE_SSL_REDIRECT = False"
+    message: "Django SSL redirect disabled - HTTP traffic not redirected to HTTPS (CWE-319)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-319"
+      tags: [ssl, https, django]
+
+  # Missing SESSION_COOKIE_SECURE
+  - id: py-django-session-cookie-insecure
+    pattern: "SESSION_COOKIE_SECURE = False"
+    message: "Django session cookie not secure - session sent over HTTP (CWE-614)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-614"
+      owasp: "A02:2021"
+      tags: [session, cookie, django]
+
+  # Missing X_FRAME_OPTIONS (clickjacking)
+  - id: py-django-xframe-options-disabled
+    patterns:
+      - pattern: "X_FRAME_OPTIONS = 'ALLOWALL'"
+      - pattern: 'X_FRAME_OPTIONS = "ALLOWALL"'
+      - pattern: "X_FRAME_OPTIONS = None"
+    message: "Django X-Frame-Options disabled - clickjacking vulnerability (CWE-1021)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1021"
+      tags: [clickjacking, headers, django]
+
+  # IDOR - get_object_or_404 without ownership check in view
+  - id: py-django-idor-get-object
+    pattern: |
+      def $FUNC(request, $PK):
+        ...
+        $OBJ = get_object_or_404($MODEL, pk=$PK)
+        ...
+        return render(...)
+    message: "Potential IDOR - object fetched by pk without ownership verification (CWE-639)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021"
+      tags: [idor, authorization, django]
+
+  # IDOR - direct object access pattern
+  - id: py-django-idor-direct-pk
+    pattern: |
+      $OBJ = get_object_or_404($MODEL, pk=pk)
+      return render(request, $TEMPLATE, {..., $KEY: $OBJ})
+    message: "Potential IDOR - verify user has permission to access this object (CWE-639)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      owasp: "A01:2021"
+      tags: [idor, authorization, django]
+
+  # View function without login_required accessing user data
+  - id: py-django-view-no-login-required
+    pattern-regex: "^def\\s+\\w+\\(request[^)]*\\):\\s*\\n(?!.*@login_required)[^\\n]*get_object_or_404\\(User"
+    message: "View accessing User without @login_required decorator - missing authentication (CWE-306)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-306"
+      owasp: "A07:2021"
+      tags: [authentication, missing-auth, django]
+
+  # Profile view pattern without authentication
+  - id: py-django-profile-no-auth
+    pattern: |
+      def profile(request, $PK):
+        ...
+        $USER = get_object_or_404(User, pk=$PK)
+        ...
+    message: "Profile view may be missing authentication - ensure @login_required is applied (CWE-306)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-306"
+      owasp: "A07:2021"
+      tags: [authentication, profile, django]
+
+  # Django SECURE_BROWSER_XSS_FILTER disabled
+  - id: py-django-xss-filter-false
+    pattern: "SECURE_BROWSER_XSS_FILTER = False"
+    message: "Django browser XSS filter disabled - browser XSS protection not enabled (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, headers, django]
+
+  # Django SECURE_CONTENT_TYPE_NOSNIFF disabled
+  - id: py-django-content-type-nosniff-false
+    pattern: "SECURE_CONTENT_TYPE_NOSNIFF = False"
+    message: "Django content type nosniff disabled - MIME sniffing attacks possible (CWE-16)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-16"
+      tags: [mime, headers, django]
+
+  # Raw SQL with .format() - another SQLi pattern
+  - id: py-django-raw-sql-format-method
+    pattern: |
+      $QUERY = "...".format(...)
+      ...
+      $MODEL.objects.raw($QUERY)
+    message: "Django raw SQL with .format() - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, django]
+
+  # User.objects.raw with string formatting
+  - id: py-django-user-raw-sql
+    pattern-regex: "User\\.objects\\.raw\\s*\\([^)]*%\\s*\\("
+    message: "User.objects.raw() with string formatting - SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      tags: [sql-injection, django, authentication]
