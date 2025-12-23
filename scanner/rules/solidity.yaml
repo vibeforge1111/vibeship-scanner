@@ -2888,3 +2888,189 @@ rules:
         - https://blog.openzeppelin.com/a-]novel-defense-against-erc4626-inflation-attacks
     pattern-regex: 'function\s+_convertToShares\s*\([^)]*\)[^{]*\{[^}]*\*\s*totalSupply[^}]*\/\s*totalAssets'
 
+  # ============================================
+  # Secureum Audit Findings 101/201 Patterns
+  # ============================================
+
+  - id: sol-blacklist-bypass-transferfrom
+    message: "transferFrom may bypass blacklist - missing check on 'from' address allows blacklisted users to transfer via approved spenders"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-863: Incorrect Authorization"
+      secureum: "Audit Findings 101 - Blacklisting Bypass via transferFrom"
+      references:
+        - https://github.com/x676f64/secureum-mind_map
+    pattern-regex: 'function\s+transferFrom\s*\([^)]*\)[^{]*\{[^}]*(notBlacklisted|_blacklist|blacklisted)[^}]*(?!notBlacklisted\s*\(\s*from)'
+
+  - id: sol-missing-chainid-signature
+    message: "Permit/signature without chainId validation - signatures can be replayed across forks"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-294: Authentication Bypass by Capture-replay"
+      secureum: "Audit Findings 101 - Lack of chainID validation"
+      references:
+        - https://eips.ethereum.org/EIPS/eip-2612
+    pattern-regex: 'DOMAIN_SEPARATOR\s*=[^;]*keccak256\s*\([^)]*(?!chainId|block\.chainid)'
+
+  - id: sol-missing-storage-gap
+    message: "Upgradeable contract without storage gap - adding variables in parent will corrupt child storage"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-664: Improper Control of a Resource Through its Lifetime"
+      secureum: "Audit Findings 101 - Storage layout in upgradeable contracts"
+      references:
+        - https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
+    pattern-regex: 'contract\s+\w+\s+is\s+[^{]*Upgradeable[^{]*\{(?![^}]*uint256\s*\[\s*\d+\s*\]\s+[_]*gap)'
+
+  - id: sol-token-decimals-assumption
+    message: "Hardcoded 18 decimal assumption - tokens with >18 or <18 decimals will cause overflow/underflow"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow or Wraparound"
+      secureum: "Audit Findings 201 - Token decimals greater than 18"
+      references:
+        - https://github.com/d-xo/weird-erc20
+    pattern-regex: '(10\s*\*\*\s*18|1e18)\s*[/*]|[/*]\s*(10\s*\*\*\s*18|1e18)'
+
+  - id: sol-event-after-external-call
+    message: "Event emitted after external call - reentrancy can cause events to be logged out of order"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution"
+      secureum: "Audit Findings 201 - Reentrancy affects event ordering"
+    pattern-regex: '\.(call|transfer|send)\s*[\({][^;]*;[^}]*emit\s+\w+'
+
+  - id: sol-erc20-approve-frontrun
+    message: "Using approve() without increaseAllowance/decreaseAllowance - vulnerable to front-running race condition"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution"
+      secureum: "Audit Findings 201 - ERC20 approval front-running"
+      references:
+        - https://docs.google.com/document/d/1YLPtQxZu1UAvO9cZ1O2RPXBbT0mooh4DYKjA_jp-RLM
+    pattern-regex: 'function\s+approve\s*\(\s*address[^)]*,\s*uint256[^)]*\)[^}]*\{[^}]*_approve[^}]*\}'
+
+  - id: sol-abiencoderv2-experimental
+    message: "ABIEncoderV2 is experimental and has had 20+ high-severity bugs - avoid in production"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-710: Improper Adherence to Coding Standards"
+      secureum: "Audit Findings 201 - ABIEncoderV2 not production-ready"
+    pattern-regex: 'pragma\s+experimental\s+ABIEncoderV2'
+
+  - id: sol-flash-loan-callback-unprotected
+    message: "Flash loan callback without loan verification - attacker can call directly without actual flash loan"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      secureum: "Audit Findings 101 - Flash minting vulnerabilities"
+    pattern-regex: 'function\s+(executeOperation|onFlashLoan|receiveFlashLoan)\s*\([^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*initiator|msg\.sender)'
+
+  - id: sol-initialization-frontrun
+    message: "Initialization function can be front-run - use initializer modifier or constructor"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution"
+      secureum: "Audit Findings 101 - Initialization functions can be front-run"
+    pattern-regex: 'function\s+(init|initialize|setup)\s*\([^)]*\)\s+(external|public)(?![^{]*initializer)'
+
+  - id: sol-contract-existence-check
+    message: "Low-level call without contract existence check - call to empty address returns success"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+      secureum: "Audit Findings 101 - Lack of contract existence check"
+    pattern-regex: '\w+\.(call|delegatecall|staticcall)\s*\([^)]*\)(?![^;]*extcodesize|[^;]*code\.length)'
+
+  - id: sol-two-step-ownership
+    message: "Critical ownership transfer in single step - use two-step transfer with pending owner acceptance"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      secureum: "Audit Findings 101 - Lack of two-step procedure"
+      references:
+        - https://docs.openzeppelin.com/contracts/access-control
+    pattern-regex: 'function\s+transferOwnership\s*\([^)]*\)[^{]*\{[^}]*owner\s*=\s*\w+[^}]*\}'
+
+  - id: sol-deprecated-chainlink-api
+    message: "Using deprecated Chainlink API (latestAnswer/latestTimestamp) - use latestRoundData() instead"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-477: Use of Obsolete Function"
+      secureum: "Audit Findings 201 - Chainlink deprecated API"
+    pattern-regex: '\.(latestAnswer|latestTimestamp|latestRound|getAnswer|getTimestamp)\s*\(\s*\)'
+
+  - id: sol-unbounded-loop-dos
+    message: "Unbounded loop iterating over dynamic array - can cause out-of-gas DoS"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      secureum: "Audit Findings 201 - Denial of Service from Unbound List"
+    pattern-regex: 'for\s*\([^)]*;\s*\w+\s*<\s*\w+\.length\s*;[^)]*\)[^{]*\{[^}]*(transfer|call|send|external)'
+
+  - id: sol-missing-event-indexed
+    message: "Event parameters not indexed - harder to filter and search in logs"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-778: Insufficient Logging"
+      secureum: "Audit Findings 201 - Lack of indexed parameters in events"
+    pattern-regex: 'event\s+\w+\s*\(\s*(?!.*indexed)[^)]+\)'
+
+  - id: sol-instant-governance-change
+    message: "Governance parameter changed instantly - use timelock for critical parameter changes"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      secureum: "Audit Findings 101 - Governance parameter changes should not be instant"
+    pattern-regex: 'function\s+set(Fee|Rate|Threshold|Limit|Admin|Owner)\s*\([^)]*\)[^{]*\{[^}]*=[^}]*;[^}]*\}'
+
+  - id: sol-owner-privilege-escalation
+    message: "Owner has excessive privileges - single account controls critical functions without checks"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-269: Improper Privilege Management"
+      secureum: "Audit Findings 201 - Contract owner has too many privileges"
+    pattern-regex: 'onlyOwner[^{]*\{[^}]*(selfdestruct|delegatecall|upgrade|mint\s*\(|burn\s*\()'
+
+  - id: sol-safeapprove-usage
+    message: "Using safeApprove incorrectly - must set allowance to 0 first for tokens that require it"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      secureum: "Audit Findings 101 - Incorrect safeApprove usage"
+    pattern-regex: 'safeApprove\s*\([^,]+,\s*[^0][^)]*\)(?![^;]*safeApprove\s*\([^,]+,\s*0\s*\))'
+
