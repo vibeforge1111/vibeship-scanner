@@ -131,6 +131,41 @@ TOOLS = [
             },
             "required": ["scan_id"]
         }
+    },
+    {
+        "name": "scanner_report_false_positive",
+        "description": "Report a false positive finding to help improve the scanner. Requires user consent. Data is sanitized to preserve privacy - no raw code is stored, only anonymized patterns.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "scan_id": {"type": "string", "description": "Scan ID where the false positive was found"},
+                "finding_index": {"type": "integer", "description": "Index of the finding (0-based) that is a false positive"},
+                "reason_category": {
+                    "type": "string",
+                    "enum": ["safe_pattern", "framework_handled", "test_code", "intentional", "wrong_context", "other"],
+                    "description": "Why this is a false positive: safe_pattern (code is actually safe), framework_handled (framework handles security), test_code (only in tests), intentional (developer's intentional choice), wrong_context (rule doesn't apply here), other"
+                },
+                "reason_detail": {"type": "string", "description": "Detailed explanation of why this is a false positive"},
+                "consent_level": {
+                    "type": "integer",
+                    "enum": [1, 2, 3],
+                    "description": "Privacy consent level: 1=anonymous (pattern only), 2=with_context (include surrounding code context), 3=full_share (include anonymized repo hash for correlation)"
+                },
+                "ai_analysis": {"type": "string", "description": "AI's analysis of why the finding is a false positive"}
+            },
+            "required": ["scan_id", "finding_index", "reason_category", "consent_level"]
+        }
+    },
+    {
+        "name": "scanner_check_known_false_positives",
+        "description": "Check if a rule has known false positive patterns. Use this before reporting to see if your case matches known patterns.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "rule_id": {"type": "string", "description": "Rule ID to check for known false positives"}
+            },
+            "required": ["rule_id"]
+        }
     }
 ]
 
@@ -250,6 +285,10 @@ def handle_tools_call(params, github_token=None):
             result = execute_master_prompt(arguments)
         elif tool_name == 'scanner_export_report':
             result = execute_export_report(arguments)
+        elif tool_name == 'scanner_report_false_positive':
+            result = execute_report_false_positive(arguments)
+        elif tool_name == 'scanner_check_known_false_positives':
+            result = execute_check_known_false_positives(arguments)
         else:
             return {
                 "content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}],
@@ -949,6 +988,29 @@ After consolidating duplicate findings (same vulnerability in same file) and exc
 - List all files you modified
 - Summarize what you changed
 
+---
+
+## Found a False Positive?
+
+If any finding above is **not actually a security issue** (e.g., the code is safe, framework handles it, it's test code, or the rule doesn't apply), you can report it to help improve the scanner:
+
+**To report a false positive:**
+Use `scanner_report_false_positive` with:
+- `scan_id`: `{scan_id}`
+- `finding_index`: The number from the Quick Summary (0-indexed)
+- `reason_category`: One of:
+  - `safe_pattern` - Code is actually safe
+  - `framework_handled` - Framework handles security
+  - `test_code` - Only in tests
+  - `intentional` - Developer's intentional choice
+  - `wrong_context` - Rule doesn't apply here
+  - `other` - Other reason
+- `consent_level`: 1 (anonymous), 2 (with context), or 3 (full share)
+
+Your feedback is privacy-preserving (code is sanitized) and helps make the scanner better for everyone!
+
+---
+
 Let's start! Begin with the first section above."""
 
 
@@ -1116,6 +1178,16 @@ def execute_export_report(args):
 2. **Use `scanner_master_prompt`** - Get actionable fix instructions for all issues
 3. **Re-scan after fixes** - Verify vulnerabilities are resolved
 4. **View online:** https://scanner.vibeship.co/scan/{scan_id}
+
+---
+
+## Found a False Positive?
+
+If any finding is not actually a security issue, help improve the scanner by reporting it:
+
+Use `scanner_report_false_positive` with scan_id `{scan_id}` and the finding index (0-indexed).
+
+Your feedback is anonymized and helps make the scanner better for everyone.
 
 ---
 
@@ -1680,3 +1752,190 @@ app.use(session({
     }
 
     return guides.get(vuln_type, guides['other'])
+
+
+# =============================================================================
+# False Positive Reporting Functions
+# =============================================================================
+
+def execute_report_false_positive(args):
+    """Report a false positive finding to help improve the scanner"""
+    from feedback.sanitizer import sanitize_for_feedback
+
+    scan_id = args.get('scan_id')
+    finding_index = args.get('finding_index', 0)
+    reason_category = args.get('reason_category')
+    reason_detail = args.get('reason_detail', '')
+    consent_level = args.get('consent_level', 1)
+    ai_analysis = args.get('ai_analysis', '')
+
+    # Validate required fields
+    if not scan_id:
+        return {"error": "scan_id is required"}
+
+    if not reason_category:
+        return {"error": "reason_category is required. Choose from: safe_pattern, framework_handled, test_code, intentional, wrong_context, other"}
+
+    valid_categories = ['safe_pattern', 'framework_handled', 'test_code', 'intentional', 'wrong_context', 'other']
+    if reason_category not in valid_categories:
+        return {"error": f"Invalid reason_category. Must be one of: {', '.join(valid_categories)}"}
+
+    if consent_level not in [1, 2, 3]:
+        return {"error": "consent_level must be 1, 2, or 3"}
+
+    # Fetch scan from Supabase
+    supabase = get_supabase()
+    result = supabase.table('scans').select('findings, target_url').eq('id', scan_id).execute()
+
+    if not result.data:
+        return {"error": f"Scan not found: {scan_id}"}
+
+    findings = result.data[0].get('findings', [])
+    repo_url = result.data[0].get('target_url', '')
+
+    if not findings:
+        return {"error": "No findings in this scan"}
+
+    if finding_index >= len(findings):
+        return {"error": f"Finding index {finding_index} out of range (0-{len(findings)-1})"}
+
+    finding = findings[finding_index]
+
+    # Extract finding details
+    rule_id = finding.get('ruleId', finding.get('title', 'unknown'))
+    rule_message = finding.get('message', '')
+    severity = finding.get('severity', 'INFO').upper()
+    location = finding.get('location', {})
+    file_path = location.get('file', 'unknown')
+    line = location.get('line', 0)
+
+    # Get the code snippet (we'll need to construct it from finding data)
+    code_snippet = finding.get('code', finding.get('snippet', ''))
+    if not code_snippet:
+        # Try to construct from message or title
+        code_snippet = f"// Line {line} in {file_path}\n// {finding.get('title', 'Unknown finding')}"
+
+    # Detect language from file extension
+    lang_map = {
+        '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
+        '.jsx': 'javascript', '.tsx': 'typescript', '.sol': 'solidity',
+        '.go': 'go', '.rs': 'rust', '.java': 'java', '.rb': 'ruby',
+        '.php': 'php', '.c': 'c', '.cpp': 'cpp', '.cs': 'csharp'
+    }
+    ext = '.' + file_path.split('.')[-1] if '.' in file_path else ''
+    language = lang_map.get(ext, 'unknown')
+
+    # Determine context based on consent level
+    context = None
+    if consent_level >= 2:
+        context = f"File: {file_path}\nLine: {line}\n"
+        if finding.get('context'):
+            context += finding.get('context')
+
+    try:
+        # Sanitize the data for privacy
+        sanitized = sanitize_for_feedback(
+            code_snippet=code_snippet,
+            context=context,
+            repo_url=repo_url if consent_level == 3 else None,
+            language=language,
+            consent_level=consent_level,
+            rule_id=rule_id,
+            rule_message=rule_message,
+            severity=severity,
+            reason_category=reason_category,
+            reason_detail=reason_detail,
+            ai_analysis=ai_analysis
+        )
+
+        # Submit to feedback API
+        import requests
+        feedback_url = "https://scanner-empty-field-5676.fly.dev/feedback/report"
+
+        response = requests.post(
+            feedback_url,
+            json=sanitized,
+            timeout=10,
+            headers={'Content-Type': 'application/json'}
+        )
+
+        if response.status_code == 200:
+            resp_data = response.json()
+            return {
+                "status": "success",
+                "message": "Thank you! Your false positive report has been submitted.",
+                "report_id": resp_data.get('id', 'unknown'),
+                "privacy_note": f"Your data was sanitized at consent level {consent_level} before submission.",
+                "what_happens_next": "Our team will review this report and may update the scanner rules to reduce false positives.",
+                "details": {
+                    "rule_id": rule_id,
+                    "reason": reason_category,
+                    "consent_level": consent_level
+                }
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"Failed to submit report: {response.text}"
+            }
+
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "message": f"Failed to process report: {str(e)}",
+            "trace": traceback.format_exc()
+        }
+
+
+def execute_check_known_false_positives(args):
+    """Check if a rule has known false positive patterns"""
+    rule_id = args.get('rule_id')
+
+    if not rule_id:
+        return {"error": "rule_id is required"}
+
+    try:
+        # Query the feedback API for known patterns
+        import requests
+        check_url = f"https://scanner-empty-field-5676.fly.dev/feedback/check-known/{rule_id}"
+
+        response = requests.get(check_url, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+
+            if data.get('known_patterns'):
+                patterns = data['known_patterns']
+                return {
+                    "rule_id": rule_id,
+                    "has_known_false_positives": True,
+                    "count": len(patterns),
+                    "patterns": patterns,
+                    "message": f"Found {len(patterns)} known false positive pattern(s) for this rule.",
+                    "tip": "If your case matches one of these patterns, you may not need to report it again."
+                }
+            else:
+                return {
+                    "rule_id": rule_id,
+                    "has_known_false_positives": False,
+                    "count": 0,
+                    "patterns": [],
+                    "message": "No known false positive patterns for this rule yet.",
+                    "tip": "If you believe this is a false positive, please report it using scanner_report_false_positive."
+                }
+        else:
+            return {
+                "rule_id": rule_id,
+                "has_known_false_positives": False,
+                "message": "Could not check for known patterns. You can still report the false positive.",
+                "note": response.text
+            }
+
+    except Exception as e:
+        return {
+            "rule_id": rule_id,
+            "has_known_false_positives": False,
+            "message": f"Could not check for known patterns: {str(e)}",
+            "tip": "You can still report the false positive using scanner_report_false_positive."
+        }

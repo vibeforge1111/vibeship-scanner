@@ -518,6 +518,323 @@ def get_job_status(job_id):
     return jsonify(benchmark_jobs[job_id])
 
 
+# ============================================
+# FALSE POSITIVE FEEDBACK SYSTEM
+# Privacy-preserving feedback collection
+# ============================================
+
+@app.route('/feedback/report', methods=['POST'])
+def report_false_positive():
+    """
+    Submit a false positive report (privacy-preserving).
+
+    POST /feedback/report
+    Body: {
+        "rule_id": "sol-unchecked-call-return",
+        "rule_message": "Low-level call return value not checked",
+        "severity": "ERROR",
+        "language": "solidity",
+        "code_snippet": "...",
+        "context": "...",
+        "repo_url": "...",  # Only used for hashing at Level 3
+        "reason_category": "safe_pattern",
+        "reason_detail": "...",
+        "ai_analysis": "...",
+        "consent_level": 1  # 1=anonymous, 2=with_context, 3=full
+    }
+    """
+    try:
+        from feedback import sanitize_for_feedback
+
+        data = request.json or {}
+
+        # Validate required fields
+        required = ['rule_id', 'language', 'code_snippet', 'reason_category', 'consent_level']
+        for field in required:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+
+        # Validate consent level
+        consent_level = data.get('consent_level', 1)
+        if consent_level not in [1, 2, 3]:
+            return jsonify({'error': 'consent_level must be 1, 2, or 3'}), 400
+
+        # Validate reason category
+        valid_reasons = ['safe_pattern', 'framework_handled', 'test_code', 'intentional', 'wrong_context', 'other']
+        if data.get('reason_category') not in valid_reasons:
+            return jsonify({'error': f'reason_category must be one of: {valid_reasons}'}), 400
+
+        # Sanitize the report
+        sanitized = sanitize_for_feedback(
+            code_snippet=data.get('code_snippet', ''),
+            context=data.get('context'),
+            repo_url=data.get('repo_url'),
+            language=data.get('language'),
+            consent_level=consent_level,
+            rule_id=data.get('rule_id'),
+            rule_message=data.get('rule_message', ''),
+            severity=data.get('severity', 'WARNING'),
+            reason_category=data.get('reason_category'),
+            reason_detail=data.get('reason_detail', ''),
+            ai_analysis=data.get('ai_analysis', '')
+        )
+
+        # Submit to Supabase
+        supabase = get_supabase()
+
+        # Use the upsert function for deduplication
+        result = supabase.rpc('feedback.upsert_false_positive', {
+            'p_rule_id': sanitized['rule_id'],
+            'p_rule_message': sanitized['rule_message'],
+            'p_severity': sanitized['severity'],
+            'p_language': sanitized['language'],
+            'p_sanitized_pattern': sanitized['sanitized_pattern'],
+            'p_pattern_hash': sanitized['pattern_hash'],
+            'p_pattern_structure': sanitized['pattern_structure'],
+            'p_surrounding_context': sanitized['surrounding_context'],
+            'p_framework_hints': sanitized['framework_hints'],
+            'p_reason_category': sanitized['reason_category'],
+            'p_reason_detail': sanitized['reason_detail'],
+            'p_ai_analysis': sanitized['ai_analysis'],
+            'p_consent_level': sanitized['consent_level'],
+            'p_anonymized_repo_hash': sanitized['anonymized_repo_hash']
+        }).execute()
+
+        report_id = result.data if result.data else 'submitted'
+
+        # Check if this is a known issue
+        known_check = supabase.table('feedback.false_positive_reports').select('status, report_count').eq(
+            'pattern_hash', sanitized['pattern_hash']
+        ).eq('rule_id', sanitized['rule_id']).limit(1).execute()
+
+        known_issue = False
+        if known_check.data and len(known_check.data) > 0:
+            status = known_check.data[0].get('status')
+            if status in ['confirmed', 'fixed', 'reviewing']:
+                known_issue = True
+
+        print(f"[Feedback] Received report for rule {sanitized['rule_id']}, pattern_hash={sanitized['pattern_hash'][:8]}...", flush=True)
+
+        return jsonify({
+            'status': 'submitted',
+            'report_id': str(report_id),
+            'pattern_hash': sanitized['pattern_hash'][:8],
+            'known_issue': known_issue,
+            'message': 'Thank you for helping improve the scanner!'
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"[Feedback] Error: {e}", flush=True)
+        print(traceback.format_exc(), flush=True)
+        return jsonify({'error': 'Failed to submit feedback'}), 500
+
+
+@app.route('/feedback/bulk-report', methods=['POST'])
+def bulk_report_false_positives():
+    """
+    Submit multiple false positive reports at once.
+
+    POST /feedback/bulk-report
+    Body: {
+        "consent_level": 1,
+        "reports": [
+            {
+                "rule_id": "...",
+                "code_snippet": "...",
+                "reason_category": "...",
+                "reason_detail": "...",
+                ...
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        from feedback import sanitize_for_feedback
+
+        data = request.json or {}
+        reports = data.get('reports', [])
+        consent_level = data.get('consent_level', 1)
+
+        if not reports:
+            return jsonify({'error': 'No reports provided'}), 400
+
+        if len(reports) > 50:
+            return jsonify({'error': 'Maximum 50 reports per request'}), 400
+
+        submitted = 0
+        duplicates = 0
+        errors = []
+
+        supabase = get_supabase()
+
+        for i, report in enumerate(reports):
+            try:
+                # Sanitize each report
+                sanitized = sanitize_for_feedback(
+                    code_snippet=report.get('code_snippet', ''),
+                    context=report.get('context'),
+                    repo_url=report.get('repo_url'),
+                    language=report.get('language', 'unknown'),
+                    consent_level=consent_level,
+                    rule_id=report.get('rule_id', 'unknown'),
+                    rule_message=report.get('rule_message', ''),
+                    severity=report.get('severity', 'WARNING'),
+                    reason_category=report.get('reason_category', 'other'),
+                    reason_detail=report.get('reason_detail', ''),
+                    ai_analysis=report.get('ai_analysis', '')
+                )
+
+                # Check if duplicate
+                existing = supabase.table('feedback.false_positive_reports').select('id').eq(
+                    'pattern_hash', sanitized['pattern_hash']
+                ).eq('rule_id', sanitized['rule_id']).limit(1).execute()
+
+                if existing.data and len(existing.data) > 0:
+                    # Update count on existing
+                    supabase.table('feedback.false_positive_reports').update({
+                        'report_count': existing.data[0].get('report_count', 1) + 1
+                    }).eq('id', existing.data[0]['id']).execute()
+                    duplicates += 1
+                else:
+                    # Insert new
+                    supabase.table('feedback.false_positive_reports').insert({
+                        'rule_id': sanitized['rule_id'],
+                        'rule_message': sanitized['rule_message'],
+                        'severity': sanitized['severity'],
+                        'language': sanitized['language'],
+                        'sanitized_pattern': sanitized['sanitized_pattern'],
+                        'pattern_hash': sanitized['pattern_hash'],
+                        'pattern_structure': sanitized['pattern_structure'],
+                        'surrounding_context': sanitized['surrounding_context'],
+                        'framework_hints': sanitized['framework_hints'],
+                        'reason_category': sanitized['reason_category'],
+                        'reason_detail': sanitized['reason_detail'],
+                        'ai_analysis': sanitized['ai_analysis'],
+                        'consent_level': sanitized['consent_level'],
+                        'anonymized_repo_hash': sanitized['anonymized_repo_hash']
+                    }).execute()
+                    submitted += 1
+
+            except Exception as e:
+                errors.append({'index': i, 'error': str(e)})
+
+        print(f"[Feedback] Bulk report: {submitted} new, {duplicates} duplicates, {len(errors)} errors", flush=True)
+
+        return jsonify({
+            'status': 'complete',
+            'submitted': submitted,
+            'duplicates': duplicates,
+            'errors': len(errors),
+            'message': f'Processed {submitted + duplicates} reports. Thank you!'
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"[Feedback] Bulk error: {e}", flush=True)
+        return jsonify({'error': 'Failed to process bulk feedback'}), 500
+
+
+@app.route('/feedback/check-known/<rule_id>', methods=['GET'])
+def check_known_false_positives(rule_id):
+    """
+    Check if a rule has known false positive patterns.
+
+    GET /feedback/check-known/sol-unchecked-call-return
+
+    Returns known patterns and their status (so users don't report duplicates).
+    """
+    try:
+        supabase = get_supabase()
+
+        # Get confirmed/reviewing false positives for this rule
+        result = supabase.table('feedback.false_positive_reports').select(
+            'pattern_structure, reason_category, status, report_count, framework_hints'
+        ).eq('rule_id', rule_id).in_('status', ['confirmed', 'reviewing', 'fixed']).execute()
+
+        patterns = []
+        for row in (result.data or []):
+            patterns.append({
+                'pattern': row.get('pattern_structure'),
+                'reason': row.get('reason_category'),
+                'status': row.get('status'),
+                'reports': row.get('report_count', 1),
+                'frameworks': row.get('framework_hints', [])
+            })
+
+        # Get summary stats
+        total_reports = supabase.table('feedback.false_positive_reports').select(
+            'id', count='exact'
+        ).eq('rule_id', rule_id).execute()
+
+        return jsonify({
+            'rule_id': rule_id,
+            'known_patterns': patterns,
+            'total_reports': total_reports.count or 0,
+            'has_known_issues': len(patterns) > 0
+        })
+
+    except Exception as e:
+        print(f"[Feedback] Check error: {e}", flush=True)
+        return jsonify({
+            'rule_id': rule_id,
+            'known_patterns': [],
+            'total_reports': 0,
+            'has_known_issues': False
+        })
+
+
+@app.route('/feedback/stats', methods=['GET'])
+def feedback_stats():
+    """
+    Get public stats about feedback (no sensitive data).
+
+    GET /feedback/stats
+
+    Returns aggregate statistics about false positive reports.
+    """
+    try:
+        supabase = get_supabase()
+
+        # Total reports
+        total = supabase.table('feedback.false_positive_reports').select(
+            'id', count='exact'
+        ).execute()
+
+        # Reports by status
+        confirmed = supabase.table('feedback.false_positive_reports').select(
+            'id', count='exact'
+        ).eq('status', 'confirmed').execute()
+
+        fixed = supabase.table('feedback.false_positive_reports').select(
+            'id', count='exact'
+        ).eq('status', 'fixed').execute()
+
+        # Top rules with reports
+        top_rules = supabase.table('feedback.rule_summary').select(
+            'rule_id, total_reports, confirmed_fps'
+        ).order('total_reports', desc=True).limit(10).execute()
+
+        return jsonify({
+            'total_reports': total.count or 0,
+            'confirmed_false_positives': confirmed.count or 0,
+            'rules_improved': fixed.count or 0,
+            'top_reported_rules': top_rules.data or [],
+            'message': 'Thank you to all contributors helping improve the scanner!'
+        })
+
+    except Exception as e:
+        print(f"[Feedback] Stats error: {e}", flush=True)
+        return jsonify({
+            'total_reports': 0,
+            'confirmed_false_positives': 0,
+            'rules_improved': 0,
+            'top_reported_rules': [],
+            'error': 'Could not fetch stats'
+        })
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
