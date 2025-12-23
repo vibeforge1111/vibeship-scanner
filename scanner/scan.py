@@ -124,6 +124,28 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
 
         success = result.returncode == 0
         print(f"[Clone] Result: {'SUCCESS' if success else 'FAILED'}", file=sys.stderr, flush=True)
+
+        # Initialize git submodules (for Foundry/forge-std projects)
+        if success:
+            try:
+                print("[Clone] Initializing git submodules...", file=sys.stderr, flush=True)
+                submodule_result = subprocess.run(
+                    ['git', 'submodule', 'update', '--init', '--recursive', '--depth', '1'],
+                    cwd=target_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=120
+                )
+                if submodule_result.returncode == 0:
+                    print("[Clone] Submodules initialized successfully", file=sys.stderr, flush=True)
+                else:
+                    # Non-fatal - many repos don't have submodules
+                    print(f"[Clone] Submodule init returned {submodule_result.returncode} (may have no submodules)", file=sys.stderr, flush=True)
+            except subprocess.TimeoutExpired:
+                print("[Clone] Submodule init timeout (continuing without)", file=sys.stderr, flush=True)
+            except Exception as e:
+                print(f"[Clone] Submodule init error: {e} (continuing without)", file=sys.stderr, flush=True)
+
         return success
     except subprocess.TimeoutExpired:
         print("Clone timeout", file=sys.stderr)
@@ -469,7 +491,21 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
     # NOTE: We intentionally scan ALL directories including node_modules, vendor, etc.
     # Excluding these could miss supply chain attacks, backdoored dependencies, or hidden malware.
     # Users can filter results by path in the UI if needed.
-    cmd = ['opengrep', 'scan', '--json'] + configs + [repo_dir]
+    #
+    # --no-git-ignore: Also scan gitignored files and submodules (forge-std, etc.)
+    # --include: Force include files that default .semgrepignore might exclude (test dirs, lib/, etc.)
+    cmd = [
+        'opengrep', 'scan', '--json',
+        '--no-git-ignore',
+        '--include=*.sol',     # Solidity - often in test/ or lib/ dirs excluded by default
+        '--include=*.py',      # Python test files
+        '--include=*.js',      # JavaScript test files
+        '--include=*.ts',      # TypeScript test files
+        '--include=*.go',      # Go test files
+        '--include=*.rb',      # Ruby spec files
+        '--include=*.php',     # PHP test files
+        '--include=*.java',    # Java test files
+    ] + configs + [repo_dir]
 
     try:
         print(f"Running Opengrep: {' '.join(cmd)}", file=sys.stderr)
