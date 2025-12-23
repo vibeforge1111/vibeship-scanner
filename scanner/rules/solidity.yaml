@@ -3198,3 +3198,107 @@ rules:
       ctf: "AMAZEX-DSS-PARIS Challenge 6 - YieldPool"
     pattern-regex: 'function\s+(deposit|withdraw|swap|addLiquidity|removeLiquidity)\s*\([^)]*uint256\s+\w*(amount|value|wad)[^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*>\s*0)'
 
+  # ============================================
+  # Paradigm CTF 2021 Patterns
+  # ============================================
+
+  - id: sol-dynamic-array-length-increment
+    message: "Direct array length increment (pre-0.6 pattern) - can cause storage corruption"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-119: Improper Restriction of Operations within the Bounds of a Memory Buffer"
+      ctf: "Paradigm CTF 2021 - Bank"
+    pattern-regex: '\w+\s*\[\s*\w+\s*\]\s*\.length\s*\+\+'
+
+  - id: sol-assembly-storage-slot-collision
+    message: "sstore with user-controlled slot offset - can overwrite critical storage slots like owner"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-123: Write-what-where Condition"
+      ctf: "Paradigm CTF 2021 - Market (EternalStorage)"
+    pattern-regex: 'sstore\s*\(\s*add\s*\(\s*(tokenId|id|key|slot)\s*,'
+
+  - id: sol-untrusted-protocol-call
+    message: "Calling interface method on untrusted protocol address - attacker can pass malicious contract"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      ctf: "Paradigm CTF 2021 - YieldAggregator"
+    pattern-regex: 'function\s+\w+\s*\([^)]*Protocol\s+protocol[^)]*\)[^{]*\{[^}]*(protocol\.(mint|burn|deposit|withdraw|transfer))'
+
+  - id: sol-reserve-integer-division
+    message: "Integer division of reserves loses precision - use multiplication before division"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow or Wraparound"
+      ctf: "Paradigm CTF 2021 - Broker"
+    pattern-regex: '_?reserve[01]?\s*/\s*_?reserve[01]?'
+
+  - id: sol-unprotected-delegatecall-function
+    message: "Function with delegatecall only protected by internal guard check - verify guard cannot be bypassed"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      ctf: "Paradigm CTF 2021 - Vault"
+    pattern-regex: 'function\s+(emergencyCall|execute|proxy)\s*\([^)]*address\s+\w+[^)]*bytes\s+(memory|calldata)\s+\w+[^)]*\)[^{]*\{[^}]*\.delegatecall\s*\('
+
+  - id: sol-decimal-scaling-mismatch
+    message: "Token decimal scaling with exponentiation - verify consistent handling across different decimals"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      ctf: "Paradigm CTF 2021 - Swap"
+    pattern-regex: '10\s*\*\*\s*\(\s*18\s*-\s*decimals\s*\)|10\s*\*\*\s*\(\s*decimals\s*-\s*18\s*\)'
+
+  - id: sol-owner-delegatecall-hatch
+    message: "Owner-only delegatecall function - if owner is compromised, contract storage can be corrupted"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      ctf: "Paradigm CTF 2021 - Bouncer"
+    pattern-regex: 'function\s+hatch\s*\([^)]*\)[^{]*\{[^}]*require\s*\([^)]*owner[^)]*\)[^}]*\.delegatecall\s*\('
+
+  - id: sol-convertmany-msgvalue-reuse
+    message: "Loop calling payable function - msg.value may be reused across iterations"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-837: Improper Enforcement of a Single, Unique Action"
+      ctf: "Paradigm CTF 2021 - Bouncer"
+    pattern-regex: 'function\s+\w+Many\s*\([^)]*\)\s+(external|public)\s+payable[^{]*\{[^}]*for\s*\([^)]*\)[^}]*\w+\s*\([^)]*\)\s*;'
+
+  - id: sol-erc20-approval-requirement
+    message: "Requiring max approval before transfer - consider using permit or incremental approvals"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-285: Improper Authorization"
+      ctf: "Paradigm CTF 2021 - Bouncer"
+    pattern-regex: 'require\s*\([^)]*allowance[^)]*==\s*type\s*\(\s*uint256\s*\)\s*\.max'
+
+  - id: sol-withdraw-without-balance-update-first
+    message: "Token transfer before balance decrement - potential reentrancy if token has callbacks"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-696: Incorrect Behavior Order"
+      ctf: "Paradigm CTF 2021 - Bank/Vault"
+    pattern-regex: '(token|tok)\.(transfer|safeTransfer)\s*\([^)]*\)\s*;[\s\n]*\w+\s*\[\s*\w+\s*\]\s*-='
+
