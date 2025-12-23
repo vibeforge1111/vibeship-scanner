@@ -3654,3 +3654,72 @@ rules:
       ctf: "Paradigm CTF 2022 - Stealing-sats"
     pattern-regex: 'fillOrKillOrder\s*\('
 
+  # Paradigm CTF 2022 - Electric Sheep & Trapdoor patterns
+  - id: sol-balance-threshold-check
+    message: "Balance threshold check using balanceOf(this) - vulnerable to flash loan manipulation"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Race Condition"
+      ctf: "Paradigm CTF 2022 - Electric Sheep"
+    pattern-regex: 'balanceOf\s*\(\s*(address\s*\(\s*)?this\s*\)?\s*\)\s*[><=]'
+
+  - id: sol-foundry-vm-readfile
+    message: "Foundry vm.readFile() can access host filesystem - security risk in tests/challenges"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-22: Path Traversal"
+      ctf: "Paradigm CTF 2022 - Trapdoooor"
+    pattern-regex: 'vm\.readFile\s*\('
+
+  - id: sol-foundry-vm-envstring
+    message: "Foundry vm.envString() can leak environment variables including secrets"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-526: Exposure of Sensitive Information Through Environmental Variables"
+      ctf: "Paradigm CTF 2022 - Trapdooor"
+    pattern-regex: 'vm\.envString\s*\('
+
+  - id: sol-foundry-cheatcode-address
+    message: "Foundry cheatcode address detected - test code using privileged VM operations"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-749: Exposed Dangerous Method or Function"
+      ctf: "Paradigm CTF 2022 - Trapdooor"
+    pattern-regex: 'address\s*\(\s*uint160\s*\(\s*uint256\s*\(\s*keccak256\s*\(\s*["\x27]hevm cheat code["\x27]\s*\)\s*\)\s*\)\s*\)'
+
+  - id: sol-foundry-vm-ffi
+    message: "Foundry vm.ffi() allows arbitrary command execution - extreme security risk"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+    pattern-regex: 'vm\.ffi\s*\('
+
+  - id: sol-foundry-vm-store
+    message: "Foundry vm.store() can modify arbitrary storage slots - bypasses all access controls"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-749: Exposed Dangerous Method or Function"
+    pattern-regex: 'vm\.store\s*\('
+
+  - id: sol-isSolved-balance-check
+    message: "Challenge solved by balance check - likely vulnerable to flash loans or donations"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-362: Race Condition"
+      ctf: "Paradigm CTF 2022"
+    pattern-regex: 'function\s+isSolved\s*\([^)]*\)[^{]*\{[^}]*balanceOf'
+
