@@ -3948,3 +3948,275 @@ rules:
       ctf: "Paradigm CTF 2021 - Vault"
     pattern-regex: 'function\s+emergency\w*\s*\([^)]*\)[^{]*\{[^}]*delegatecall'
 
+  # ============================================
+  # Sherlock Protocol Audit Gap Closures
+  # ============================================
+
+  # H-02: Protocol Iteration Deadlock
+  - id: sol-iterate-all-protocols
+    message: "Loop iterates over all protocols/users - one failure blocks entire operation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-834: Excessive Iteration"
+      audit: "Sherlock Code4rena 2021 - H-01"
+    pattern-regex: 'for\s*\([^)]*;\s*\w+\s*<\s*(?:protocols|users|stakers|accounts)\w*\.length'
+
+  - id: sol-unbounded-protocol-loop
+    message: "Unbounded loop over dynamic array - can cause DoS if array grows large"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-834: Excessive Iteration"
+      audit: "Sherlock Code4rena 2021"
+    pattern-regex: 'for\s*\([^)]*;\s*\w+\s*<\s*\w+\.length\s*;[^)]*\)[^{]*\{[^}]*(?:transfer|call|send)'
+
+  - id: sol-payoff-all-debt
+    message: "PayOff/settle all debts in single tx - one underfunded protocol blocks all"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      audit: "Sherlock Code4rena 2021 - H-01"
+    pattern-regex: 'function\s+(?:payOff|settle|claim)All\w*\s*\('
+
+  # H-03: Calldata Manipulation
+  - id: sol-calldataload-no-length-check
+    message: "Assembly calldataload without calldatasize check - calldata injection possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-129: Improper Validation of Array Index"
+      audit: "Sherlock Code4rena 2021 - H-02"
+    pattern-regex: 'assembly\s*\{[^}]*calldataload\s*\([^}]*\}(?![^}]*calldatasize)'
+
+  - id: sol-calldata-token-extraction
+    message: "Token address extracted from calldata via assembly - validate calldata bounds"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-129: Improper Validation of Array Index"
+      audit: "Sherlock Code4rena 2021 - H-02"
+    pattern-regex: 'assembly\s*\{[^}]*(?:token|addr)\w*\s*:=\s*(?:shr|and)\s*\([^)]*calldataload'
+
+  # M-02: State Update Mismatch
+  - id: sol-shares-balance-mismatch
+    message: "Share update without corresponding balance update - accounting inconsistency"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      audit: "Sherlock Code4rena 2022 - M-02"
+    pattern-regex: '(?:shares|stakeShares)\s*\[[^\]]+\]\s*[-+]?=(?![^;]*(?:balance|Balance)\s*\[)'
+
+  - id: sol-nft-shares-no-address-update
+    message: "NFT shares modified but address mapping not updated - balance reporting error"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      audit: "Sherlock Code4rena 2022 - M-02"
+    pattern-regex: 'function\s+(?:arb|force)?\w*[Rr]estake\s*\([^)]*\)[^{]*\{[^}]*shares\s*\['
+
+  # M-03: Yield Strategy Fund Freezing
+  - id: sol-strategy-withdraw-unconditional
+    message: "Strategy link removed regardless of withdrawal success - funds may freeze"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      audit: "Sherlock Code4rena 2022 - M-03"
+    pattern-regex: 'strategy\w*\s*=\s*(?:address\s*\(\s*0\s*\)|I\w+Strategy\s*\([^)]*0[^)]*\))(?![^;]*require)'
+
+  - id: sol-update-strategy-no-full-withdraw
+    message: "Update strategy without ensuring full withdrawal - remaining funds locked"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      audit: "Sherlock Code4rena 2022 - M-03"
+    pattern-regex: 'function\s+update\w*[Ss]trategy\s*\([^)]*\)[^{]*\{(?![^}]*withdrawAll\s*\(\s*\)[^}]*require)'
+
+  # M-05: Optimistic Balance Assumptions
+  - id: sol-optimistic-balance-calculation
+    message: "Calculation assumes sufficient balance - may revert or return incorrect value"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      audit: "Sherlock Code4rena 2021 - M-02"
+    pattern-regex: 'accrued\w*\s*\+\s*(?:pending|owed|due)\w*(?![^;]*require|if\s*\()'
+
+  - id: sol-premium-assumes-balance
+    message: "Premium/debt calculation assumes protocol has balance - may fail silently"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      audit: "Sherlock Code4rena 2021 - M-02"
+    pattern-regex: '(?:premium|debt|owed)\s*=\s*[^;]*(?:block\.timestamp|now)\s*-\s*last\w*(?![^;]*balance)'
+
+  # M-07: First-Come-First-Served Pool Drain
+  - id: sol-unallocated-pool-drain
+    message: "Unallocated/remaining pool accessible first-come-first-served - unfair distribution"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Race Condition"
+      audit: "Sherlock Code4rena 2021 - M-04"
+    pattern-regex: 'unallocated\w*\s*[-=]'
+
+  - id: sol-pool-claimable-race
+    message: "Pool rewards claimable without fair distribution - early claimers drain pool"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Race Condition"
+      audit: "Sherlock Code4rena 2021 - M-04"
+    pattern-regex: 'function\s+claim\w*\s*\([^)]*\)[^{]*\{[^}]*(?:remaining|available|pool)\w*\s*[-=]'
+
+  # M-08: External Protocol Integration Issues
+  - id: sol-uma-oracle-integration
+    message: "UMA Optimistic Oracle integration - verify bond/escalation amounts match docs"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-1104: Use of Unmaintained Third Party Components"
+      audit: "Sherlock Code4rena 2022 - M-01"
+    pattern-regex: '(?:UMA|Optimistic)\w*(?:Oracle|Asserter)'
+
+  - id: sol-external-protocol-bond
+    message: "External protocol bond/stake - verify actual amounts vs documentation"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-1104: Use of Unmaintained Third Party Components"
+      audit: "Sherlock Code4rena 2022 - M-01"
+    pattern-regex: '(?:bond|stake|collateral)\w*\s*=\s*[^;]*(?:BOND|STAKE|COLLATERAL)'
+
+  # Additional Sherlock-specific patterns
+  - id: sol-safe-approve-nonzero
+    message: "safeApprove fails if current approval non-zero - use forceApprove or reset first"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-670: Always-Incorrect Control Flow Implementation"
+      audit: "Sherlock Code4rena 2022 - L-01"
+    pattern-regex: 'safeApprove\s*\([^,]+,\s*[^0][^)]*\)(?![^;]*approve\s*\([^,]+,\s*0)'
+
+  - id: sol-missing-slippage-protection
+    message: "Token swap/buy without slippage protection - MEV/sandwich attack risk"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      audit: "Sherlock Code4rena 2022 - L-02"
+    pattern-regex: 'function\s+(?:buy|swap|exchange)\w*\s*\([^)]*\)[^{]*\{(?![^}]*(?:minAmount|slippage|deadline))'
+
+  - id: sol-coverage-history-overwrite
+    message: "Protocol update overwrites coverage history - data loss on repeated updates"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-404: Improper Resource Shutdown or Release"
+      audit: "Sherlock Code4rena 2022 - L-03"
+    pattern-regex: 'function\s+protocol(?:Update|Add)\s*\([^)]*\)[^{]*\{[^}]*coverage\w*\s*='
+
+  - id: sol-nonexistent-nft-no-revert
+    message: "NFT operation doesn't revert for non-existent ID - silent failure"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+      audit: "Sherlock Code4rena 2022 - L-05"
+    pattern-regex: 'function\s+\w+\s*\([^)]*(?:nft|token)Id[^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*exist)'
+
+  - id: sol-pausable-not-enforced
+    message: "Pausable interface expected but not enforced - pause may not work"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-670: Always-Incorrect Control Flow Implementation"
+      audit: "Sherlock Code4rena 2022 - L-07/L-08"
+    pattern-regex: 'I\w*Pausable[^{]*\{(?![^}]*whenNotPaused)'
+
+  - id: sol-division-precision-loss
+    message: "Sequential divisions cause precision loss - multiply before dividing"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      audit: "Sherlock Code4rena 2021 - L-03"
+    pattern-regex: '\)\s*/\s*\w+\s*\)\s*/\s*\w+'
+
+  - id: sol-non-standard-erc20-names
+    message: "Non-standard ERC20 function names - compatibility issues with tooling"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-710: Improper Adherence to Coding Standards"
+      audit: "Sherlock Code4rena 2021 - L-04"
+    pattern-regex: 'function\s+(?:increaseApproval|decreaseApproval)\s*\('
+
+  - id: sol-strategy-trust-without-verify
+    message: "Strategy return value trusted without verification - funds may be miscounted"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+      audit: "Sherlock Code4rena 2021 - L-02/L-06"
+    pattern-regex: 'strategy\w*\.withdraw\w*\s*\([^)]*\)(?![^;]*==|require)'
+
+  - id: sol-initializer-not-protected
+    message: "Initializer function not protected - can be called multiple times"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-665: Improper Initialization"
+      audit: "Sherlock Code4rena 2021"
+    pattern-regex: 'function\s+initialize\w*\s*\([^)]*\)[^{]*(?:external|public)[^{]*\{(?![^}]*initialized|initializer)'
+
+  - id: sol-accidental-token-burn
+    message: "Token transfer to zero address - accidental burn possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      audit: "Sherlock Code4rena 2021"
+    pattern-regex: '\.transfer\s*\(\s*(?:address\s*\(\s*0\s*\)|0x0+)\s*,'
+
+  - id: sol-reentrancy-state-delete
+    message: "State deletion after external call - reentrancy can access deleted state"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-672: Operation on a Resource after Expiration"
+      audit: "Sherlock Code4rena 2022 - M-04"
+    pattern-regex: '\.(?:transfer|call|send)\s*\([^)]*\)[^;]*;[^}]*delete\s+\w+'
+
