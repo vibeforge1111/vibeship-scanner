@@ -4469,3 +4469,119 @@ rules:
       cwe: "CWE-294: Authentication Bypass by Capture-replay"
     pattern-regex: 'permit2\w*\s*\([^)]*\)(?![^}]*nonce|Nonce)'
 
+  # ============================================
+  # Code4rena Sherlock V1 Audit Gap Closures
+  # Based on 2021-07-sherlock report findings
+  # ============================================
+
+  # H-02: Assembly token extraction without calldatasize check
+  - id: sol-assembly-token-from-calldata
+    message: "Assembly extracts token/address from calldata without bounds validation - calldata injection possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-129: Improper Validation of Array Index"
+      audit: "Code4rena Sherlock 2021 - H-02"
+      references:
+        - https://code4rena.com/reports/2021-07-sherlock
+    pattern-regex: 'assembly\s*\{[^}]*(?:shr|and)\s*\([^)]*calldataload[^}]*\}(?![^}]*calldatasize)'
+
+  - id: sol-calldata-arbitrary-offset
+    message: "Calldata read at arbitrary/user-controlled offset - out-of-bounds read possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-125: Out-of-bounds Read"
+      audit: "Code4rena Sherlock 2021 - H-02"
+    pattern-regex: 'calldataload\s*\(\s*(?:add\s*\([^)]*\$|_offset|\w+Offset)'
+
+  # M-01: Fee-on-transfer token accounting
+  - id: sol-transfer-no-balance-check
+    message: "Transfer amount assumed without checking balance delta - fee-on-transfer tokens break accounting"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      audit: "Code4rena Sherlock 2021 - M-01"
+    pattern-regex: '\.(?:safeT|t)ransferFrom\s*\([^)]*\)\s*;[^}]*(?:balance|Balance)\s*(?:\+|-)=\s*(?:amount|_amount|value)'
+
+  - id: sol-no-balance-before-after
+    message: "Token transfer without before/after balance comparison - rebasing/fee tokens may transfer different amounts"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: 'function\s+(?:stake|deposit)\w*\s*\([^)]*\)[^{]*\{(?![^}]*balanceOf[^}]*balanceOf)[^}]*transferFrom'
+
+  # M-03: Diamond proxy upgrade without safeguards
+  - id: sol-diamond-upgrade-no-timelock
+    message: "Diamond upgrade function without timelock - instant rug pull possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      audit: "Code4rena Sherlock 2021 - M-03"
+    pattern-regex: 'function\s+(?:updateSolution|diamondCut|upgradeTo)\s*\([^)]*\)[^{]*\{(?![^}]*timelock|Timelock|delay|DELAY)'
+
+  - id: sol-proxy-upgrade-no-delay
+    message: "Proxy upgrade executable immediately - malicious upgrade can drain funds before users react"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    pattern-regex: 'function\s+upgrade\w*\s*\(\s*address\s+(?:new|_new)?\w*[Ii]mplementation[^)]*\)[^{]*external[^{]*\{(?![^}]*pendingImplementation|delay)'
+
+  # M-04: First harvester gets all yield
+  - id: sol-yield-first-come-first-served
+    message: "Yield distribution favors first harvester - unfair distribution after large payouts"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution"
+      audit: "Code4rena Sherlock 2021 - M-04"
+    pattern-regex: 'function\s+(?:harvest|claim|getYield|doYield)\w*\s*\([^)]*\)[^{]*\{[^}]*unallocated\w*\s*[-=]'
+
+  - id: sol-reward-drain-no-snapshot
+    message: "Reward claim without snapshot - early claimers can drain pool before others"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution"
+    pattern-regex: 'function\s+claim\w*\s*\([^)]*\)[^{]*\{[^}]*reward\w*\s*=\s*[^;]*(?:pending|available|total)[^}]*transfer'
+
+  # Additional patterns for comprehensive coverage
+  - id: sol-diamond-facet-collision
+    message: "Diamond facet function may collide with existing selector - upgrade can break functionality"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-694: Use of Multiple Resources with Duplicate Identifier"
+    pattern-regex: 'function\s+diamondCut\s*\([^)]*\)[^{]*\{(?![^}]*selectorCollision|existingFacet)'
+
+  - id: sol-strategy-balance-trusted
+    message: "External strategy balance trusted without verification - malicious strategy can report inflated balance"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+    pattern-regex: 'strategy\w*\.(?:balanceOf|balance|totalAssets)\s*\(\s*\)(?![^;]*require|verify|assert)'
+
+  - id: sol-premium-accrual-without-balance
+    message: "Premium/interest accrues without checking payer balance - accounting drift over time"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: '(?:premium|interest|yield)\w*\s*\+=\s*[^;]*(?:block\.timestamp|now)\s*-\s*last'
+
