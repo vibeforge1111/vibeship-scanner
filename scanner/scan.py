@@ -146,6 +146,13 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
             except Exception as e:
                 print(f"[Clone] Submodule init error: {e} (continuing without)", file=sys.stderr, flush=True)
 
+            # NOTE: Opengrep has built-in default exclusions (test/, lib/, vendor/)
+            # that cannot be disabled via .semgrepignore. Large test repos like DeFiHackLabs
+            # have 700+ files in test/ directories which would timeout if scanned.
+            # The current --include patterns scan files outside default exclusions.
+            # This is a reasonable trade-off: we scan contract code, skip test files.
+            pass
+
         return success
     except subprocess.TimeoutExpired:
         print("Clone timeout", file=sys.stderr)
