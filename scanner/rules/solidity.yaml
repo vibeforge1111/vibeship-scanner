@@ -1812,3 +1812,44 @@ rules:
       - pattern: blockhash($BLOCK)
       - pattern: block.blockhash($BLOCK)
 
+  - id: sol-fuzzy-identity-byte-pattern
+    message: "Address validation using byte pattern matching - attacker can deploy contracts until address matches (FuzzyIdentity pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-290: Authentication Bypass by Spoofing"
+      references:
+        - https://capturetheether.com/challenges/accounts/fuzzy-identity/
+    pattern-regex: '(bytes20|bytes32)\s+\w+\s*=\s*(bytes20|bytes32)\s*\(\s*(uint160|uint256|address)\s*\('
+
+  - id: sol-public-key-hash-auth
+    message: "Authentication based on public key hash - public keys can be recovered from any blockchain transaction (PublicKey pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      references:
+        - https://capturetheether.com/challenges/accounts/public-key/
+    pattern-regex: 'keccak256\s*\(\s*abi\.(encodePacked|encode)\s*\([^)]*publicKey'
+
+  - id: sol-ecdsa-nonce-reuse-risk
+    message: "ECDSA signature validation in critical path - if signer reuses nonce k, private key is recoverable (AccountTakeover pattern)"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-323: Reusing a Nonce"
+      references:
+        - https://capturetheether.com/challenges/accounts/account-takeover/
+    patterns:
+      - pattern-inside: |
+          function $FUNC(...) external {
+            ...
+          }
+      - pattern: ecrecover($HASH, $V, $R, $S)
+      - pattern-not-inside: |
+          nonces[$USER]++;
+          ...
+
