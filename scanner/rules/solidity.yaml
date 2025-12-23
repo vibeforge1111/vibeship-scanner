@@ -1305,3 +1305,120 @@ rules:
           require(block.chainid == ..., ...);
           ...
 
+  # ============================================
+  # DeFi: Additional DVD Patterns for 100% Coverage
+  # ============================================
+
+  - id: sol-transfer-in-loop-before-state-update
+    message: "Token transfer inside loop before state update - multiple claims possible before validation (The Rewarder pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution Using Shared Resource"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/the-rewarder/
+    patterns:
+      - pattern-inside: |
+          for (...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: $TOKEN.transfer($TO, $AMT)
+          - pattern: $TOKEN.safeTransfer($TO, $AMT)
+          - pattern: SafeTransferLib.safeTransfer($TOKEN, $TO, $AMT)
+
+  - id: sol-merkle-leaf-missing-fields
+    message: "Merkle leaf hash missing critical fields - proof may be reusable across contexts (The Rewarder pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/the-rewarder/
+    patterns:
+      - pattern: keccak256(abi.encodePacked(msg.sender, $AMOUNT))
+      - pattern-inside: |
+          function $FUNC(...) {
+            ...
+            MerkleProof.verify(...);
+            ...
+          }
+
+  - id: sol-oracle-single-source
+    message: "Oracle with MIN_SOURCES = 1 - single point of failure, median easily manipulated (Compromised pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-693: Protection Mechanism Failure"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/compromised/
+    pattern-regex: 'MIN_SOURCES\s*=\s*1\s*;'
+
+  - id: sol-oracle-no-price-deviation-check
+    message: "Oracle price update without deviation check - prices can change arbitrarily (Compromised pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/compromised/
+    patterns:
+      - pattern-inside: |
+          function $FUNC(..., uint256 $PRICE) external {
+            ...
+          }
+      - pattern-either:
+          - pattern: _pricesBySource[$SRC][$SYM] = $PRICE
+          - pattern: prices[$SYM] = $PRICE
+          - pattern: $MAP[$KEY] = $PRICE
+      - pattern-not-inside: |
+          require($PRICE <= $OLD * ..., ...);
+          ...
+      - pattern-not-inside: |
+          require($PRICE >= $OLD / ..., ...);
+          ...
+
+  - id: sol-trusted-role-price-setter
+    message: "Price oracle relies on trusted roles without safeguards - compromised keys can manipulate prices"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-269: Improper Privilege Management"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/compromised/
+    patterns:
+      - pattern-inside: |
+          function postPrice(...) external onlyRole($ROLE) {
+            ...
+          }
+      - pattern-not-inside: |
+          require(block.timestamp > lastUpdate + ..., ...);
+          ...
+
+  - id: sol-claim-bitmap-after-transfer
+    message: "Claim bitmap updated after token transfer - reentrancy can bypass claim tracking"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+    patterns:
+      - pattern: |
+          $TOKEN.transfer(...);
+          ...
+          $CLAIMS[$USER] = ...;
+
+  - id: sol-median-few-sources
+    message: "Median price calculated from small source set - vulnerable to collusion or compromise"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-693: Protection Mechanism Failure"
+    pattern-regex: 'getMedianPrice|computeMedian|_computeMedianPrice'
+
