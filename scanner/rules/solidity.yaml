@@ -3422,3 +3422,115 @@ rules:
       ctf: "Paradigm CTF 2021 - Upgrade (FiatTokenV3)"
     pattern-regex: 'function\s+lend\s*\([^)]*address\s+to[^)]*uint\s+amount[^)]*\)[^{]*\{[^}]*_transfer\s*\(\s*msg\.sender\s*,\s*to\s*,\s*amount'
 
+  # Paradigm CTF 2022 Rules
+
+  - id: sol-abi-encodepacked-uint96-collision
+    message: "abi.encodePacked with uint96 can cause hash collisions - use abi.encode instead"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-328: Reversible One-Way Hash"
+      ctf: "Paradigm CTF 2022 - MerkleDrop"
+    pattern-regex: 'abi\.encodePacked\s*\([^)]*uint96[^)]*\)'
+
+  - id: sol-share-calculation-uses-balanceof
+    message: "Share calculation using balanceOf(this) - vulnerable to donation/flashloan manipulation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      ctf: "Paradigm CTF 2022 - HintFinance"
+    pattern-regex: 'shares\s*=\s*[^;]*\*\s*totalSupply\s*/\s*bal'
+
+  - id: sol-deposit-share-inflation
+    message: "Deposit calculates shares from balanceOf - first depositor inflation attack possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      ctf: "Paradigm CTF 2022 - HintFinance"
+    pattern-regex: 'function\s+deposit[^{]*\{[^}]*balanceOf\s*\([^)]*address\s*\(\s*this\s*\)[^}]*shares\s*='
+
+  - id: sol-unlimited-approval-type-max
+    message: "Unlimited token approval using type(uint256).max - consider limited approvals"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-285: Improper Authorization"
+      ctf: "Paradigm CTF 2022 - Rescue"
+    pattern-regex: '\.approve\s*\([^,]+,\s*type\s*\(\s*uint256\s*\)\s*\.max\s*\)'
+
+  - id: sol-swap-zero-slippage
+    message: "Swap with zero minAmountOut - vulnerable to sandwich/MEV attacks"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      ctf: "Paradigm CTF 2022 - Rescue"
+    pattern-regex: 'swapExactTokensForTokens\s*\([^,]+,\s*0\s*,'
+
+  - id: sol-arbitrary-memory-write-assembly
+    message: "mstore with user-controlled address - arbitrary memory corruption"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-787: Out-of-bounds Write"
+      ctf: "Paradigm CTF 2022 - Lockbox2"
+    pattern-regex: 'assembly\s*\{[^}]*mstore\s*\(\s*[a-z]\s*,'
+
+  - id: sol-tx-origin-codehash-comparison
+    message: "Comparing tx.origin to codehash - possible CREATE2 address manipulation"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-697: Incorrect Comparison"
+      ctf: "Paradigm CTF 2022 - Lockbox2"
+    pattern-regex: 'tx\.origin\s*==\s*[^;]*codehash'
+
+  - id: sol-create-then-delegatecall
+    message: "Contract creates bytecode then delegatecalls - arbitrary code execution risk"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-94: Code Injection"
+      ctf: "Paradigm CTF 2022 - JIT"
+    pattern-regex: 'create\s*\([^)]*\)[^}]*\.delegatecall'
+
+  - id: sol-receive-without-withdraw
+    message: "Contract has receive() but may lack withdrawal function - funds can get stuck"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      ctf: "Paradigm CTF 2022 - JIT"
+    pattern-regex: 'receive\s*\(\s*\)\s*external\s*payable\s*\{\s*\}'
+
+  - id: sol-flashloan-callback-reentrancy
+    message: "Flashloan with callback before state finalization - potential reentrancy"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      ctf: "Paradigm CTF 2022 - HintFinance"
+    pattern-regex: 'function\s+flashloan[^{]*\{[^}]*\.transfer\s*\([^)]*\)[^}]*\w+Receiver\s*\('
+
+  - id: sol-hardcoded-random-number
+    message: "Function returns hardcoded 'random' value - predictable output"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+      ctf: "Paradigm CTF 2022 - Random"
+    pattern-regex: 'function\s+_?get\w*Random\w*\s*\([^)]*\)[^{]*\{[^}]*return\s+\d+\s*;'
+
