@@ -3604,3 +3604,53 @@ rules:
       ctf: "Paradigm CTF 2022 - JIT"
     pattern-regex: 'assembly\s*\{[^}]*create\s*\([^}]*\}[^}]*\.delegatecall'
 
+  - id: sol-erc1271-arbitrary-signer
+    message: "ERC1271 signature check on arbitrary address - precompile contracts can return valid signatures"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-290: Authentication Bypass by Spoofing"
+      ctf: "Paradigm CTF 2022 - Vanity"
+    pattern-regex: 'signer\.staticcall\s*\([^)]*isValidSignature'
+
+  - id: sol-isvalidsignature-caller-dependent
+    message: "isValidSignature returns different values based on msg.sender - signature replay across contracts"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-290: Authentication Bypass by Spoofing"
+      ctf: "Paradigm CTF 2022 - Stealing-sats"
+    pattern-regex: 'function\s+isValidSignature\s*\([^)]*\)[^{]*\{[^}]*msg\.sender\s*=='
+
+  - id: sol-precompile-address-call
+    message: "Call to low address (precompile) - addresses 0x01-0x09 are precompiled contracts"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-749: Exposed Dangerous Method or Function"
+      ctf: "Paradigm CTF 2022 - Vanity"
+    pattern-regex: 'address\s*\(\s*0x0[1-9]\s*\)'
+
+  - id: sol-signature-without-nonce
+    message: "Signature verification without nonce or unique identifier - replay attack possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-294: Authentication Bypass by Capture-replay"
+      ctf: "Paradigm CTF 2022"
+    pattern-regex: 'ecrecover\s*\([^)]*keccak256\s*\([^)]*abi\.encode(Packed)?\s*\([^)]*\)[^)]*\)'
+
+  - id: sol-fillorkillorder-external
+    message: "0x Protocol fillOrKillOrder call - verify order parameters and signatures carefully"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+      ctf: "Paradigm CTF 2022 - Stealing-sats"
+    pattern-regex: 'fillOrKillOrder\s*\('
+
