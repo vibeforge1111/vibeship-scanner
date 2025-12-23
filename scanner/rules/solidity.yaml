@@ -1414,17 +1414,7 @@ rules:
       cwe: "CWE-248: Uncaught Exception"
       references:
         - https://ethernaut.openzeppelin.com/level/9
-    pattern-either:
-      - pattern: |
-          receive() external payable {
-            require(...);
-            ...
-          }
-      - pattern: |
-          fallback() external payable {
-            require(...);
-            ...
-          }
+    pattern-regex: '(receive|fallback)\s*\(\s*\)\s+external\s+payable\s*\{[^}]*require\s*\('
 
   - id: sol-private-not-hidden
     message: "Private variables are readable on-chain via eth_getStorageAt - do not store secrets (Vault pattern)"
@@ -1543,12 +1533,7 @@ rules:
       cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
       references:
         - https://ethernaut.openzeppelin.com/level/6
-    patterns:
-      - pattern-inside: |
-          fallback() external {
-            ...
-          }
-      - pattern: $ADDR.delegatecall(msg.data)
+    pattern-regex: 'fallback\s*\(\s*\)\s+external[^{]*\{[^}]*\.delegatecall\s*\(\s*msg\.data\s*\)'
 
   - id: sol-transfer-locktime-bypass
     message: "transfer() locked but transferFrom() may not be - check all ERC20 transfer methods (NaughtCoin pattern)"
@@ -1559,17 +1544,7 @@ rules:
       cwe: "CWE-269: Improper Access Control"
       references:
         - https://ethernaut.openzeppelin.com/level/15
-    patterns:
-      - pattern-inside: |
-          function transfer(...) ... override {
-            require(...);
-            ...
-          }
-      - pattern-not-inside: |
-          function transferFrom(...) ... override {
-            require(...);
-            ...
-          }
+    pattern-regex: 'function\s+transfer\s*\([^)]*\)[^{]*override[^{]*\{[^}]*require\s*\([^)]*lockTime'
 
   - id: sol-dex-token-validation
     message: "DEX swap accepts any token address - attacker can use fake tokens to drain real ones (DexTwo pattern)"
@@ -1580,14 +1555,7 @@ rules:
       cwe: "CWE-20: Improper Input Validation"
       references:
         - https://ethernaut.openzeppelin.com/level/23
-    patterns:
-      - pattern-inside: |
-          function swap(address $FROM, address $TO, ...) ... {
-            ...
-          }
-      - pattern-not-inside: |
-          require($FROM == token1 || $FROM == token2, ...);
-          ...
+    pattern-regex: 'function\s+swap\s*\(\s*address\s+\w+\s*,\s*address\s+\w+[^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*token[12])'
 
   - id: sol-integer-underflow-pre-080
     message: "Unchecked subtraction can underflow in Solidity <0.8.0 - use SafeMath (Token pattern)"
@@ -1639,13 +1607,103 @@ rules:
       cwe: "CWE-20: Improper Input Validation"
       references:
         - https://ethernaut.openzeppelin.com/level/30
-    patterns:
-      - pattern-inside: |
-          function $FUNC($TYPE $PARAM) ... {
-            ...
-          }
-      - pattern: calldataload(...)
-      - metavariable-regex:
-          metavariable: $TYPE
-          regex: '^uint8$|^uint16$|^uint24$|^uint32$|^int8$|^int16$|^int24$|^int32$'
+    pattern-regex: 'function\s+\w+\s*\(\s*(uint8|uint16|uint24|uint32|int8|int16|int24|int32)\s+\w+[^)]*\)[^{]*\{[^}]*calldataload\s*\('
+
+  # ============================================
+  # MagicNumber Pattern (Level 18)
+  # ============================================
+
+  - id: sol-raw-bytecode-create
+    message: "Raw bytecode deployment via create/create2 - verify bytecode source and intent (MagicNumber pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code"
+      references:
+        - https://ethernaut.openzeppelin.com/level/18
+    pattern-either:
+      - pattern: create($VALUE, $OFFSET, $SIZE)
+      - pattern: create2($VALUE, $OFFSET, $SIZE, $SALT)
+
+  - id: sol-assembly-codecopy
+    message: "Assembly codecopy can deploy arbitrary bytecode - ensure code source is trusted (MagicNumber pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code"
+      references:
+        - https://ethernaut.openzeppelin.com/level/18
+    pattern: codecopy($DEST, $OFFSET, $SIZE)
+
+  - id: sol-extcodesize-check
+    message: "extcodesize check can be bypassed during constructor - contracts have size 0 while being created"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-367: Time-of-check Time-of-use (TOCTOU) Race Condition"
+      references:
+        - https://ethernaut.openzeppelin.com/level/18
+    pattern: extcodesize($ADDR)
+
+  # ============================================
+  # DoubleEntryPoint Pattern (Level 26)
+  # ============================================
+
+  - id: sol-delegate-transfer-function
+    message: "delegateTransfer function enables proxy attacks - callers may unknowingly trigger different token transfers"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-441: Unintended Proxy or Intermediary"
+      references:
+        - https://ethernaut.openzeppelin.com/level/26
+    pattern-regex: 'function\s+delegateTransfer\s*\([^)]*\)'
+
+  - id: sol-sweep-token-no-delegation-check
+    message: "Sweep function doesn't check for token delegation - tokens may delegate to protected underlying (DoubleEntryPoint pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-441: Unintended Proxy or Intermediary"
+      references:
+        - https://ethernaut.openzeppelin.com/level/26
+    pattern-regex: 'function\s+(sweepToken|sweep)\s*\([^)]*\)[^{]*\{[^}]*\.transfer\s*\('
+
+  - id: sol-transfer-delegates-to-other
+    message: "Token transfer function delegates to another contract - may cause unexpected state changes in caller"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-441: Unintended Proxy or Intermediary"
+    pattern-regex: 'function\s+transfer\s*\([^)]*\)[^{]*\{[^}]*\.delegateTransfer\s*\('
+
+  - id: sol-token-identity-check-bypass
+    message: "Token identity check may be bypassed via delegation - compare actual underlying, not wrapper address"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-290: Authentication Bypass by Spoofing"
+      references:
+        - https://ethernaut.openzeppelin.com/level/26
+    pattern-regex: 'require\s*\(\s*\w+\s*!=\s*(underlying|token)\s*,'
+
+  - id: sol-forta-detection-bot
+    message: "Forta detection bot pattern - monitors for suspicious transactions (DoubleEntryPoint defense)"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-778: Insufficient Logging"
+      references:
+        - https://ethernaut.openzeppelin.com/level/26
+    pattern-either:
+      - pattern-regex: 'function\s+handleTransaction\s*\([^)]*\)[^{]*\{[^}]*raiseAlert\s*\('
+      - pattern: IDetectionBot($BOT).handleTransaction(...)
 
