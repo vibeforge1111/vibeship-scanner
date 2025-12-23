@@ -3362,3 +3362,63 @@ rules:
       ctf: "Paradigm CTF 2021 - BabySandbox"
     pattern-regex: 'eq\s*\(\s*caller\s*\(\s*\)\s*,\s*address\s*\(\s*\)\s*\)[^}]*delegatecall'
 
+  - id: sol-unauthorized-transfer-reclaim
+    message: "Function transfers tokens FROM another address without their approval - unauthorized fund movement"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      ctf: "Paradigm CTF 2021 - Upgrade (FiatTokenV3)"
+    pattern-regex: 'function\s+reclaim\s*\([^)]*address\s+from[^)]*\)[^{]*\{[^}]*_transfer\s*\(\s*from\s*,'
+
+  - id: sol-assembly-storage-slot-overflow
+    message: "sstore with add(tokenId, N) can overflow to slot 0 (owner) if tokenId is MAX_UINT - N + 1"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow or Wraparound"
+      ctf: "Paradigm CTF 2021 - Market (EternalStorage)"
+    pattern-regex: 'sstore\s*\(\s*add\s*\(\s*(tokenId|id)\s*,\s*[0-9]+\s*\)\s*,'
+
+  - id: sol-transfer-before-state-update-reentrancy
+    message: "ETH transfer via .transfer() before state update - potential reentrancy via fallback"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      ctf: "Paradigm CTF 2021 - Market"
+    pattern-regex: 'msg\.sender\.transfer\s*\([^)]+\)\s*;[^}]*\w+\s*='
+
+  - id: sol-extcodecopy-arbitrary-address
+    message: "extcodecopy from user-controlled address - can read arbitrary contract bytecode"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-200: Information Exposure"
+      ctf: "Paradigm CTF 2021 - Market"
+    pattern-regex: 'extcodecopy\s*\(\s*\w+\s*,'
+
+  - id: sol-two-step-ownership-no-zero-check
+    message: "acceptOwnership without checking new owner is non-zero - ownership can be renounced accidentally"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      ctf: "Paradigm CTF 2021 - Market (EternalStorage)"
+    pattern-regex: 'function\s+acceptOwnership\s*\(\s*\)[^{]*\{[^}]*sstore\s*\(\s*0x00\s*,\s*sload\s*\(\s*0x01'
+
+  - id: sol-loan-without-collateral-check
+    message: "Lending function without collateral or balance verification - uncollateralized loan risk"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      ctf: "Paradigm CTF 2021 - Upgrade (FiatTokenV3)"
+    pattern-regex: 'function\s+lend\s*\([^)]*address\s+to[^)]*uint\s+amount[^)]*\)[^{]*\{[^}]*_transfer\s*\(\s*msg\.sender\s*,\s*to\s*,\s*amount'
+
