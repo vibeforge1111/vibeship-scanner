@@ -3302,3 +3302,63 @@ rules:
       ctf: "Paradigm CTF 2021 - Bank/Vault"
     pattern-regex: '(token|tok)\.(transfer|safeTransfer)\s*\([^)]*\)\s*;[\s\n]*\w+\s*\[\s*\w+\s*\]\s*-='
 
+  - id: sol-wrong-variable-in-mapping-assignment
+    message: "Mapping assignment uses different variable than function parameter - possible copy-paste bug"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-480: Use of Incorrect Operator"
+      ctf: "Paradigm CTF 2021 - Secure (Wallet)"
+    pattern-regex: 'function\s+(add|remove)\w*\s*\(\s*address\s+(\w+)\s*\)[^{]*\{[^}]*_\w+\s*\[\s*owner\s*\]\s*='
+
+  - id: sol-overflow-addition-check
+    message: "Using a + b < a for overflow check - use SafeMath or Solidity 0.8+ instead"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow or Wraparound"
+      ctf: "Paradigm CTF 2021 - Lockbox Stage2"
+    pattern-regex: 'require\s*\([^)]*\+[^)]*<[^)]*,'
+
+  - id: sol-staticcall-then-call-bypass
+    message: "staticcall followed by regular call on same target - state changes on second call bypass sandbox"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-693: Protection Mechanism Failure"
+      ctf: "Paradigm CTF 2021 - BabySandbox"
+    pattern-regex: 'staticcall\s*\([^)]*address\s*\(\s*\)[^)]*\)[^}]*call\s*\([^)]*address\s*\(\s*\)'
+
+  - id: sol-blockhash-previous-block
+    message: "blockhash(block.number - 1) used for randomness - miners can manipulate"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+      ctf: "Paradigm CTF 2021 - Lockbox"
+    pattern-regex: 'blockhash\s*\(\s*block\.number\s*-\s*1\s*\)'
+
+  - id: sol-ecrecover-fixed-address-compare
+    message: "ecrecover compared to hardcoded address without zero check - invalid sigs return address(0)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      ctf: "Paradigm CTF 2021 - Lockbox Stage1"
+    pattern-regex: 'ecrecover\s*\([^)]*\)\s*==\s*0x[0-9a-fA-F]{40}'
+
+  - id: sol-self-delegatecall-on-caller-check
+    message: "Delegatecall triggered when caller equals address - privilege escalation via self-call"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-269: Improper Privilege Management"
+      ctf: "Paradigm CTF 2021 - BabySandbox"
+    pattern-regex: 'eq\s*\(\s*caller\s*\(\s*\)\s*,\s*address\s*\(\s*\)\s*\)[^}]*delegatecall'
+
