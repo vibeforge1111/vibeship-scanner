@@ -4220,3 +4220,252 @@ rules:
       audit: "Sherlock Code4rena 2022 - M-04"
     pattern-regex: '\.(?:transfer|call|send)\s*\([^)]*\)[^;]*;[^}]*delete\s+\w+'
 
+  # ============================================
+  # Advanced DeFi Vulnerability Patterns (2024-2025)
+  # Based on Sherlock/Immunefi Audit Research
+  # ============================================
+
+  # CRITICAL: Unchecked Low-Level Call Return Value ($69M losses in 2024)
+  - id: sol-unchecked-call-return
+    message: "Low-level call without checking return value - silent failure possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+      swc: "SWC-104"
+      references:
+        - https://swcregistry.io/docs/SWC-104/
+        - https://blocksecteam.medium.com/li-fi-attack
+    pattern-regex: '\.call\s*\{[^}]*\}\s*\([^)]*\)\s*;'
+
+  - id: sol-unchecked-send-return
+    message: "send() return value not checked - Ether may be stuck if recipient reverts"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+      swc: "SWC-104"
+    pattern-regex: '\.send\s*\([^)]*\)\s*;(?!\s*//)'
+
+  - id: sol-call-success-not-required
+    message: "Call success variable declared but never checked - funds may be lost"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+      swc: "SWC-104"
+    pattern-regex: '\(bool\s+(?:success|ok)\s*,.*?\)\s*=.*?\.call[^;]*;(?![^}]*require\s*\(\s*(?:success|ok))'
+
+  # CRITICAL: ERC4626 Vault Inflation Attack
+  - id: sol-erc4626-no-virtual-offset
+    message: "ERC4626 convertToShares without virtual offset - vulnerable to first depositor inflation attack"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://www.euler.finance/blog/exchange-rate-manipulation-in-erc4626-vaults
+        - https://docs.openzeppelin.com/contracts/5.x/erc4626#inflation-attack
+    pattern-regex: 'function\s+convertToShares\s*\([^)]*\)[^{]*\{[^}]*totalSupply\s*\(\s*\)\s*/\s*totalAssets'
+
+  - id: sol-vault-share-ratio-manipulation
+    message: "Vault share calculation without virtual assets - exchange rate can be manipulated via donation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: 'assets\s*\*\s*totalSupply\s*\(\s*\)\s*/\s*totalAssets\s*\(\s*\)(?![^;]*\+\s*1)'
+
+  - id: sol-erc4626-missing-decimal-offset
+    message: "ERC4626 vault missing _decimalsOffset() - vulnerable to precision loss attacks"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: 'contract\s+\w+\s+is\s+[^{]*ERC4626[^{]*\{(?![^}]*_decimalsOffset)'
+
+  # HIGH: MEV/Sandwich Attack Patterns
+  - id: sol-mev-timestamp-deadline
+    message: "block.timestamp used as swap deadline - MEV bots can delay and sandwich the transaction"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution"
+      references:
+        - https://arxiv.org/html/2511.15245v1
+    pattern-regex: '(?:swap|exchange)\w*\s*\([^)]*block\.timestamp\s*[,\)]'
+
+  - id: sol-swap-no-slippage-protection
+    message: "DEX swap with amountOutMin of 0 - vulnerable to sandwich attacks"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution"
+    pattern-regex: 'swap\w*\s*\([^)]*,\s*0\s*,.*?address\s*\(\s*this\s*\)'
+
+  - id: sol-frontrunnable-approval
+    message: "ERC20 approve without setting to 0 first - frontrunning double-spend possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution"
+      references:
+        - https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+    pattern-regex: '\.approve\s*\(\s*\w+\s*,\s*(?!0\s*\))[^)]+\)(?![^;]*approve\s*\([^,]*,\s*0)'
+
+  # HIGH: ERC20 Return Value Issues
+  - id: sol-erc20-approve-no-return-check
+    message: "ERC20 approve() return value not checked - some tokens return false instead of revert"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+      references:
+        - https://github.com/d-xo/weird-erc20#no-revert-on-failure
+    pattern-regex: '(?<![Ss]afe)\w+\.approve\s*\([^)]*\)\s*;(?!\s*//)'
+
+  - id: sol-erc20-transfer-no-return-check
+    message: "ERC20 transfer() return value not checked - tokens like USDT don't return bool"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+    pattern-regex: '(?<![Ss]afe)\w+\.transfer\s*\(\s*[^,]+\s*,\s*[^)]+\)\s*;(?!\s*//)'
+
+  # HIGH: Cross-Function Reentrancy Patterns
+  - id: sol-cross-function-state-read
+    message: "Balance read after external call in different function - cross-function reentrancy possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-662: Improper Synchronization"
+      references:
+        - https://medium.com/immunefi/the-ultimate-guide-to-reentrancy
+    pattern-regex: 'function\s+\w+\s*\([^)]*\)[^{]*\{[^}]*\.call[^}]*\}[^}]*function\s+\w+[^{]*\{[^}]*balances?\s*\['
+
+  - id: sol-shared-state-external-call
+    message: "External call with shared state variable - reentrancy between functions possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-662: Improper Synchronization"
+    pattern-regex: '(?:mapping|uint256|address)\s+(?:public|internal|private)\s+(\w+)[^;]*;[^}]*\.call[^}]*\1\s*[=\[\+\-]'
+
+  # HIGH: Griefing Attack Patterns
+  - id: sol-gas-griefing-subcall
+    message: "External call with forwarded gas - subcalls may be gas-griefed (63/64 rule)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      references:
+        - https://dedaub.com/blog/mass-disclosure-of-griefing-vulnerabilities/
+    pattern-regex: '\.call\s*\{[^}]*gas\s*:\s*gasleft\s*\(\s*\)'
+
+  - id: sol-denial-of-service-loop-transfer
+    message: "Loop with external transfers - one failing recipient blocks all others"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+    pattern-regex: 'for\s*\([^)]*\)\s*\{[^}]*\.(?:transfer|call|send)\s*\('
+
+  - id: sol-force-revert-griefing
+    message: "require() in withdrawal path - griefing possible if condition can be manipulated"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+    pattern-regex: 'function\s+withdraw\w*\s*\([^)]*\)[^{]*\{[^}]*require\s*\([^)]*balance'
+
+  # HIGH: Price Oracle Manipulation
+  - id: sol-spot-price-oracle
+    message: "Spot price used directly - vulnerable to flash loan manipulation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-807: Reliance on Untrusted Inputs"
+      references:
+        - https://www.certik.com/resources/blog/oracle-wars
+    pattern-regex: '(?:getReserves|balanceOf|totalSupply)\s*\([^)]*\)[^;]*[/\*][^;]*(?:price|value|worth)'
+
+  - id: sol-twap-too-short
+    message: "TWAP period less than 30 minutes - vulnerable to multi-block manipulation"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-807: Reliance on Untrusted Inputs"
+    pattern-regex: 'twap\w*\s*[=:]\s*[0-9]+(?:\s*\*\s*)?(?:minutes?|seconds?)?(?:[^;]*[<]\s*(?:30|1800)|\s*(?:[0-9]{1,3}|1[0-7][0-9]{2})\s*;)'
+
+  - id: sol-chainlink-stale-price
+    message: "Chainlink oracle without staleness check - stale prices can cause liquidations"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-672: Operation on Resource after Expiration"
+    pattern-regex: 'latestRoundData\s*\(\s*\)[^;]*;(?![^}]*updatedAt|heartbeat|staleness)'
+
+  - id: sol-oracle-no-sequencer-check
+    message: "L2 oracle without sequencer uptime check - prices may be stale after sequencer downtime"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-672: Operation on Resource after Expiration"
+    pattern-regex: 'latestRoundData\s*\(\s*\)(?![^}]*sequencer|Sequencer)'
+
+  # MEDIUM: Additional Audit Patterns
+  - id: sol-arbitrary-delegatecall-data
+    message: "Delegatecall with user-controlled data - storage slot collision possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Code Generation"
+    pattern-regex: '\.delegatecall\s*\(\s*(?:abi\.encode|data|_data|callData|payload)'
+
+  - id: sol-memory-vs-storage-loop
+    message: "Storage variable modified in loop - should cache in memory for gas savings"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: gas-optimization
+    pattern-regex: 'for\s*\([^)]*;\s*\w+\s*<\s*\w+\.length\s*;[^)]*\)[^{]*\{[^}]*\w+\s*\[[^\]]+\]\s*[-+\*]?='
+
+  - id: sol-signature-malleability
+    message: "ECDSA signature without s-value check - signature malleability possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+    pattern-regex: 'ecrecover\s*\([^)]*\)(?![^;]*s\s*[<>])'
+
+  - id: sol-permit2-missing-nonce
+    message: "Permit2 without nonce tracking - signature replay possible across chains"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-294: Authentication Bypass by Capture-replay"
+    pattern-regex: 'permit2\w*\s*\([^)]*\)(?![^}]*nonce|Nonce)'
+
