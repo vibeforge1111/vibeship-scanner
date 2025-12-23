@@ -2100,3 +2100,30 @@ rules:
         - https://github.com/crytic/not-so-smart-contracts/tree/master/forced_ether_reception
     pattern-regex: 'require\s*\(\s*(this\.balance|address\s*\(\s*this\s*\)\.balance)\s*==\s*\d+'
 
+  # ============================================
+  # Short Address Attack Mitigation
+  # ============================================
+
+  - id: sol-short-address-no-payload-check
+    message: "ERC20 transfer without msg.data.length validation - vulnerable to short address attack padding"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://blog.sigmaprime.io/solidity-security.html#short-address
+        - https://vessenes.com/the-erc20-short-address-attack-explained/
+    pattern-regex: 'function\s+transfer\s*\(\s*address\s+\w+\s*,\s*uint\d*\s+\w+\s*\)[^{]*\{(?![^}]*msg\.data\.length)'
+
+  - id: sol-erc20-missing-payload-modifier
+    message: "ERC20 transferFrom without payload size validation - consider adding onlyPayloadSize modifier"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://blog.sigmaprime.io/solidity-security.html#short-address
+    pattern-regex: 'function\s+transferFrom\s*\(\s*address[^)]+\)[^{]*\{(?![^}]*msg\.data\.length)'
+
