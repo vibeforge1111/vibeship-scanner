@@ -3723,3 +3723,228 @@ rules:
       ctf: "Paradigm CTF 2022"
     pattern-regex: 'function\s+isSolved\s*\([^)]*\)[^{]*\{[^}]*balanceOf'
 
+  # ============================================
+  # Paradigm CTF 2021 Patterns
+  # ============================================
+
+  # BABYSANDBOX - Staticcall escape via selfdestruct
+  - id: sol-staticcall-then-call
+    message: "Staticcall validation followed by call - can be bypassed via selfdestruct in fallback"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-863: Incorrect Authorization"
+      ctf: "Paradigm CTF 2021 - BabySandbox"
+    pattern-regex: 'staticcall\s*\([^)]+\)[^;]*;[^}]*\.call'
+
+  - id: sol-selfdestruct-in-fallback
+    message: "Selfdestruct in fallback/receive - can bypass staticcall checks or force ETH"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-749: Exposed Dangerous Method or Function"
+      ctf: "Paradigm CTF 2021 - BabySandbox/Bouncer"
+    pattern-regex: '(?:fallback|receive)\s*\([^)]*\)[^{]*\{[^}]*selfdestruct'
+
+  # BOUNCER - Force-send ETH via selfdestruct
+  - id: sol-eth-balance-accounting
+    message: "ETH balance check without accounting for selfdestruct donations - can be manipulated"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      ctf: "Paradigm CTF 2021 - Bouncer"
+    pattern-regex: 'address\s*\(\s*this\s*\)\s*\.balance\s*[><=]'
+
+  # BROKER/FARMER - Spot price oracle manipulation
+  - id: sol-uniswap-getreserves-oracle
+    message: "Using Uniswap getReserves() as price oracle - vulnerable to flash loan manipulation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-807: Reliance on Untrusted Inputs in a Security Decision"
+      ctf: "Paradigm CTF 2021 - Broker/Farmer"
+    pattern-regex: '\.getReserves\s*\(\s*\)[^;]*(?:reserve|price|rate|ratio)'
+
+  - id: sol-spot-price-oracle
+    message: "Spot price from DEX reserves - use TWAP or Chainlink for secure pricing"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-807: Reliance on Untrusted Inputs in a Security Decision"
+      ctf: "Paradigm CTF 2021 - Broker"
+    pattern-regex: 'reserve\d?\s*\*\s*\d+\s*/\s*reserve\d?'
+
+  # BANK - Storage corruption via nested mappings
+  - id: sol-nested-mapping-in-array
+    message: "Nested mapping inside array struct - potential storage collision vulnerability"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-787: Out-of-bounds Write"
+      ctf: "Paradigm CTF 2021 - Bank"
+    pattern-regex: 'struct\s+\w+\s*\{[^}]*mapping\s*\([^)]+\)[^}]*\}[^;]*\[\s*\]'
+
+  - id: sol-reentrancy-in-view
+    message: "External call in view/pure function - can enable reentrancy during reads"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      ctf: "Paradigm CTF 2021 - Bank"
+    pattern-regex: 'function\s+\w+\s*\([^)]*\)[^{]*(?:view|pure)[^{]*\{[^}]*\.call'
+
+  # JOP - Function pointer hijacking
+  - id: sol-sstore-function-pointer
+    message: "Assembly sstore to function pointer slot - can hijack control flow"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code"
+      ctf: "Paradigm CTF 2021 - JOP"
+    pattern-regex: 'assembly\s*\{[^}]*sstore\s*\([^,]+\.slot'
+
+  - id: sol-function-pointer-state
+    message: "Function pointer stored in state variable - potential hijack target"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code"
+      ctf: "Paradigm CTF 2021 - JOP"
+    pattern-regex: 'function\s*\([^)]*\)\s+(?:external|public|internal|private)[^;]*\s+\w+\s*;'
+
+  # LOCKBOX - Blockhash as randomness
+  - id: sol-blockhash-randomness
+    message: "Using blockhash for randomness - predictable by miners, 0 after 256 blocks"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+      ctf: "Paradigm CTF 2021 - Lockbox"
+    pattern-regex: 'blockhash\s*\(\s*block\.number'
+
+  - id: sol-blockhash-validation
+    message: "Blockhash used in validation - can be manipulated or becomes zero"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+      ctf: "Paradigm CTF 2021 - Lockbox"
+    pattern-regex: 'require\s*\([^)]*blockhash'
+
+  # MARKET - Eternal storage without access control
+  - id: sol-eternal-storage-delegatecall
+    message: "Delegatecall to eternal storage pattern - ensure proper access controls"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      ctf: "Paradigm CTF 2021 - Market"
+    pattern-regex: 'delegatecall\s*\([^)]*(?:Storage|storage|STORAGE)'
+
+  - id: sol-unprotected-storage-write
+    message: "Storage write without access control - arbitrary data manipulation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      ctf: "Paradigm CTF 2021 - Market"
+    pattern-regex: 'function\s+(?:set|write|store)\w*\s*\([^)]*bytes32[^)]*\)[^{]*(?:external|public)[^{]*\{(?![^}]*onlyOwner|require\s*\()'
+
+  # UPGRADE - Flash loan via lend/reclaim
+  - id: sol-lend-reclaim-pattern
+    message: "Lend/reclaim pattern without flash loan protection - atomic drain possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution using Shared Resource"
+      ctf: "Paradigm CTF 2021 - Upgrade"
+    pattern-regex: 'function\s+(?:lend|borrow)\s*\([^)]*\)[^}]*function\s+(?:reclaim|repay)'
+
+  # YIELD_AGGREGATOR - Reentrancy in try-catch
+  - id: sol-reentrancy-try-catch
+    message: "External call in try-catch without reentrancy guard - state can be corrupted"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      ctf: "Paradigm CTF 2021 - YieldAggregator"
+    pattern-regex: 'try\s+\w+\.[^{]+\{[^}]*\}\s*catch'
+
+  - id: sol-fake-token-callback
+    message: "Token callback during transfer - fake token can reenter"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      ctf: "Paradigm CTF 2021 - YieldAggregator"
+    pattern-regex: '\.transferFrom\s*\([^)]+\)[^;]*;[^}]*\.mint\s*\('
+
+  # VAULT - EIP1167 clone initialization race
+  - id: sol-eip1167-clone
+    message: "EIP1167 minimal proxy clone - ensure initialization is protected"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-665: Improper Initialization"
+      ctf: "Paradigm CTF 2021 - Vault"
+    pattern-regex: '3d602d80600a3d3981f3363d3d373d3d3d363d73'
+
+  - id: sol-clone-uninitialized
+    message: "Clone factory without initialization check - front-running possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-665: Improper Initialization"
+      ctf: "Paradigm CTF 2021 - Vault"
+    pattern-regex: 'function\s+clone\s*\([^)]*\)[^{]*\{[^}]*create\s*\((?![^}]*initialize)'
+
+  # SWAP - Integer overflow in pre-0.8
+  - id: sol-unchecked-array-access
+    message: "Low-level call with array - potential overflow in index calculation"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow or Wraparound"
+      ctf: "Paradigm CTF 2021 - Swap"
+    pattern-regex: 'assembly\s*\{[^}]*calldataload\s*\([^)]*add\s*\('
+
+  # General - Selfdestruct patterns
+  - id: sol-selfdestruct-arbitrary
+    message: "Selfdestruct with user-controlled recipient - funds can be sent anywhere"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    pattern-regex: 'selfdestruct\s*\(\s*(?:payable\s*\()?\s*(?:msg\.sender|_?\w+)\s*\)?'
+
+  - id: sol-emergencycall-delegatecall
+    message: "Emergency function with delegatecall - can be used to change owner/state"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      ctf: "Paradigm CTF 2021 - Vault"
+    pattern-regex: 'function\s+emergency\w*\s*\([^)]*\)[^{]*\{[^}]*delegatecall'
+
