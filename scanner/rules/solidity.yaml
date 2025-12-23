@@ -1707,3 +1707,108 @@ rules:
       - pattern-regex: 'function\s+handleTransaction\s*\([^)]*\)[^{]*\{[^}]*raiseAlert\s*\('
       - pattern: IDetectionBot($BOT).handleTransaction(...)
 
+  # ============================================
+  # Capture The Ether Patterns
+  # ============================================
+
+  - id: sol-transferfrom-msg-sender-balance
+    message: "transferFrom deducts from msg.sender instead of from parameter - allows unauthorized transfers (TokenWhale pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-269: Improper Privilege Management"
+      references:
+        - https://capturetheether.com/challenges/math/token-whale/
+    pattern-regex: 'function\s+transferFrom\s*\([^)]*\)[^{]*\{[^}]*balanceOf\s*\[\s*msg\.sender\s*\]\s*-='
+
+  - id: sol-uninitialized-storage-pointer
+    message: "Uninitialized storage pointer defaults to slot 0 - can overwrite critical state (FiftyYears pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-665: Improper Initialization"
+      references:
+        - https://capturetheether.com/challenges/math/fifty-years/
+    pattern-regex: '\w+\s+storage\s+\w+\s*;'
+
+  - id: sol-dynamic-array-length-write
+    message: "Direct array length modification can corrupt adjacent storage slots (Mapping pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-119: Buffer Overflow"
+      references:
+        - https://capturetheether.com/challenges/math/mapping/
+    pattern-regex: '\w+\.length\s*=\s*[^;]*\+\s*1'
+
+  - id: sol-tautological-overflow-check
+    message: "Tautological overflow check (a + b >= a) is always true - provides no protection (TokenBank pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-697: Incorrect Comparison"
+      references:
+        - https://capturetheether.com/challenges/miscellaneous/token-bank/
+    pattern-regex: 'require\s*\(\s*\w+\s*\+\s*\w+\s*>=\s*\w+\s*\)'
+
+  - id: sol-small-space-keccak
+    message: "keccak256 of uint8 has only 256 possibilities - trivially brute-forceable (GuessTheSecretNumber pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of Broken Crypto"
+      references:
+        - https://capturetheether.com/challenges/lottery/guess-secret-number/
+    pattern-regex: 'keccak256\s*\(\s*abi\.encodePacked\s*\(\s*uint8'
+
+  - id: sol-constructor-typo
+    message: "Function name similar to contract name but not exact - may be intended constructor (AssumeOwnership pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-1025: Comparison Using Wrong Factors"
+      references:
+        - https://capturetheether.com/challenges/miscellaneous/assume-ownership/
+    pattern-regex: 'function\s+(Owmer|Ownr|Onwer|owmer|ownr)\s*\('
+
+  - id: sol-hardcoded-answer
+    message: "Hardcoded answer in contract - visible to anyone reading bytecode or storage (GuessTheNumber pattern)"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-798: Hardcoded Credentials"
+      references:
+        - https://capturetheether.com/challenges/lottery/guess-the-number/
+    pattern-regex: 'uint8\s+(answer|secret|password)\s*=\s*\d+'
+
+  - id: sol-overflow-in-scale-calculation
+    message: "Large constant multiplication can overflow - 10**18 * 1 ether overflows (Donation pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow"
+      references:
+        - https://capturetheether.com/challenges/math/donation/
+    pattern-regex: '10\s*\*\*\s*18\s*\*\s*(1\s*)?(ether|gwei)'
+
+  - id: sol-blockhash-256-limit
+    message: "blockhash only works for last 256 blocks - older blocks return 0 (PredictTheBlockHash pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-570: Expression Always False"
+      references:
+        - https://capturetheether.com/challenges/lottery/predict-block-hash/
+    pattern-either:
+      - pattern: blockhash($BLOCK)
+      - pattern: block.blockhash($BLOCK)
+
