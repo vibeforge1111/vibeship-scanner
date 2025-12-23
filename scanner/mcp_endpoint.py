@@ -166,6 +166,29 @@ TOOLS = [
             },
             "required": ["rule_id"]
         }
+    },
+    {
+        "name": "scanner_preview_false_positive",
+        "description": "PRIVACY PREVIEW: See EXACTLY what data will be sent before reporting a false positive. Shows what gets sanitized and what remains. Always call this first so users can review before submitting.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "scan_id": {"type": "string", "description": "Scan ID where the finding is"},
+                "finding_index": {"type": "integer", "description": "Index of the finding (0-based)"},
+                "reason_category": {
+                    "type": "string",
+                    "enum": ["safe_pattern", "framework_handled", "test_code", "intentional", "wrong_context", "other"],
+                    "description": "Why this is a false positive"
+                },
+                "reason_detail": {"type": "string", "description": "Detailed explanation"},
+                "consent_level": {
+                    "type": "integer",
+                    "enum": [1, 2, 3],
+                    "description": "Privacy level: 1=maximum privacy (pattern only), 2=with context, 3=full share"
+                }
+            },
+            "required": ["scan_id", "finding_index", "reason_category", "consent_level"]
+        }
     }
 ]
 
@@ -289,6 +312,8 @@ def handle_tools_call(params, github_token=None):
             result = execute_report_false_positive(arguments)
         elif tool_name == 'scanner_check_known_false_positives':
             result = execute_check_known_false_positives(arguments)
+        elif tool_name == 'scanner_preview_false_positive':
+            result = execute_preview_false_positive(arguments)
         else:
             return {
                 "content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}],
@@ -1938,4 +1963,150 @@ def execute_check_known_false_positives(args):
             "has_known_false_positives": False,
             "message": f"Could not check for known patterns: {str(e)}",
             "tip": "You can still report the false positive using scanner_report_false_positive."
+        }
+
+
+def execute_preview_false_positive(args):
+    """
+    PRIVACY PREVIEW: Show users EXACTLY what will be sent before they submit.
+
+    This is the key transparency feature - users can see:
+    - What data WILL be sent (sanitized patterns)
+    - What data will NOT be sent (variable names, secrets, paths, etc.)
+    - How much data reduction occurs through sanitization
+    """
+    from feedback.sanitizer import preview_feedback
+
+    scan_id = args.get('scan_id')
+    finding_index = args.get('finding_index', 0)
+    reason_category = args.get('reason_category', 'other')
+    reason_detail = args.get('reason_detail', '')
+    consent_level = args.get('consent_level', 1)
+
+    if not scan_id:
+        return {"error": "scan_id is required"}
+
+    if consent_level not in [1, 2, 3]:
+        return {"error": "consent_level must be 1, 2, or 3"}
+
+    # Fetch scan from Supabase
+    supabase = get_supabase()
+    result = supabase.table('scans').select('findings, target_url').eq('id', scan_id).execute()
+
+    if not result.data:
+        return {"error": f"Scan not found: {scan_id}"}
+
+    findings = result.data[0].get('findings', [])
+
+    if not findings:
+        return {"error": "No findings in this scan"}
+
+    if finding_index >= len(findings):
+        return {"error": f"Finding index {finding_index} out of range (0-{len(findings)-1})"}
+
+    finding = findings[finding_index]
+
+    # Extract finding details
+    rule_id = finding.get('ruleId', finding.get('title', 'unknown'))
+    location = finding.get('location', {})
+    file_path = location.get('file', 'unknown')
+    line = location.get('line', 0)
+
+    # Get code snippet from finding
+    code_snippet = finding.get('code', finding.get('snippet', ''))
+    if not code_snippet:
+        code_snippet = f"// Line {line} in {file_path}\n// {finding.get('title', 'Unknown finding')}"
+
+    # Detect language from file extension
+    lang_map = {
+        '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
+        '.jsx': 'javascript', '.tsx': 'typescript', '.sol': 'solidity',
+        '.go': 'go', '.rs': 'rust', '.java': 'java', '.rb': 'ruby',
+        '.php': 'php', '.c': 'c', '.cpp': 'cpp', '.cs': 'csharp'
+    }
+    ext = '.' + file_path.split('.')[-1] if '.' in file_path else ''
+    language = lang_map.get(ext, 'unknown')
+
+    # Get context if consent level allows
+    context = None
+    if consent_level >= 2:
+        context = f"File: {file_path}\nLine: {line}\n"
+        if finding.get('context'):
+            context += finding.get('context')
+
+    try:
+        # Generate preview
+        preview = preview_feedback(
+            code_snippet=code_snippet,
+            context=context,
+            language=language,
+            consent_level=consent_level,
+            rule_id=rule_id,
+            reason_category=reason_category,
+            reason_detail=reason_detail
+        )
+
+        # Format for display
+        consent_descriptions = {
+            1: "MAXIMUM PRIVACY - Only anonymized pattern structure",
+            2: "WITH CONTEXT - Includes sanitized surrounding context",
+            3: "FULL SHARE - Slightly more detail (still heavily sanitized)"
+        }
+
+        return f"""
+╔══════════════════════════════════════════════════════════════════╗
+║  PRIVACY PREVIEW - Review Before Submitting                      ║
+╚══════════════════════════════════════════════════════════════════╝
+
+📋 FINDING DETAILS
+   Rule ID: {rule_id}
+   File: {file_path}
+   Line: {line}
+   Severity: {finding.get('severity', 'UNKNOWN').upper()}
+
+🔒 CONSENT LEVEL: {consent_level}
+   {consent_descriptions.get(consent_level, 'Unknown')}
+
+═══════════════════════════════════════════════════════════════════
+✅ WHAT WILL BE SENT (sanitized data only):
+═══════════════════════════════════════════════════════════════════
+
+   Rule ID: {preview['will_send']['rule_id']}
+   Language: {preview['will_send']['language']}
+   Reason: {preview['will_send']['reason_category']}
+
+   Sanitized Pattern:
+   {preview['will_send']['sanitized_pattern']}
+
+   Pattern Structure: {preview['will_send']['pattern_structure']}
+   Framework Hints: {', '.join(preview['will_send']['framework_hints']) if preview['will_send']['framework_hints'] else 'None detected'}
+   Context Included: {preview['will_send']['context_included']}
+
+═══════════════════════════════════════════════════════════════════
+❌ WHAT WILL NOT BE SENT (removed for your privacy):
+═══════════════════════════════════════════════════════════════════
+
+{chr(10).join('   - ' + item for item in preview['will_NOT_send'])}
+
+═══════════════════════════════════════════════════════════════════
+📊 DATA REDUCTION STATS
+═══════════════════════════════════════════════════════════════════
+
+   Original Code: {preview['original_length']} characters
+   After Sanitization: {preview['sanitized_length']} characters
+   Data Removed: {preview['reduction_percent']}%
+
+═══════════════════════════════════════════════════════════════════
+
+✅ Happy with this? Call scanner_report_false_positive to submit.
+⚠️  Want more privacy? Use consent_level=1 for maximum anonymity.
+❌ Don't want to share? That's okay - no data will be sent.
+"""
+
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "message": f"Failed to generate preview: {str(e)}",
+            "trace": traceback.format_exc()
         }

@@ -1,27 +1,38 @@
 """
 Code Sanitizer for Privacy-Preserving False Positive Feedback
 
-This module sanitizes code snippets before sending to the feedback system.
-It replaces identifiable information with generic tokens while preserving
-the structural pattern that caused the false positive.
+PRIVACY-FIRST DESIGN:
+- We NEVER store actual code - only structural patterns
+- We NEVER store identifiable information (names, paths, URLs, secrets)
+- Users can preview EXACTLY what gets sent before submission
+- Default mode is maximum privacy (Level 1)
 
-Privacy Levels:
-- Level 1: Most aggressive - only AST-like pattern structure
-- Level 2: Moderate - adds surrounding context (still sanitized)
-- Level 3: Light - keeps more detail for debugging (user explicitly opts in)
+What we collect:
+- Rule ID that triggered (e.g., "sol-reentrancy")
+- Structural pattern (e.g., "$TYPE $VAR = $FUNC($PARAM);")
+- Why it's a false positive (category + sanitized explanation)
+- Framework hints (e.g., "OpenZeppelin") for context
+
+What we NEVER collect:
+- Actual variable/function names
+- File paths or project structure
+- URLs, domains, or IP addresses
+- Any form of secrets, keys, or credentials
+- Comments or documentation
+- Repository names or locations
 """
 
 import re
 import hashlib
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
 
 
 class ConsentLevel(Enum):
-    ANONYMOUS = 1      # Pattern structure only
-    WITH_CONTEXT = 2   # Adds sanitized context
-    FULL_SHARE = 3     # More detail for debugging
+    ANONYMOUS = 1      # Structure only - maximum privacy
+    WITH_CONTEXT = 2   # Adds sanitized context pattern
+    FULL_SHARE = 3     # Slightly more detail (still heavily sanitized)
 
 
 @dataclass
@@ -47,62 +58,187 @@ class CodeSanitizer:
     """
     Sanitizes code snippets for privacy-preserving feedback.
 
-    The goal is to capture the PATTERN that triggered the false positive
-    without capturing actual implementation details, variable names, or
-    any potentially sensitive information.
+    DESIGN PRINCIPLE: Remove everything, keep only structure.
+
+    We use an ALLOWLIST approach - only known-safe tokens are kept,
+    everything else is replaced with generic placeholders.
     """
 
-    # Patterns to detect and replace
-    SOLIDITY_TYPES = [
-        'uint256', 'uint128', 'uint64', 'uint32', 'uint16', 'uint8', 'uint',
-        'int256', 'int128', 'int64', 'int32', 'int16', 'int8', 'int',
-        'address', 'bool', 'string', 'bytes32', 'bytes', 'bytes4',
-        'mapping', 'struct', 'enum', 'contract', 'interface', 'library'
+    # =========================================================================
+    # COMPREHENSIVE SECRET PATTERNS - Everything that could be sensitive
+    # =========================================================================
+    SECRET_PATTERNS = [
+        # Private keys and seeds
+        (r'0x[a-fA-F0-9]{64}', '[PRIVATE_KEY]'),              # ETH private key
+        (r'[a-fA-F0-9]{64}', '[HEX_SECRET]'),                  # 64-char hex
+        (r'-----BEGIN[^-]+-----[\s\S]*?-----END[^-]+-----', '[PEM_KEY]'),  # PEM
+        (r'\b[a-zA-Z0-9]{24,}\.[a-zA-Z0-9]{6,}\.[a-zA-Z0-9-_]+', '[JWT]'),  # JWT tokens
+
+        # AWS
+        (r'AKIA[0-9A-Z]{16}', '[AWS_KEY]'),                    # AWS Access Key
+        (r'[a-zA-Z0-9+/]{40}', '[AWS_SECRET]'),                # AWS Secret (40 char base64)
+        (r'aws[_-]?(secret|access|key|token)', '[AWS_REF]'),
+
+        # Google Cloud
+        (r'AIza[0-9A-Za-z-_]{35}', '[GCP_KEY]'),               # GCP API key
+        (r'"type"\s*:\s*"service_account"', '[GCP_SA]'),       # GCP service account
+
+        # GitHub/Git
+        (r'gh[pousr]_[A-Za-z0-9_]{36,}', '[GITHUB_TOKEN]'),    # GitHub tokens
+        (r'github_pat_[A-Za-z0-9_]{22,}', '[GITHUB_PAT]'),     # GitHub PAT
+        (r'glpat-[A-Za-z0-9-_]{20,}', '[GITLAB_TOKEN]'),       # GitLab token
+
+        # Database
+        (r'mongodb(\+srv)?://[^\s]+', '[MONGODB_URI]'),        # MongoDB
+        (r'postgres(ql)?://[^\s]+', '[POSTGRES_URI]'),         # PostgreSQL
+        (r'mysql://[^\s]+', '[MYSQL_URI]'),                    # MySQL
+        (r'redis://[^\s]+', '[REDIS_URI]'),                    # Redis
+
+        # Webhooks & APIs
+        (r'https://hooks\.slack\.com/[^\s]+', '[SLACK_WEBHOOK]'),
+        (r'https://discord(app)?\.com/api/webhooks/[^\s]+', '[DISCORD_WEBHOOK]'),
+        (r'sk-[a-zA-Z0-9]{32,}', '[OPENAI_KEY]'),              # OpenAI
+        (r'xox[baprs]-[0-9]+-[0-9]+-[a-zA-Z0-9]+', '[SLACK_TOKEN]'),  # Slack
+
+        # Generic secrets (MUST be last - catches remaining patterns)
+        (r'(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|auth|credential)["\']?\s*[:=]\s*["\'][^"\']{4,}["\']', '[SECRET_ASSIGNMENT]'),
+        (r'(?:password|passwd|pwd|secret|token|api[_-]?key|apikey|auth|credential)["\']?\s*[:=]\s*[^,\s]{8,}', '[SECRET_ASSIGNMENT]'),
+        (r'Bearer\s+[a-zA-Z0-9._-]+', '[BEARER_TOKEN]'),
+        (r'Basic\s+[a-zA-Z0-9+/=]+', '[BASIC_AUTH]'),
     ]
 
-    # Known safe framework patterns (for framework_hints extraction)
+    # Patterns to redact that could identify the project
+    IDENTITY_PATTERNS = [
+        (r'https?://[^\s"\'<>]+', '[URL]'),                    # Any URL
+        (r'git@[^\s]+', '[GIT_URL]'),                          # Git SSH URL
+        (r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b', '[EMAIL]'),  # Email
+        (r'\b(?:\d{1,3}\.){3}\d{1,3}\b', '[IP]'),              # IPv4
+        (r'[a-fA-F0-9:]{17,}', '[MAC]'),                       # MAC address
+        (r'(?:/|\\)(?:[\w.-]+(?:/|\\))+[\w.-]+', '[PATH]'),    # File paths
+        # Only match actual filenames with extensions, not CamelCase class names
+        (r'\b[\w-]+\.(?:sol|js|jsx|ts|tsx|py|go|rs|java|rb|php|c|cpp|cs|swift|kt)\b', '[FILENAME]'),
+    ]
+
+    # Ethereum addresses (replace but note them)
+    ADDRESS_PATTERNS = [
+        (r'0x[a-fA-F0-9]{40}', '$ADDR'),
+    ]
+
+    # Known safe framework patterns to detect (not to keep)
     FRAMEWORK_PATTERNS = {
-        'OpenZeppelin': [
-            r'@openzeppelin', r'Ownable', r'ReentrancyGuard', r'SafeERC20',
-            r'SafeMath', r'AccessControl', r'Pausable', r'ERC20', r'ERC721'
-        ],
-        'Foundry': [
-            r'forge-std', r'vm\.', r'Test\.sol', r'Script\.sol'
-        ],
-        'Hardhat': [
-            r'hardhat', r'@nomiclabs', r'console\.log'
-        ],
-        'Solmate': [
-            r'solmate', r'SafeTransferLib', r'FixedPointMathLib'
-        ],
-        'OpenZeppelin Upgrades': [
-            r'Initializable', r'UUPSUpgradeable', r'TransparentUpgradeableProxy'
-        ]
+        'OpenZeppelin': [r'@openzeppelin', r'\bOwnable\b', r'\bReentrancyGuard\b', r'\bSafeERC20\b', r'\bAccessControl\b'],
+        'Foundry': [r'forge-std', r'\bvm\.', r'Test\.sol'],
+        'Hardhat': [r'hardhat', r'@nomiclabs'],
+        'Solmate': [r'solmate', r'\bSafeTransferLib\b'],
+        'Chainlink': [r'chainlink', r'\bAggregatorV3Interface\b'],
     }
 
-    # Secrets patterns to always redact (even in Level 3)
-    SECRET_PATTERNS = [
-        r'0x[a-fA-F0-9]{64}',           # Private keys
-        r'0x[a-fA-F0-9]{40}',           # Addresses (optionally keep)
-        r'["\'][A-Za-z0-9+/]{32,}["\']', # Base64-like strings
-        r'(?:password|secret|key|token|api_key|apikey|private)\s*[=:]\s*["\'][^"\']+["\']',
-        r'-----BEGIN [A-Z ]+ KEY-----',  # PEM keys
-    ]
+    # Language keywords to preserve (these are safe - public knowledge)
+    LANG_KEYWORDS = {
+        'solidity': {
+            'function', 'returns', 'return', 'if', 'else', 'for', 'while',
+            'public', 'private', 'internal', 'external', 'view', 'pure',
+            'payable', 'memory', 'storage', 'calldata', 'require', 'assert',
+            'revert', 'emit', 'event', 'modifier', 'constructor', 'mapping',
+            'struct', 'enum', 'contract', 'interface', 'library', 'is',
+            'true', 'false', 'this', 'msg', 'block', 'tx', 'address', 'uint256',
+            'uint', 'int', 'bool', 'bytes', 'string', 'bytes32', 'unchecked'
+        },
+        'javascript': {
+            'function', 'return', 'if', 'else', 'for', 'while', 'const', 'let',
+            'var', 'async', 'await', 'try', 'catch', 'throw', 'class', 'extends',
+            'import', 'export', 'default', 'new', 'this', 'true', 'false', 'null'
+        },
+        'python': {
+            'def', 'return', 'if', 'else', 'elif', 'for', 'while', 'class',
+            'import', 'from', 'try', 'except', 'raise', 'with', 'as', 'pass',
+            'True', 'False', 'None', 'self', 'async', 'await', 'lambda'
+        },
+        'rust': {
+            'fn', 'let', 'mut', 'const', 'if', 'else', 'match', 'loop', 'while',
+            'for', 'in', 'return', 'pub', 'mod', 'use', 'struct', 'enum', 'impl',
+            'trait', 'self', 'Self', 'true', 'false', 'async', 'await', 'unsafe'
+        },
+        'go': {
+            'func', 'return', 'if', 'else', 'for', 'range', 'switch', 'case',
+            'var', 'const', 'type', 'struct', 'interface', 'package', 'import',
+            'go', 'defer', 'chan', 'select', 'true', 'false', 'nil'
+        }
+    }
 
     def __init__(self):
         self.var_counter = 0
         self.func_counter = 0
-        self.type_counter = 0
         self.var_map: Dict[str, str] = {}
         self.func_map: Dict[str, str] = {}
 
-    def reset_counters(self):
-        """Reset counters for a new sanitization"""
+    def reset(self):
+        """Reset counters for new sanitization"""
         self.var_counter = 0
         self.func_counter = 0
-        self.type_counter = 0
         self.var_map = {}
         self.func_map = {}
+
+    def preview(
+        self,
+        code_snippet: str,
+        context: Optional[str],
+        language: str,
+        consent_level: int,
+        rule_id: str,
+        reason_category: str,
+        reason_detail: str
+    ) -> dict:
+        """
+        Generate a PREVIEW of what will be sent - show this to users!
+
+        Returns a dict with:
+        - 'will_send': Exactly what data will be transmitted
+        - 'will_NOT_send': Confirmation of what is removed
+        - 'original_length': How much data was in the original
+        - 'sanitized_length': How much remains after sanitization
+        """
+        self.reset()
+
+        # Sanitize
+        sanitized = self._full_sanitize(code_snippet, language, consent_level)
+        sanitized_context = self._full_sanitize(context, language, consent_level) if context else None
+        sanitized_reason = self._sanitize_text(reason_detail)
+
+        # Extract what we'll keep
+        frameworks = self._detect_frameworks(code_snippet + (context or ""))
+        structure = self._extract_structure(code_snippet, language)
+
+        return {
+            'will_send': {
+                'rule_id': rule_id,
+                'sanitized_pattern': sanitized,
+                'pattern_structure': structure,
+                'framework_hints': frameworks,
+                'reason_category': reason_category,
+                'reason_detail': sanitized_reason,
+                'language': language,
+                'consent_level': consent_level,
+                'context_included': sanitized_context is not None,
+            },
+            'will_NOT_send': [
+                'Variable names (replaced with $VAR1, $VAR2...)',
+                'Function names (replaced with $FUNC1, $FUNC2...)',
+                'File paths',
+                'URLs and domains',
+                'Email addresses',
+                'IP addresses',
+                'API keys and secrets',
+                'Wallet addresses',
+                'Repository information',
+                'Comments and documentation',
+                'String literals',
+                'Numeric values',
+            ],
+            'original_length': len(code_snippet),
+            'sanitized_length': len(sanitized),
+            'reduction_percent': round((1 - len(sanitized) / max(len(code_snippet), 1)) * 100, 1),
+        }
 
     def sanitize(
         self,
@@ -118,282 +254,211 @@ class CodeSanitizer:
         reason_detail: str,
         ai_analysis: str
     ) -> SanitizedReport:
-        """
-        Main entry point for sanitizing code.
+        """Main sanitization entry point"""
+        self.reset()
 
-        Args:
-            code_snippet: The code that triggered the finding
-            context: Surrounding code (more lines)
-            repo_url: Repository URL (for hashing only)
-            language: Programming language
-            consent_level: User's privacy preference
-            rule_id: The rule that triggered
-            rule_message: The rule's message
-            severity: ERROR/WARNING/INFO
-            reason_category: Why it's a false positive
-            reason_detail: Detailed explanation
-            ai_analysis: What the AI concluded
+        # Get consent level value
+        level = consent_level.value if isinstance(consent_level, ConsentLevel) else consent_level
 
-        Returns:
-            SanitizedReport ready for submission
-        """
-        self.reset_counters()
+        # Full sanitization
+        sanitized_pattern = self._full_sanitize(code_snippet, language, level)
+        sanitized_context = None
+        if context and level >= 2:
+            sanitized_context = self._full_sanitize(context, language, level)
 
-        # Always redact secrets first (all levels)
-        code_snippet = self._redact_secrets(code_snippet)
-        if context:
-            context = self._redact_secrets(context)
+        # Extract safe metadata
+        frameworks = self._detect_frameworks(code_snippet + (context or ""))
+        structure = self._extract_structure(code_snippet, language)
 
-        # Extract framework hints before sanitization
-        framework_hints = self._extract_framework_hints(code_snippet, context or "")
+        # Hash for deduplication (uses sanitized pattern, not original)
+        pattern_hash = hashlib.sha256(f"{rule_id}:{sanitized_pattern}".encode()).hexdigest()[:32]
 
-        # Sanitize based on consent level
-        if consent_level == ConsentLevel.ANONYMOUS:
-            sanitized_pattern = self._sanitize_level_1(code_snippet, language)
-            surrounding_context = None
-            pattern_structure = self._extract_structure(code_snippet, language)
-            anonymized_repo_hash = None
-
-        elif consent_level == ConsentLevel.WITH_CONTEXT:
-            sanitized_pattern = self._sanitize_level_1(code_snippet, language)
-            surrounding_context = self._sanitize_level_1(context, language) if context else None
-            pattern_structure = self._extract_structure(code_snippet, language)
-            anonymized_repo_hash = None
-
-        else:  # FULL_SHARE
-            sanitized_pattern = self._sanitize_level_3(code_snippet, language)
-            surrounding_context = self._sanitize_level_3(context, language) if context else None
-            pattern_structure = self._extract_structure(code_snippet, language)
-            anonymized_repo_hash = self._hash_repo(repo_url) if repo_url else None
-
-        # Generate pattern hash for deduplication
-        pattern_hash = self._generate_pattern_hash(sanitized_pattern, rule_id)
+        # Only hash repo URL at level 3, and truncate heavily
+        repo_hash = None
+        if repo_url and level == 3:
+            repo_hash = hashlib.sha256(repo_url.encode()).hexdigest()[:12]
 
         return SanitizedReport(
             rule_id=rule_id,
-            rule_message=rule_message,
+            rule_message=self._sanitize_text(rule_message),
             severity=severity,
             language=language,
             sanitized_pattern=sanitized_pattern,
             pattern_hash=pattern_hash,
-            pattern_structure=pattern_structure,
-            surrounding_context=surrounding_context,
-            framework_hints=framework_hints,
+            pattern_structure=structure,
+            surrounding_context=sanitized_context,
+            framework_hints=frameworks,
             reason_category=reason_category,
             reason_detail=self._sanitize_text(reason_detail),
             ai_analysis=self._sanitize_text(ai_analysis),
-            consent_level=consent_level.value,
-            anonymized_repo_hash=anonymized_repo_hash
+            consent_level=level,
+            anonymized_repo_hash=repo_hash
         )
 
-    def _sanitize_level_1(self, code: str, language: str) -> str:
-        """
-        Most aggressive sanitization - pattern structure only.
-
-        Input:  "uint256 balance = token.balanceOf(address(this));"
-        Output: "$TYPE $VAR1 = $VAR2.$FUNC1($FUNC2($KEYWORD));"
-        """
+    def _full_sanitize(self, code: str, language: str, level: int) -> str:
+        """Complete sanitization pipeline"""
         if not code:
             return ""
 
-        sanitized = code
+        result = code
 
-        # Remove comments
-        sanitized = self._remove_comments(sanitized, language)
+        # Step 1: Remove ALL secrets (most critical)
+        for pattern, replacement in self.SECRET_PATTERNS:
+            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
 
-        # Remove string literals (replace with $STRING)
-        sanitized = re.sub(r'"[^"]*"', '$STRING', sanitized)
-        sanitized = re.sub(r"'[^']*'", '$STRING', sanitized)
+        # Step 2: Remove identity-revealing patterns
+        for pattern, replacement in self.IDENTITY_PATTERNS:
+            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
 
-        # Replace addresses with $ADDR
-        sanitized = re.sub(r'0x[a-fA-F0-9]{40}', '$ADDR', sanitized)
+        # Step 3: Replace addresses
+        for pattern, replacement in self.ADDRESS_PATTERNS:
+            result = re.sub(pattern, replacement, result)
 
-        # Replace numbers with $NUM
-        sanitized = re.sub(r'\b\d+\b', '$NUM', sanitized)
+        # Step 4: Remove comments (could contain sensitive info)
+        result = self._remove_comments(result)
 
-        # Replace identifiers (variables, functions) with tokens
-        sanitized = self._replace_identifiers(sanitized, language)
+        # Step 5: Replace string literals
+        result = re.sub(r'"[^"]*"', '$STRING', result)
+        result = re.sub(r"'[^']*'", '$STRING', result)
+        result = re.sub(r'`[^`]*`', '$STRING', result)  # Template literals
 
-        # Normalize whitespace
-        sanitized = ' '.join(sanitized.split())
+        # Step 6: Replace numbers
+        result = re.sub(r'\b\d+\.?\d*\b', '$NUM', result)
 
-        return sanitized
+        # Step 7: Replace identifiers (variables, functions)
+        result = self._replace_identifiers(result, language)
 
-    def _sanitize_level_3(self, code: str, language: str) -> str:
-        """
-        Light sanitization - keeps more structure for debugging.
-        Still removes secrets and addresses.
-        """
-        if not code:
-            return ""
+        # Step 8: Normalize whitespace
+        result = ' '.join(result.split())
 
-        sanitized = code
+        # Step 9: Limit length (prevent accidental data dumps)
+        max_len = 500 if level == 1 else 1000 if level == 2 else 2000
+        if len(result) > max_len:
+            result = result[:max_len] + "...[TRUNCATED]"
 
-        # Always remove secrets
-        sanitized = self._redact_secrets(sanitized)
-
-        # Replace addresses with $ADDR (privacy)
-        sanitized = re.sub(r'0x[a-fA-F0-9]{40}', '$ADDR', sanitized)
-
-        # Keep structure but replace long hex strings
-        sanitized = re.sub(r'0x[a-fA-F0-9]{64,}', '$HEX', sanitized)
-
-        return sanitized
+        return result
 
     def _replace_identifiers(self, code: str, language: str) -> str:
-        """Replace variable and function names with generic tokens"""
+        """Replace all identifiers except language keywords"""
+        lang_key = language.lower()
+        if lang_key in ['sol', 'solidity']:
+            lang_key = 'solidity'
+        elif lang_key in ['js', 'javascript', 'typescript', 'ts']:
+            lang_key = 'javascript'
+        elif lang_key in ['py', 'python']:
+            lang_key = 'python'
+        elif lang_key in ['rs', 'rust']:
+            lang_key = 'rust'
 
-        # Keep keywords and types as-is for pattern recognition
-        keywords = self._get_keywords(language)
+        keywords = self.LANG_KEYWORDS.get(lang_key, set())
 
-        # Find all identifiers (words that aren't keywords or types)
-        # This is a simplified approach - a real AST parser would be better
-        words = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\b', code)
+        # Find all word-like tokens
+        tokens = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\b', code)
 
-        for word in words:
-            if word in keywords or word in self.SOLIDITY_TYPES:
-                continue  # Keep keywords
-            if word.startswith('$'):
-                continue  # Already replaced
+        for token in tokens:
+            # Skip if already replaced
+            if token.startswith('$'):
+                continue
+            # Skip keywords (safe to keep)
+            if token.lower() in keywords or token in keywords:
+                continue
+            # Skip very short tokens (likely not meaningful)
+            if len(token) <= 2:
+                continue
 
-            # Check if it looks like a function call (followed by parenthesis)
-            if re.search(rf'\b{re.escape(word)}\s*\(', code):
-                if word not in self.func_map:
+            # Determine if function or variable
+            is_func = bool(re.search(rf'\b{re.escape(token)}\s*\(', code))
+
+            if is_func:
+                if token not in self.func_map:
                     self.func_counter += 1
-                    self.func_map[word] = f'$FUNC{self.func_counter}'
-                replacement = self.func_map[word]
+                    self.func_map[token] = f'$FUNC{self.func_counter}'
+                replacement = self.func_map[token]
             else:
-                if word not in self.var_map:
+                if token not in self.var_map:
                     self.var_counter += 1
-                    self.var_map[word] = f'$VAR{self.var_counter}'
-                replacement = self.var_map[word]
+                    self.var_map[token] = f'$VAR{self.var_counter}'
+                replacement = self.var_map[token]
 
-            # Replace all occurrences
-            code = re.sub(rf'\b{re.escape(word)}\b', replacement, code)
+            code = re.sub(rf'\b{re.escape(token)}\b', replacement, code)
 
         return code
 
-    def _get_keywords(self, language: str) -> set:
-        """Get language keywords to preserve"""
-
-        if language.lower() in ['solidity', 'sol']:
-            return {
-                'function', 'returns', 'return', 'if', 'else', 'for', 'while',
-                'do', 'break', 'continue', 'public', 'private', 'internal',
-                'external', 'view', 'pure', 'payable', 'memory', 'storage',
-                'calldata', 'constant', 'immutable', 'virtual', 'override',
-                'modifier', 'event', 'emit', 'require', 'assert', 'revert',
-                'try', 'catch', 'new', 'delete', 'true', 'false', 'this',
-                'super', 'msg', 'block', 'tx', 'abi', 'type', 'assembly',
-                'pragma', 'import', 'using', 'is', 'abstract', 'constructor',
-                'fallback', 'receive', 'error', 'unchecked', 'indexed',
-                'anonymous', 'selfdestruct', 'delegatecall', 'call', 'transfer',
-                'send', 'balance', 'keccak256', 'sha256', 'ecrecover'
-            }
-        elif language.lower() in ['rust', 'rs']:
-            return {
-                'fn', 'let', 'mut', 'const', 'static', 'if', 'else', 'match',
-                'loop', 'while', 'for', 'in', 'break', 'continue', 'return',
-                'pub', 'mod', 'use', 'struct', 'enum', 'impl', 'trait', 'type',
-                'where', 'async', 'await', 'move', 'ref', 'self', 'Self',
-                'super', 'crate', 'unsafe', 'extern', 'dyn', 'true', 'false'
-            }
-        else:
-            return {
-                'function', 'return', 'if', 'else', 'for', 'while', 'do',
-                'switch', 'case', 'break', 'continue', 'var', 'let', 'const',
-                'class', 'extends', 'import', 'export', 'default', 'async',
-                'await', 'try', 'catch', 'throw', 'new', 'this', 'true', 'false'
-            }
-
-    def _remove_comments(self, code: str, language: str) -> str:
-        """Remove comments from code"""
-        # Single-line comments
+    def _remove_comments(self, code: str) -> str:
+        """Remove all comments"""
+        # C-style single line
         code = re.sub(r'//.*$', '', code, flags=re.MULTILINE)
-        # Multi-line comments
-        code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
-        # Python-style comments
+        # C-style multi-line
+        code = re.sub(r'/\*[\s\S]*?\*/', '', code)
+        # Python/Shell style
         code = re.sub(r'#.*$', '', code, flags=re.MULTILINE)
+        # Python docstrings
+        code = re.sub(r'"""[\s\S]*?"""', '', code)
+        code = re.sub(r"'''[\s\S]*?'''", '', code)
         return code
 
-    def _redact_secrets(self, code: str) -> str:
-        """Redact anything that looks like a secret"""
-        for pattern in self.SECRET_PATTERNS:
-            code = re.sub(pattern, '[REDACTED]', code, flags=re.IGNORECASE)
-        return code
-
-    def _extract_framework_hints(self, code: str, context: str) -> List[str]:
-        """Extract framework hints from code patterns"""
-        combined = code + " " + context
-        hints = []
-
+    def _detect_frameworks(self, code: str) -> List[str]:
+        """Detect which frameworks are being used (safe metadata)"""
+        detected = []
         for framework, patterns in self.FRAMEWORK_PATTERNS.items():
             for pattern in patterns:
-                if re.search(pattern, combined, re.IGNORECASE):
-                    hints.append(framework)
+                if re.search(pattern, code, re.IGNORECASE):
+                    detected.append(framework)
                     break
-
-        return list(set(hints))
+        return list(set(detected))
 
     def _extract_structure(self, code: str, language: str) -> str:
-        """
-        Extract high-level structure description.
-
-        Examples:
-        - "external call in loop"
-        - "transfer before state update"
-        - "unchecked return value"
-        """
+        """Extract high-level structure description (safe metadata)"""
         structures = []
 
-        # Detect common patterns
-        if re.search(r'for\s*\(.*\).*\.call', code, re.DOTALL):
-            structures.append("external call in loop")
-        if re.search(r'\.call.*=.*\+', code, re.DOTALL):
-            structures.append("state update after call")
-        if re.search(r'\.call\s*\{', code):
+        # Common vulnerability patterns (safe to report)
+        if re.search(r'\.call\s*[\({]', code, re.IGNORECASE):
             structures.append("low-level call")
-        if re.search(r'\.transfer\s*\(', code):
-            structures.append("transfer call")
-        if re.search(r'delegatecall', code):
+        if re.search(r'for\s*\([^)]*\).*\.call', code, re.DOTALL | re.IGNORECASE):
+            structures.append("call in loop")
+        if re.search(r'\.transfer\s*\(', code, re.IGNORECASE):
+            structures.append("transfer")
+        if re.search(r'delegatecall', code, re.IGNORECASE):
             structures.append("delegatecall")
-        if re.search(r'assembly\s*\{', code):
-            structures.append("inline assembly")
-        if re.search(r'ecrecover', code):
-            structures.append("signature verification")
-        if re.search(r'selfdestruct', code):
+        if re.search(r'selfdestruct|suicide', code, re.IGNORECASE):
             structures.append("selfdestruct")
+        if re.search(r'assembly\s*\{', code, re.IGNORECASE):
+            structures.append("inline assembly")
+        if re.search(r'ecrecover', code, re.IGNORECASE):
+            structures.append("signature verification")
+        if re.search(r'tx\.origin', code, re.IGNORECASE):
+            structures.append("tx.origin usage")
+        if re.search(r'block\.(timestamp|number)', code, re.IGNORECASE):
+            structures.append("block dependency")
 
         return "; ".join(structures) if structures else "general pattern"
 
-    def _generate_pattern_hash(self, sanitized_pattern: str, rule_id: str) -> str:
-        """Generate hash for deduplication"""
-        # Normalize whitespace
-        normalized = ' '.join(sanitized_pattern.lower().split())
-        # Include rule_id in hash
-        to_hash = f"{rule_id}:{normalized}"
-        return hashlib.sha256(to_hash.encode()).hexdigest()[:32]
-
-    def _hash_repo(self, repo_url: str) -> str:
-        """Hash repo URL for anonymization (truncated for privacy)"""
-        return hashlib.sha256(repo_url.encode()).hexdigest()[:16]
-
     def _sanitize_text(self, text: str) -> str:
-        """Sanitize free-text fields (reason, analysis)"""
+        """Sanitize free-text fields"""
         if not text:
             return ""
 
-        # Remove potential file paths
-        text = re.sub(r'[/\\][\w/\\.-]+\.\w+', '[PATH]', text)
-        # Remove URLs
-        text = re.sub(r'https?://[^\s]+', '[URL]', text)
-        # Remove addresses
-        text = re.sub(r'0x[a-fA-F0-9]{40}', '$ADDR', text)
+        result = text
 
-        return text
+        # Apply all secret patterns
+        for pattern, replacement in self.SECRET_PATTERNS:
+            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+
+        # Apply identity patterns
+        for pattern, replacement in self.IDENTITY_PATTERNS:
+            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+
+        # Apply address patterns
+        for pattern, replacement in self.ADDRESS_PATTERNS:
+            result = re.sub(pattern, replacement, result)
+
+        # Limit length
+        if len(result) > 500:
+            result = result[:500] + "...[TRUNCATED]"
+
+        return result
 
 
-# Convenience function for direct use
 def sanitize_for_feedback(
     code_snippet: str,
     context: Optional[str],
@@ -409,8 +474,7 @@ def sanitize_for_feedback(
 ) -> dict:
     """
     Convenience function to sanitize code for feedback submission.
-
-    Returns a dictionary ready to be sent to the feedback API.
+    Returns a dictionary ready for the API.
     """
     sanitizer = CodeSanitizer()
     report = sanitizer.sanitize(
@@ -427,53 +491,70 @@ def sanitize_for_feedback(
         ai_analysis=ai_analysis
     )
 
-    return {
-        'rule_id': report.rule_id,
-        'rule_message': report.rule_message,
-        'severity': report.severity,
-        'language': report.language,
-        'sanitized_pattern': report.sanitized_pattern,
-        'pattern_hash': report.pattern_hash,
-        'pattern_structure': report.pattern_structure,
-        'surrounding_context': report.surrounding_context,
-        'framework_hints': report.framework_hints,
-        'reason_category': report.reason_category,
-        'reason_detail': report.reason_detail,
-        'ai_analysis': report.ai_analysis,
-        'consent_level': report.consent_level,
-        'anonymized_repo_hash': report.anonymized_repo_hash
-    }
+    return asdict(report)
+
+
+def preview_feedback(
+    code_snippet: str,
+    context: Optional[str],
+    language: str,
+    consent_level: int,
+    rule_id: str,
+    reason_category: str,
+    reason_detail: str
+) -> dict:
+    """
+    Show users exactly what will be sent BEFORE they submit.
+    Call this first, let user review, then call sanitize_for_feedback.
+    """
+    sanitizer = CodeSanitizer()
+    return sanitizer.preview(
+        code_snippet=code_snippet,
+        context=context,
+        language=language,
+        consent_level=consent_level,
+        rule_id=rule_id,
+        reason_category=reason_category,
+        reason_detail=reason_detail
+    )
 
 
 if __name__ == "__main__":
-    # Test the sanitizer
+    # Test with sensitive data
     test_code = """
+    // Secret config for production
+    const API_KEY = "sk-1234567890abcdef";
+    const DB_URL = "postgres://admin:password123@db.example.com:5432/prod";
+
     function withdraw(uint256 amount) external {
-        require(balances[msg.sender] >= amount, "Insufficient balance");
-        (bool success,) = msg.sender.call{value: amount}("");
+        require(balances[msg.sender] >= amount, "Insufficient");
+        (bool success,) = payable(0x1234567890123456789012345678901234567890).call{value: amount}("");
         balances[msg.sender] -= amount;
     }
     """
 
-    sanitizer = CodeSanitizer()
+    print("=" * 60)
+    print("PREVIEW (what user sees before submitting):")
+    print("=" * 60)
 
-    # Test Level 1
-    result = sanitizer.sanitize(
+    preview = preview_feedback(
         code_snippet=test_code,
         context=None,
-        repo_url="https://github.com/example/repo",
         language="solidity",
-        consent_level=ConsentLevel.ANONYMOUS,
-        rule_id="sol-unchecked-call-return",
-        rule_message="Low-level call return value not checked",
-        severity="ERROR",
+        consent_level=1,
+        rule_id="sol-reentrancy",
         reason_category="safe_pattern",
-        reason_detail="The success variable is intentionally unused here",
-        ai_analysis="This appears to be a false positive because..."
+        reason_detail="Using ReentrancyGuard from OpenZeppelin"
     )
 
-    print("=== Level 1 Sanitization ===")
-    print(f"Pattern: {result.sanitized_pattern}")
-    print(f"Hash: {result.pattern_hash}")
-    print(f"Structure: {result.pattern_structure}")
-    print(f"Frameworks: {result.framework_hints}")
+    print("\nWILL SEND:")
+    for key, value in preview['will_send'].items():
+        print(f"  {key}: {value}")
+
+    print("\nWILL NOT SEND:")
+    for item in preview['will_NOT_send']:
+        print(f"  - {item}")
+
+    print(f"\nOriginal: {preview['original_length']} chars")
+    print(f"Sanitized: {preview['sanitized_length']} chars")
+    print(f"Reduction: {preview['reduction_percent']}%")
