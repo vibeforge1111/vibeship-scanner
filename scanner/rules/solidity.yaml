@@ -3074,3 +3074,127 @@ rules:
       secureum: "Audit Findings 101 - Incorrect safeApprove usage"
     pattern-regex: 'safeApprove\s*\([^,]+,\s*[^0][^)]*\)(?![^;]*safeApprove\s*\([^,]+,\s*0\s*\))'
 
+  # ============================================
+  # AMAZEX-DSS-PARIS CTF Patterns
+  # ============================================
+
+  - id: sol-inverted-allowance-burnfrom
+    message: "burnFrom checks allowance(msg.sender, account) instead of allowance(account, msg.sender) - inverted authorization"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-863: Incorrect Authorization"
+      ctf: "AMAZEX-DSS-PARIS Challenge 1 - MagicETH"
+    pattern-regex: 'function\s+burnFrom[^{]*\{[^}]*allowance\s*\(\s*msg\.sender\s*,\s*\w+\s*\)'
+
+  - id: sol-selfdestruct-zero-address
+    message: "selfdestruct sends funds to zero address - ETH will be permanently lost"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-401: Missing Release of Memory after Effective Lifetime"
+      ctf: "AMAZEX-DSS-PARIS Challenge 3 - LendingPool"
+    pattern-regex: 'selfdestruct\s*\(\s*payable\s*\(\s*(0|address\s*\(\s*0\s*\))\s*\)\s*\)'
+
+  - id: sol-external-call-before-burn
+    message: "External call before _burn - violates CEI pattern, funds transferred but tokens not burned on revert"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-696: Incorrect Behavior Order"
+      ctf: "AMAZEX-DSS-PARIS Challenge 2 - ModernWETH"
+    pattern-regex: '\.call\s*\{[^}]*value[^}]*\}[^;]*;[^}]*_burn\s*\('
+
+  - id: sol-flashloan-fee-truncation
+    message: "Flash loan fee uses integer division that can truncate to 0 for small amounts"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      ctf: "AMAZEX-DSS-PARIS Challenge 6 - YieldPool"
+    pattern-regex: 'function\s+flashFee[^{]*\{[^}]*return\s+\w+\s*\/\s*\d+'
+
+  - id: sol-health-factor-decimal-mismatch
+    message: "Health factor divided by 10**18 but may use different precision - causes incorrect liquidation logic"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      ctf: "AMAZEX-DSS-PARIS Challenge 8 - Oiler"
+    pattern-regex: 'healthFactor\s*\([^)]*\)\s*\/\s*10\s*\*\*\s*18'
+
+  - id: sol-msg-sender-instead-of-param
+    message: "Using msg.sender instead of function parameter - common copy-paste bug in user-specific functions"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-480: Use of Incorrect Operator"
+      ctf: "AMAZEX-DSS-PARIS Challenge 8 - Oiler"
+    pattern-regex: 'function\s+\w+\s*\([^)]*address\s+_user[^)]*\)[^{]*\{[^}]*\[\s*msg\.sender\s*\]'
+
+  - id: sol-withdraw-wrong-comparison
+    message: "Withdraw uses >= comparison allowing withdrawal when borrow equals amount - can leave position undercollateralized"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-697: Incorrect Comparison"
+      ctf: "AMAZEX-DSS-PARIS Challenge 8 - Oiler"
+    pattern-regex: 'function\s+withdraw[^{]*\{[^}]*require\s*\([^)]*\.borrow\s*>=\s*_amount'
+
+  - id: sol-liquidation-incentive-excessive
+    message: "Liquidator receives all collateral but repays only partial debt - excessive incentive can drain protocol"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      ctf: "AMAZEX-DSS-PARIS Challenge 8 - Oiler"
+    pattern-regex: 'function\s+liquidate[^{]*\{[^}]*collateral[^}]*\/\s*\d+[^}]*transfer'
+
+  - id: sol-division-before-multiplication
+    message: "Division before multiplication causes precision loss - multiply first then divide"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      ctf: "AMAZEX-DSS-PARIS Challenge 6 - YieldPool"
+    pattern-regex: '\(\s*\w+\s*\/\s*\w+\s*\)\s*\*\s*\w+'
+
+  - id: sol-amm-price-oracle-single-block
+    message: "Using AMM spot price without TWAP - vulnerable to flash loan price manipulation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      ctf: "AMAZEX-DSS-PARIS Challenge 8 - Oiler"
+    pattern-regex: '(amm|pool|pair)\.(getPrice|getPriceToken|getReserve|quote)\s*\([^)]*\)(?![^;]*(twap|average|cumulative))'
+
+  - id: sol-flashloan-callback-before-check
+    message: "Flash loan transfers assets before validating callback result - assets may not be returned"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-696: Incorrect Behavior Order"
+      ctf: "AMAZEX-DSS-PARIS Challenge 6 - YieldPool"
+    pattern-regex: '(\.transfer\(|\.call\{value)[^;]*;[^}]*(onFlashLoan|executeOperation|flashCallback)'
+
+  - id: sol-missing-zero-amount-check
+    message: "Function accepts zero amount without validation - can cause division by zero or empty operations"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      ctf: "AMAZEX-DSS-PARIS Challenge 6 - YieldPool"
+    pattern-regex: 'function\s+(deposit|withdraw|swap|addLiquidity|removeLiquidity)\s*\([^)]*uint256\s+\w*(amount|value|wad)[^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*>\s*0)'
+
