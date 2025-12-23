@@ -1853,3 +1853,156 @@ rules:
           nonces[$USER]++;
           ...
 
+  # ============================================
+  # SWC Registry Coverage Rules
+  # ============================================
+
+  - id: sol-swc-102-outdated-compiler
+    message: "SWC-102: Using outdated Solidity compiler version with known vulnerabilities"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-937: OWASP Top Ten 2013 Category A9"
+      swc: "SWC-102"
+      references:
+        - https://swcregistry.io/docs/SWC-102
+    pattern-regex: 'pragma solidity\s*[\^~]?\s*0\.[0-4]\.\d+'
+
+  - id: sol-swc-105-unprotected-withdrawal
+    message: "SWC-105: Ether withdrawal without access control - anyone can drain funds"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      swc: "SWC-105"
+      references:
+        - https://swcregistry.io/docs/SWC-105
+    pattern-regex: 'function\s+withdraw\w*\s*\([^)]*\)\s+(public|external)(?![^{]*onlyOwner)[^{]*\{[^}]*\.(transfer|call|send)\s*\('
+
+  - id: sol-swc-108-state-visibility
+    message: "SWC-108: State variable missing explicit visibility specifier"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-710: Improper Adherence to Coding Standards"
+      swc: "SWC-108"
+      references:
+        - https://swcregistry.io/docs/SWC-108
+    pattern-regex: '^\s*(uint\d*|int\d*|address|bool|bytes\d*|string|mapping)\s+(?!public|private|internal)\w+\s*[=;]'
+
+  - id: sol-swc-110-assert-user-input
+    message: "SWC-110: assert() used with user-controlled input - use require() for input validation"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-670: Always-Incorrect Control Flow Implementation"
+      swc: "SWC-110"
+      references:
+        - https://swcregistry.io/docs/SWC-110
+    patterns:
+      - pattern-inside: |
+          function $FUNC(..., $PARAM, ...) {
+            ...
+          }
+      - pattern: assert($PARAM $OP $VAL)
+
+  - id: sol-swc-114-front-running
+    message: "SWC-114: Transaction order dependence - vulnerable to front-running/sandwich attacks"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Race Condition"
+      swc: "SWC-114"
+      references:
+        - https://swcregistry.io/docs/SWC-114
+    pattern-regex: 'function\s+(buy|sell|swap|trade|bid|offer)\w*\s*\([^)]*\)[^{]*\{[^}]*msg\.value'
+
+  - id: sol-swc-118-constructor-mismatch
+    message: "SWC-118: Function name matches contract name - likely intended as constructor (pre-0.4.22)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-665: Improper Initialization"
+      swc: "SWC-118"
+      references:
+        - https://swcregistry.io/docs/SWC-118
+    pattern-regex: 'contract\s+(\w+)\s*\{[^}]*function\s+\1\s*\('
+
+  - id: sol-swc-119-shadowed-variable
+    message: "SWC-119: Local variable shadows state variable - may cause unintended behavior"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-706: Use of Incorrectly-Resolved Name"
+      swc: "SWC-119"
+      references:
+        - https://swcregistry.io/docs/SWC-119
+    pattern-regex: '(uint\d*|int\d*|address|bool)\s+(owner|balance|total\w*)\s*[=;]'
+
+  - id: sol-swc-125-inheritance-order
+    message: "SWC-125: Multiple inheritance may cause incorrect function resolution - check C3 linearization"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-696: Incorrect Behavior Order"
+      swc: "SWC-125"
+      references:
+        - https://swcregistry.io/docs/SWC-125
+    pattern-regex: 'contract\s+\w+\s+is\s+\w+\s*,\s*\w+\s*,\s*\w+'
+
+  - id: sol-swc-129-typo-plus-equals
+    message: "SWC-129: Possible typo - '=+' should likely be '+='"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-480: Use of Incorrect Operator"
+      swc: "SWC-129"
+      references:
+        - https://swcregistry.io/docs/SWC-129
+    pattern-regex: '\w+\s*=\+\s*\d+'
+
+  - id: sol-swc-130-rtl-override
+    message: "SWC-130: Right-to-left override character detected - possible code obfuscation attack"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-451: User Interface Misrepresentation"
+      swc: "SWC-130"
+      references:
+        - https://swcregistry.io/docs/SWC-130
+    pattern-regex: '[\u202E\u202D\u202C\u2066\u2067\u2068\u2069\u061C]'
+
+  - id: sol-swc-134-hardcoded-gas
+    message: "SWC-134: Hardcoded gas amount - may break after EVM gas cost changes"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-676: Use of Potentially Dangerous Function"
+      swc: "SWC-134"
+      references:
+        - https://swcregistry.io/docs/SWC-134
+    pattern-regex: '\.(call|send)\s*\{\s*gas\s*:\s*\d+\s*\}'
+
+  - id: sol-swc-135-no-effect
+    message: "SWC-135: Comparison has no effect - did you mean assignment (=) instead of (==)?"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-482: Comparing instead of Assigning"
+      swc: "SWC-135"
+      references:
+        - https://swcregistry.io/docs/SWC-135
+    pattern-regex: '^\s*\w+\s*==\s*\w+\s*;'
+
