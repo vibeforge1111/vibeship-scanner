@@ -2554,3 +2554,337 @@ rules:
         - https://github.com/crytic/slither/wiki/Detector-Documentation#dead-code
     pattern-regex: '(return\s+[^;]+;|revert\s*\([^)]*\)\s*;|throw\s*;)\s*\n\s*\w'
 
+  # ============================================
+  # Slither HIGH Severity Patterns
+  # ============================================
+
+  - id: sol-array-by-reference
+    message: "Storage array passed by value to internal function - changes won't persist"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-704: Incorrect Type Conversion"
+      slither: "array-by-reference"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#modifying-storage-array-by-value
+    pattern-regex: 'function\s+\w+\s*\([^)]*\[\]\s+memory\s+\w+[^)]*\)\s+internal'
+
+  - id: sol-incorrect-shift-assembly
+    message: "Incorrect shift in assembly - parameters may be reversed (value, shift vs shift, value)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      slither: "incorrect-shift"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-shift-in-assembly
+    pattern-regex: 'assembly\s*\{[^}]*(shl|shr|sar)\s*\([^)]*\)[^}]*\}'
+
+  - id: sol-state-variable-shadowing
+    message: "State variable shadows inherited variable - may cause unexpected behavior"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-710: Improper Adherence to Coding Standards"
+      slither: "shadowing-state"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#state-variable-shadowing
+    pattern-regex: 'contract\s+\w+\s+is\s+\w+[^{]*\{[^}]*(uint|int|address|bool|bytes|string|mapping)\d*\s+(public|private|internal)?\s*\w+\s*[=;]'
+
+  - id: sol-delegatecall-in-loop
+    message: "Delegatecall inside loop with msg.value - value may be reused across iterations"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-670: Always-Incorrect Control Flow Implementation"
+      slither: "delegatecall-loop"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#payable-functions-using-delegatecall-inside-a-loop
+    pattern-regex: 'for\s*\([^)]*\)\s*\{[^}]*\.delegatecall'
+
+  - id: sol-incorrect-exponentiation
+    message: "Possible incorrect exponentiation - ^ is XOR in Solidity, use ** for power"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      slither: "incorrect-exp"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-exponentiation
+    pattern-regex: '\d+\s*\^\s*\d+'
+
+  - id: sol-return-bomb
+    message: "External call result copied to memory - malicious contract can return huge data (return bomb)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      slither: "return-bomb"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#return-bomb
+    pattern-regex: '\(\s*bool\s+\w+\s*,\s*bytes\s+memory\s+\w+\s*\)\s*=\s*\w+\.(call|staticcall)'
+
+  # ============================================
+  # Slither MEDIUM Severity Patterns
+  # ============================================
+
+  - id: sol-domain-separator-collision
+    message: "Custom function named DOMAIN_SEPARATOR may collide with EIP-712 implementation"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-694: Use of Multiple Resources with Duplicate Identifier"
+      slither: "domain-separator-collision"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#domain-separator-collision
+    pattern-regex: 'function\s+DOMAIN_SEPARATOR\s*\('
+
+  - id: sol-incorrect-erc20-interface
+    message: "ERC20 function signature doesn't match standard - may cause integration issues"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-573: Improper Following of Specification by Caller"
+      slither: "erc20-interface"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-erc20-interface
+    pattern-regex: 'function\s+(transfer|approve|transferFrom)\s*\([^)]*\)\s+(public|external)[^{]*\{(?![^}]*returns\s*\(\s*bool)'
+
+  - id: sol-mapping-deletion
+    message: "Deleting mapping inside struct leaves nested data - use separate mapping deletion"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-459: Incomplete Cleanup"
+      slither: "mapping-deletion"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#deletion-on-mapping-containing-a-structure
+    pattern-regex: 'delete\s+\w+\s*\[\s*\w+\s*\]'
+
+  - id: sol-write-after-write
+    message: "Variable written twice without being read between - first write is dead store"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-563: Assignment to Variable without Use"
+      slither: "write-after-write"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#write-after-write
+    pattern-regex: '(\w+)\s*=\s*[^;]+;\s*\n\s*\1\s*='
+
+  - id: sol-constant-function-assembly
+    message: "View/pure function uses assembly - may modify state unexpectedly"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-710: Improper Adherence to Coding Standards"
+      slither: "constant-function-asm"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#constant-functions-using-assembly-code
+    pattern-regex: 'function\s+\w+\s*\([^)]*\)[^{]*(view|pure)[^{]*\{[^}]*assembly\s*\{'
+
+  - id: sol-constant-function-state
+    message: "View/pure function modifies state - violates function declaration"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-710: Improper Adherence to Coding Standards"
+      slither: "constant-function-state"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#constant-functions-changing-the-state
+    pattern-regex: 'function\s+\w+\s*\([^)]*\)[^{]*(view|pure)[^{]*\{[^}]*(\w+\s*=\s*[^=]|\.push\(|\.pop\(|delete\s+)'
+
+  - id: sol-reused-constructor
+    message: "Base constructor called multiple times through diamond inheritance - may initialize twice"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-694: Use of Multiple Resources with Duplicate Identifier"
+      slither: "reused-constructor"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#reused-base-constructor
+    pattern-regex: 'contract\s+\w+\s+is\s+\w+\s*,\s*\w+\s*,\s*\w+'
+
+  # ============================================
+  # Oracle-Specific Patterns (Pyth, Chronicle)
+  # ============================================
+
+  - id: sol-pyth-deprecated-functions
+    message: "Using deprecated Pyth functions - use getPrice/getPriceNoOlderThan instead"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-477: Use of Obsolete Function"
+      slither: "pyth-deprecated-functions"
+      references:
+        - https://docs.pyth.network/price-feeds/api-reference
+    pattern-regex: '\.getValidTimePeriod\s*\(\s*\)|\.getEmaPrice\s*\('
+
+  - id: sol-pyth-unchecked-confidence
+    message: "Pyth price used without checking confidence interval - price may be unreliable"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      slither: "pyth-unchecked-confidence"
+      references:
+        - https://docs.pyth.network/price-feeds/best-practices
+    pattern-regex: 'pyth\.\w*[Pp]rice\w*\s*\([^)]*\)(?![^;]*\.conf)'
+
+  - id: sol-chronicle-unchecked-price
+    message: "Chronicle oracle price used without staleness/validity check"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      slither: "chronicle-unchecked-price"
+      references:
+        - https://docs.chroniclelabs.org/
+    pattern-regex: 'IChronicle\s*\([^)]*\)\s*\.\s*read\s*\(\s*\)'
+
+  # ============================================
+  # Shadowing Patterns
+  # ============================================
+
+  - id: sol-shadowing-builtin
+    message: "Variable shadows Solidity builtin (msg, block, tx, now, etc.) - very confusing"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-710: Improper Adherence to Coding Standards"
+      slither: "shadowing-builtin"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#builtin-symbol-shadowing
+    pattern-regex: '(uint|int|address|bool|bytes)\d*\s+(msg|block|tx|now|this|super|abi|type)\s*[;=]'
+
+  - id: sol-shadowing-local
+    message: "Local variable shadows state variable - may cause confusion and bugs"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-710: Improper Adherence to Coding Standards"
+      slither: "shadowing-local"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#local-variable-shadowing
+    pattern-regex: 'function\s+\w+\s*\([^)]*\b(\w+)\b[^)]*\)[^{]*\{[^}]*\b\1\b\s*='
+
+  # ============================================
+  # Event Patterns
+  # ============================================
+
+  - id: sol-missing-events-access-control
+    message: "Access control change without event emission - harder to monitor and audit"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-778: Insufficient Logging"
+      slither: "events-access"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-access-control
+    pattern-regex: 'function\s+(setOwner|transferOwnership|grantRole|revokeRole|renounceRole)\s*\([^)]*\)[^{]*\{(?![^}]*emit\s+)'
+
+  - id: sol-missing-events-arithmetic
+    message: "Critical arithmetic operation without event emission - harder to track state changes"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-778: Insufficient Logging"
+      slither: "events-maths"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-arithmetic
+    pattern-regex: 'function\s+(mint|burn|withdraw|deposit|stake|unstake)\s*\([^)]*\)[^{]*\{(?![^}]*emit\s+)'
+
+  - id: sol-unindexed-erc20-events
+    message: "ERC20 Transfer/Approval events should have indexed from/to/owner/spender parameters"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-778: Insufficient Logging"
+      slither: "erc20-indexed"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#unindexed-erc20-event-parameters
+    pattern-regex: 'event\s+(Transfer|Approval)\s*\(\s*address\s+(?!indexed)'
+
+  # ============================================
+  # L2 / Cross-Chain Patterns
+  # ============================================
+
+  - id: sol-optimism-deprecated
+    message: "Using deprecated Optimism predeploy or function - may break in future upgrades"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-477: Use of Obsolete Function"
+      slither: "optimism-deprecation"
+      references:
+        - https://docs.optimism.io/builders/dapp-developers/contracts/system-contracts
+    pattern-regex: '(OVM_L2CrossDomainMessenger|OVM_L1BlockNumber|L2CrossDomainMessenger\s*\(\s*0x4200)'
+
+  - id: sol-arbitrum-retryable-order
+    message: "Multiple retryable tickets in one transaction - execution order not guaranteed"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution"
+      slither: "out-of-order-retryable"
+      references:
+        - https://docs.arbitrum.io/arbos/l1-to-l2-messaging
+    pattern-regex: 'createRetryableTicket\s*\([^)]*\)[^;]*;[^}]*createRetryableTicket\s*\('
+
+  # ============================================
+  # Additional DeFi Patterns
+  # ============================================
+
+  - id: sol-gelato-unprotected-randomness
+    message: "Gelato VRF callback without sender verification - may be spoofed"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      slither: "gelato-unprotected-randomness"
+    pattern-regex: 'function\s+_fulfillRandomness\s*\([^)]*\)[^{]*\{(?![^}]*require\s*\(\s*msg\.sender)'
+
+  - id: sol-unprotected-callback
+    message: "Callback function without caller validation - external contracts can trigger unexpected behavior"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    pattern-regex: 'function\s+(uniswapV2Call|uniswapV3\w*Callback|pancakeCall|onFlashLoan)\s*\([^)]*\)\s+(external|public)(?![^{]*require)'
+
+  - id: sol-erc4626-inflation
+    message: "ERC4626 vault without virtual shares/assets - vulnerable to inflation attack"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://blog.openzeppelin.com/a-]novel-defense-against-erc4626-inflation-attacks
+    pattern-regex: 'function\s+_convertToShares\s*\([^)]*\)[^{]*\{[^}]*\*\s*totalSupply[^}]*\/\s*totalAssets'
+
