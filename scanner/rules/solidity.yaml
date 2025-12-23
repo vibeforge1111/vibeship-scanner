@@ -1894,7 +1894,7 @@ rules:
     pattern-regex: '^\s*(uint\d*|int\d*|address|bool|bytes\d*|string|mapping)\s+(?!public|private|internal)\w+\s*[=;]'
 
   - id: sol-swc-110-assert-user-input
-    message: "SWC-110: assert() used with user-controlled input - use require() for input validation"
+    message: "SWC-110: assert() used for input validation - use require() instead, assert is for invariants"
     languages: [solidity]
     severity: WARNING
     metadata:
@@ -1903,12 +1903,7 @@ rules:
       swc: "SWC-110"
       references:
         - https://swcregistry.io/docs/SWC-110
-    patterns:
-      - pattern-inside: |
-          function $FUNC(..., $PARAM, ...) {
-            ...
-          }
-      - pattern: assert($PARAM $OP $VAL)
+    pattern-regex: 'assert\s*\(\s*\w+\s*(>|<|>=|<=|==|!=)\s*\w+'
 
   - id: sol-swc-114-front-running
     message: "SWC-114: Transaction order dependence - vulnerable to front-running/sandwich attacks"
@@ -1980,7 +1975,7 @@ rules:
       swc: "SWC-130"
       references:
         - https://swcregistry.io/docs/SWC-130
-    pattern-regex: '[\u202E\u202D\u202C\u2066\u2067\u2068\u2069\u061C]'
+    pattern-regex: '(\xe2\x80\xae|\xe2\x80\xad|\xe2\x80\xac|\xe2\x81\xa6|\xe2\x81\xa7|\xe2\x81\xa8|\xe2\x81\xa9|\xd8\x9c)'
 
   - id: sol-swc-134-hardcoded-gas
     message: "SWC-134: Hardcoded gas amount - may break after EVM gas cost changes"
@@ -2005,4 +2000,103 @@ rules:
       references:
         - https://swcregistry.io/docs/SWC-135
     pattern-regex: '^\s*\w+\s*==\s*\w+\s*;'
+
+  # ============================================
+  # Trail of Bits Not-So-Smart-Contracts Patterns
+  # ============================================
+
+  - id: sol-deprecated-var-keyword
+    message: "Deprecated 'var' keyword can cause type confusion - resolves to smallest type (e.g., uint8 in loops)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-628: Function Call with Incorrectly Specified Arguments"
+      references:
+        - https://github.com/crytic/not-so-smart-contracts/tree/master/honeypots
+    pattern-regex: '\bvar\s+\w+\s*='
+
+  - id: sol-balance-includes-msgvalue
+    message: "Logic error: this.balance already includes msg.value - condition may always fail (Honeypot pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-1025: Comparison Using Wrong Factors"
+      references:
+        - https://github.com/crytic/not-so-smart-contracts/tree/master/honeypots
+    pattern-regex: 'if\s*\(\s*msg\.value\s*(>=|>|==)\s*(this\.balance|address\s*\(\s*this\s*\)\.balance)'
+
+  - id: sol-callback-no-sender-check
+    message: "Callback function without sender validation - unauthorized callers can trigger state changes"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - https://github.com/crytic/not-so-smart-contracts/tree/master/unprotected_function
+    pattern-regex: 'function\s+(__callback|oracleCallback|fulfillRandomness|rawFulfillRandomWords)\s*\([^)]*\)\s+(public|external)(?![^{]*require\s*\(\s*msg\.sender)'
+
+  - id: sol-public-admin-function
+    message: "Administrative function without access control modifier - anyone can call"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - https://github.com/crytic/not-so-smart-contracts/tree/master/unprotected_function
+    pattern-regex: 'function\s+(setOwner|changeOwner|updateOwner|setAdmin|setConfig|setPrice|setRate|pause|unpause|mint|burn)\s*\([^)]*\)\s+(public|external)(?![^{]*(onlyOwner|onlyAdmin|require\s*\(\s*msg\.sender))'
+
+  - id: sol-send-all-balance
+    message: "Sending entire contract balance - consider if this is intended behavior"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      references:
+        - https://github.com/crytic/not-so-smart-contracts/tree/master/denial_of_service
+    pattern-regex: '\.(transfer|send|call)\s*(\{[^}]*\})?\s*\(\s*(this\.balance|address\s*\(\s*this\s*\)\.balance)'
+
+  - id: sol-loop-with-transfer
+    message: "ETH transfer inside loop - single failed transfer blocks all others (DoS pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      references:
+        - https://github.com/crytic/not-so-smart-contracts/tree/master/denial_of_service
+    pattern-regex: 'for\s*\([^)]*\)\s*\{[^}]*\.(transfer|send)\s*\('
+
+  - id: sol-interface-external-call
+    message: "Calling external contract via interface - ensure address is trusted and validated"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://github.com/crytic/not-so-smart-contracts/tree/master/incorrect_interface
+    patterns:
+      - pattern-inside: |
+          function $FUNC(..., address $ADDR, ...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: $IFACE($ADDR).$METHOD(...)
+          - pattern: I$NAME($ADDR).$METHOD(...)
+
+  - id: sol-forced-ether-assumption
+    message: "Strict ETH balance check - contract can receive ETH via selfdestruct bypassing this"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      references:
+        - https://github.com/crytic/not-so-smart-contracts/tree/master/forced_ether_reception
+    pattern-regex: 'require\s*\(\s*(this\.balance|address\s*\(\s*this\s*\)\.balance)\s*==\s*\d+'
 
