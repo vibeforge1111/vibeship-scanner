@@ -25,6 +25,21 @@
 			onCopyPrompt(text);
 		}
 	}
+
+	function getUrgencyColor(urgency: string): string {
+		switch (urgency) {
+			case 'ship-blocker':
+				return '#ef4444';
+			case 'fix-this-week':
+				return '#f97316';
+			case 'good-to-fix':
+				return '#eab308';
+			case 'consider':
+				return '#3b82f6';
+			default:
+				return 'var(--text-tertiary)';
+		}
+	}
 </script>
 
 <div class="finding-card" class:expanded={isExpanded}>
