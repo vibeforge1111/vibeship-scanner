@@ -1224,27 +1224,6 @@ rules:
       - pattern: $POOL.get_virtual_price()
       - pattern: ICurvePool($POOL).get_virtual_price()
 
-  - id: sol-receive-eth-no-sender-check
-    message: "receive() or fallback() accepts ETH from any sender - unintended deposits possible"
-    languages: [solidity]
-    severity: INFO
-    metadata:
-      category: security
-      cwe: "CWE-284: Improper Access Control"
-    patterns:
-      - pattern-either:
-          - pattern: |
-              receive() external payable {
-                ...
-              }
-          - pattern: |
-              fallback() external payable {
-                ...
-              }
-      - pattern-not-inside: |
-          require(msg.sender == ..., ...);
-          ...
-
   - id: sol-precision-loss-mul-div
     message: "Division before multiplication in fixed-point math - precision loss vulnerability (Shards pattern)"
     languages: [solidity]
@@ -1421,4 +1400,252 @@ rules:
       category: security
       cwe: "CWE-693: Protection Mechanism Failure"
     pattern-regex: 'getMedianPrice|computeMedian|_computeMedianPrice'
+
+  # ============================================
+  # Ethernaut Challenge Patterns
+  # ============================================
+
+  - id: sol-reverting-fallback-dos
+    message: "Fallback/receive with require can cause DoS - callers cannot send ETH if condition fails (King pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-248: Uncaught Exception"
+      references:
+        - https://ethernaut.openzeppelin.com/level/9
+    pattern-either:
+      - pattern: |
+          receive() external payable {
+            require(...);
+            ...
+          }
+      - pattern: |
+          fallback() external payable {
+            require(...);
+            ...
+          }
+
+  - id: sol-private-not-hidden
+    message: "Private variables are readable on-chain via eth_getStorageAt - do not store secrets (Vault pattern)"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-200: Exposure of Sensitive Information"
+      references:
+        - https://ethernaut.openzeppelin.com/level/8
+    pattern-regex: '(bytes32|string|bytes)\s+private\s+\w*(password|secret|key|private)\w*\s*[=;]'
+
+  - id: sol-private-array-exposure
+    message: "Private arrays/mappings are readable on-chain - storage slots can be computed and read (Privacy pattern)"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-200: Exposure of Sensitive Information"
+      references:
+        - https://ethernaut.openzeppelin.com/level/12
+    pattern-regex: 'bytes32\s*\[\s*\d*\s*\]\s+private'
+
+  - id: sol-external-view-manipulation
+    message: "External view function called multiple times - attacker can return different values (Elevator/Shop pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-367: Time-of-Check Time-of-Use"
+      references:
+        - https://ethernaut.openzeppelin.com/level/11
+        - https://ethernaut.openzeppelin.com/level/21
+    patterns:
+      - pattern-inside: |
+          function $FUNC(...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: |
+              if ($IFACE.$VIEW(...)) {
+                ...
+                $IFACE.$VIEW2(...)
+              }
+          - pattern: |
+              $X = $IFACE.$VIEW(...);
+              ...
+              $Y = $IFACE.$VIEW2(...);
+
+  - id: sol-array-length-manipulation
+    message: "Array length can be manipulated - potential storage slot overflow attack (AlienCodex pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-680: Integer Overflow to Buffer Overflow"
+      references:
+        - https://ethernaut.openzeppelin.com/level/19
+    pattern-either:
+      - pattern: $ARR.length--
+      - pattern: $ARR.length = $ARR.length - 1
+      - pattern-regex: '\w+\.length\s*-=\s*1'
+
+  - id: sol-extcodesize-check-bypassable
+    message: "extcodesize check can be bypassed during contract construction (GatekeeperTwo pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - https://ethernaut.openzeppelin.com/level/14
+    pattern-either:
+      - pattern: require(extcodesize(msg.sender) == 0, ...)
+      - pattern: |
+          if (extcodesize(msg.sender) == 0) {
+            ...
+          }
+      - pattern-regex: 'extcodesize\s*\(\s*msg\.sender\s*\)\s*==\s*0'
+
+  - id: sol-gasleft-manipulation
+    message: "gasleft() used for access control - can be manipulated by attacker (GatekeeperOne pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+      references:
+        - https://ethernaut.openzeppelin.com/level/13
+    pattern-either:
+      - pattern: require(gasleft() % $N == $M, ...)
+      - pattern: |
+          if (gasleft() % $N == $M) {
+            ...
+          }
+
+  - id: sol-selfdestruct-force-eth
+    message: "selfdestruct can force ETH to any address - contracts cannot prevent receiving ETH this way (Force pattern)"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      references:
+        - https://ethernaut.openzeppelin.com/level/7
+    pattern-either:
+      - pattern: selfdestruct(payable($ADDR))
+      - pattern: selfdestruct($ADDR)
+
+  - id: sol-delegatecall-preserves-context
+    message: "Delegatecall in fallback executes external code in caller's context - storage/owner can be hijacked (Delegation pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      references:
+        - https://ethernaut.openzeppelin.com/level/6
+    patterns:
+      - pattern-inside: |
+          fallback() external {
+            ...
+          }
+      - pattern: $ADDR.delegatecall(msg.data)
+
+  - id: sol-transfer-locktime-bypass
+    message: "transfer() locked but transferFrom() may not be - check all ERC20 transfer methods (NaughtCoin pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-269: Improper Access Control"
+      references:
+        - https://ethernaut.openzeppelin.com/level/15
+    patterns:
+      - pattern-inside: |
+          function transfer(...) ... override {
+            require(...);
+            ...
+          }
+      - pattern-not-inside: |
+          function transferFrom(...) ... override {
+            require(...);
+            ...
+          }
+
+  - id: sol-dex-token-validation
+    message: "DEX swap accepts any token address - attacker can use fake tokens to drain real ones (DexTwo pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://ethernaut.openzeppelin.com/level/23
+    patterns:
+      - pattern-inside: |
+          function swap(address $FROM, address $TO, ...) ... {
+            ...
+          }
+      - pattern-not-inside: |
+          require($FROM == token1 || $FROM == token2, ...);
+          ...
+
+  - id: sol-integer-underflow-pre-080
+    message: "Unchecked subtraction can underflow in Solidity <0.8.0 - use SafeMath (Token pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-191: Integer Underflow"
+      references:
+        - https://ethernaut.openzeppelin.com/level/5
+    pattern-regex: 'pragma solidity\s*[\^~]?\s*0\.[4-7]\.\d+.*\n[\s\S]*?(balances\s*\[\s*\w+\s*\]\s*-=|balances\s*\[\s*\w+\s*\]\s*-\s*\w+)'
+
+  - id: sol-recovery-address-calculation
+    message: "Contract addresses are deterministic - CREATE addresses can be computed from deployer + nonce (Recovery pattern)"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+      references:
+        - https://ethernaut.openzeppelin.com/level/17
+    pattern: new $CONTRACT(...)
+
+  - id: sol-good-samaritan-error-spoof
+    message: "Custom errors can be spoofed by malicious contracts - do not trust error type for control flow (GoodSamaritan pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-755: Improper Handling of Exceptional Conditions"
+      references:
+        - https://ethernaut.openzeppelin.com/level/27
+    patterns:
+      - pattern: |
+          try ... {
+            ...
+          } catch (bytes memory $ERR) {
+            if (keccak256($ERR) == keccak256(...)) {
+              ...
+            }
+          }
+
+  - id: sol-higher-order-calldata-bypass
+    message: "Assembly calldataload reads 32 bytes regardless of declared type - uint8 can receive larger values (HigherOrder pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://ethernaut.openzeppelin.com/level/30
+    patterns:
+      - pattern-inside: |
+          function $FUNC($TYPE $PARAM) ... {
+            ...
+          }
+      - pattern: calldataload(...)
+      - metavariable-regex:
+          metavariable: $TYPE
+          regex: '^uint8$|^uint16$|^uint24$|^uint32$|^int8$|^int16$|^int24$|^int32$'
 
