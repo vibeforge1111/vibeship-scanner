@@ -512,6 +512,7 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
         '--include=*.rb',      # Ruby spec files
         '--include=*.php',     # PHP test files
         '--include=*.java',    # Java test files
+        '--include=*.rs',      # Rust/Solana programs
     ] + configs + [repo_dir]
 
     try:
