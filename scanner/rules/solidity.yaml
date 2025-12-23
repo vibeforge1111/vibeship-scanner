@@ -2246,3 +2246,311 @@ rules:
       cwe: "CWE-20: Improper Input Validation"
     pattern-regex: 'swapExact\w+\s*\([^)]*,\s*0\s*,'
 
+  # ============================================
+  # Secureum Mind Map - High Priority Patterns
+  # ============================================
+
+  - id: sol-block-timestamp-manipulation
+    message: "Block timestamp used for critical logic - miners can manipulate within ~15 second window"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      secureum: "Pitfalls 101 - Block values as time proxies"
+      references:
+        - https://consensys.github.io/smart-contract-best-practices/development-recommendations/solidity-specific/timestamp-dependence/
+    pattern-regex: '(block\.timestamp|now)\s*(>|<|>=|<=|==)\s*\w+'
+
+  - id: sol-dangerous-strict-equality
+    message: "Strict equality on balance - can be manipulated via selfdestruct or direct transfer"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-697: Incorrect Comparison"
+      secureum: "Pitfalls 101 - Dangerous strict equalities"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+    pattern-regex: '(address\s*\(\s*this\s*\)\.balance|this\.balance|\w+\.balanceOf\s*\([^)]*\))\s*==\s*\w+'
+
+  - id: sol-locked-ether
+    message: "Contract can receive ETH but has no withdraw function - funds may be permanently locked"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-664: Improper Control of a Resource Through its Lifetime"
+      secureum: "Pitfalls 101 - Locked Ether"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#contracts-that-lock-ether
+    pattern-regex: '(receive|fallback)\s*\(\s*\)\s*(external|public)\s+payable\s*\{'
+
+  - id: sol-boolean-constant-comparison
+    message: "Unnecessary comparison to boolean constant - use variable directly"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-1126: Declaration of Variable with Unnecessarily Wide Scope"
+      secureum: "Pitfalls 101 - Boolean constant"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#boolean-equality
+    pattern-regex: '(==\s*true|==\s*false|!=\s*true|!=\s*false|true\s*==|false\s*==)'
+
+  - id: sol-chainlink-deprecated-api
+    message: "Using deprecated Chainlink latestAnswer() - use latestRoundData() for staleness checks"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-477: Use of Obsolete Function"
+      secureum: "Audit Findings 101 - Assimilators use a deprecated Chainlink API"
+      references:
+        - https://docs.chain.link/data-feeds/api-reference
+    pattern-regex: '\.latestAnswer\s*\(\s*\)'
+
+  - id: sol-uninitialized-local-storage
+    message: "Uninitialized local storage variable - points to slot 0 by default, can overwrite state"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-908: Use of Uninitialized Resource"
+      secureum: "Pitfalls 101 - Uninitialized storage pointers"
+      references:
+        - https://swcregistry.io/docs/SWC-109
+    pattern-regex: '(struct|mapping)[^;]*\s+storage\s+\w+\s*;'
+
+  - id: sol-function-type-variable
+    message: "Function type variable - can be manipulated to jump to arbitrary code locations"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-695: Use of Low-Level Functionality"
+      secureum: "Pitfalls 101 - Arbitrary jump with function type variable"
+      references:
+        - https://swcregistry.io/docs/SWC-127
+    pattern-regex: 'function\s*\([^)]*\)\s+(internal|external|public|private)\s+\w+\s*;'
+
+  - id: sol-modifier-no-underscore
+    message: "Modifier without underscore (_) - function body will not execute"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-670: Always-Incorrect Control Flow Implementation"
+      secureum: "Pitfalls 101 - Incorrect modifier"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-modifier
+    pattern-regex: 'modifier\s+\w+\s*\([^)]*\)\s*\{[^}]*\}(?![^}]*_\s*;)'
+
+  - id: sol-assert-state-change
+    message: "assert() should only check invariants - state changes in assert can cause issues"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-617: Reachable Assertion"
+      secureum: "Pitfalls 101 - assert(), require() state change"
+      references:
+        - https://swcregistry.io/docs/SWC-110
+    pattern-regex: 'assert\s*\([^)]*(\+\+|--|\+=|-=|\*=|/=)[^)]*\)'
+
+  - id: sol-rebasing-token-balance
+    message: "Storing rebasing token balance - balance may change without transfer events"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      secureum: "Pitfalls 201 - Token Inflation via interest"
+      references:
+        - https://github.com/d-xo/weird-erc20#rebasing-tokens
+    pattern-regex: 'balances\s*\[\s*\w+\s*\]\s*=\s*\w+\.balanceOf'
+
+  - id: sol-missing-interface-implementation
+    message: "Contract inherits interface but may be missing function implementations"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-573: Improper Following of Specification by Caller"
+      secureum: "Pitfalls 101 - Missing inheritance"
+    pattern-regex: 'contract\s+\w+\s+is\s+[^{]*I[A-Z]\w+'
+
+  - id: sol-insufficient-gas-griefing
+    message: "External call with limited gas - may fail due to gas griefing if recipient uses all gas"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      secureum: "Pitfalls 101 - Insufficient gas griefing"
+      references:
+        - https://consensys.github.io/smart-contract-best-practices/attacks/griefing/
+    pattern-regex: '\.(call|send)\s*\{\s*gas\s*:\s*\d+\s*\}\s*\('
+
+  - id: sol-token-decimals-assumption
+    message: "Hardcoded 18 decimals assumption - tokens with different decimals will cause calculation errors"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      secureum: "Audit Findings 101 - Tokens with more than 18 decimal points"
+      references:
+        - https://github.com/d-xo/weird-erc20#high-decimals
+    pattern-regex: '(1e18|10\s*\*\*\s*18|1000000000000000000)'
+
+  - id: sol-unprotected-clone-initializer
+    message: "Clone/minimal proxy initializer without protection - can be front-run and hijacked"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-665: Improper Initialization"
+      secureum: "Audit Findings 101 - Initialization functions can be front-run"
+      references:
+        - https://blog.openzeppelin.com/security-advisory-initialize-uups-implementation-contracts
+    pattern-regex: 'function\s+initialize\s*\([^)]*\)\s+(public|external)(?![^{]*(initializer|onlyOwner|require\s*\(\s*!?\s*initialized))'
+
+  - id: sol-instant-parameter-change
+    message: "Critical parameter change without timelock - users cannot react to changes"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      secureum: "Audit Findings 101 - Governance parameter changes should not be instant"
+      references:
+        - https://docs.openzeppelin.com/contracts/4.x/api/governance#TimelockController
+    pattern-regex: 'function\s+(setFee|setRate|setPrice|setLimit|setThreshold|updateConfig)\s*\([^)]*\)\s+(external|public)(?![^{]*timelock)'
+
+  # ============================================
+  # Secureum Mind Map - Medium Priority Patterns
+  # ============================================
+
+  - id: sol-dangerous-unary-minus
+    message: "Possible typo: '=-' should likely be '-=' (unary minus assignment)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-480: Use of Incorrect Operator"
+      secureum: "Pitfalls 101 - Dangerous unary expressions"
+      references:
+        - https://swcregistry.io/docs/SWC-129
+    pattern-regex: '\w+\s*=-\s*\d+'
+
+  - id: sol-modifier-external-call
+    message: "Modifier makes external call - can introduce reentrancy or unexpected state changes"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-696: Incorrect Behavior Order"
+      secureum: "Pitfalls 101 - Modifier side-effects"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-4
+    pattern-regex: 'modifier\s+\w+[^{]*\{[^}]*\.(call|delegatecall|staticcall|transfer|send)\s*[({]'
+
+  - id: sol-pre-declaration-usage
+    message: "Variable used before declaration - behavior differs between Solidity versions"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-908: Use of Uninitialized Resource"
+      secureum: "Pitfalls 101 - Pre-declaration usage of local variables"
+    pattern-regex: '\w+\s*=\s*\w+\s*;[^;]*\b(uint|int|address|bool|bytes)\d*\s+\1\s*;'
+
+  - id: sol-similar-variable-names
+    message: "Variables with very similar names - potential source of bugs and confusion"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-1114: Inappropriate Whitespace Style"
+      secureum: "Pitfalls 101 - Similar variable names"
+    pattern-regex: '(\w+)_?\s*,\s*\1[A-Z_]'
+
+  - id: sol-tautology-condition
+    message: "Condition is always true/false (tautology/contradiction) - logic error"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-571: Expression is Always True"
+      secureum: "Pitfalls 101 - Tautology or contradiction"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#tautology-or-contradiction
+    pattern-regex: '(uint\d*\s+\w+[^;]*;\s*[^}]*\1\s*>=\s*0|uint\d*\s+\w+[^;]*<\s*0)'
+
+  - id: sol-out-of-range-enum
+    message: "Casting to enum without bounds check - invalid values cause revert in Solidity 0.8+"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-704: Incorrect Type Conversion"
+      secureum: "Pitfalls 101 - Out-of-range enum"
+      references:
+        - https://swcregistry.io/docs/SWC-133
+    pattern-regex: '\w+\s*=\s*\w+\s*\(\s*uint\d*\s*\(\s*\w+\s*\)\s*\)'
+
+  - id: sol-multiple-pragma
+    message: "Multiple Solidity pragma statements - may cause compilation issues"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-758: Reliance on Undefined Behavior"
+      secureum: "Pitfalls 101 - Multiple Solidity pragma"
+    pattern-regex: 'pragma\s+solidity[^;]+;[\s\S]*pragma\s+solidity'
+
+  - id: sol-memory-array-length
+    message: "Dynamic memory array length from user input - can cause out-of-gas or memory issues"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      secureum: "Pitfalls 101 - Memory array creation overflow"
+    pattern-regex: 'new\s+\w+\s*\[\s*\w+\s*\]'
+
+  - id: sol-void-constructor
+    message: "Empty constructor or constructor with no effect - may indicate incomplete implementation"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-1164: Irrelevant Code"
+      secureum: "Pitfalls 101 - Void constructor"
+    pattern-regex: 'constructor\s*\([^)]*\)\s*(\w+\s*)*\{\s*\}'
+
+  - id: sol-redundant-statement
+    message: "Redundant statement with no effect - may indicate logic error"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-1164: Irrelevant Code"
+      secureum: "Pitfalls 101 - Redundant statements"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#redundant-statements
+    pattern-regex: '^\s*\w+\s*;\s*$'
+
+  - id: sol-unreachable-code
+    message: "Code after return/revert/throw - unreachable and likely a logic error"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-561: Dead Code"
+      secureum: "Pitfalls 101 - Dead, Unreachable code"
+      references:
+        - https://github.com/crytic/slither/wiki/Detector-Documentation#dead-code
+    pattern-regex: '(return\s+[^;]+;|revert\s*\([^)]*\)\s*;|throw\s*;)\s*\n\s*\w'
+
