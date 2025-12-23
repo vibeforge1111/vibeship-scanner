@@ -32,6 +32,7 @@ COPY server.py /scanner/server.py
 COPY mcp_endpoint.py /scanner/mcp_endpoint.py
 COPY rules/ /scanner/rules/
 COPY gitleaks.toml /scanner/gitleaks.toml
+COPY feedback/ /scanner/feedback/
 
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
