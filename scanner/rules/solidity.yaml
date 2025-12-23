@@ -3534,3 +3534,73 @@ rules:
       ctf: "Paradigm CTF 2022 - Random"
     pattern-regex: 'function\s+_?get\w*Random\w*\s*\([^)]*\)[^{]*\{[^}]*return\s+\d+\s*;'
 
+  - id: sol-merkle-proof-encodepacked
+    message: "Merkle proof using abi.encodePacked - vulnerable to hash collision attacks"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-328: Reversible One-Way Hash"
+      ctf: "Paradigm CTF 2022 - MerkleDrop"
+    pattern-regex: 'keccak256\s*\(\s*abi\.encodePacked\s*\([^)]*proofElement'
+
+  - id: sol-swap-output-to-contract
+    message: "Swap output sent to contract address - tokens can be rescued by others"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-669: Incorrect Resource Transfer Between Spheres"
+      ctf: "Paradigm CTF 2022 - Rescue"
+    pattern-regex: 'swapExact\w+For\w+\s*\([^)]*,\s*address\s*\(\s*this\s*\)\s*,'
+
+  - id: sol-erc777-without-reentrancy-guard
+    message: "ERC777 token interaction without reentrancy guard - token hooks can reenter"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      ctf: "Paradigm CTF 2022 - HintFinance"
+    pattern-regex: 'function\s+(deposit|withdraw)\s*\([^)]*\)[^{]*\{[^}]*\.transferFrom\s*\('
+
+  - id: sol-approve-and-call-callback
+    message: "approveAndCall pattern enables callback attacks - verify callback target"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      ctf: "Paradigm CTF 2022 - HintFinance"
+    pattern-regex: 'approveAndCall\s*\('
+
+  - id: sol-erc1820-registry-hook
+    message: "ERC1820 registry hook registration - can enable reentrancy via token hooks"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      ctf: "Paradigm CTF 2022 - HintFinance"
+    pattern-regex: 'setInterfaceImplementer\s*\('
+
+  - id: sol-no-withdrawal-function
+    message: "Contract accepts ETH or tokens but has no withdrawal function - funds may be stuck"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      ctf: "Paradigm CTF 2022 - Rescue/JIT"
+    pattern-regex: 'contract\s+\w+[^{]*\{[^}]*receive\s*\(\s*\)\s*external\s*payable'
+
+  - id: sol-delegatecall-to-created-contract
+    message: "Delegatecall to newly created contract - arbitrary code execution if input controlled"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-94: Code Injection"
+      ctf: "Paradigm CTF 2022 - JIT"
+    pattern-regex: 'assembly\s*\{[^}]*create\s*\([^}]*\}[^}]*\.delegatecall'
+
