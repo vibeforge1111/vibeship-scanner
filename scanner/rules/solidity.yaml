@@ -95,7 +95,7 @@ rules:
               function $F(..., address $ADDR, ..., bytes calldata $DATA, ...) public { ... }
       - pattern-either:
           - pattern: $ADDR.call($DATA)
-          - pattern: $ADDR.call{value:$V}($DATA)
+          - pattern: '$ADDR.call{value:$V}($DATA)'
 
   - id: sol-delegatecall-to-arbitrary-address
     message: Delegatecall to user-controlled address - attacker can execute arbitrary code in contract context
@@ -114,7 +114,7 @@ rules:
               function $ANY(..., address $CONTRACT, ...) external {...}
       - pattern-either:
           - pattern: $CONTRACT.delegatecall(...)
-          - pattern: $CONTRACT.delegatecall{gas:$GAS}(...)
+          - pattern: '$CONTRACT.delegatecall{gas:$GAS}(...)'
 
   # ============================================
   # High: Integer Issues
@@ -721,4 +721,587 @@ rules:
     patterns:
       - pattern: require($COND)
       - pattern-not: require($COND, $MSG)
+
+  # ============================================
+  # DeFi: Flash Loan Attack Patterns
+  # ============================================
+
+  - id: sol-flash-loan-callback-external-call
+    message: Flash loan callback making external call - potential for callback abuse (Truster/Naive Receiver pattern)
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      references:
+        - https://www.damnvulnerabledefi.xyz/
+    patterns:
+      - pattern-inside: |
+          function onFlashLoan(...) external returns (bytes32) {
+            ...
+          }
+      - pattern-either:
+          - pattern: $ADDR.call(...)
+          - pattern: $ADDR.functionCall(...)
+          - pattern: $TOKEN.approve($SPENDER, ...)
+
+  - id: sol-flash-loan-governance-attack
+    message: Governance action in same transaction as token balance change - flash loan governance attack possible
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution Using Shared Resource"
+      references:
+        - https://www.damnvulnerabledefi.xyz/
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $TOKEN.flashLoan(...);
+              ...
+              $GOV.propose(...)
+          - pattern: |
+              $TOKEN.flashLoan(...);
+              ...
+              $GOV.castVote(...)
+          - pattern: |
+              $TOKEN.flashLoan(...);
+              ...
+              $GOV.queue(...)
+
+  - id: sol-flash-loan-reentrancy-side-entrance
+    message: Flash loan with deposit/withdraw pattern - potential side entrance attack
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+    patterns:
+      - pattern-inside: |
+          function execute() external {
+            ...
+          }
+      - pattern: '$POOL.deposit{value: ...}()'
+
+  # ============================================
+  # DeFi: Oracle Security
+  # ============================================
+
+  - id: sol-chainlink-stale-price
+    message: Chainlink latestRoundData() without staleness check - stale prices can be exploited
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+      references:
+        - https://docs.chain.link/data-feeds/price-feeds
+    patterns:
+      - pattern: $FEED.latestRoundData()
+      - pattern-not-inside: |
+          require(block.timestamp - $UPDATED < ..., ...);
+          ...
+      - pattern-not-inside: |
+          if (block.timestamp - $UPDATED > ...) { ... }
+          ...
+
+  - id: sol-twap-manipulation
+    message: TWAP oracle with short observation window - vulnerable to manipulation
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+    pattern-regex: 'observe\s*\(\s*\[\s*\d{1,3}\s*,'
+
+  - id: sol-uniswap-v3-twap-short
+    message: Uniswap V3 TWAP with short period - consider using longer observation windows
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+    patterns:
+      - pattern: $POOL.observe($SECONDS)
+      - metavariable-comparison:
+          metavariable: $SECONDS
+          comparison: $SECONDS < 1800
+
+  # ============================================
+  # DeFi: Timelock & Governance
+  # ============================================
+
+  - id: sol-timelock-bypass-schedule-in-execute
+    message: Schedule called from execute context - timelock bypass vulnerability (Climber pattern)
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    patterns:
+      - pattern-inside: |
+          function execute(...) external {
+            ...
+          }
+      - pattern: $TIMELOCK.schedule(...)
+
+  - id: sol-governance-no-quorum-check
+    message: Governance proposal execution without quorum validation
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+    patterns:
+      - pattern: $PROPOSAL.execute(...)
+      - pattern-not-inside: |
+          require($VOTES >= $QUORUM, ...);
+          ...
+
+  # ============================================
+  # DeFi: Signature & Permit Security
+  # ============================================
+
+  - id: sol-permit-no-deadline-check
+    message: ERC20 permit without deadline validation - permits can be replayed
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-294: Authentication Bypass by Capture-replay"
+    patterns:
+      - pattern: $TOKEN.permit($OWNER, $SPENDER, $VALUE, $DEADLINE, $V, $R, $S)
+      - pattern-not-inside: |
+          require($DEADLINE >= block.timestamp, ...);
+          ...
+
+  - id: sol-meta-tx-replay
+    message: Meta-transaction without nonce tracking - replay attack possible
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-294: Authentication Bypass by Capture-replay"
+    patterns:
+      - pattern-inside: |
+          function executeMetaTransaction(...) external {
+            ...
+          }
+      - pattern: ecrecover(...)
+      - pattern-not-inside: |
+          nonces[$USER]++;
+          ...
+
+  - id: sol-signature-no-domain-separator
+    message: Signature verification without domain separator - cross-contract replay possible
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-294: Authentication Bypass by Capture-replay"
+    patterns:
+      - pattern: ecrecover($HASH, $V, $R, $S)
+      - pattern-not-inside: |
+          $DOMAIN = keccak256(abi.encode(..., block.chainid, address(this), ...));
+          ...
+
+  # ============================================
+  # DeFi: Calldata & ABI Security
+  # ============================================
+
+  - id: sol-abi-decode-untrusted
+    message: abi.decode on untrusted calldata - potential ABI smuggling attack
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+    patterns:
+      - pattern-inside: |
+          function $FUNC(..., bytes calldata $DATA, ...) external {
+            ...
+          }
+      - pattern: abi.decode($DATA, ...)
+
+  - id: sol-multicall-delegatecall
+    message: Multicall with delegatecall - batched operations can bypass checks
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-863: Incorrect Authorization"
+    patterns:
+      - pattern-inside: |
+          function multicall(...) external {
+            ...
+          }
+      - pattern: delegatecall(...)
+
+  # ============================================
+  # DeFi: Bridge & Cross-Chain
+  # ============================================
+
+  - id: sol-bridge-withdrawal-no-merkle-verify
+    message: Bridge withdrawal without Merkle proof verification
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+    patterns:
+      - pattern-inside: |
+          function withdraw(...) external {
+            ...
+          }
+      - pattern: $TOKEN.transfer($TO, $AMOUNT)
+      - pattern-not-inside: |
+          MerkleProof.verify(...);
+          ...
+      - pattern-not-inside: |
+          require(MerkleProof.verify(...), ...);
+          ...
+
+  - id: sol-bridge-double-spend
+    message: Bridge claim without marking as processed - double-spend possible
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-367: Time-of-check Time-of-use (TOCTOU) Race Condition"
+    patterns:
+      - pattern-inside: |
+          function claim(...) external {
+            ...
+          }
+      - pattern: $TOKEN.transfer(...)
+      - pattern-not-inside: |
+          claimed[$ID] = true;
+          ...
+      - pattern-not-inside: |
+          processed[$HASH] = true;
+          ...
+
+  # ============================================
+  # DeFi: Liquidation & Collateral
+  # ============================================
+
+  - id: sol-liquidation-no-health-check
+    message: Liquidation without health factor validation
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+    patterns:
+      - pattern-inside: |
+          function liquidate(...) external {
+            ...
+          }
+      - pattern: $TOKEN.transferFrom($BORROWER, ...)
+      - pattern-not-inside: |
+          require($HEALTH < ..., ...);
+          ...
+
+  - id: sol-collateral-price-single-source
+    message: Collateral valuation from single price source - use aggregated oracles
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+    patterns:
+      - pattern-inside: |
+          function getCollateralValue(...) {
+            ...
+          }
+      - pattern: $PRICE = $ORACLE.getPrice(...)
+      - pattern-not-inside: |
+          $PRICE1 = ...;
+          $PRICE2 = ...;
+          ...
+
+  # ============================================
+  # DeFi: AMM & DEX
+  # ============================================
+
+  - id: sol-curve-pool-manipulation
+    message: Curve pool interaction without slippage protection - sandwich attack possible
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+    pattern-regex: '(ICurve|IStableSwap|curve)\w*\.(exchange|add_liquidity|remove_liquidity)\s*\([^)]*,\s*0\s*[,)]'
+
+  - id: sol-amm-spot-price-usage
+    message: Using spot price from AMM for valuation - flash loan manipulation possible
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+    patterns:
+      - pattern-either:
+          - pattern: $POOL.getReserves()
+          - pattern: $PAIR.token0().balanceOf($PAIR)
+      - pattern-inside: |
+          function $FUNC(...) {
+            ...
+            $VALUE = ...;
+            ...
+          }
+
+  # ============================================
+  # DeFi: Damn Vulnerable DeFi Patterns
+  # ============================================
+
+  - id: sol-msg-value-loop-reuse
+    message: "msg.value used in loop - payment can be reused for multiple iterations (Free Rider pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/free-rider/
+    patterns:
+      - pattern-inside: |
+          for (...) {
+            ...
+          }
+      - pattern: msg.value
+
+  - id: sol-accounting-mismatch-balanceof
+    message: "Contract compares internal accounting to balanceOf() - direct transfers can break invariants (Unstoppable pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/unstoppable/
+    pattern-regex: 'require\s*\(\s*\w+\.balanceOf\s*\(\s*(address\s*\(\s*this\s*\)|this)\s*\)\s*==\s*\w+'
+
+  - id: sol-flash-loan-arbitrary-receiver
+    message: "Flash loan allows arbitrary receiver address - can drain third-party contracts (Naive Receiver pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/naive-receiver/
+    patterns:
+      - pattern-inside: |
+          function flashLoan(..., address $RECEIVER, ...) external {
+            ...
+          }
+      - pattern-not-inside: |
+          require($RECEIVER == msg.sender, ...);
+          ...
+
+  - id: sol-flash-loan-external-call-data
+    message: "Flash loan executes arbitrary external call with user data - attacker can call any function (Truster pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/truster/
+    patterns:
+      - pattern-inside: |
+          function flashLoan(...) external {
+            ...
+          }
+      - pattern-either:
+          - pattern: $TARGET.functionCall($DATA)
+          - pattern: $TARGET.call($DATA)
+
+  - id: sol-deposit-in-flash-callback
+    message: "Deposit function callable during flash loan callback - side entrance attack possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/side-entrance/
+    patterns:
+      - pattern-inside: |
+          function execute() external payable {
+            ...
+          }
+      - pattern-either:
+          - pattern: $POOL.deposit(...)
+          - pattern: '$POOL.deposit{value: ...}(...)'
+
+  - id: sol-snapshot-reward-claim
+    message: "Reward claim uses current balance snapshot - vulnerable to flash loan manipulation (The Rewarder pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution Using Shared Resource"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/the-rewarder/
+    patterns:
+      - pattern-inside: |
+          function distributeRewards() external {
+            ...
+          }
+      - pattern: balanceOf(msg.sender)
+      - pattern-not-inside: |
+          require(block.timestamp > lastRewardTime + ..., ...);
+          ...
+
+  - id: sol-execute-before-schedule-check
+    message: "Timelock executes operations before verifying they were scheduled - bypass vulnerability (Climber pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/climber/
+    pattern-regex: 'for\s*\([^)]+\)\s*\{[^}]*\.call[^}]*\}[^}]*require\s*\('
+
+  - id: sol-fixed-calldata-offset
+    message: "Fixed offset used for calldata parsing - ABI smuggling attack possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/abi-smuggling/
+    pattern-regex: 'calldataload\s*\(\s*(4\s*\+\s*32\s*\*\s*\d+|\d{2,3})\s*\)'
+
+  - id: sol-gnosis-safe-setup-unchecked
+    message: "Safe.setup() called without validating initializer parameters - backdoor possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-749: Exposed Dangerous Method or Function"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/backdoor/
+    patterns:
+      - pattern: $SAFE.setup($OWNERS, $THRESHOLD, $TO, $DATA, ...)
+      - pattern-not-inside: |
+          require($TO == address(0), ...);
+          ...
+      - pattern-not-inside: |
+          require($DATA.length == 0, ...);
+          ...
+
+  - id: sol-uups-implementation-not-initialized
+    message: "UUPS implementation contract not initialized - attacker can take ownership"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-665: Improper Initialization"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/wallet-mining/
+    patterns:
+      - pattern-inside: |
+          contract $CONTRACT is UUPSUpgradeable {
+            ...
+          }
+      - pattern-not: |
+          constructor() {
+            _disableInitializers();
+          }
+
+  - id: sol-curve-virtual-price-in-callback
+    message: "Curve get_virtual_price() called during callback - read-only reentrancy attack possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/curvy-puppet/
+        - https://chainsecurity.com/heartbreaks-curve-lp-oracles/
+    pattern-either:
+      - pattern: $POOL.get_virtual_price()
+      - pattern: ICurvePool($POOL).get_virtual_price()
+
+  - id: sol-receive-eth-no-sender-check
+    message: "receive() or fallback() accepts ETH from any sender - unintended deposits possible"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    patterns:
+      - pattern-either:
+          - pattern: |
+              receive() external payable {
+                ...
+              }
+          - pattern: |
+              fallback() external payable {
+                ...
+              }
+      - pattern-not-inside: |
+          require(msg.sender == ..., ...);
+          ...
+
+  - id: sol-precision-loss-mul-div
+    message: "Division before multiplication in fixed-point math - precision loss vulnerability (Shards pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/shards/
+    pattern-either:
+      - pattern: mulDivDown($X, $Y, $Z)
+      - pattern: mulDivUp($X, $Y, $Z)
+      - pattern: FixedPointMathLib.mulDivDown($X, $Y, $Z)
+
+  - id: sol-nft-payment-after-transfer
+    message: "NFT transfer before payment - msg.sender becomes owner and receives payment (Free Rider pattern)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/free-rider/
+    pattern-regex: '(safeTransferFrom|transferFrom)\s*\([^)]+\)\s*;[\s\S]*?payable\s*\(\s*\w+\s*\)\s*\.\s*(transfer|call)'
+
+  - id: sol-bridge-merkle-leaf-no-encode
+    message: "Merkle leaf constructed without proper encoding - potential proof forgery"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/withdrawal/
+    patterns:
+      - pattern: keccak256(abi.encodePacked($LEAF))
+      - pattern-inside: |
+          function $FUNC(...) {
+            ...
+            MerkleProof.verify(...);
+            ...
+          }
+
+  - id: sol-cross-chain-deploy-no-chainid
+    message: "Contract deployment without chain ID - cross-chain replay attack possible (Wallet Mining pattern)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-294: Authentication Bypass by Capture-replay"
+      references:
+        - https://www.damnvulnerabledefi.xyz/challenges/wallet-mining/
+    patterns:
+      - pattern-either:
+          - pattern: CREATE2
+          - pattern: create2(...)
+      - pattern-not-inside: |
+          require(block.chainid == ..., ...);
+          ...
 
