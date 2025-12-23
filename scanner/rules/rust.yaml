@@ -331,3 +331,353 @@ rules:
     languages: [rust]
     severity: WARNING
 
+  # ============================================
+  # Solana/Anchor - Paradigm CTF 2022 Patterns
+  # ============================================
+
+  # Challenge 1: Account Substitution / Missing PDA Validation
+  - id: anchor-mint-authority-only-check
+    message: "Mint authority check without address validation - attacker can substitute mints with same authority"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      ctf: "Paradigm CTF 2022 - Hana Challenge 1"
+    pattern-regex: 'constraint\s*=\s*\w+\.mint_authority\s*==\s*COption::Some\([^)]+\)(?![^]]*seeds)'
+
+  - id: anchor-missing-address-constraint
+    message: "Mutable account without address or seeds constraint - account substitution vulnerability"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      ctf: "Paradigm CTF 2022 - Hana Challenge 1"
+    pattern-regex: '#\[account\(\s*mut\s*(?:,[^)]*)?(?<!address\s*=\s*\w+)(?<!seeds\s*=)\)\]'
+
+  - id: anchor-voucher-mint-no-seeds
+    message: "Voucher/LP mint without PDA seed derivation - can be substituted with attacker-controlled mint"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      ctf: "Paradigm CTF 2022 - Hana Challenge 1"
+    pattern-regex: 'pub\s+voucher_mint:\s*(?:Box<)?Account<[^>]+,\s*Mint>(?:[^}]*?)(?!seeds\s*=)'
+
+  # Challenge 2: Account Confusion / Decimal Mismatch
+  - id: anchor-user-controlled-seed
+    message: "PDA seeds derived from user-provided account - account confusion vulnerability"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+      ctf: "Paradigm CTF 2022 - Hana Challenge 2"
+    pattern-regex: 'seeds\s*=\s*\[[^\]]*deposit_mint\.key\(\)[^\]]*\]'
+
+  - id: anchor-pool-no-mint-validation
+    message: "Pool account constraint doesn't validate deposit_mint relationship - decimal mismatch attack"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-681: Incorrect Conversion between Numeric Types"
+      ctf: "Paradigm CTF 2022 - Hana Challenge 2"
+    pattern-regex: 'constraint\s*=\s*state\.pools\.contains\(&pool\.key\(\)\)(?![^}]*deposit_mint)'
+
+  - id: solana-no-decimal-check
+    message: "Token transfer without decimal validation - vulnerable to decimal mismatch attacks"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-681: Incorrect Conversion between Numeric Types"
+      ctf: "Paradigm CTF 2022 - Hana Challenge 2"
+    pattern-regex: 'token::transfer\s*\([^)]*\)\s*\?(?![^}]*decimals)'
+
+  # Challenge 3: Instruction Introspection Bypass
+  - id: solana-instruction-introspection
+    message: "Instruction introspection without execution verification - can be bypassed via CPI"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-367: Time-of-check Time-of-use (TOCTOU) Race Condition"
+      ctf: "Paradigm CTF 2022 - Hana Challenge 3"
+    pattern-regex: 'load_instruction_at_checked\s*\(\s*\w+\s*,\s*&?\w+\s*\)'
+
+  - id: solana-sysvar-instructions
+    message: "Using Instructions sysvar - vulnerable to CPI-based bypass attacks"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-367: Time-of-check Time-of-use (TOCTOU) Race Condition"
+      ctf: "Paradigm CTF 2022 - Hana Challenge 3"
+    pattern-regex: 'solana_program::sysvar::instructions'
+
+  - id: solana-flash-loan-no-atomicity
+    message: "Flash loan borrowing flag set after validation - atomicity vulnerability"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-362: Concurrent Execution using Shared Resource"
+      ctf: "Paradigm CTF 2022 - Hana Challenge 3"
+    pattern-regex: '\.borrowing\s*=\s*true\s*;\s*Ok\(\(\)\)'
+
+  - id: anchor-repay-missing-signer-check
+    message: "Token repayment without verifying signer owns the source account"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      ctf: "Paradigm CTF 2022 - Hana Challenge 3"
+    pattern-regex: 'pub\s+fn\s+repay\s*\([^)]*\)[^{]*\{[^}]*Transfer\s*\{[^}]*authority:\s*ctx\.accounts\.\w+(?!.*constraint.*owner)'
+
+  # ============================================
+  # Solana/Anchor - Common Vulnerability Patterns
+  # ============================================
+
+  # Missing Signer Checks
+  - id: anchor-account-info-no-signer
+    message: "AccountInfo without Signer wrapper - missing signer verification"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+    pattern-regex: 'pub\s+(?:user|authority|admin|owner|payer):\s*AccountInfo<[^>]+>'
+
+  - id: anchor-check-comment-unchecked
+    message: "Anchor CHECK comment without proper validation logic"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+    pattern-regex: '///\s*CHECK:\s*(?:safe|ok|trusted|skip|none|todo|fixme)'
+
+  # Missing Owner Checks
+  - id: anchor-token-account-no-owner
+    message: "TokenAccount without owner constraint - can receive from wrong user"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+    pattern-regex: 'Account<[^>]*,\s*TokenAccount>(?![^}]*constraint[^}]*owner)'
+
+  - id: solana-no-owner-check
+    message: "Account used without owner verification - type confusion vulnerability"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-843: Access of Resource Using Incompatible Type"
+    pattern-regex: 'let\s+\w+\s*=\s*\*\*?\w+\.try_borrow_data\(\)\?(?![^;]*owner)'
+
+  # PDA Validation Issues
+  - id: anchor-pda-no-bump
+    message: "PDA seeds without bump constraint - address not fully validated"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+    pattern-regex: 'seeds\s*=\s*\[[^\]]+\](?![^)]*bump)'
+
+  - id: solana-pda-bump-not-stored
+    message: "PDA bump calculated but not stored - inefficient and potential mismatch"
+    languages: [rust]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+    pattern-regex: 'find_program_address\s*\([^)]+\)[^;]*;(?![^;]*bump\s*=)'
+
+  # CPI Vulnerabilities
+  - id: solana-invoke-unchecked-program
+    message: "CPI invoke without program_id validation - arbitrary program invocation"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+    pattern-regex: 'invoke\s*\(\s*&[^,]+,\s*&\[[^\]]+\]\s*\)(?![^;]*program_id)'
+
+  - id: anchor-cpi-context-new
+    message: "CpiContext::new without signer seeds - ensure proper authorization"
+    languages: [rust]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+    pattern-regex: 'CpiContext::new\s*\([^)]+\)(?!.*with_signer)'
+
+  # Integer Overflow in Token Math
+  - id: solana-unchecked-mul
+    message: "Unchecked multiplication in token math - overflow vulnerability"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow or Wraparound"
+    pattern-regex: 'amount\s*\*\s*(?:total_supply|balance|shares|rate)(?!.*checked)'
+
+  - id: solana-unchecked-div
+    message: "Unchecked division in token math - potential division by zero"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-369: Divide By Zero"
+    pattern-regex: 'amount\s*/\s*(?:total_supply|balance|shares|rate)(?!.*checked)'
+
+  - id: solana-share-calculation
+    message: "Share/LP token calculation - verify against first depositor attack"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: 'shares\s*=\s*(?:amount|deposit)\s*\*\s*total_supply\s*/\s*balance'
+
+  # Reinitialization Attacks
+  - id: anchor-init-without-space
+    message: "Anchor init without explicit space - may cause reallocation issues"
+    languages: [rust]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-665: Improper Initialization"
+    pattern-regex: '#\[account\(\s*init\s*(?:,[^)]*)?(?<!space\s*=)\)\]'
+
+  - id: solana-no-initialized-check
+    message: "Account deserialization without is_initialized check - reinitialization risk"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-665: Improper Initialization"
+    pattern-regex: 'try_from_slice\s*\([^)]+\)\?(?![^;]*is_initialized)'
+
+  # Rent Exemption
+  - id: solana-no-rent-check
+    message: "Account creation without rent exemption check - account may be garbage collected"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-404: Improper Resource Shutdown or Release"
+    pattern-regex: 'create_account\s*\([^)]*\)(?![^;]*rent|Rent)'
+
+  # Account Closing Vulnerabilities
+  - id: solana-close-account-revival
+    message: "Account closed but data not zeroed - revival attack possible"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-672: Operation on a Resource after Expiration or Release"
+    pattern-regex: '\*\*\w+\.lamports\.borrow_mut\(\)\s*=\s*0(?![^;]*data.*=.*0|realloc)'
+
+  - id: anchor-close-same-tx
+    message: "Account closure may allow reopening in same transaction"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-672: Operation on a Resource after Expiration or Release"
+    pattern-regex: '#\[account\([^)]*close[^)]*\)\](?![^}]*\n[^}]*#\[account\([^)]*init)'
+
+  # Token Program Vulnerabilities
+  - id: solana-token-approve-no-revoke
+    message: "Token approval without subsequent revoke - lingering approval risk"
+    languages: [rust]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-732: Incorrect Permission Assignment for Critical Resource"
+    pattern-regex: 'token::approve\s*\([^)]+\)\?(?![^}]*revoke)'
+
+  - id: solana-mint-no-authority-check
+    message: "Token minting without verifying mint authority"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+    pattern-regex: 'token::mint_to\s*\([^)]+\)\?(?![^}]*mint_authority)'
+
+  # Signature Verification
+  - id: solana-ed25519-no-verify
+    message: "Ed25519 signature created but verification not guaranteed"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+    pattern-regex: 'ed25519_program::id\(\)(?![^}]*verify)'
+
+  # Arbitrary External Calls
+  - id: solana-arbitrary-program-call
+    message: "Program ID from account data - arbitrary program invocation risk"
+    languages: [rust]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+    pattern-regex: 'invoke\s*\([^)]*program_id:\s*\*?\w+\.(?:program|target|destination)'
+
+  # SPL Token Specific
+  - id: spl-token-freeze-authority
+    message: "Token with freeze authority - centralization risk"
+    languages: [rust]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-732: Incorrect Permission Assignment for Critical Resource"
+    pattern-regex: 'freeze_authority\s*:\s*COption::Some'
+
+  - id: spl-associated-token-create
+    message: "Creating associated token account - verify owner is intended recipient"
+    languages: [rust]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+    pattern-regex: 'create_associated_token_account\s*\('
+
+  # Cross-Program Invocation Safety
+  - id: solana-cpi-return-unchecked
+    message: "CPI return value not checked - silent failure possible"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+    pattern-regex: 'invoke(?:_signed)?\s*\([^)]+\);(?!\s*\?)'
+
+  # Metaplex/NFT Specific
+  - id: metaplex-creator-not-verified
+    message: "NFT creator verification - ensure creator.verified is checked"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+    pattern-regex: 'creator\.address\s*==(?![^;]*verified)'
+
+  - id: metaplex-collection-not-verified
+    message: "NFT collection membership - verify collection.verified flag"
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+    pattern-regex: 'collection\.key\s*==(?![^;]*verified)'
+
