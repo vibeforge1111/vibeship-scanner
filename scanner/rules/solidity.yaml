@@ -4700,3 +4700,443 @@ rules:
       cwe: "CWE-284: Improper Access Control"
     pattern-regex: '\.(?:cross_chain|send_message|bridge)\s*\([^)]*handler[^)]*\)(?![^;]*(?:whitelist|allowed|supported))'
 
+  # ============================================
+  # Code4rena Audit Patterns (2023-04-rubicon)
+  # ============================================
+
+  # Offer/Order System Zero Address Vulnerabilities
+  - id: sol-offer-owner-zero-address
+    message: "Offer/order owner can be set to address(0) - breaks buy/cancel functionality and loses funds"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://github.com/code-423n4/2023-04-rubicon-findings
+    pattern-regex: 'struct\s+(?:Offer|Order)\s*\{[^}]*address\s+(?:owner|maker)[^}]*\}(?![^}]*require[^}]*!=\s*address\s*\(\s*0\s*\))'
+
+  - id: sol-offer-recipient-zero
+    message: "Offer recipient not validated - zero address loses funds permanently"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://github.com/code-423n4/2023-04-rubicon-findings
+    pattern-regex: 'function\s+(?:buy|fill|take)\w*\s*\([^)]*address[^)]*recipient[^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*recipient\s*!=\s*address\s*\(\s*0\s*\))'
+
+  - id: sol-unfillable-order
+    message: "Order/offer with zero parameters can block market functionality"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      references:
+        - https://github.com/code-423n4/2023-04-rubicon-findings
+    pattern-regex: 'function\s+(?:make|create|place)(?:Offer|Order)\s*\([^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*>\s*0)'
+
+  # Leverage/Borrowing Without Safety Margin
+  - id: sol-leverage-max-capacity
+    message: "Borrowing at maximum LTV without safety margin - price movement causes immediate liquidation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://github.com/code-423n4/2023-04-rubicon-findings
+    pattern-regex: 'while\s*\([^)]*(?:borrow|leverage)[^)]*\)\s*\{[^}]*(?:100|max|full)[^}]*(?:borrow|deposit)[^}]*\}'
+
+  - id: sol-borrow-loop-no-margin
+    message: "Loop borrowing/depositing without safety margin - vulnerable to price volatility"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: 'for\s*\([^)]*\)\s*\{[^}]*(?:borrow\s*\([^)]*\)[^}]*deposit|deposit\s*\([^)]*\)[^}]*borrow)[^}]*\}'
+
+  - id: sol-ltv-100-percent
+    message: "LTV set to 100% - no safety margin for price fluctuations"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: '(?:ltv|loanToValue|collateralRatio)\s*=\s*(?:100|1e18|10\*\*18|1\s*\*\s*10\s*\*\*\s*18)'
+
+  # Reward Timing Manipulation
+  - id: sol-reward-no-snapshot
+    message: "Reward distribution uses current balance - vulnerable to deposit-claim-withdraw attack"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Race Condition"
+      references:
+        - https://github.com/code-423n4/2023-04-rubicon-findings
+    pattern-regex: 'function\s+(?:distribute|claim)Reward\w*\s*\([^)]*\)[^{]*\{[^}]*(?:balanceOf|shares)\s*\[[^]]*\][^}]*reward'
+
+  - id: sol-reward-deposit-timing
+    message: "Rewards calculated from spot balance - deposit timing manipulation possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Race Condition"
+      references:
+        - https://github.com/code-423n4/2023-04-rubicon-findings
+    pattern-regex: 'reward\w*\s*=\s*[^;]*(?:balanceOf|shares|deposit)\w*\s*\[[^]]*\]\s*\*'
+
+  # Automatic Matching Fee Manipulation
+  - id: sol-matching-fee-attack
+    message: "Automatic order matching without fee protection - attackers can force makers to pay fees"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-362: Race Condition"
+      references:
+        - https://github.com/code-423n4/2023-04-rubicon-findings
+    pattern-regex: 'function\s+(?:match|settle)Order\w*\s*\([^)]*\)[^{]*\{[^}]*(?:fee|taker)[^}]*transfer[^}]*\}'
+
+  # Comptroller/Protocol Solvency
+  - id: sol-unclaimed-rewards-solvency
+    message: "Rewards can be claimed without proper accounting - protocol solvency at risk"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://github.com/code-423n4/2023-04-rubicon-findings
+    pattern-regex: 'function\s+claim\w*\s*\([^)]*\)[^{]*\{[^}]*transfer\s*\([^)]*reward[^}]*\}(?![^}]*totalClaimed|claimedAmount)'
+
+  # Version Compatibility Issues
+  - id: sol-v1-v2-compatibility
+    message: "Function handles V1/V2 differently without proper version check - inconsistent behavior"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-436: Interpretation Conflict"
+      references:
+        - https://github.com/code-423n4/2023-04-rubicon-findings
+    pattern-regex: 'if\s*\([^)]*(?:v1|version\s*==\s*1|isLegacy)[^)]*\)\s*\{[^}]*\}\s*else'
+
+  # ============================================
+  # IMPROVED PATTERNS: C4 Gap Analysis Fixes
+  # ============================================
+
+  # IMPROVED: address(this) in emit statements (more comprehensive)
+  - id: sol-emit-address-this
+    message: "address(this) directly in emit - likely wrong address (should use token/handler variable)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-704: Incorrect Type Conversion"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: 'emit\s+\w+\s*\([^;]*address\s*\(\s*this\s*\)'
+
+  # IMPROVED: Mixed bool return with require/revert (C4 HIGH pattern)
+  - id: sol-bool-return-with-revert
+    message: "Function returns bool but uses require/revert - inconsistent error handling, callers expect false not revert"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: 'function\s+\w+[^{]*returns\s*\([^)]*bool[^)]*\)\s*\{[^}]*(?:require|revert)\s*\('
+
+  # IMPROVED: Return false mixed with require in same function
+  - id: sol-mixed-return-false-require
+    message: "Function mixes 'return false' with require() - inconsistent error handling pattern"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+    pattern-regex: 'return\s+false\s*;[^}]*require\s*\(|require\s*\([^}]*return\s+false\s*;'
+
+  # ============================================
+  # NEW CATEGORY: Flash Loan Attack Patterns
+  # ============================================
+
+  - id: sol-flash-loan-callback-no-validation
+    message: "Flash loan callback without sender validation - anyone can call with fake flash loan"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - https://github.com/code-423n4/2024-07-loopfi-findings
+    pattern-regex: 'function\s+(?:on|execute|receive)Flash\w*\s*\([^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*msg\.sender\s*==)'
+
+  - id: sol-flash-loan-fee-not-accounted
+    message: "Flash loan fee not included in liquidity calculation - share value manipulation possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://github.com/code-423n4/2024-07-loopfi-findings
+    pattern-regex: 'function\s+(?:flash|loan)\w*\s*\([^)]*\)[^{]*\{[^}]*(?:fee|premium)[^}]*\}(?![^}]*(?:expectedLiquidity|totalAssets)\s*\+=)'
+
+  - id: sol-flash-loan-amount-validation
+    message: "Flash loan amount not validated against available liquidity"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+    pattern-regex: 'function\s+flash\w*\s*\([^)]*uint\d*\s+amount[^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*amount\s*<=)'
+
+  # ============================================
+  # NEW CATEGORY: Calculation Error Patterns
+  # ============================================
+
+  - id: sol-liquidation-penalty-wrong-base
+    message: "Liquidation penalty calculated on wrong base (repayAmount vs debtAmount) - penalty avoidance possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://github.com/code-423n4/2024-07-loopfi-findings
+    pattern-regex: '(?:take|seize)Collateral\s*=\s*[^;]*repay(?:Amount|Value)[^;]*(?:penalty|fee)'
+
+  - id: sol-interest-rate-one-direction
+    message: "Interest rate only adjusts in one direction - rate suppression/inflation over time"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://github.com/code-423n4/2024-07-loopfi-findings
+    pattern-regex: '(?:baseRate|interestRate)\s*(?:\-=|\+=)[^;]*(?:loss|profit)(?![^}]*(?:baseRate|interestRate)\s*(?:\+=|\-=))'
+
+  - id: sol-double-incentive-application
+    message: "Incentive/reward applied multiple times in same function - over-distribution"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://github.com/code-423n4/2024-07-loopfi-findings
+    pattern-regex: '(?:incentive|reward|bonus)\s*\+=[^}]*(?:incentive|reward|bonus)\s*\+='
+
+  - id: sol-missing-accrued-interest
+    message: "Accrued interest not included in repayment calculation - treasury/lender loss"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://github.com/code-423n4/2024-07-loopfi-findings
+    pattern-regex: 'function\s+(?:repay|liquidate)\w*[^{]*\{[^}]*(?:principal|debt)[^}]*transfer(?![^}]*(?:accrued|interest))'
+
+  - id: sol-profit-not-minted
+    message: "Profit from operation not minted to treasury - value leakage"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: 'function\s+(?:liquidate|repay|settle)\w*[^{]*\{[^}]*profit\s*=[^}]*\}(?![^}]*(?:mint|transfer)\s*\([^)]*treasury)'
+
+  # ============================================
+  # NEW CATEGORY: Collateral/Debt Patterns
+  # ============================================
+
+  - id: sol-collateral-transfer-wrong-amount
+    message: "Collateral transfer uses wrong calculation base - over/under collateralization"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://github.com/code-423n4/2024-07-loopfi-findings
+    pattern-regex: 'collateral\w*\s*=\s*[^;]*(?:repay|debt)Amount[^;]*(?:penalty|fee)(?![^;]*\-\s*(?:penalty|fee))'
+
+  - id: sol-no-refund-mechanism
+    message: "Excess payment with no refund - user funds permanently lost"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://github.com/code-423n4/2024-07-loopfi-findings
+    pattern-regex: 'function\s+(?:liquidate|repay|settle)\w*\s*\([^)]*uint\d*\s+(?:repay|pay)Amount[^)]*\)[^{]*\{(?![^}]*(?:refund|excess|remaining)\s*=)'
+
+  - id: sol-wrong-position-parameter
+    message: "Position/account parameter may reference wrong address - transaction revert or wrong state"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-704: Incorrect Type Conversion"
+      references:
+        - https://github.com/code-423n4/2024-07-loopfi-findings
+    pattern-regex: '(?:decrease|increase)(?:Lever|Position)\w*\s*\([^)]*\)[^{]*\{[^}]*(?:withdraw|deposit)\s*\([^)]*(?:address\s*\(\s*this\s*\)|msg\.sender)'
+
+  # ============================================
+  # NEW CATEGORY: State Validation Patterns
+  # ============================================
+
+  - id: sol-missing-pending-check
+    message: "Operation executed without checking PENDING status - double execution possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-367: TOCTOU Race Condition"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: 'function\s+(?:execute|process|handle)(?:Callback|Message|Request)\w*\s*\([^)]*\)[^{]*\{(?![^}]*(?:require|assert)\s*\([^)]*(?:PENDING|status\s*==))'
+
+  - id: sol-callback-no-status-update
+    message: "Callback handler doesn't update status - repeated callbacks possible"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-367: TOCTOU Race Condition"
+    pattern-regex: 'function\s+\w*[Cc]allback\w*\s*\([^)]*\)[^{]*\{(?![^}]*status\s*=)'
+
+  - id: sol-cross-chain-replay
+    message: "Cross-chain message can be replayed - no nonce or hash tracking"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-294: Authentication Bypass by Capture-replay"
+    pattern-regex: 'function\s+(?:receive|handle)(?:Cross|Chain|Message)\w*\s*\([^)]*\)[^{]*\{(?![^}]*(?:processed|used|consumed)\s*\[[^\]]*\]\s*=\s*true)'
+
+  # ============================================
+  # NEW CATEGORY: Accounting/Bookkeeping Errors
+  # ============================================
+
+  - id: sol-balance-after-transfer
+    message: "Balance checked after transfer - use balanceBefore/balanceAfter pattern"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: '\.transfer\w*\s*\([^)]*\)\s*;[^}]*balanceOf\s*\('
+
+  - id: sol-shares-before-deposit
+    message: "Shares calculated before actual deposit - vulnerable to donation attacks"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: 'shares\s*=\s*[^;]*balanceOf[^;]*;[^}]*\.transferFrom'
+
+  - id: sol-expected-vs-actual-mismatch
+    message: "Expected delta calculated but actual amount not verified - accounting drift"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+    pattern-regex: 'expected\w*Delta\s*=[^;]*;(?![^}]*actual\w*Delta|(?:require|assert)\s*\([^)]*expected)'
+
+  # ============================================
+  # NEW CATEGORY: Chakra C4 Targeted Rules
+  # Specific patterns from Code4rena 2024-08-chakra audit
+  # ============================================
+
+  - id: sol-address-this-in-cross-chain-payload
+    message: "address(this) stored in cross-chain payload - wrong address on destination chain"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-697: Incorrect Comparison"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: '(?:CrossChain|Message|Payload|Tx)\w*\s*\([^)]*address\s*\(\s*this\s*\)[^)]*(?:to_|dest|target)'
+
+  - id: sol-address-this-in-token-struct
+    message: "address(this) stored in token struct instead of actual token address"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-697: Incorrect Comparison"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: '(?:Token|Asset)\w*\s*\{[^}]*address\s*\(\s*this\s*\)[^}]*(?:to_token|token_address|dest_token)'
+
+  - id: sol-callback-status-without-all-cases
+    message: "Callback only handles Success/Failed but doesn't verify PENDING was checked first"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: 'if\s*\(\s*\w+\s*==\s*(?:Status\.)?(?:Success|SUCCESS)\s*\)[^{]*\{[^}]*\}[^}]*else\s+if\s*\(\s*\w+\s*==\s*(?:Status\.)?(?:Failed|FAILED)\s*\)'
+
+  - id: sol-cross-chain-from-handler-unvalidated
+    message: "Cross-chain from_handler not validated against whitelist - spoofed source possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-346: Origin Validation Error"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: 'function\s+(?:receive|handle|process)(?:Cross|Chain|Message)\w*\s*\([^)]*(?:from_handler|source_handler|srcHandler)[^)]*\)[^{]*\{(?![^}]*(?:require|assert)\s*\([^)]*(?:whitelist|allowed|valid)\w*\[[^\]]*from_handler)'
+
+  - id: sol-cross-chain-from-chain-unvalidated
+    message: "Cross-chain from_chain not validated - messages from unknown chains accepted"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-346: Origin Validation Error"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: 'function\s+(?:receive|handle|process)(?:Cross|Chain|Message)\w*\s*\([^)]*(?:from_chain|source_chain|srcChain)[^)]*\)[^{]*\{(?![^}]*(?:require|assert)\s*\([^)]*(?:supported|allowed|valid)(?:Chain|Chains)\[)'
+
+  - id: sol-settlement-status-not-marked
+    message: "Settlement handler doesn't mark status as processed - double settlement possible"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-367: TOCTOU Race Condition"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: 'function\s+(?:settle|execute|finalize)(?:Settlement|Order|Trade)\w*\s*\([^)]*\)[^{]*\{(?![^}]*(?:status|processed|settled)\s*\[[^\]]*\]\s*=)'
+
+  - id: sol-handler-return-bool-no-false
+    message: "Handler returns bool but never returns false - caller can't detect failures"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: 'function\s+(?:handle|process|execute)\w+\s*\([^)]*\)[^)]*returns\s*\([^)]*bool[^)]*\)[^{]*\{(?![^}]*return\s+false)'
+
