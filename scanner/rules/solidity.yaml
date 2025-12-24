@@ -4585,3 +4585,118 @@ rules:
       cwe: "CWE-682: Incorrect Calculation"
     pattern-regex: '(?:premium|interest|yield)\w*\s*\+=\s*[^;]*(?:block\.timestamp|now)\s*-\s*last'
 
+  # ============================================
+  # Code4rena Audit Patterns (2024-08-chakra)
+  # ============================================
+
+  # Address Confusion Patterns - using address(this) where parameter should be used
+  - id: sol-address-this-in-struct-init
+    message: "address(this) used in struct initialization - likely should use parameter token/handler address instead"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-704: Incorrect Type Conversion"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: '\w+\s*\{[^}]*(?:from_?(?:token|address|handler)|to_?(?:token|address|handler))\s*:\s*address\s*\(\s*this\s*\)'
+
+  - id: sol-address-this-in-event
+    message: "address(this) emitted in event - may emit wrong address (handler vs token confusion)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-704: Incorrect Type Conversion"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: 'emit\s+\w+\s*\([^)]*address\s*\(\s*this\s*\)[^)]*\)'
+
+  - id: sol-address-this-in-mapping-storage
+    message: "address(this) stored in mapping - contracts often confuse handler address with token address"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-704: Incorrect Type Conversion"
+    pattern-regex: '\w+\s*\[[^\]]+\]\s*=\s*[^;]*address\s*\(\s*this\s*\)'
+
+  # Error Handling - Functions that always revert instead of returning false
+  - id: sol-return-bool-always-reverts
+    message: "Function returns bool but uses require/revert - will never return false, only revert"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+      references:
+        - https://github.com/code-423n4/2024-08-chakra-findings
+    pattern-regex: 'function\s+\w+\s*\([^)]*\)[^{]*returns\s*\([^)]*bool[^)]*\)\s*\{[^}]*require\s*\([^}]*return\s+true\s*;[^}]*\}'
+
+  - id: sol-cross-chain-no-failure-status
+    message: "Cross-chain handler without failure status - always reverts instead of setting FAILED status"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+    pattern-regex: '(?:receive|handle)_?(?:cross|chain|message)\s*\([^)]*\)[^{]*\{(?![^}]*(?:status\s*=\s*FAILED|failed\s*=\s*true))'
+
+  # Unverified Event Parameters
+  - id: sol-event-unverified-parameter
+    message: "External parameter directly emitted in event without validation - can emit misleading data"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+    pattern-regex: 'emit\s+\w+\s*\([^)]*(?:payload|data|message)_?(?:type|kind|id)[^)]*\)(?![^;]*require|validate|verify)'
+
+  # Public function without access control that modifies mapping
+  - id: sol-public-mapping-modifier
+    message: "Public function modifies mapping without access control - anyone can modify state"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    patterns:
+      - pattern-inside: |
+          function $FUNC(...) public { ... }
+      - pattern: $MAPPING[$KEY]++
+      - pattern-not-inside: |
+          function $FUNC(...) public onlyOwner { ... }
+      - pattern-not-inside: |
+          function $FUNC(...) public onlyAdmin { ... }
+      - pattern-not-inside: |
+          require(msg.sender == $AUTHORIZED, ...);
+          ...
+
+  - id: sol-nonce-increment-no-auth
+    message: "Nonce can be incremented without authorization - potential DoS or replay protection bypass"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    pattern-regex: 'function\s+\w*(?:nonce|increment)\w*\s*\([^)]*\)\s*(?:public|external)(?![^{]*only|require\s*\(\s*msg\.sender)[^{]*\{[^}]*nonce\w*\s*\[[^\]]*\]\s*(?:\+\+|\+=)'
+
+  # Cross-chain specific patterns
+  - id: sol-cross-chain-msg-no-source-validation
+    message: "Cross-chain message handling without source chain/sender validation"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-346: Origin Validation Error"
+    pattern-regex: 'function\s+(?:receive|handle)_?(?:cross|chain|message)\s*\([^)]*\)[^{]*\{(?![^}]*(?:require|assert)\s*\([^)]*(?:source|origin|sender|from_?chain))'
+
+  - id: sol-cross-chain-handler-no-whitelist
+    message: "Cross-chain handler call without destination handler whitelist check"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    pattern-regex: '\.(?:cross_chain|send_message|bridge)\s*\([^)]*handler[^)]*\)(?![^;]*(?:whitelist|allowed|supported))'
+
