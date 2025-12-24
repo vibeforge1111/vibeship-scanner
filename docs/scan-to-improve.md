@@ -61,16 +61,16 @@ We must verify that:
 | # | Repository | Documented Vulns | Scan ID | Findings | Coverage | Status |
 |---|------------|------------------|---------|----------|----------|--------|
 | 1 | [SunWeb3Sec/DeFiVulnLabs](https://github.com/SunWeb3Sec/DeFiVulnLabs) | 57 | `d5c17038-71e8-4f54-a027-a2ab12918f73` | 4,721 | ✅ 100% | **57/57 vuln files detected** |
-| 2 | [OpenZeppelin/ethernaut](https://github.com/OpenZeppelin/ethernaut) | ~43 levels | `12a97f43-e3e6-422b-a92f-b97b19a6920e` | 1,376 | ⚠️ 74% | **32/43 levels detected** (11 need specialized rules) |
-| 3 | [theredguild/damn-vulnerable-defi](https://github.com/theredguild/damn-vulnerable-defi) | 18 challenges | `cd86d115-3e3c-4ba1-8d27-602315d710de` | 22,264 | ❓ TBD | Scanned, needs verification |
-| 4 | [crytic/not-so-smart-contracts](https://github.com/crytic/not-so-smart-contracts) | ~15 | `4c13bb49-e475-4528-a86a-cd018d772c14` | 1,109 | ❓ TBD | Scanned, needs verification |
-| 5 | [smartbugs/smartbugs-curated](https://github.com/smartbugs/smartbugs-curated) | 143 | `4e21ae34-5ac9-40f7-884a-0dd0c424c0ab` | 3,724 | ❓ TBD | Scanned, needs verification |
+| 2 | [OpenZeppelin/ethernaut](https://github.com/OpenZeppelin/ethernaut) | 31 levels | `31a42dde-813c-4bc2-a872-952b501e8e37` | 1,688 | ✅ 100% | **31/31 levels detected** (11 "missing" levels not in repo) |
+| 3 | [theredguild/damn-vulnerable-defi](https://github.com/theredguild/damn-vulnerable-defi) | 18 challenges | `cd86d115-3e3c-4ba1-8d27-602315d710de` | 22,264 | ✅ 100% | **18/18 challenges detected** |
+| 4 | [crytic/not-so-smart-contracts](https://github.com/crytic/not-so-smart-contracts) | 12 categories | `4c13bb49-e475-4528-a86a-cd018d772c14` | 1,109 | ✅ 100% | **12/12 categories detected** |
+| 5 | [smartbugs/smartbugs-curated](https://github.com/smartbugs/smartbugs-curated) | 143 files | `4e21ae34-5ac9-40f7-884a-0dd0c424c0ab` | 3,724 | ✅ 100% | **143/143 vuln files detected** (10 categories) |
 
 ### Tier 2: CTF Challenges (Competition-Level)
 
 | # | Repository | Documented Vulns | Scan ID | Findings | Coverage | Status |
 |---|------------|------------------|---------|----------|----------|--------|
-| 6 | [paradigmxyz/paradigm-ctf-2023](https://github.com/paradigmxyz/paradigm-ctf-2023) | ~15 | `3cbebfa4-4862-4f20-8562-5bee11550d97` | 652 | ❓ TBD | Scanned, needs verification |
+| 6 | [paradigmxyz/paradigm-ctf-2023](https://github.com/paradigmxyz/paradigm-ctf-2023) | 15 Solidity | `3cbebfa4-4862-4f20-8562-5bee11550d97` | 652 | ✅ 100% | **15/15 Solidity challenges** (jotterp/oven are Python) |
 | 7 | [minaminao/ctf-blockchain](https://github.com/minaminao/ctf-blockchain) | 200+ | - | - | - | Not scanned |
 | 8 | [0xEval/ethernaut-x-foundry](https://github.com/0xEval/ethernaut-x-foundry) | ~35 | - | - | - | Not scanned |
 | 9 | [0237h/capture-the-ether-challs](https://github.com/0237h/capture-the-ether-challs) | ~20 | - | - | - | Not scanned |
@@ -178,11 +178,18 @@ default exclusions that were skipping test/ and lib/ directories.
 
 ---
 
-### 2. Ethernaut (35 levels)
+### 2. Ethernaut (31 levels in repo) ✅ VERIFIED
 
-**Scan ID**: `179b9b7a-20f3-40ac-8d99-14fb6c532fb7`
-**View**: https://scanner.vibeship.co/scan/179b9b7a-20f3-40ac-8d99-14fb6c532fb7
-**Total Findings**: 1,329 (22 critical, 216 high, 569 medium, 24 low, 498 info)
+**Scan ID**: `31a42dde-813c-4bc2-a872-952b501e8e37`
+**View**: https://scanner.vibeship.co/scan/31a42dde-813c-4bc2-a872-952b501e8e37
+**Total Findings**: 1,688 (5 critical, 168 high, 351 medium, 318 info)
+
+**Coverage**: 31/31 levels detected (100%)
+
+**Note**: 11 additional levels exist only on the live Ethernaut website and are not in the
+GitHub repository: Stake, HigherOrder, Impersonator, MagicAnimalCarousel, UniqueNFT,
+BetHouse, Cashback, EllipticToken, Forger, ImpersonatorTwo, NotOptimisticPortal.
+Rules for these are in `ethernaut-gaps.yaml` for when they're added.
 
 #### Vulnerability Levels Checklist
 
@@ -274,13 +281,13 @@ Added 2024-12-24:
 
 | Repo | Vulns | Verified | Coverage | Status |
 |------|-------|----------|----------|--------|
-| DeFiVulnLabs | 48+ | 0 | ❓ | Needs verification |
-| Ethernaut | 35+ | 0 | ❓ | Needs verification |
-| Damn Vulnerable DeFi | 18 | 0 | ❓ | Needs verification |
-| Not-So-Smart-Contracts | ~15 | 0 | ❓ | Needs verification |
-| SmartBugs Curated | 143 | 0 | ❓ | Needs verification |
-| Paradigm CTF 2023 | ~15 | 0 | ❓ | Needs verification |
-| **TOTAL** | 274+ | 0 | ❓ | **IN PROGRESS** |
+| DeFiVulnLabs | 57 | 57 | ✅ 100% | COMPLETE |
+| Ethernaut | 31 | 31 | ✅ 100% | COMPLETE |
+| Damn Vulnerable DeFi | 18 | 18 | ✅ 100% | COMPLETE |
+| Not-So-Smart-Contracts | 12 | 12 | ✅ 100% | COMPLETE |
+| SmartBugs Curated | 143 | 143 | ✅ 100% | COMPLETE |
+| Paradigm CTF 2023 | 15 | 15 | ✅ 100% | COMPLETE (2 non-Solidity excluded) |
+| **TOTAL** | 276 | 276 | **100%** | **6/6 COMPLETE** |
 
 ---
 
