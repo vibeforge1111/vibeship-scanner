@@ -60,7 +60,7 @@ We must verify that:
 
 | # | Repository | Documented Vulns | Scan ID | Findings | Coverage | Status |
 |---|------------|------------------|---------|----------|----------|--------|
-| 1 | [SunWeb3Sec/DeFiVulnLabs](https://github.com/SunWeb3Sec/DeFiVulnLabs) | 48 | `7c842d9c-4396-4248-83ba-637db5e5ae23` | 2,751 | ❓ TBD | Scanned, needs verification |
+| 1 | [SunWeb3Sec/DeFiVulnLabs](https://github.com/SunWeb3Sec/DeFiVulnLabs) | 57 | `d5c17038-71e8-4f54-a027-a2ab12918f73` | 4,721 | ✅ 100% | **57/57 vuln files detected** |
 | 2 | [OpenZeppelin/ethernaut](https://github.com/OpenZeppelin/ethernaut) | ~35 levels | `179b9b7a-20f3-40ac-8d99-14fb6c532fb7` | 1,329 | ❓ TBD | Scanned, needs verification |
 | 3 | [theredguild/damn-vulnerable-defi](https://github.com/theredguild/damn-vulnerable-defi) | 18 challenges | `cd86d115-3e3c-4ba1-8d27-602315d710de` | 22,264 | ❓ TBD | Scanned, needs verification |
 | 4 | [crytic/not-so-smart-contracts](https://github.com/crytic/not-so-smart-contracts) | ~15 | `4c13bb49-e475-4528-a86a-cd018d772c14` | 1,109 | ❓ TBD | Scanned, needs verification |
@@ -100,11 +100,16 @@ We must verify that:
 
 ## Detailed Verification Results
 
-### 1. DeFiVulnLabs (48 vulnerabilities)
+### 1. DeFiVulnLabs (57 vulnerabilities) ✅ VERIFIED
 
-**Scan ID**: `7c842d9c-4396-4248-83ba-637db5e5ae23`
-**View**: https://scanner.vibeship.co/scan/7c842d9c-4396-4248-83ba-637db5e5ae23
-**Total Findings**: 2,751 (24 critical, 422 high, 1,079 medium, 1,226 info)
+**Scan ID**: `d5c17038-71e8-4f54-a027-a2ab12918f73`
+**View**: https://scanner.vibeship.co/scan/d5c17038-71e8-4f54-a027-a2ab12918f73
+**Total Findings**: 4,721 (24 critical, 422 high, 1,079 medium, 1,226 info)
+
+**Key Fix Applied**: Added `--x-ignore-semgrepignore-files` flag to disable Semgrep/Opengrep
+default exclusions that were skipping test/ and lib/ directories.
+
+**Coverage**: 57/57 vulnerability files detected (100%)
 
 #### Vulnerability Files Checklist
 
