@@ -69,6 +69,7 @@ SHARED_RULES = [
 ALWAYS_LOAD_RULES = [
     'templates.yaml',   # Pug, EJS, Handlebars, Nunjucks, Mustache, Twig XSS detection
     'yaml-config.yaml', # CI/CD, Kubernetes, Docker secrets and misconfigs
+    'ethernaut-gaps.yaml', # Ethernaut wargame gap-closing rules for Solidity
 ]
 
 

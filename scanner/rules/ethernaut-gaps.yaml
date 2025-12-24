@@ -1,0 +1,484 @@
+# Ethernaut Gap-Closing Rules
+# These rules target specific vulnerability patterns found in Ethernaut wargame levels
+# that were not being detected by existing rules.
+rules:
+  # ============================================
+  # Stake.sol - Unchecked ERC20 Transfer Returns
+  # ============================================
+
+  - id: sol-ethernaut-unchecked-weth-transfer
+    message: "WETH transfer/transferFrom return value not checked - transfer may silently fail"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-252: Unchecked Return Value"
+      subcategory:
+        - vuln
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+      technology:
+        - solidity
+        - defi
+      references:
+        - https://ethernaut.openzeppelin.com/
+        - https://swcregistry.io/docs/SWC-104
+    patterns:
+      - pattern-either:
+          - pattern: WETH.$FUNC(...)
+          - pattern: $WETH.transfer(...)
+          - pattern: $WETH.transferFrom(...)
+      - pattern-not-inside: |
+          require($WETH.$FUNC(...), ...)
+      - pattern-not-inside: |
+          if (!$WETH.$FUNC(...)) { ... }
+      - pattern-not-inside: |
+          bool $RET = $WETH.$FUNC(...);
+          ...
+          require($RET, ...);
+      - pattern-not-inside: |
+          ($RET, ) = $WETH.$FUNC(...);
+
+  - id: sol-ethernaut-stake-before-transfer
+    message: "Staking recorded before token transfer - check-effects-interactions violation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      subcategory:
+        - vuln
+      confidence: HIGH
+    patterns:
+      - pattern-inside: |
+          function $STAKE(...) {
+            ...
+          }
+      - pattern: |
+          $MAPPING[$ADDR] += $AMT;
+          ...
+          $TOKEN.transferFrom(...);
+
+  # ============================================
+  # HigherOrder.sol - Calldataload Type Confusion
+  # ============================================
+
+  - id: sol-ethernaut-calldataload-type-confusion
+    message: "calldataload reads 32 bytes - if function has smaller parameter types (uint8/uint16), this can cause type confusion"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-704: Incorrect Type Conversion or Cast"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+      likelihood: HIGH
+      impact: HIGH
+      references:
+        - https://ethernaut.openzeppelin.com/
+    pattern-regex: 'calldataload\s*\('
+
+  - id: sol-ethernaut-assembly-calldataload
+    message: "Assembly block uses calldataload - ensure proper type handling for smaller parameter types"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-704: Incorrect Type Conversion or Cast"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    pattern-regex: 'assembly\s*\{[^}]*calldataload'
+
+  # ============================================
+  # Impersonator.sol - ecrecover Zero Address
+  # ============================================
+
+  - id: sol-ethernaut-ecrecover-no-zero-check
+    message: "ecrecover result not checked for zero address - invalid signatures return address(0)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      subcategory:
+        - vuln
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+      references:
+        - https://ethernaut.openzeppelin.com/
+        - https://swcregistry.io/docs/SWC-117
+        - https://swcregistry.io/docs/SWC-122
+    patterns:
+      - pattern-either:
+          - pattern: ecrecover($HASH, $V, $R, $S)
+          - pattern: ECDSA.recover($HASH, $SIG)
+          - pattern: ECDSA.recover($HASH, $V, $R, $S)
+      - pattern-not-inside: |
+          address $SIGNER = ecrecover(...);
+          require($SIGNER != address(0), ...);
+      - pattern-not-inside: |
+          address $SIGNER = ECDSA.recover(...);
+          require($SIGNER != address(0), ...);
+      - pattern-not-inside: |
+          address $SIGNER = ECDSA.recover(...);
+          if ($SIGNER == address(0)) { ... }
+
+  - id: sol-ethernaut-signature-malleability
+    message: "Signature verification without s-value malleability check - signatures can be replayed with modified s"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      subcategory:
+        - vuln
+      confidence: MEDIUM
+      references:
+        - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/ECDSA.sol
+    patterns:
+      - pattern: ecrecover($HASH, $V, $R, $S)
+      - pattern-not-inside: |
+          require($S <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, ...);
+          ...
+          ecrecover(...)
+
+  # ============================================
+  # MagicAnimalCarousel.sol - Bit Manipulation
+  # ============================================
+
+  - id: sol-ethernaut-unsafe-bit-shift
+    message: "Bit shift operation may cause data loss or unexpected behavior"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: $X >> $BITS
+      - pattern: $X << $BITS
+      - pattern: $X & $MASK
+
+  - id: sol-ethernaut-storage-packing-collision
+    message: "Multiple values packed into single storage slot - ensure no bit overlap"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    pattern: |
+      $SLOT = ($A << $BITS1) | ($B << $BITS2)
+
+  # ============================================
+  # UniqueNFT.sol - tx.origin EOA Check Bypass
+  # ============================================
+
+  - id: sol-ethernaut-txorigin-msgsender-eoa-check
+    message: "tx.origin == msg.sender check can be bypassed during contract construction"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      subcategory:
+        - vuln
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+      references:
+        - https://ethernaut.openzeppelin.com/
+        - https://consensys.github.io/smart-contract-best-practices/development-recommendations/solidity-specific/tx-origin/
+    pattern-either:
+      - pattern: require(tx.origin == msg.sender, ...)
+      - pattern: require(tx.origin == msg.sender)
+      - pattern-regex: 'tx\.origin\s*==\s*msg\.sender'
+
+  - id: sol-ethernaut-iscontract-bypass
+    message: "isContract check can be bypassed by calling from constructor - extcodesize is 0 during construction"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      subcategory:
+        - vuln
+      confidence: HIGH
+      references:
+        - https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2943
+    pattern-either:
+      - pattern: |
+          assembly {
+            $SIZE := extcodesize($ADDR)
+          }
+      - pattern: $ADDR.code.length == 0
+      - pattern: $ADDR.code.length > 0
+
+  # ============================================
+  # BetHouse/Pool.sol - Lock State Manipulation
+  # ============================================
+
+  - id: sol-ethernaut-lock-state-manipulation
+    message: "Deposit locking can potentially be manipulated - verify lock/unlock logic"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: locked[$ADDR] = true
+          - pattern: deposits[$ADDR].locked = true
+      - pattern-not-inside: |
+          function $FUNC(...) onlyOwner { ... }
+
+  - id: sol-ethernaut-dual-deposit-path
+    message: "Multiple deposit paths with different token types - verify balance accounting consistency"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    patterns:
+      - pattern-inside: |
+          function deposit(...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: |
+              if (msg.value == $AMOUNT) {
+                ...
+              } else if ($TOKEN.$FUNC(...)) {
+                ...
+              }
+          - pattern: |
+              if ($COND1) {
+                $MAPPING[$ADDR] += ...;
+              } else {
+                $MAPPING[$ADDR] += ...;
+              }
+
+  # ============================================
+  # Cashback.sol - Nonce Milestone Manipulation
+  # ============================================
+
+  - id: sol-ethernaut-nonce-milestone
+    message: "Nonce-based milestone rewards can be manipulated by controlling transaction timing"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-841: Improper Enforcement of Behavioral Workflow"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if (nonce == $MILESTONE) { ... }
+          - pattern: |
+              if ($NONCE == $NUMBER) { $MINT(...); }
+          - pattern: nonce++;
+
+  - id: sol-ethernaut-transient-storage-unlock
+    message: "Transient storage used for unlock state - verify proper access control"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: tstore($SLOT, $VALUE)
+      - pattern: tload($SLOT)
+
+  # ============================================
+  # EllipticToken/Forger.sol - Missing EIP-712
+  # ============================================
+
+  - id: sol-ethernaut-missing-eip712-domain
+    message: "Signature verification without EIP-712 domain separator - vulnerable to cross-chain/cross-contract replay"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      subcategory:
+        - vuln
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+      references:
+        - https://eips.ethereum.org/EIPS/eip-712
+        - https://ethernaut.openzeppelin.com/
+    patterns:
+      - pattern-either:
+          - pattern: keccak256(abi.encode($RECEIVER, $AMOUNT, ...))
+          - pattern: keccak256(abi.encodePacked($A, $B, ...))
+      - pattern-inside: |
+          function $FUNC(..., bytes $SIG, ...) {
+            ...
+          }
+      - pattern-not-inside: |
+          bytes32 $DOMAIN = keccak256(abi.encode(
+            keccak256("EIP712Domain(...)"),
+            ...
+          ));
+
+  - id: sol-ethernaut-signature-no-chainid
+    message: "Signature hash does not include chain ID - vulnerable to cross-chain replay attacks"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      subcategory:
+        - vuln
+      confidence: HIGH
+      references:
+        - https://eips.ethereum.org/EIPS/eip-712
+    patterns:
+      - pattern-either:
+          - pattern: keccak256(abi.encode(...))
+          - pattern: keccak256(abi.encodePacked(...))
+      - pattern-inside: |
+          function $FUNC(...) {
+            ...
+            $SIGNER = ECDSA.recover(...);
+            ...
+          }
+      - pattern-not: keccak256(abi.encode(..., block.chainid, ...))
+      - pattern-not: keccak256(abi.encode(..., $CHAINID, ...))
+
+  # ============================================
+  # ImpersonatorTwo.sol - String Message Collision
+  # ============================================
+
+  - id: sol-ethernaut-string-signature-collision
+    message: "String concatenation for signature message - potential collision if components have variable length"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+      references:
+        - https://ethernaut.openzeppelin.com/
+    pattern-either:
+      - pattern: string(abi.encodePacked($A, $B, $C))
+      - pattern: abi.encodePacked($STR, $NONCE.toString(), ...)
+
+  - id: sol-ethernaut-nonce-string-conversion
+    message: "Nonce converted to string for signature - verify no collision with other string components"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    pattern: $NONCE.toString()
+
+  # ============================================
+  # NotOptimisticPortal.sol - Merkle Proof Issues
+  # ============================================
+
+  - id: sol-ethernaut-merkle-proof-without-leaf-hash
+    message: "Merkle proof verification without double-hashing leaf - vulnerable to second preimage attack"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-328: Reversible One-Way Hash"
+      subcategory:
+        - vuln
+      confidence: HIGH
+      references:
+        - https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/MerkleProof.sol
+    patterns:
+      - pattern: MerkleProof.verify($PROOF, $ROOT, $LEAF)
+      - pattern-not: MerkleProof.verify($PROOF, $ROOT, keccak256(abi.encodePacked(keccak256(...))))
+      - pattern-not: MerkleProof.verify($PROOF, $ROOT, keccak256(bytes.concat(keccak256(...))))
+
+  - id: sol-ethernaut-l2-state-manipulation
+    message: "L2 state root can be manipulated by sequencer - verify trust assumptions"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: l2Roots[$BLOCK] = $ROOT
+      - pattern-regex: 'l2Roots\s*\[[^\]]+\]\s*='
+      - pattern-regex: 'onlySequencer'
+
+  - id: sol-ethernaut-governance-arbitrary-call
+    message: "Governance can execute arbitrary calls - verify this is intentional and secured"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    pattern-regex: 'onlyGovernance'
+
+  # ============================================
+  # General Ethernaut Patterns
+  # ============================================
+
+  - id: sol-ethernaut-owner-hardcoded
+    message: "Owner address is hardcoded - verify this is the correct trusted address"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      subcategory:
+        - audit
+      confidence: HIGH
+    pattern-regex: 'address\s+public\s+owner\s*=\s*0x[a-fA-F0-9]+'
+
+  - id: sol-ethernaut-dual-signature-requirement
+    message: "Dual signature requirement - ensure both signers cannot be the same address"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      subcategory:
+        - audit
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $SIGNER1 = ECDSA.recover(...);
+              ...
+              $SIGNER2 = ECDSA.recover(...);
+          - pattern: |
+              require(_verify($HASH1, $SIG1), ...);
+              ...
+              require(_verify($HASH2, $SIG2), ...);
