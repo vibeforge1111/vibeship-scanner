@@ -5140,3 +5140,217 @@ rules:
         - https://github.com/code-423n4/2024-08-chakra-findings
     pattern-regex: 'function\s+(?:handle|process|execute)\w+\s*\([^)]*\)[^)]*returns\s*\([^)]*bool[^)]*\)[^{]*\{(?![^}]*return\s+false)'
 
+  # ============================================
+  # NEW CATEGORY: DeFiVulnLabs Coverage Rules
+  # Based on https://github.com/SunWeb3Sec/DeFiVulnLabs
+  # ============================================
+
+  - id: sol-divide-before-multiply
+    message: "Division before multiplication causes precision loss - multiply first then divide"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Divmultiply.sol
+    pattern-regex: '\(\s*\w+\s*/\s*\d+\s*\)\s*\*\s*\w+'
+
+  - id: sol-dirty-bytes-storage
+    message: "Copying bytes to storage can create dirty bytes - use assembly or proper length handling"
+    languages: [solidity]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Dirtybytes.sol
+    pattern-regex: 'bytes\s+memory\s+\w+\s*=\s*new\s+bytes\s*\([^)]*\)[^;]*;[^}]*\.push\s*\(\s*\)'
+
+  - id: sol-empty-array-loop-bypass
+    message: "Empty array bypasses loop logic - add length check before loop"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/empty-loop.sol
+    pattern-regex: 'for\s*\(\s*uint\s+\w+\s*=\s*0\s*;\s*\w+\s*<\s*\w+\.length\s*;[^)]*\)[^{]*\{(?![^}]*require\s*\(\s*\w+\.length\s*>)'
+
+  - id: sol-struct-delete-with-mapping
+    message: "Deleting struct with mapping leaves mapping data - manually clear mapping first"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-1109: Use of Same Variable for Multiple Purposes"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Struct-deletion.sol
+    pattern-regex: 'delete\s+\w+\s*\[\s*\w+\s*\]\s*;[^}]*mapping\s*\('
+
+  - id: sol-array-element-delete
+    message: "delete array[i] leaves gap with zero value - use swap-and-pop pattern instead"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-1109: Use of Same Variable for Multiple Purposes"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Array-deletion.sol
+    pattern-regex: 'delete\s+\w+\s*\[\s*\w+\s*\]\s*;'
+
+  - id: sol-tx-gasprice-manipulation
+    message: "tx.gasprice can be manipulated by miners - avoid using for financial calculations"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/gas-price.sol
+    pattern-regex: 'tx\.gasprice\s*\*'
+
+  - id: sol-return-in-nested-loop
+    message: "return in nested loop exits entire function - use break or flag variable"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-1046: Creation of Immutable Text Using String Concatenation"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/return-break.sol
+    pattern-regex: 'for\s*\([^)]*\)[^{]*\{[^}]*for\s*\([^)]*\)[^{]*\{[^}]*return\s+[^;]*;'
+
+  - id: sol-payable-transfer-gas-limit
+    message: "payable.transfer() has 2300 gas limit - fails for contracts with receive logic"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/payable-transfer.sol
+    pattern-regex: 'payable\s*\(\s*\w+\s*\)\s*\.transfer\s*\('
+
+  - id: sol-nft-transfer-no-approval-check
+    message: "NFT transfer without approval/ownership check - add _isApprovedOrOwner validation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/NFT-transfer.sol
+    pattern-regex: 'function\s+transferFrom\s*\([^)]*\)[^{]*\{(?![^}]*(?:require|_isApprovedOrOwner|ownerOf))'
+
+  - id: sol-self-transfer-unchecked
+    message: "Self transfer not checked - can cause balance corruption with from == to"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/self-transfer.sol
+    pattern-regex: 'function\s+(?:transfer|_transfer)\s*\([^)]*from[^)]*to[^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*from\s*!=\s*to)'
+
+  - id: sol-recover-erc20-backdoor
+    message: "recoverERC20 can withdraw reward tokens - exclude staking/reward token addresses"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/recoverERC20.sol
+    pattern-regex: 'function\s+recoverERC20\s*\([^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*!=\s*(?:rewardsToken|stakingToken))'
+
+  - id: sol-flash-loan-no-initiator-check
+    message: "Flash loan callback doesn't verify initiator - add require(initiator == address(this))"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Flashloan-flaw.sol
+    pattern-regex: 'function\s+executeOperation\s*\([^)]*initiator[^)]*\)[^{]*\{(?![^}]*require\s*\([^)]*initiator\s*==)'
+
+  - id: sol-transient-storage-callback
+    message: "Transient storage (tstore/tload) vulnerable during callbacks - clear before external calls"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-367: TOCTOU Race Condition"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/TransientStorageMisuse.t.sol
+    pattern-regex: 'tstore\s*\([^)]*\)[^}]*\.call\s*\{'
+
+  - id: sol-assembly-sstore-backdoor
+    message: "Direct sstore in assembly can modify arbitrary storage slots - potential backdoor"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-573: Improper Following of Specification"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Backdoor-assembly.sol
+    pattern-regex: 'assembly\s*\{[^}]*sstore\s*\(\s*\d+\s*,'
+
+  - id: sol-data-location-memory-update
+    message: "Struct copied to memory then modified - changes lost, use storage reference"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-119: Improper Restriction of Operations within the Bounds of a Memory Buffer"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/DataLocation.sol
+    pattern-regex: '\w+\s+memory\s+\w+\s*=\s*\w+\s*\[\s*\w+\s*\]\s*;[^}]*\w+\.\w+\s*='
+
+  - id: sol-phantom-function-permit
+    message: "Calling permit on token without EIP-2612 support silently succeeds via fallback"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-1104: Use of Unmaintained Third Party Components"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/phantom-permit.sol
+    pattern-regex: '\.call\s*\(\s*abi\.encodeWithSignature\s*\(\s*"permit\s*\('
+
+  - id: sol-invariant-uint64-overflow
+    message: "Casting to smaller uint in unchecked accumulator can overflow silently"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Invariant.sol
+    pattern-regex: '\+=\s*uint(?:8|16|32|64)\s*\([^)]*msg\.value'
+
+  - id: sol-nft-metadata-exposure
+    message: "NFT metadata accessible before mint - enables targeted minting attacks (CVE-2022-38217)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-213: Exposure of Sensitive Information Due to Incompatible Policies"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/NFTMint_exposedMetadata.sol
+    pattern-regex: 'tokenURI\s*\([^)]*\)[^{]*return.*(?:ipfs|https).*json'
+
+  - id: sol-sanity-check-bypass
+    message: "Sanity check can be bypassed with multiple small operations before expiry"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-1025: Comparison Using Wrong Factors"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Incorrect_sanity_checks.sol
+    pattern-regex: 'if\s*\(\s*block\.timestamp\s*>=?\s*\w+\s*\)[^{]*\{[^}]*=\s*0\s*;[^}]*transfer'
+
