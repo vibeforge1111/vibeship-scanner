@@ -5354,3 +5354,142 @@ rules:
         - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Incorrect_sanity_checks.sol
     pattern-regex: 'if\s*\(\s*block\.timestamp\s*>=?\s*\w+\s*\)[^{]*\{[^}]*=\s*0\s*;[^}]*transfer'
 
+  # ============================================
+  # CLOSING THE GAPS: Final 6 DeFiVulnLabs Rules
+  # Target: 100% coverage of 48 vulnerabilities
+  # ============================================
+
+  - id: sol-dirty-bytes-storage-copy
+    message: "Bytes array copied to storage with non-32-aligned length - dirty bytes vulnerability (fixed in 0.8.15)"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-195: Signed to Unsigned Conversion Error"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Dirtybytes.sol
+        - https://blog.soliditylang.org/2022/06/15/dirty-bytes-array-to-storage-bug/
+    pattern-regex: 'bytes\s+memory\s+\w+\s*=\s*new\s+bytes\s*\(\s*(?!32|64|96|128)\d+\s*\)\s*;[^;]*\w+\s*=\s*\w+'
+
+  - id: sol-approval-scam-max-uint
+    message: "Unlimited token approval (type(uint256).max) - user loses control of all tokens"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/ApproveScam.sol
+    pattern-regex: '\.approve\s*\([^,]+,\s*type\s*\(\s*uint256\s*\)\s*\.max\s*\)'
+
+  - id: sol-approval-scam-max-value
+    message: "Unlimited token approval (2**256-1 or max uint) - enables complete token drain"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/ApproveScam.sol
+    pattern-regex: '\.approve\s*\([^,]+,\s*(?:2\s*\*\*\s*256\s*-\s*1|0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)\s*\)'
+
+  - id: sol-setapprovalforall-scam
+    message: "setApprovalForAll grants unlimited NFT access - verify operator is trusted"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/ApproveScam.sol
+    pattern-regex: '\.setApprovalForAll\s*\([^,]+,\s*true\s*\)'
+
+  - id: sol-memory-struct-from-mapping
+    message: "Struct copied to memory from mapping - modifications won't persist to storage"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-664: Improper Control of a Resource"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/DataLocation.sol
+    pattern-regex: '\w+\s+memory\s+\w+\s*=\s*\w+\s*\[\s*(?:msg\.sender|_?\w+)\s*\]\s*;'
+
+  - id: sol-erc20-return-false-pattern
+    message: "ERC20 returns false on failure instead of reverting - use SafeERC20"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-253: Incorrect Check of Function Return Value"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Returnfalse.sol
+    pattern-regex: 'function\s+transfer\s*\([^)]*\)[^{]*returns\s*\(\s*bool\s*\)[^{]*\{[^}]*return\s+false\s*;'
+
+  - id: sol-unchecked-transfer-bool
+    message: "ERC20 transfer return value not checked - token may return false instead of revert"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-253: Incorrect Check of Function Return Value"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Returnfalse.sol
+    pattern-regex: 'IERC20\s*\([^)]*\)\s*\.transfer\s*\([^)]*\)\s*;(?!\s*(?:require|if|assert))'
+
+  - id: sol-undersized-balance-mapping
+    message: "Balance mapping uses uint64/uint32 - overflows at ~18 ETH, use uint256"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Invariant.sol
+    pattern-regex: 'mapping\s*\(\s*address\s*=>\s*uint(?:8|16|32|64)\s*\)\s*(?:public|private|internal)?\s*\w*[Bb]alance'
+
+  - id: sol-undersized-eth-accumulator
+    message: "ETH value cast to uint64/uint32 - overflows silently at ~18 ETH"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/Invariant.sol
+    pattern-regex: '\+=\s*uint(?:8|16|32|64)\s*\(\s*msg\.value\s*\)'
+
+  - id: sol-nft-ipfs-metadata-exposed
+    message: "IPFS NFT metadata URL pattern detected - ensure metadata is hidden until reveal"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-213: Exposure of Sensitive Information"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/NFTMint_exposedMetadata.sol
+        - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-38217
+    pattern-regex: 'ipfs://[a-zA-Z0-9]+/\d+\.json'
+
+  - id: sol-nft-http-metadata-exposed
+    message: "HTTP NFT metadata URL with token ID - vulnerable to metadata sniping (CVE-2022-38217)"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-213: Exposure of Sensitive Information"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/NFTMint_exposedMetadata.sol
+    pattern-regex: 'https?://[^"]+/\d+\.json'
+
+  - id: sol-tokenuri-predictable
+    message: "tokenURI returns predictable path with tokenId - metadata visible before mint"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-213: Exposure of Sensitive Information"
+      references:
+        - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/NFTMint_exposedMetadata.sol
+    pattern-regex: 'function\s+tokenURI\s*\([^)]*\)[^{]*\{[^}]*return\s+[^;]*(?:baseURI|_baseURI)[^;]*tokenId'
+
