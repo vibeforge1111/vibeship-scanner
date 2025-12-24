@@ -71,7 +71,7 @@ We must verify that:
 | # | Repository | Documented Vulns | Scan ID | Findings | Coverage | Status |
 |---|------------|------------------|---------|----------|----------|--------|
 | 6 | [paradigmxyz/paradigm-ctf-2023](https://github.com/paradigmxyz/paradigm-ctf-2023) | 15 Solidity | `3cbebfa4-4862-4f20-8562-5bee11550d97` | 652 | ✅ 100% | **15/15 Solidity challenges** (jotterp/oven are Python) |
-| 7 | [minaminao/ctf-blockchain](https://github.com/minaminao/ctf-blockchain) | 200+ | - | - | - | Not scanned |
+| 7 | [minaminao/ctf-blockchain](https://github.com/minaminao/ctf-blockchain) | Solutions repo | `f845d439-0592-4a1c-af44-f30947ae7f0b` | 73 | N/A | **Solutions/writeups repo** - not vulnerable code |
 | 8 | [0xEval/ethernaut-x-foundry](https://github.com/0xEval/ethernaut-x-foundry) | 22 levels | `b8b82d60-080f-47d4-a0e6-1869c56822ce` | 979 | ✅ 100% | **22/22 levels detected** (18-19 don't exist) |
 | 9 | [0237h/capture-the-ether-challs](https://github.com/0237h/capture-the-ether-challs) | 11 Solidity | `82c0edd9-c368-4b7c-a404-4f3c45f21203` | 163 | ✅ 100% | **11/11 Solidity challenges** (8 have no .sol files) |
 | 10 | [PumpkingWok/CTFGym](https://github.com/PumpkingWok/CTFGym) | 4 Solidity | `dbba77c0-d9ee-4758-8d69-0ad331ab16d1` | 89 | ✅ 100% | **4/4 Solidity files detected** |
