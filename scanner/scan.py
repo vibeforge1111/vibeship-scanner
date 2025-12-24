@@ -540,7 +540,7 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
             cmd,
             capture_output=True,
             text=True,
-            timeout=300
+            timeout=600  # 10 minutes for large repos with submodules
         )
 
         print(f"Opengrep exit code: {result.returncode}", file=sys.stderr)
@@ -608,7 +608,7 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
                 print(f"Stdout preview: {result.stdout[:500]}", file=sys.stderr)
 
     except subprocess.TimeoutExpired:
-        print("Semgrep timeout after 300s", file=sys.stderr)
+        print("Semgrep timeout after 600s", file=sys.stderr)
     except Exception as e:
         print(f"Semgrep error: {type(e).__name__}: {e}", file=sys.stderr)
 
