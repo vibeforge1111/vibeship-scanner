@@ -146,12 +146,26 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
             except Exception as e:
                 print(f"[Clone] Submodule init error: {e} (continuing without)", file=sys.stderr, flush=True)
 
-            # NOTE: Opengrep has built-in default exclusions (test/, lib/, vendor/)
-            # that cannot be disabled via .semgrepignore. Large test repos like DeFiHackLabs
-            # have 700+ files in test/ directories which would timeout if scanned.
-            # The current --include patterns scan files outside default exclusions.
-            # This is a reasonable trade-off: we scan contract code, skip test files.
-            pass
+            # Override Opengrep's default exclusions (test/, lib/, vendor/)
+            # to ensure ALL code including test files and dependencies are scanned.
+            # Use negation patterns (!) to explicitly UN-ignore directories that defaults exclude.
+            try:
+                semgrepignore_path = os.path.join(target_dir, '.semgrepignore')
+                with open(semgrepignore_path, 'w') as f:
+                    # Negation patterns to INCLUDE directories that defaults exclude
+                    # These patterns override the built-in exclusions
+                    f.write("!test/\n")
+                    f.write("!tests/\n")
+                    f.write("!src/test/\n")
+                    f.write("!src/tests/\n")
+                    f.write("!**/test/\n")
+                    f.write("!**/tests/\n")
+                    f.write("!spec/\n")
+                    f.write("!lib/\n")
+                    f.write("!vendor/\n")
+                print("[Clone] Created .semgrepignore with negation patterns to include test dirs", file=sys.stderr, flush=True)
+            except Exception as e:
+                print(f"[Clone] Warning: Could not create .semgrepignore: {e}", file=sys.stderr, flush=True)
 
         return success
     except subprocess.TimeoutExpired:
@@ -500,19 +514,23 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
     # Users can filter results by path in the UI if needed.
     #
     # --no-git-ignore: Also scan gitignored files and submodules (forge-std, etc.)
-    # --include: Force include files that default .semgrepignore might exclude (test dirs, lib/, etc.)
+    # --include: Force include files that default .semgrepignore might exclude
+    # IMPORTANT: CLI --include has higher precedence than .semgrepignore exclusions
+    # We add both file extension patterns AND directory patterns to override defaults
     cmd = [
         'opengrep', 'scan', '--json',
         '--no-git-ignore',
-        '--include=*.sol',     # Solidity - often in test/ or lib/ dirs excluded by default
-        '--include=*.py',      # Python test files
-        '--include=*.js',      # JavaScript test files
-        '--include=*.ts',      # TypeScript test files
-        '--include=*.go',      # Go test files
-        '--include=*.rb',      # Ruby spec files
-        '--include=*.php',     # PHP test files
-        '--include=*.java',    # Java test files
-        '--include=*.rs',      # Rust/Solana programs
+        '--x-ignore-semgrepignore-files',  # CRITICAL: Completely disable .semgrepignore defaults
+        # File extension patterns
+        '--include=*.sol',     # Solidity
+        '--include=*.py',      # Python
+        '--include=*.js',      # JavaScript
+        '--include=*.ts',      # TypeScript
+        '--include=*.go',      # Go
+        '--include=*.rb',      # Ruby
+        '--include=*.php',     # PHP
+        '--include=*.java',    # Java
+        '--include=*.rs',      # Rust
     ] + configs + [repo_dir]
 
     try:
