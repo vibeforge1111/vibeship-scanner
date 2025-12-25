@@ -62,7 +62,7 @@ Work through each repository systematically. After scanning, document findings a
 | 2 | [juice-shop/juice-shop](https://github.com/juice-shop/juice-shop) | JS/Node | ✅ Done | 931 | OWASP Top 10 coverage |
 | 3 | [OWASP/crAPI](https://github.com/OWASP/crAPI) | Python/JS | ✅ Done | 137 | API security focused |
 | 4 | [OWASP/NodeGoat](https://github.com/OWASP/NodeGoat) | JavaScript | ✅ Done | 93 | OWASP Top 10, deps |
-| 5 | [WebGoat/WebGoat](https://github.com/WebGoat/WebGoat) | Java | ✅ Done | 1,871 | 399 Java files, 92 JS files, 222 secrets |
+| 5 | [WebGoat/WebGoat](https://github.com/WebGoat/WebGoat) | Java | ✅ Done | 1,908 | +37 from SSTI rules, 399 Java files |
 | 6 | [appsecco/dvna](https://github.com/appsecco/dvna) | JavaScript | ✅ Done | 252 | 32 critical, 58 high, 35 Trivy deps |
 | + | [trottomv/python-insecure-app](https://github.com/trottomv/python-insecure-app) | Python | ✅ Done | 8 | SSTI, SSRF, secrets |
 | + | [SirAppSec/vuln-node.js-express.js-app](https://github.com/SirAppSec/vuln-node.js-express.js-app) | JS/Node | ✅ Done | 15+ | SSTI, XSS, weak auth |
@@ -95,16 +95,16 @@ Work through each repository systematically. After scanning, document findings a
 
 | # | Repository | Focus Area | Status | Findings | Notes |
 |---|------------|------------|--------|----------|-------|
-| 21 | [bkimminich/juice-shop-ctf](https://github.com/bkimminich/juice-shop-ctf) | CTF Tools | ⏳ Pending | - | CTF extensions |
-| 22 | [OWASP/Vulnerable-Web-Application](https://github.com/OWASP/Vulnerable-Web-Application) | General | ⏳ Pending | - | OWASP collection |
+| 21 | [bkimminich/juice-shop-ctf](https://github.com/bkimminich/juice-shop-ctf) | CTF Tools | ✅ Done | 99 | CTF extensions for Juice Shop |
+| 22 | [OWASP/Vulnerable-Web-Application](https://github.com/OWASP/Vulnerable-Web-Application) | General | ✅ Done | 32 | OWASP vuln collection |
 | 23 | [rapid7/hackazon](https://github.com/rapid7/hackazon) | E-commerce | ✅ Done | 3,341 | PHP e-commerce, 32 PHP chunks |
 | 24 | [globocom/secDevLabs](https://github.com/globocom/secDevLabs) | Multi-lang | ✅ Done | 4,856 | Multi-lang vulns, largest repo |
 | 25 | [snyk-labs/nodejs-goof](https://github.com/snyk-labs/nodejs-goof) | Dependencies | ✅ Done | 364 | 172 Trivy deps + JS vulns |
-| 26 | [CSPF-Founder/JavaVulnerableLab](https://github.com/CSPF-Founder/JavaVulnerableLab) | Java | ⏳ Pending | - | Java-specific |
+| 26 | [CSPF-Founder/JavaVulnerableLab](https://github.com/CSPF-Founder/JavaVulnerableLab) | Java | ✅ Done | 100 | Java-specific vulns |
 | 27 | [srini0x00/dvta](https://github.com/srini0x00/dvta) | .NET | ✅ Done | 52 | 46 critical secrets, 6 C# vulns |
-| 28 | [payatu/diva-android](https://github.com/payatu/diva-android) | Android | ⏳ Pending | - | Mobile security |
+| 28 | [payatu/diva-android](https://github.com/payatu/diva-android) | Android | ✅ Done | 7 | Mobile security |
 | 29 | [OWASP/iGoat-Swift](https://github.com/OWASP/iGoat-Swift) | iOS/Swift | ✅ Done | 98 | Swift security patterns |
-| 30 | [commjoen/wrongsecrets-ctf-party](https://github.com/commjoen/wrongsecrets-ctf-party) | Kubernetes | ⏳ Pending | - | K8s secrets |
+| 30 | [commjoen/wrongsecrets-ctf-party](https://github.com/commjoen/wrongsecrets-ctf-party) | Kubernetes | ✅ Done | 327 | K8s secrets CTF party |
 
 ### Tier 5: Solidity/DeFi Security Audits
 
@@ -441,10 +441,10 @@ This section shows **verified coverage** for each scanned repository - comparing
 │  SQL Injection               │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ ✅   │ ⚠️    │ N/A  │
 │  Command Injection           │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ ⚠️   │ ⚠️    │ N/A  │
 │  XSS                         │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ⚠️  │ ⚠️   │ N/A   │ N/A  │
-│  SSTI                        │ ✅  │ ✅  │ ✅  │ ⚠️   │ ✅   │ N/A │ N/A  │ N/A   │ N/A  │
+│  SSTI                        │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ N/A  │ N/A   │ N/A  │
 │  Path Traversal              │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ ⚠️   │ ✅    │ N/A  │
 │  SSRF                        │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ ⚠️   │ ⚠️    │ N/A  │
-│  XXE                         │ ⚠️  │ ⚠️  │ ✅  │ ✅   │ ⚠️   │ N/A │ ⚠️   │ N/A   │ N/A  │
+│  XXE                         │ ⚠️  │ ⚠️  │ ✅  │ ✅   │ ✅   │ N/A │ ⚠️   │ N/A   │ N/A  │
 │  Insecure Deserialization    │ ⚠️  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ ⚠️   │ ⚠️    │ N/A  │
 │  Hardcoded Secrets           │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ ✅   │ ✅    │ ✅   │
 │  Weak Cryptography           │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ ⚠️   │ ✅    │ ⚠️   │
@@ -700,6 +700,9 @@ For each scan, check detection of:
 
 | Date | Scanner Version | Repos Tested | Notes |
 |------|-----------------|--------------|-------|
+| 2025-12-26 | ed0e4c | WebGoat (verified) | **+37 findings** from Java SSTI rules (1871→1908) |
+| 2025-12-26 | ed0e4c | Ruby/Java rules | Added 11 Ruby XXE rules, 9 Java SSTI rules |
+| 2025-12-26 | - | 5 new repos | JavaVulnerableLab(100), diva-android(7), wrongsecrets-ctf-party(327), juice-shop-ctf(99), Vulnerable-Web-Application(32) |
 | 2025-12-04 | ef26ba7 | python-insecure-app | New secret detection rules working |
 | 2025-12-04 | ed6c8bf | vuln-node.js-express.js-app | Added SSTI, XSS, weak auth rules |
 | 2025-12-02 | 310bd3d | DVWA | Added 35+ PHP rules, 151 findings |
@@ -1006,6 +1009,17 @@ For each scan, check detection of:
 ---
 
 *Keep this document updated after every test run. Use findings to continuously improve the scanner.*
+
+---
+
+## Excluded/Invalid Repos
+
+The following repos have been removed from the benchmark due to being invalid for testing:
+
+| Repository | Issue | Notes |
+|------------|-------|-------|
+| az0ne/DotNetGoat | ❌ 404 | Repository doesn't exist or was deleted. Replace with WebGoat.NET or AspGoat |
+| kadenzipfel/smart-contract-vulnerabilities | ℹ️ Docs Only | Contains only markdown documentation with embedded code examples. 0 findings is correct behavior - no actual code to scan |
 
 ---
 

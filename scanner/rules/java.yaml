@@ -370,6 +370,87 @@ rules:
     languages: [java]
     severity: ERROR
 
+  - id: java-thymeleaf-ssti
+    pattern: $ENGINE.process($TEMPLATE, $CTX)
+    message: "Java Thymeleaf template processing - verify template is not user-controlled (CWE-94)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-94"
+      tags: [ssti, template]
+
+  - id: java-thymeleaf-fragment-ssti
+    pattern: 'return "... :: " + $VAR'
+    message: "Java Thymeleaf fragment expression with variable - SSTI risk (CWE-94)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [ssti, template]
+
+  - id: java-pebble-ssti
+    pattern: $ENGINE.getTemplate($USER_INPUT)
+    message: "Java Pebble template from user input - SSTI vulnerability (CWE-94)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [ssti, template]
+
+  - id: java-groovy-template-ssti
+    pattern: GroovyTemplateEngine().createTemplate($INPUT)
+    message: "Java Groovy template from input - SSTI vulnerability (CWE-94)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [ssti, template]
+
+  - id: java-jmustache-ssti
+    pattern: Mustache.compiler().compile($USER_INPUT)
+    message: "Java JMustache template from user input - SSTI vulnerability (CWE-94)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [ssti, template]
+
+  - id: java-jtwig-ssti
+    pattern: JtwigTemplate.classpathTemplate($USER_INPUT)
+    message: "Java JTwig template from user input - SSTI vulnerability (CWE-94)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [ssti, template]
+
+  - id: java-handlebars-ssti
+    pattern: $HANDLEBARS.compileInline($USER_INPUT)
+    message: "Java Handlebars template from user input - SSTI vulnerability (CWE-94)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [ssti, template]
+
+  - id: java-velocity-merge-user
+    pattern: VelocityEngine().getTemplate($USER_INPUT)
+    message: "Java Velocity template from user input - SSTI vulnerability (CWE-94)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [ssti, template]
+
+  - id: java-freemarker-cfg-template
+    pattern: $CFG.getTemplate($USER_INPUT)
+    message: "Java FreeMarker configuration getTemplate with user input - SSTI (CWE-94)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [ssti, template]
+
   # ============================================
   # Open Redirect
   # ============================================

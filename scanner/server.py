@@ -57,6 +57,66 @@ def update_progress(supabase: Client, scan_id: str, step: str, message: str, per
 def update_scan(supabase: Client, scan_id: str, data: dict):
     supabase.table('scans').update(data).eq('id', scan_id).execute()
 
+def save_findings_in_batches(supabase: Client, scan_id: str, findings: list, batch_size: int = 5000) -> bool:
+    """
+    Save findings in batches to handle large result sets.
+    For repos like LoopFi with 55,000+ findings, saving all at once can fail.
+
+    Strategy:
+    1. If findings < batch_size, save normally
+    2. If larger, save in batches with retries
+    3. Each batch updates the findings array incrementally
+    """
+    import time
+
+    total = len(findings)
+
+    if total <= batch_size:
+        # Small enough to save in one go
+        try:
+            supabase.table('scans').update({'findings': findings}).eq('id', scan_id).execute()
+            return True
+        except Exception as e:
+            print(f"[Scan] Failed to save {total} findings in one batch: {e}", flush=True)
+            # Fall through to batched approach
+
+    print(f"[Scan] Large finding set ({total}), saving in batches of {batch_size}...", flush=True)
+
+    # Sort by severity for priority (critical first)
+    severity_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'info': 4}
+    sorted_findings = sorted(findings, key=lambda f: severity_order.get(f.get('severity', 'info'), 5))
+
+    saved_count = 0
+    batch_num = 0
+    max_retries = 3
+
+    # Save in batches
+    for i in range(0, total, batch_size):
+        batch = sorted_findings[i:i + batch_size]
+        batch_num += 1
+
+        for retry in range(max_retries):
+            try:
+                # Cumulative replace strategy: save all findings up to this point
+                # This avoids reading existing findings (which times out on large sets)
+                cumulative_findings = sorted_findings[:i + len(batch)]
+                supabase.table('scans').update({'findings': cumulative_findings}).eq('id', scan_id).execute()
+
+                saved_count += len(batch)
+                print(f"[Scan] Saved batch {batch_num}: {saved_count}/{total} findings", flush=True)
+                break  # Success, move to next batch
+
+            except Exception as e:
+                print(f"[Scan] Batch {batch_num} attempt {retry + 1} failed: {e}", flush=True)
+                if retry < max_retries - 1:
+                    time.sleep(2 ** retry)  # Exponential backoff
+                else:
+                    print(f"[Scan] Failed to save batch {batch_num} after {max_retries} retries", flush=True)
+                    # Continue with remaining batches
+
+    print(f"[Scan] Batch save complete: {saved_count}/{total} findings saved", flush=True)
+    return saved_count > 0
+
 def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None):
     """Run the full scan pipeline"""
     supabase = get_supabase()
@@ -155,18 +215,24 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
             print(f"[Scan] Counts: {counts}", flush=True)
             print(f"[Scan] Updating database with final results...", flush=True)
 
+            # First save metadata (without findings)
             update_scan(supabase, scan_id, {
-                'status': 'complete',
+                'status': 'scanning',  # Keep as scanning while saving findings
                 'score': score,
                 'grade': grade,
                 'ship_status': ship_status,
-                'findings': all_findings,
                 'finding_counts': counts,
                 'detected_stack': stack,
                 'stack_signature': stack.get('signature', ''),
                 'duration_ms': duration_ms,
                 'completed_at': end_time.isoformat()
             })
+
+            # Save findings in batches (handles large result sets like LoopFi)
+            save_findings_in_batches(supabase, scan_id, all_findings, batch_size=5000)
+
+            # Mark as complete
+            update_scan(supabase, scan_id, {'status': 'complete'})
 
             print(f"[Scan] Database updated successfully!", flush=True)
 

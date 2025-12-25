@@ -402,3 +402,99 @@ rules:
     message: Ruby XSS via HTML interpolation in span
     languages: [ruby]
     severity: WARNING
+
+  # ============================================
+  # XXE (XML External Entity) - CWE-611
+  # ============================================
+
+  - id: ruby-xxe-nokogiri-xml
+    pattern: Nokogiri::XML($INPUT)
+    message: "Ruby Nokogiri XML parsing - ensure external entities are disabled (CWE-611)"
+    languages: [ruby]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2017 XXE"
+      tags: [xxe, xml]
+
+  - id: ruby-xxe-nokogiri-huge
+    pattern: Nokogiri::XML($INPUT, ..., Nokogiri::XML::ParseOptions::HUGE)
+    message: "Ruby Nokogiri HUGE option enables large entity expansion - XXE vulnerability (CWE-611)"
+    languages: [ruby]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: ruby-xxe-nokogiri-dtdload
+    pattern: Nokogiri::XML($INPUT, ..., Nokogiri::XML::ParseOptions::DTDLOAD)
+    message: "Ruby Nokogiri DTDLOAD option enables external DTD loading - XXE vulnerability (CWE-611)"
+    languages: [ruby]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: ruby-xxe-nokogiri-noent
+    pattern: Nokogiri::XML($INPUT, ..., Nokogiri::XML::ParseOptions::NOENT)
+    message: "Ruby Nokogiri NOENT option substitutes entities - XXE vulnerability (CWE-611)"
+    languages: [ruby]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: ruby-xxe-rexml-document
+    pattern: REXML::Document.new($INPUT)
+    message: "Ruby REXML XML parsing - disable external entities to prevent XXE (CWE-611)"
+    languages: [ruby]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      owasp: "A05:2017 XXE"
+      tags: [xxe, xml]
+
+  - id: ruby-xxe-rexml-source
+    pattern: REXML::Source.new($INPUT)
+    message: "Ruby REXML Source - potential XXE vulnerability (CWE-611)"
+    languages: [ruby]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: ruby-xxe-libxml-parse
+    pattern: LibXML::XML::Parser.string($INPUT)
+    message: "Ruby LibXML parsing - disable external entities to prevent XXE (CWE-611)"
+    languages: [ruby]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: ruby-xxe-libxml-document
+    pattern: LibXML::XML::Document.string($INPUT)
+    message: "Ruby LibXML document parsing - XXE vulnerability risk (CWE-611)"
+    languages: [ruby]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: ruby-xxe-ox-parse
+    pattern: Ox.parse($INPUT)
+    message: "Ruby Ox XML parsing - verify external entities are disabled (CWE-611)"
+    languages: [ruby]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-611"
+      tags: [xxe, xml]
+
+  - id: ruby-xxe-xpath-user-input
+    pattern: $DOC.xpath(params[$X])
+    message: "Ruby XPath with user input - XPath injection vulnerability (CWE-643)"
+    languages: [ruby]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-643"
+      tags: [xpath, injection]
