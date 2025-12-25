@@ -1,0 +1,265 @@
+# Objective-C Security Rules (using generic mode since objc is not supported)
+rules:
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: objc-nskeyedunarchiver-unsafe
+    pattern-regex: 'NSKeyedUnarchiver\s+unarchiveObjectWithData:'
+    message: "Objective-C NSKeyedUnarchiver.unarchiveObjectWithData is insecure - use unarchivedObjectOfClass:fromData:error: instead (CWE-502)"
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: objc-nskeyedunarchiver-unarchive-file
+    pattern-regex: 'NSKeyedUnarchiver\s+unarchiveObjectWithFile:'
+    message: "Objective-C NSKeyedUnarchiver.unarchiveObjectWithFile is insecure - use unarchivedObjectOfClass:fromData:error: instead (CWE-502)"
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: objc-nskeyedunarchiver-no-secure-coding
+    pattern-regex: 'setRequiresSecureCoding:\s*NO'
+    message: "Objective-C NSKeyedUnarchiver without secure coding - insecure deserialization (CWE-502)"
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: objc-nscoding-init
+    pattern-regex: '-\s*\((?:instancetype|id)\)\s*initWithCoder:\s*\(\s*NSCoder\s*\*\s*\)'
+    message: "Objective-C NSCoding implementation - ensure class uses NSSecureCoding for untrusted data (CWE-502)"
+    languages: [generic]
+    severity: INFO
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: objc-nscoder-decode-object
+    pattern-regex: 'decodeObjectForKey:'
+    message: "Objective-C NSCoder.decodeObjectForKey without type check - use decodeObjectOfClass:forKey: instead (CWE-502)"
+    languages: [generic]
+    severity: WARNING
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: objc-nskeyedarchiver-deprecated
+    pattern-regex: 'NSKeyedArchiver\s+archivedDataWithRootObject:[^r]'
+    message: "Objective-C deprecated archiving method - use archivedDataWithRootObject:requiringSecureCoding:error: (CWE-502)"
+    languages: [generic]
+    severity: WARNING
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  # ============================================
+  # Command Injection
+  # ============================================
+
+  - id: objc-system-call
+    pattern-regex: '\bsystem\s*\([^)]+\)'
+    message: "Objective-C system() call - command injection risk (CWE-78)"
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection]
+
+  - id: objc-popen-call
+    pattern-regex: '\bpopen\s*\([^)]+\)'
+    message: "Objective-C popen() call - command injection risk (CWE-78)"
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection]
+
+  # ============================================
+  # Weak Cryptography
+  # ============================================
+
+  - id: objc-md5
+    pattern-regex: '\bCC_MD5\s*\('
+    message: "Objective-C MD5 is weak - use SHA-256 or better (CWE-328)"
+    languages: [generic]
+    severity: WARNING
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-328"
+      tags: [weak-crypto]
+
+  - id: objc-sha1
+    pattern-regex: '\bCC_SHA1\s*\('
+    message: "Objective-C SHA1 is deprecated - use SHA-256 or better (CWE-328)"
+    languages: [generic]
+    severity: WARNING
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-328"
+      tags: [weak-crypto]
+
+  - id: objc-des
+    pattern-regex: '\bkCCAlgorithmDES\b'
+    message: "Objective-C DES is weak - use AES (CWE-327)"
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-327"
+      tags: [weak-crypto]
+
+  - id: objc-3des
+    pattern-regex: '\bkCCAlgorithm3DES\b'
+    message: "Objective-C 3DES is deprecated - use AES (CWE-327)"
+    languages: [generic]
+    severity: WARNING
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-327"
+      tags: [weak-crypto]
+
+  - id: objc-ecb-mode
+    pattern-regex: '\bkCCOptionECBMode\b'
+    message: "Objective-C ECB mode is insecure - use CBC or GCM (CWE-327)"
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-327"
+      tags: [weak-crypto]
+
+  # ============================================
+  # SSL/TLS Issues
+  # ============================================
+
+  - id: objc-allow-invalid-certs
+    pattern-regex: 'allowInvalidCertificates\s*=\s*YES'
+    message: "Objective-C SSL certificate validation disabled (CWE-295)"
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-295"
+      tags: [ssl-tls]
+
+  - id: objc-ssl-pinning-disabled
+    pattern-regex: 'validatesDomainName\s*=\s*NO'
+    message: "Objective-C SSL domain validation disabled (CWE-295)"
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-295"
+      tags: [ssl-tls]
+
+  # ============================================
+  # iOS Specific
+  # ============================================
+
+  - id: objc-uiwebview
+    pattern-regex: '\bUIWebView\b'
+    message: "Objective-C UIWebView is deprecated and insecure - use WKWebView (CWE-79)"
+    languages: [generic]
+    severity: ERROR
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+        - "**/*.h"
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss]
+
+  # ============================================
+  # Logging Sensitive Data
+  # ============================================
+
+  - id: objc-nslog-password
+    pattern-regex: 'NSLog\s*\([^)]*(?:password|passwd|pwd|secret|token|key|credential)[^)]*\)'
+    message: "Objective-C NSLog may contain sensitive data (CWE-532)"
+    languages: [generic]
+    severity: WARNING
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging]
+
+  # ============================================
+  # SQL Injection (SQLite)
+  # ============================================
+
+  - id: objc-sqlite3-exec
+    pattern-regex: '\bsqlite3_exec\s*\('
+    message: "Objective-C sqlite3_exec - ensure parameterized queries (CWE-89)"
+    languages: [generic]
+    severity: WARNING
+    paths:
+      include:
+        - "**/*.m"
+        - "**/*.mm"
+    metadata:
+      cwe: "CWE-89"
+      tags: [sql-injection]
+
