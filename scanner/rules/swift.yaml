@@ -257,3 +257,79 @@ rules:
     message: Swift SQLite prepare concatenation - SQL injection risk
     languages: [swift]
     severity: ERROR
+
+  # ============================================
+  # Insecure Deserialization
+  # ============================================
+
+  - id: swift-nskeyedunarchiver-unsafe
+    pattern: NSKeyedUnarchiver.unarchiveObject(with: $DATA)
+    message: "Swift NSKeyedUnarchiver.unarchiveObject is insecure - use unarchivedObject with requiredSecureCoding (CWE-502)"
+    languages: [swift]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: swift-nskeyedunarchiver-unarchive-file
+    pattern: NSKeyedUnarchiver.unarchiveObject(withFile: $PATH)
+    message: "Swift NSKeyedUnarchiver.unarchiveObject(withFile:) is insecure - use unarchivedObject with requiredSecureCoding (CWE-502)"
+    languages: [swift]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: swift-nskeyedunarchiver-no-secure-coding
+    pattern: '$UNARCHIVER.requiresSecureCoding = false'
+    message: "Swift NSKeyedUnarchiver without secure coding - insecure deserialization (CWE-502)"
+    languages: [swift]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: swift-nscoding-init
+    pattern: 'init?(coder: NSCoder)'
+    message: "Swift NSCoding implementation - ensure class uses NSSecureCoding for untrusted data (CWE-502)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: swift-nscoder-decode-object
+    pattern: $CODER.decodeObject(forKey: $KEY)
+    message: "Swift NSCoder.decodeObject without type check - use decodeObject(of:forKey:) instead (CWE-502)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: swift-propertylistdecoder
+    pattern: PropertyListDecoder().decode($TYPE, from: $DATA)
+    message: "Swift PropertyListDecoder - validate source of data before decoding (CWE-502)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: swift-jsondecoder-any
+    pattern: JSONDecoder().decode(Any.self, from: $DATA)
+    message: "Swift JSONDecoder with Any type - prefer explicit types (CWE-502)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]
+
+  - id: swift-nskeyedarchiver-archived
+    pattern: NSKeyedArchiver.archivedData(withRootObject: $OBJ)
+    message: "Swift deprecated archiving method - use archivedData(withRootObject:requiringSecureCoding:) (CWE-502)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-502"
+      tags: [deserialization]

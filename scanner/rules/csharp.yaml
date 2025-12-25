@@ -357,3 +357,97 @@ rules:
     message: C# session cookie Secure flag disabled
     languages: [csharp]
     severity: WARNING
+
+  # ============================================
+  # SSRF (Server-Side Request Forgery)
+  # ============================================
+
+  - id: csharp-ssrf-httpclient-getasync
+    pattern: $CLIENT.GetAsync($URL)
+    message: "C# HttpClient.GetAsync with variable URL - potential SSRF vulnerability (CWE-918)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  - id: csharp-ssrf-httpclient-postasync
+    pattern: $CLIENT.PostAsync($URL, ...)
+    message: "C# HttpClient.PostAsync with variable URL - potential SSRF vulnerability (CWE-918)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  - id: csharp-ssrf-httpclient-sendasync
+    pattern: $CLIENT.SendAsync($REQUEST)
+    message: "C# HttpClient.SendAsync - verify request URL is validated (CWE-918)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  - id: csharp-ssrf-webclient-download
+    pattern: $CLIENT.DownloadString($URL)
+    message: "C# WebClient.DownloadString with variable URL - potential SSRF (CWE-918)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  - id: csharp-ssrf-webclient-downloaddata
+    pattern: $CLIENT.DownloadData($URL)
+    message: "C# WebClient.DownloadData with variable URL - potential SSRF (CWE-918)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  - id: csharp-ssrf-webrequest-create
+    pattern: WebRequest.Create($URL)
+    message: "C# WebRequest.Create with variable URL - potential SSRF (CWE-918)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  - id: csharp-ssrf-httpwebrequest-create
+    pattern: HttpWebRequest.Create($URL)
+    message: "C# HttpWebRequest.Create with variable URL - potential SSRF (CWE-918)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  - id: csharp-ssrf-uri-user
+    pattern: new Uri($USER_INPUT)
+    message: "C# Uri from user input - validate to prevent SSRF (CWE-918)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  - id: csharp-ssrf-restclient
+    pattern: new RestClient($URL)
+    message: "C# RestSharp RestClient with variable URL - potential SSRF (CWE-918)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
+
+  - id: csharp-ssrf-flurl
+    pattern: $URL.GetAsync()
+    message: "C# Flurl request with variable URL - potential SSRF (CWE-918)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-918"
+      tags: [ssrf]
