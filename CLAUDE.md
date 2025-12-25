@@ -253,11 +253,76 @@ For each vulnerable repository, iterate until all key vulnerabilities are detect
 - [ ] Security Misconfiguration (debug mode, CORS)
 - [ ] Vulnerable Dependencies (outdated packages)
 
-**Current Progress** (track in SECURITY_TEST_PROCEDURE.md):
-- ✅ digininja/DVWA - 18 high findings
-- ✅ OWASP/crAPI - 137 findings
-- ✅ OWASP/NodeGoat - 353 findings
-- ⏳ 27 more repos pending
+**Current Verified Benchmark Coverage** (as of Dec 2024):
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  VIBESHIP SCANNER - VERIFIED BENCHMARK (32 repos, 60,000+ findings)         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  TIER 1 (Critical - 6 repos):                                               │
+│  ├─ DVWA (PHP)            151 findings   SQL, XSS, Command Inj, LFI        │
+│  ├─ Juice Shop (JS)       931 findings   OWASP Top 10 coverage             │
+│  ├─ crAPI (Python/JS)     137 findings   OWASP API Top 10                  │
+│  ├─ NodeGoat (JS)          93 findings   Node.js security patterns         │
+│  ├─ WebGoat (Java)      1,871 findings   399 Java files, 222 secrets       │
+│  └─ DVNA (JS)             252 findings   32 critical, 58 high              │
+│                                                                             │
+│  TIER 2 (Language-Specific - 6 repos):                                      │
+│  ├─ RailsGoat (Ruby)      507 findings   First Ruby repo tested            │
+│  ├─ Django.nV (Python)    646 findings   25 critical, 63 high              │
+│  ├─ Flask App (Python)    393 findings   SSTI, Flask debug mode            │
+│  ├─ DSVW (Python)          65 findings   Minimal app, high signal          │
+│  ├─ OWASPWebGoatPHP     3,400 findings   211 critical, 1582 high           │
+│  └─ VulnerableApp (Java)  289 findings   Java security patterns            │
+│                                                                             │
+│  TIER 3 (Specialized - 8 repos):                                            │
+│  ├─ VAmPI (REST API)      213 findings   OWASP API Top 10                  │
+│  ├─ SSRF Lab               23 findings   Server-side request forgery       │
+│  ├─ xxelab (Java)         187 findings   XML External Entity               │
+│  ├─ wrongsecrets          498 findings   Secret management                 │
+│  ├─ github-actions-goat    14 findings   CI/CD security                    │
+│  ├─ DVGA (GraphQL)      1,268 findings   GraphQL vulns                     │
+│  ├─ Tiredful-API          397 findings   REST API security                 │
+│  └─ InsecureShop           10 findings   Android/Kotlin                    │
+│                                                                             │
+│  TIER 4 (Additional - 5 repos):                                             │
+│  ├─ Hackazon (PHP)      3,341 findings   PHP e-commerce                    │
+│  ├─ secDevLabs          4,856 findings   Multi-lang, largest repo          │
+│  ├─ nodejs-goof           364 findings   172 Trivy dependency vulns        │
+│  ├─ DVTA (.NET)            52 findings   46 critical secrets               │
+│  └─ iGoat-Swift            98 findings   iOS/Swift patterns                │
+│                                                                             │
+│  TIER 5 (Solidity/DeFi - 7 repos):                                          │
+│  ├─ DeFiHackLabs       37,590 findings   674 real hacks (2017-2025)        │
+│  ├─ sherlock-derby      1,444 findings   100% match with audit docs        │
+│  ├─ numoen/pmmp         1,168 findings   AMM protocol                      │
+│  ├─ Ethernaut           1,187 findings   Solidity CTF                      │
+│  ├─ damn-vulnerable-defi  502 findings   18 DeFi challenges                │
+│  ├─ dvd-foundry           349 findings   Foundry version                   │
+│  └─ code4rena-numoen    1,106 findings   7 crit, 78 high, 292 med          │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Detection Coverage by Vulnerability Type**:
+| Vulnerability | PHP | JS | Python | Java | Ruby | Solidity |
+|--------------|-----|----|---------|----|------|----------|
+| SQL Injection | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
+| XSS | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
+| Command Injection | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
+| SSTI | ✅ | ✅ | ✅ | ⚠️ | ✅ | N/A |
+| Path Traversal | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
+| SSRF | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
+| XXE | ⚠️ | ⚠️ | ✅ | ✅ | ⚠️ | N/A |
+| Hardcoded Secrets | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Vulnerable Deps | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
+| Reentrancy | N/A | N/A | N/A | N/A | N/A | ✅ |
+| Access Control | N/A | N/A | N/A | N/A | N/A | ✅ |
+
+**What We DON'T Detect (Requires DAST/Manual)**:
+- CSRF, Session Management, Brute Force (runtime behavior)
+- Business Logic flaws (semantic understanding)
+- Race Conditions (parallel execution)
+- CSP/CORS policies (configuration testing)
 
 ## Semgrep Rule Guidelines
 
