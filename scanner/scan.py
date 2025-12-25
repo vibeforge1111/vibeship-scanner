@@ -448,172 +448,145 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
 
 
 def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Dict[str, Any]]:
-    """Run Opengrep SAST scanner with language-specific rules (LGPL fork of Semgrep)"""
+    """Run Opengrep SAST scanner with language-specific rules (LGPL fork of Semgrep)
+
+    For performance, runs multiple focused scans instead of one massive scan:
+    1. Base scan: shared rules + always-load rules on all files
+    2. Language scans: each language's rules on only matching file extensions
+
+    This prevents timeouts on large multi-language repos.
+    """
     findings = []
 
-    # Build list of rule files based on detected languages
-    configs = []
-    rule_files_used = []
+    # Map language rules to their file extensions
+    LANGUAGE_EXTENSIONS = {
+        'solidity.yaml': ['*.sol'],
+        'javascript.yaml': ['*.js', '*.ts', '*.jsx', '*.tsx'],
+        'python.yaml': ['*.py'],
+        'php.yaml': ['*.php'],
+        'ruby.yaml': ['*.rb'],
+        'go.yaml': ['*.go'],
+        'java.yaml': ['*.java'],
+        'csharp.yaml': ['*.cs'],
+        'kotlin.yaml': ['*.kt', '*.kts'],
+        'swift.yaml': ['*.swift'],
+        'rust.yaml': ['*.rs'],
+        'bash.yaml': ['*.sh', '*.bash'],
+        'dart.yaml': ['*.dart'],
+    }
 
-    # ALWAYS include shared rules (secrets, urls, comments) for all scans
+    # All file extensions for base scan
+    ALL_EXTENSIONS = ['*.sol', '*.py', '*.js', '*.ts', '*.go', '*.rb', '*.php', '*.java', '*.rs']
+
+    # Build base configs (shared + always-load rules)
+    base_configs = []
+    base_rule_files = []
+
     if SHARED_RULES_DIR.exists():
         for shared_rule in SHARED_RULES:
             shared_path = SHARED_RULES_DIR / shared_rule
             if shared_path.exists():
-                configs.extend(['-f', str(shared_path)])
-                rule_files_used.append(f'_shared/{shared_rule}')
+                base_configs.extend(['-f', str(shared_path)])
+                base_rule_files.append(f'_shared/{shared_rule}')
 
-    # ALWAYS load these rules regardless of language (security > speed)
     for always_rule in ALWAYS_LOAD_RULES:
         always_path = RULES_DIR / always_rule
         if always_path.exists():
-            configs.extend(['-f', str(always_path)])
-            rule_files_used.append(always_rule)
+            base_configs.extend(['-f', str(always_path)])
+            base_rule_files.append(always_rule)
+
+    # Build language-specific scan configs (deduplicated by rule file)
+    lang_scans = []  # List of (rule_file, extensions, configs)
+    added_rules = set()  # Track which rule files we've already added
 
     if detected_languages:
-        # Get unique rule files for detected languages
-        rule_files = set()
         for lang in detected_languages:
             if lang in LANGUAGE_RULES:
-                rule_files.add(LANGUAGE_RULES[lang])
+                rule_file = LANGUAGE_RULES[lang]
+                # Skip if already added (e.g., JavaScript and TypeScript both use javascript.yaml)
+                if rule_file in added_rules:
+                    continue
+                rule_path = RULES_DIR / rule_file
+                if rule_path.exists() and rule_file in LANGUAGE_EXTENSIONS:
+                    extensions = LANGUAGE_EXTENSIONS[rule_file]
+                    lang_scans.append((rule_file, extensions, ['-f', str(rule_path)]))
+                    added_rules.add(rule_file)
 
-        # Add each rule file
-        for rule_file in sorted(rule_files):
-            rule_path = RULES_DIR / rule_file
-            if rule_path.exists():
-                configs.extend(['-f', str(rule_path)])
-                rule_files_used.append(rule_file)
+    # Log what we're about to run
+    print(f"Base rules: {', '.join(base_rule_files)}", file=sys.stderr)
+    print(f"Language scans: {len(lang_scans)}", file=sys.stderr)
+    for rule_file, exts, _ in lang_scans:
+        print(f"  - {rule_file} on {', '.join(exts)}", file=sys.stderr)
 
-    # Legacy fallback removed - shared rules (_shared/secrets, urls, comments)
-    # now provide baseline coverage for all scans regardless of language detection
+    def run_single_scan(configs, extensions, scan_name, timeout=300):
+        """Run a single Opengrep scan with specific rules and file extensions"""
+        include_args = [f'--include={ext}' for ext in extensions]
+        cmd = [
+            'opengrep', 'scan', '--json',
+            '--no-git-ignore',
+            '--x-ignore-semgrepignore-files',
+        ] + include_args + configs + [repo_dir]
 
-    if not configs:
-        print("ERROR: No rule files found!", file=sys.stderr)
-        return findings
+        try:
+            print(f"Running {scan_name}: {len(configs)//2} rule files on {extensions}", file=sys.stderr)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
-    print(f"Using rule files: {', '.join(rule_files_used)}", file=sys.stderr)
+            if result.stdout:
+                try:
+                    data = json.loads(result.stdout)
+                    results = data.get('results', [])
+                    print(f"  {scan_name}: {len(results)} findings", file=sys.stderr)
+                    return results
+                except json.JSONDecodeError:
+                    print(f"  {scan_name}: JSON parse error", file=sys.stderr)
+        except subprocess.TimeoutExpired:
+            print(f"  {scan_name}: timeout after {timeout}s", file=sys.stderr)
+        except Exception as e:
+            print(f"  {scan_name}: error - {e}", file=sys.stderr)
+        return []
 
-    # Count rules in each file for debugging
-    total_rules = 0
-    for rule_file in rule_files_used:
-        rule_path = RULES_DIR / rule_file if not rule_file.startswith('_shared/') else SHARED_RULES_DIR / rule_file.replace('_shared/', '')
-        if rule_path.exists():
-            try:
-                import yaml
-                with open(rule_path) as f:
-                    content = yaml.safe_load(f)
-                    rule_count = len(content.get('rules', []))
-                    total_rules += rule_count
-                    print(f"  - {rule_file}: {rule_count} rules", file=sys.stderr)
-            except Exception as e:
-                print(f"  - {rule_file}: ERROR reading - {e}", file=sys.stderr)
-    print(f"Total rules loaded: {total_rules}", file=sys.stderr)
+    # Run base scan (shared rules on all files) - 10 min timeout
+    if base_configs:
+        base_results = run_single_scan(base_configs, ALL_EXTENSIONS, "base-scan", timeout=600)
+        findings.extend(base_results)
 
-    # Opengrep uses similar syntax: opengrep scan -f rules --json target
-    # NOTE: We intentionally scan ALL directories including node_modules, vendor, etc.
-    # Excluding these could miss supply chain attacks, backdoored dependencies, or hidden malware.
-    # Users can filter results by path in the UI if needed.
-    #
-    # --no-git-ignore: Also scan gitignored files and submodules (forge-std, etc.)
-    # --include: Force include files that default .semgrepignore might exclude
-    # IMPORTANT: CLI --include has higher precedence than .semgrepignore exclusions
-    # We add both file extension patterns AND directory patterns to override defaults
-    cmd = [
-        'opengrep', 'scan', '--json',
-        '--no-git-ignore',
-        '--x-ignore-semgrepignore-files',  # CRITICAL: Completely disable .semgrepignore defaults
-        # File extension patterns
-        '--include=*.sol',     # Solidity
-        '--include=*.py',      # Python
-        '--include=*.js',      # JavaScript
-        '--include=*.ts',      # TypeScript
-        '--include=*.go',      # Go
-        '--include=*.rb',      # Ruby
-        '--include=*.php',     # PHP
-        '--include=*.java',    # Java
-        '--include=*.rs',      # Rust
-    ] + configs + [repo_dir]
+    # Run language-specific scans in sequence - 10 min timeout each
+    for rule_file, extensions, configs in lang_scans:
+        lang_results = run_single_scan(configs, extensions, rule_file, timeout=600)
+        findings.extend(lang_results)
 
-    try:
-        print(f"Running Opengrep: {' '.join(cmd)}", file=sys.stderr)
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=600  # 10 minutes for large repos with submodules
+    # Convert raw Opengrep results to our finding format
+    formatted_findings = []
+    for item in findings:
+        severity = SEVERITY_MAP.get(
+            item.get('extra', {}).get('severity', 'INFO').upper(),
+            'info'
         )
+        formatted_findings.append({
+            'id': hashlib.md5(json.dumps(item, sort_keys=True).encode()).hexdigest()[:12],
+            'ruleId': item.get('check_id', 'unknown'),
+            'severity': severity,
+            'category': 'code',
+            'title': item.get('extra', {}).get('message', 'Security Issue'),
+            'description': item.get('extra', {}).get('metadata', {}).get('message', ''),
+            'location': {
+                'file': item.get('path', '').replace(repo_dir + '/', '').replace(repo_dir + '\\', ''),
+                'line': item.get('start', {}).get('line', 0),
+                'column': item.get('start', {}).get('col', 0)
+            },
+            'snippet': {
+                'code': item.get('extra', {}).get('lines', ''),
+                'highlightLines': [item.get('start', {}).get('line', 0)]
+            },
+            'fix': {
+                'available': bool(item.get('extra', {}).get('fix')),
+                'template': item.get('extra', {}).get('fix')
+            },
+            'references': item.get('extra', {}).get('metadata', {}).get('references', [])
+        })
 
-        print(f"Opengrep exit code: {result.returncode}", file=sys.stderr)
-
-        # Always log stderr to help diagnose rule issues
-        print(f"Opengrep stderr: {result.stderr[:3000] if result.stderr else 'none'}", file=sys.stderr)
-
-        # Log raw stdout to see errors
-        print(f"Opengrep stdout preview: {result.stdout[:2000] if result.stdout else 'none'}", file=sys.stderr)
-
-        if result.stdout:
-            try:
-                data = json.loads(result.stdout)
-                results = data.get('results', [])
-                errors = data.get('errors', [])
-                print(f"Opengrep raw results: {len(results)}", file=sys.stderr)
-
-                # Log any rule errors (patterns that failed to compile/match)
-                if errors:
-                    # Separate rule parse errors from syntax errors in target files
-                    rule_parse_errors = [e for e in errors if isinstance(e, dict) and e.get('type') == 'Rule parse error']
-                    syntax_errors = [e for e in errors if isinstance(e, dict) and e.get('type') == 'Syntax error']
-                    other_errors = [e for e in errors if isinstance(e, dict) and e.get('type') not in ['Rule parse error', 'Syntax error']]
-
-                    print(f"Opengrep errors summary: {len(errors)} total", file=sys.stderr)
-                    print(f"  - Rule parse errors: {len(rule_parse_errors)} (patterns that fail to compile)", file=sys.stderr)
-                    print(f"  - Syntax errors: {len(syntax_errors)} (target files with parse issues)", file=sys.stderr)
-                    print(f"  - Other errors: {len(other_errors)}", file=sys.stderr)
-
-                    if rule_parse_errors:
-                        rule_ids = [err.get('rule_id', 'unknown') for err in rule_parse_errors]
-                        print(f"  - Failed rule IDs: {rule_ids}", file=sys.stderr)
-                        for err in rule_parse_errors[:10]:
-                            print(f"  - Rule error: {err}", file=sys.stderr)
-
-                for item in results:
-                    severity = SEVERITY_MAP.get(
-                        item.get('extra', {}).get('severity', 'INFO').upper(),
-                        'info'
-                    )
-                    findings.append({
-                        'id': hashlib.md5(json.dumps(item, sort_keys=True).encode()).hexdigest()[:12],
-                        'ruleId': item.get('check_id', 'unknown'),
-                        'severity': severity,
-                        'category': 'code',
-                        'title': item.get('extra', {}).get('message', 'Security Issue'),
-                        'description': item.get('extra', {}).get('metadata', {}).get('message', ''),
-                        'location': {
-                            'file': item.get('path', '').replace(repo_dir + '/', '').replace(repo_dir + '\\', ''),
-                            'line': item.get('start', {}).get('line', 0),
-                            'column': item.get('start', {}).get('col', 0)
-                        },
-                        'snippet': {
-                            'code': item.get('extra', {}).get('lines', ''),
-                            'highlightLines': [item.get('start', {}).get('line', 0)]
-                        },
-                        'fix': {
-                            'available': bool(item.get('extra', {}).get('fix')),
-                            'template': item.get('extra', {}).get('fix')
-                        },
-                        'references': item.get('extra', {}).get('metadata', {}).get('references', [])
-                    })
-            except json.JSONDecodeError as e:
-                print(f"Semgrep JSON parse error: {e}", file=sys.stderr)
-                print(f"Stdout preview: {result.stdout[:500]}", file=sys.stderr)
-
-    except subprocess.TimeoutExpired:
-        print("Semgrep timeout after 600s", file=sys.stderr)
-    except Exception as e:
-        print(f"Semgrep error: {type(e).__name__}: {e}", file=sys.stderr)
-
-    print(f"Semgrep found {len(findings)} findings", file=sys.stderr)
-    return findings
+    print(f"Semgrep found {len(formatted_findings)} findings", file=sys.stderr)
+    return formatted_findings
 
 
 def run_trivy(repo_dir: str) -> List[Dict[str, Any]]:
