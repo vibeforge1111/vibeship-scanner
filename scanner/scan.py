@@ -147,14 +147,17 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
             except Exception as e:
                 print(f"[Clone] Submodule init error: {e} (continuing without)", file=sys.stderr, flush=True)
 
-            # Override Opengrep's default exclusions (test/, lib/, vendor/)
-            # to ensure ALL code including test files and dependencies are scanned.
-            # Use negation patterns (!) to explicitly UN-ignore directories that defaults exclude.
+            # Create .semgrepignore to:
+            # 1. Include test directories (Opengrep excludes by default, but we want to scan tests)
+            # 2. Exclude only DEFINITE dependency directories (node_modules, vendor)
+            #
+            # IMPORTANT: We do NOT exclude packages/, deps/, external/, lib/ here because
+            # they could contain first-party code. lib/ is only excluded for Foundry projects
+            # which is handled dynamically in run_opengrep().
             try:
                 semgrepignore_path = os.path.join(target_dir, '.semgrepignore')
                 with open(semgrepignore_path, 'w') as f:
-                    # Negation patterns to INCLUDE directories that defaults exclude
-                    # These patterns override the built-in exclusions
+                    # Include test directories (useful for CTF/vulnerable app scanning)
                     f.write("!test/\n")
                     f.write("!tests/\n")
                     f.write("!src/test/\n")
@@ -162,9 +165,12 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
                     f.write("!**/test/\n")
                     f.write("!**/tests/\n")
                     f.write("!spec/\n")
-                    f.write("!lib/\n")
-                    f.write("!vendor/\n")
-                print("[Clone] Created .semgrepignore with negation patterns to include test dirs", file=sys.stderr, flush=True)
+                    # Exclude ONLY definite third-party directories (industry standard)
+                    f.write("node_modules/\n")
+                    f.write("vendor/\n")
+                    f.write(".yarn/\n")
+                    # Note: lib/ excluded dynamically only for Foundry projects
+                print("[Clone] Created .semgrepignore to include tests, exclude vendor/node_modules", file=sys.stderr, flush=True)
             except Exception as e:
                 print(f"[Clone] Warning: Could not create .semgrepignore: {e}", file=sys.stderr, flush=True)
 
@@ -273,8 +279,12 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
             # Get relative path for pattern matching
             rel_root = os.path.relpath(root, repo_dir)
 
-            # Skip hidden directories and common non-code folders
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'vendor', 'venv', '__pycache__', 'target', 'build', 'dist', '.git']]
+            # Skip hidden directories and dependency folders
+            # IMPORTANT: Only exclude directories that are ALWAYS third-party.
+            # We do NOT exclude packages/, deps/, external/, lib/ here as they could be first-party.
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in
+                      ['node_modules', 'vendor', 'venv', '__pycache__', 'target', 'build', 'dist',
+                       'third_party', 'out', 'discord-export']]
 
             for filename in filenames:
                 filepath = os.path.join(root, filename)
@@ -453,8 +463,9 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
     For performance, runs multiple focused scans instead of one massive scan:
     1. Base scan: shared rules + always-load rules on all files
     2. Language scans: each language's rules on only matching file extensions
+    3. For large repos (>30 files of a type), uses file-based chunking
 
-    This prevents timeouts on large multi-language repos.
+    This prevents timeouts on large multi-language repos like LoopFi (92 Solidity files).
     """
     findings = []
 
@@ -475,8 +486,74 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
         'dart.yaml': ['*.dart'],
     }
 
+    # Chunking thresholds for large repos
+    CHUNK_THRESHOLD = 30  # If more than this many files, chunk them
+    CHUNK_SIZE = 15       # Number of files per chunk
+
     # All file extensions for base scan
     ALL_EXTENSIONS = ['*.sol', '*.py', '*.js', '*.ts', '*.go', '*.rb', '*.php', '*.java', '*.rs']
+
+    # Directories to exclude from scanning (third-party code / dependencies)
+    # IMPORTANT: Only exclude directories that are ALWAYS third-party code.
+    # See: https://semgrep.dev/docs/ignoring-files-folders-code for industry standards.
+    #
+    # We intentionally DO NOT exclude:
+    #   - packages/  → Monorepos store FIRST-PARTY code here (Lerna, Turborepo)
+    #   - deps/      → Could be first-party shared libraries
+    #   - external/  → Could be first-party code in multi-repo setups
+    #   - lib/       → Only safe to exclude in Foundry projects (handled separately)
+    EXCLUDE_DIRS = {
+        # Package manager dependencies (industry standard to exclude)
+        'node_modules',     # NPM/Yarn packages - scanned by npm audit/Trivy
+        'vendor',           # Go/PHP/Ruby dependencies - scanned by Trivy
+        '.yarn',            # Yarn cache
+        '.pnp',             # Yarn Plug'n'Play
+        # Python artifacts
+        'venv', '.venv',    # Python virtual environments
+        '__pycache__',      # Python bytecode cache
+        '.tox',             # Tox testing environments
+        # Build outputs (not source code)
+        'build',            # Generic build output
+        'dist',             # Distribution bundles
+        'target',           # Rust/Java/Maven build output
+        'out',              # Common build output folder
+        '.next',            # Next.js build cache
+        # Caches and generated files
+        '.cache',           # Various tool caches
+        '.npm',             # NPM cache
+        # Explicitly labeled third-party
+        'third_party',      # Name explicitly indicates external code
+        # Code4rena specific (chat exports, not source)
+        'discord-export',
+    }
+
+    # Check if this is a Foundry project (has foundry.toml)
+    # Only then is it safe to exclude lib/ (contains forge-std, openzeppelin, etc.)
+    is_foundry_project = os.path.exists(os.path.join(repo_dir, 'foundry.toml'))
+    if is_foundry_project:
+        EXCLUDE_DIRS.add('lib')
+        print(f"Foundry project detected - excluding lib/ (forge dependencies)", file=sys.stderr)
+
+    # Build --exclude args for Opengrep (used in non-chunked scans)
+    EXCLUDE_ARGS = [f'--exclude={d}' for d in EXCLUDE_DIRS]
+
+    def find_matching_files(repo_dir: str, extensions: List[str]) -> List[str]:
+        """Find all files matching the given extension patterns, excluding dependencies"""
+        import fnmatch
+        matching_files = []
+        for root, dirs, filenames in os.walk(repo_dir):
+            # Skip hidden dirs and dependency directories
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in EXCLUDE_DIRS]
+            for filename in filenames:
+                for ext_pattern in extensions:
+                    if fnmatch.fnmatch(filename, ext_pattern):
+                        matching_files.append(os.path.join(root, filename))
+                        break
+        return matching_files
+
+    def chunk_list(lst: List, chunk_size: int) -> List[List]:
+        """Split a list into chunks of specified size"""
+        return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
 
     # Build base configs (shared + always-load rules)
     base_configs = []
@@ -518,17 +595,37 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
     for rule_file, exts, _ in lang_scans:
         print(f"  - {rule_file} on {', '.join(exts)}", file=sys.stderr)
 
-    def run_single_scan(configs, extensions, scan_name, timeout=300):
-        """Run a single Opengrep scan with specific rules and file extensions"""
-        include_args = [f'--include={ext}' for ext in extensions]
-        cmd = [
-            'opengrep', 'scan', '--json',
-            '--no-git-ignore',
-            '--x-ignore-semgrepignore-files',
-        ] + include_args + configs + [repo_dir]
+    def run_single_scan(configs, target, scan_name, timeout=300, is_file_list=False):
+        """Run a single Opengrep scan with specific rules
+
+        Args:
+            configs: List of config args (e.g., ['-f', 'rules.yaml'])
+            target: Either repo_dir (for extension-based) or list of file paths (for chunked)
+            scan_name: Name for logging
+            timeout: Timeout in seconds
+            is_file_list: If True, target is a list of specific files to scan
+        """
+        if is_file_list:
+            # Scan specific files (chunked mode) - files already filtered by find_matching_files
+            cmd = [
+                'opengrep', 'scan', '--json',
+                '--no-git-ignore',
+                '--x-ignore-semgrepignore-files',
+            ] + configs + target  # target is list of file paths
+        else:
+            # Scan by extension pattern (normal mode) - add explicit exclusions
+            include_args = [f'--include={ext}' for ext in target]
+            cmd = [
+                'opengrep', 'scan', '--json',
+                '--no-git-ignore',
+                '--x-ignore-semgrepignore-files',
+            ] + include_args + EXCLUDE_ARGS + configs + [repo_dir]
 
         try:
-            print(f"Running {scan_name}: {len(configs)//2} rule files on {extensions}", file=sys.stderr)
+            if is_file_list:
+                print(f"Running {scan_name}: {len(configs)//2} rule files on {len(target)} files", file=sys.stderr)
+            else:
+                print(f"Running {scan_name}: {len(configs)//2} rule files on {target}", file=sys.stderr)
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
             if result.stdout:
@@ -550,10 +647,26 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
         base_results = run_single_scan(base_configs, ALL_EXTENSIONS, "base-scan", timeout=600)
         findings.extend(base_results)
 
-    # Run language-specific scans in sequence - 10 min timeout each
+    # Run language-specific scans with chunking for large repos
     for rule_file, extensions, configs in lang_scans:
-        lang_results = run_single_scan(configs, extensions, rule_file, timeout=600)
-        findings.extend(lang_results)
+        # Find all matching files for this language
+        matching_files = find_matching_files(repo_dir, extensions)
+        file_count = len(matching_files)
+
+        if file_count > CHUNK_THRESHOLD:
+            # Large repo - use file-based chunking
+            print(f"Large repo detected: {file_count} files for {rule_file}, using chunked scanning", file=sys.stderr)
+            file_chunks = chunk_list(matching_files, CHUNK_SIZE)
+            print(f"  Split into {len(file_chunks)} chunks of ~{CHUNK_SIZE} files each", file=sys.stderr)
+
+            for i, chunk in enumerate(file_chunks, 1):
+                chunk_name = f"{rule_file}-chunk-{i}/{len(file_chunks)}"
+                chunk_results = run_single_scan(configs, chunk, chunk_name, timeout=600, is_file_list=True)
+                findings.extend(chunk_results)
+        else:
+            # Normal repo - use extension-based scanning
+            lang_results = run_single_scan(configs, extensions, rule_file, timeout=600)
+            findings.extend(lang_results)
 
     # Convert raw Opengrep results to our finding format
     formatted_findings = []

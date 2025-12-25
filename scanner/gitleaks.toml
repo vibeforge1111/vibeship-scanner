@@ -265,16 +265,33 @@ path = '''\.env'''
 
 [allowlist]
 description = "Global allowlist"
+# Only exclude paths that are ALWAYS safe to ignore for secret scanning.
+# We're conservative here to avoid missing real secrets.
 paths = [
+  # Test files (may contain test credentials, but usually not real secrets)
   '''\.test\.(js|ts|tsx|jsx)$''',
   '''\.spec\.(js|ts|tsx|jsx)$''',
   '''__tests__''',
   '''__mocks__''',
+  # Example/sample files (intentionally contain fake secrets)
   '''\.example$''',
   '''\.sample$''',
+  # Package manager dependencies (third-party code)
   '''node_modules''',
+  '''\.yarn''',
+  '''\.pnp''',
+  '''vendor''',
+  # Well-known Foundry/Solidity dependencies (heavily audited, no secrets)
+  '''lib/forge-std''',
+  '''lib/openzeppelin''',
+  '''lib/solmate''',
+  '''lib/prb-math''',
+  '''lib/solady''',
+  # Documentation and lock files
   '''\.md$''',
   '''package-lock\.json$''',
   '''yarn\.lock$''',
-  '''pnpm-lock\.yaml$'''
+  '''pnpm-lock\.yaml$''',
+  # Code4rena chat exports (not code)
+  '''discord-export'''
 ]

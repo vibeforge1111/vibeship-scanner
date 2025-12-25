@@ -466,11 +466,12 @@ rules:
   # ============================================
 
   - id: sol-reward-before-update
-    message: Reward calculation before state update - stale rewards possible
+    message: "Potential reward-before-update pattern - verify state is updated before calculations (review suggested)"
     languages: [solidity]
-    severity: WARNING
+    severity: INFO
     metadata:
       category: security
+      note: "Downgraded to INFO - pattern is too broad (matches any two sequential assignments)"
     patterns:
       - pattern-inside: |
           function $FUNC(...) {
