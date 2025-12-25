@@ -1,3 +1,4 @@
+<!-- MIND:VERSION:2 -->
 ## Memory (Mind)
 
 This project uses Mind for persistent memory across sessions.
@@ -7,14 +8,14 @@ This project uses Mind for persistent memory across sessions.
 1. **Session Start**: ALWAYS call `mind_recall()` before responding to the first message. This loads context from previous sessions.
 
 2. **During Work**: Use `mind_log(message, type)` to capture what happens:
-   - `mind_log("chose X over Y - simpler", type="decision")` → MEMORY.md
-   - `mind_log("API returns 500 on large payloads", type="problem")` → MEMORY.md
-   - `mind_log("Safari needs vendor prefix for X", type="learning")` → MEMORY.md
-   - `mind_log("resolved by increasing timeout", type="progress")` → MEMORY.md
-   - `mind_log("working on auth flow", type="experience")` → SESSION.md
-   - `mind_log("build keeps failing", type="blocker")` → SESSION.md
-   - `mind_log("tried Redis - too complex", type="rejected")` → SESSION.md
-   - `mind_log("assuming user has stable internet", type="assumption")` → SESSION.md
+   - `mind_log("chose X over Y - simpler", type="decision")` -> MEMORY.md
+   - `mind_log("API returns 500 on large payloads", type="problem")` -> MEMORY.md
+   - `mind_log("Safari needs vendor prefix for X", type="learning")` -> MEMORY.md
+   - `mind_log("resolved by increasing timeout", type="progress")` -> MEMORY.md
+   - `mind_log("working on auth flow", type="experience")` -> SESSION.md
+   - `mind_log("build keeps failing", type="blocker")` -> SESSION.md
+   - `mind_log("tried Redis - too complex", type="rejected")` -> SESSION.md
+   - `mind_log("assuming user has stable internet", type="assumption")` -> SESSION.md
 
 3. **Session End**: Summarize with `## DATE | what happened | mood: X`
 
@@ -40,7 +41,6 @@ This project uses Mind for persistent memory across sessions.
 - `mind_checkpoint()` - Force process pending memories
 - `mind_edges(intent)` - Check for gotchas before coding
 - `mind_status()` - Check memory health
-- `mind_spawn_helper(problem)` - Package problem for fresh agent investigation
 
 ---
 
@@ -50,7 +50,7 @@ sveltekit, typescript, supabase
 
 ## Gotchas
 (None yet - add to .mind/MEMORY.md Gotchas section)
-<!-- MIND:END -->
+
 
 # CLAUDE.md - Vibeship Scanner Development Guide
 
@@ -453,3 +453,117 @@ When presenting scan results or comparing scans, ALWAYS use this visual format:
 - Always show delta (+/-) when comparing scans
 - Highlight gaps with ⚠️ or ❌ symbols
 - End with actionable recommendations
+
+---
+
+## CRITICAL: Benchmark Methodology (MUST FOLLOW)
+
+**NO HALLUCINATIONS ALLOWED** - Only document what is actually detected vs what repos claim.
+
+### Benchmark Verification Protocol
+
+For EVERY vulnerable repository scanned, you MUST:
+
+1. **Research Documented Vulnerabilities**
+   - Read the repo's README, wiki, and documentation
+   - List EVERY vulnerability type the repo claims to contain
+   - Record the SOURCE of each claim (README line, wiki page, etc.)
+
+2. **Compare Against Scan Results**
+   - Query actual findings from Supabase
+   - Map each finding to a documented vulnerability
+   - Calculate ACTUAL detection rate: `(detected / documented) × 100%`
+
+3. **Document with Evidence**
+   - Use the Verified Coverage Table format below
+   - Mark status based on ACTUAL detection, not assumptions
+   - Include specific rule IDs that detected each vuln
+
+4. **Update SECURITY_TEST_PROCEDURE.md**
+   - Add verified coverage table for each repo
+   - Include the tier summary graph
+   - Calculate aggregate coverage per tier
+
+### Verified Coverage Table Template (REQUIRED)
+
+For each repo, create this exact table format:
+
+```markdown
+#### [Repo Name] ([Language]) - Verified Coverage
+
+| # | Documented Vuln | Source | SAST-Detectable? | Detected? | Rule ID | Evidence |
+|---|-----------------|--------|------------------|-----------|---------|----------|
+| 1 | SQL Injection | README | ✅ Yes | ✅ | php-sqli-* | file.php:42 |
+| 2 | XSS | README | ✅ Yes | ✅ | xss-* | app.js:15 |
+| 3 | CSRF | Wiki | ❌ Runtime | ➖ N/A | - | Needs DAST |
+| 4 | XXE | README | ✅ Yes | ❌ | - | MISSING |
+
+**Coverage: 2/3 SAST-detectable = 67%**
+**Gaps: XXE (needs rule)**
+```
+
+### Tier Coverage Graph Template (REQUIRED)
+
+After each tier is complete, create this graph:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  TIER [N] COVERAGE - [Category Name]                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. DVWA         [████████████████░░░░]  80% (8/10 detectable)  │
+│  2. Juice Shop   [██████████████████░░]  90% (18/20)            │
+│  3. NodeGoat     [████████████████████] 100% (12/12)            │
+│  4. crAPI        [████████████░░░░░░░░]  60% (6/10)             │
+│                                                                 │
+│  TIER AVERAGE: 82.5%                                            │
+│  GAPS: CSRF (all), DOM XSS (partial), SSRF (1 repo)             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Status Symbols (STANDARDIZED)
+
+| Symbol | Meaning | Use When |
+|--------|---------|----------|
+| ✅ | Verified Detected | Finding exists in scan with evidence |
+| ⚠️ | Partial | Some instances detected, others missed |
+| ❌ | Not Detected | Vuln exists but no finding |
+| ➖ | N/A | Not detectable by SAST (runtime/DAST) |
+| ⏳ | Pending | Not yet verified |
+
+### What Counts as "Detected"
+
+A vulnerability is ONLY marked ✅ if:
+1. The scan contains a finding for that vulnerability type
+2. The finding is in a file that implements the vulnerability
+3. The rule ID matches the vulnerability category
+
+A vulnerability is ❌ if:
+1. The repo documents it exists
+2. It IS detectable by static analysis
+3. Our scan did NOT find it
+
+### Aggregate Coverage Calculation
+
+```
+Per-Repo Coverage = (SAST-detected vulns / SAST-detectable vulns) × 100%
+Tier Coverage = Average of all per-repo coverages
+Overall Coverage = Weighted average across all tiers
+```
+
+### When to Update Benchmark
+
+- After EVERY scan of a benchmark repo
+- After adding/modifying Opengrep rules
+- Before claiming any coverage percentage
+- When preparing release notes
+
+### Forbidden Practices
+
+❌ **NEVER claim detection without evidence from scan results**
+❌ **NEVER estimate coverage - calculate from actual data**
+❌ **NEVER mark ✅ without a specific finding/rule ID**
+❌ **NEVER skip verification for "obvious" detections**
+❌ **NEVER copy coverage claims from previous sessions without re-verifying**
+
+---
