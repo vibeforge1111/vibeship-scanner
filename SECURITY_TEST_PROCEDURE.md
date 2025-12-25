@@ -97,13 +97,13 @@ Work through each repository systematically. After scanning, document findings a
 |---|------------|------------|--------|----------|-------|
 | 21 | [bkimminich/juice-shop-ctf](https://github.com/bkimminich/juice-shop-ctf) | CTF Tools | ⏳ Pending | - | CTF extensions |
 | 22 | [OWASP/Vulnerable-Web-Application](https://github.com/OWASP/Vulnerable-Web-Application) | General | ⏳ Pending | - | OWASP collection |
-| 23 | [rapid7/hackazon](https://github.com/rapid7/hackazon) | E-commerce | ⏳ Pending | - | Real-world simulation |
-| 24 | [globocom/secDevLabs](https://github.com/globocom/secDevLabs) | Multi-lang | ⏳ Pending | - | Various vulns |
-| 25 | [snyk-labs/nodejs-goof](https://github.com/snyk-labs/nodejs-goof) | Dependencies | ⏳ Pending | - | Dependency vulns |
+| 23 | [rapid7/hackazon](https://github.com/rapid7/hackazon) | E-commerce | ✅ Done | 3,341 | PHP e-commerce, 32 PHP chunks |
+| 24 | [globocom/secDevLabs](https://github.com/globocom/secDevLabs) | Multi-lang | ✅ Done | 4,856 | Multi-lang vulns, largest repo |
+| 25 | [snyk-labs/nodejs-goof](https://github.com/snyk-labs/nodejs-goof) | Dependencies | ✅ Done | 364 | 172 Trivy deps + JS vulns |
 | 26 | [CSPF-Founder/JavaVulnerableLab](https://github.com/CSPF-Founder/JavaVulnerableLab) | Java | ⏳ Pending | - | Java-specific |
-| 27 | [Contrast-Security-OSS/DotNetGoat](https://github.com/Contrast-Security-OSS/DotNetGoat) | .NET | ⏳ Pending | - | .NET vulnerabilities |
+| 27 | [srini0x00/dvta](https://github.com/srini0x00/dvta) | .NET | ✅ Done | 52 | 46 critical secrets, 6 C# vulns |
 | 28 | [payatu/diva-android](https://github.com/payatu/diva-android) | Android | ⏳ Pending | - | Mobile security |
-| 29 | [OWASP/iGoat-Swift](https://github.com/OWASP/iGoat-Swift) | iOS/Swift | ⏳ Pending | - | iOS security |
+| 29 | [OWASP/iGoat-Swift](https://github.com/OWASP/iGoat-Swift) | iOS/Swift | ✅ Done | 98 | Swift security patterns |
 | 30 | [commjoen/wrongsecrets-ctf-party](https://github.com/commjoen/wrongsecrets-ctf-party) | Kubernetes | ⏳ Pending | - | K8s secrets |
 
 ### Tier 5: Solidity/DeFi Security Audits
@@ -137,7 +137,8 @@ This section shows **verified coverage** for each scanned repository - comparing
 | GraphQL | 1 (DVGA) | ✅ High | 1,268 findings, GraphQL patterns |
 | Android/Kotlin | 1 (InsecureShop) | ✅ Moderate | 10 findings, mobile security |
 | CI/CD | 1 (github-actions-goat) | ✅ Moderate | 14 findings, Actions security |
-| .NET | 0 (pending) | ⏳ Pending | DotNetGoat to test |
+| .NET/C# | 1 (DVTA) | ✅ High | 52 findings, secrets + C# vulns |
+| iOS/Swift | 1 (iGoat-Swift) | ✅ High | 98 findings, Swift patterns |
 
 ### Tier 1 Verified Coverage
 
@@ -350,6 +351,62 @@ This section shows **verified coverage** for each scanned repository - comparing
 | WebView vulns | ⚠️ Partial | JavaScript enabled |
 | **Coverage** | **10 findings** | *Mobile/Kotlin patterns* |
 
+### Tier 4 Verified Coverage (Additional Test Repos)
+
+#### 23. Hackazon (PHP E-commerce) - 3,341 Findings
+
+| Category | Findings | Notes |
+|----------|----------|-------|
+| SQL Injection | ✅ Detected | PDO patterns, query building |
+| XSS | ✅ Detected | Echo statements, template injection |
+| Command Injection | ✅ Detected | exec/system patterns |
+| File Upload | ✅ Detected | Upload handling issues |
+| Path Traversal | ✅ Detected | File access patterns |
+| Hardcoded Secrets | ✅ Detected | Database credentials, API keys |
+| **Coverage** | **3,341 total** | *32 PHP chunks scanned* |
+
+#### 24. secDevLabs (Multi-language) - 4,856 Findings
+
+| Language | Findings | Detected Patterns |
+|----------|----------|-------------------|
+| JavaScript | ✅ High | XSS, eval, command injection |
+| Python | ✅ High | SSTI, SSRF, SQLi, command injection |
+| PHP | ✅ High | File inclusion, SQLi, XSS |
+| Go | ⚠️ Partial | Basic patterns |
+| **Coverage** | **4,856 total** | *Largest multi-lang repo tested* |
+
+#### 25. nodejs-goof (Dependencies) - 364 Findings
+
+| Category | Findings | Notes |
+|----------|----------|-------|
+| Vulnerable Dependencies | ✅ 172 | Trivy detected 172 dep vulns |
+| Command Injection | ✅ Detected | Opengrep patterns |
+| Injection (general) | ✅ Detected | Multiple injection types |
+| Hardcoded Secrets | ✅ Detected | Config file secrets |
+| **Coverage** | **364 total** | *Strong dependency focus* |
+
+#### 27. DVTA (.NET/C#) - 52 Findings
+
+| Category | Findings | Notes |
+|----------|----------|-------|
+| Hardcoded Secrets | ✅ 46 | Critical secrets in C# code |
+| SQL Injection | ✅ Detected | SqlCommand patterns |
+| Insecure Storage | ✅ Detected | Credential storage issues |
+| Path Traversal | ⚠️ Partial | File access patterns |
+| Weak Cryptography | ⚠️ Partial | Some crypto patterns |
+| **Coverage** | **52 total** | *First .NET/C# repo tested* |
+
+#### 29. iGoat-Swift (iOS/Swift) - 98 Findings
+
+| Category | Findings | Notes |
+|----------|----------|-------|
+| Hardcoded Secrets | ✅ Detected | API keys, credentials |
+| Insecure Storage | ✅ Detected | Keychain, UserDefaults |
+| Weak Cryptography | ✅ Detected | MD5/SHA1 patterns |
+| Path Traversal | ✅ Detected | File access patterns |
+| Insecure Deserialization | ⚠️ Partial | NSCoding patterns |
+| **Coverage** | **98 total** | *First iOS/Swift repo tested* |
+
 ### Tier 5 Verified Coverage (Solidity/DeFi)
 
 #### Sherlock Derby Audit - 100% Match
@@ -376,30 +433,31 @@ This section shows **verified coverage** for each scanned repository - comparing
 ### Coverage Summary Matrix
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  VIBESHIP SCANNER - VERIFIED COVERAGE MATRIX (20 repos tested)               │
-├──────────────────────────────────────────────────────────────────────────────┤
-│  Vulnerability Type          │ PHP │ JS  │ Py  │ Java │ Ruby │ GQL │ Sol   │
-├──────────────────────────────┼─────┼─────┼─────┼──────┼──────┼─────┼───────┤
-│  SQL Injection               │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ N/A   │
-│  Command Injection           │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ N/A   │
-│  XSS                         │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ⚠️  │ N/A   │
-│  SSTI                        │ ✅  │ ✅  │ ✅  │ ⚠️   │ ✅   │ N/A │ N/A   │
-│  Path Traversal              │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ N/A   │
-│  SSRF                        │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ N/A   │
-│  XXE                         │ ⚠️  │ ⚠️  │ ✅  │ ✅   │ ⚠️   │ N/A │ N/A   │
-│  Insecure Deserialization    │ ⚠️  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ N/A   │
-│  Hardcoded Secrets           │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ ✅    │
-│  Weak Cryptography           │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ ⚠️    │
-│  Vulnerable Dependencies     │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ N/A   │
-│  Mass Assignment             │ ⚠️  │ ⚠️  │ ✅  │ ⚠️   │ ✅   │ ✅  │ N/A   │
-│  API Injection               │ N/A │ ✅  │ ✅  │ ✅   │ N/A  │ ✅  │ N/A   │
-│  Reentrancy                  │ N/A │ N/A │ N/A │ N/A  │ N/A  │ N/A │ ✅    │
-│  Access Control (Sol)        │ N/A │ N/A │ N/A │ N/A  │ N/A  │ N/A │ ✅    │
-│  Unchecked Returns           │ ⚠️  │ ⚠️  │ ⚠️  │ ⚠️   │ ⚠️   │ N/A │ ✅    │
-├──────────────────────────────┼─────┼─────┼─────┼──────┼──────┼─────┼───────┤
-│  LEGEND: ✅ Verified │ ⚠️ Partial │ ❌ Not Detected │ N/A = Not Applicable │
-└──────────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│  VIBESHIP SCANNER - VERIFIED COVERAGE MATRIX (25 repos tested)                            │
+├───────────────────────────────────────────────────────────────────────────────────────────┤
+│  Vulnerability Type          │ PHP │ JS  │ Py  │ Java │ Ruby │ GQL │ .NET │ Swift │ Sol  │
+├──────────────────────────────┼─────┼─────┼─────┼──────┼──────┼─────┼──────┼───────┼──────┤
+│  SQL Injection               │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ ✅   │ ⚠️    │ N/A  │
+│  Command Injection           │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ ⚠️   │ ⚠️    │ N/A  │
+│  XSS                         │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ⚠️  │ ⚠️   │ N/A   │ N/A  │
+│  SSTI                        │ ✅  │ ✅  │ ✅  │ ⚠️   │ ✅   │ N/A │ N/A  │ N/A   │ N/A  │
+│  Path Traversal              │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ ⚠️   │ ✅    │ N/A  │
+│  SSRF                        │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ ⚠️   │ ⚠️    │ N/A  │
+│  XXE                         │ ⚠️  │ ⚠️  │ ✅  │ ✅   │ ⚠️   │ N/A │ ⚠️   │ N/A   │ N/A  │
+│  Insecure Deserialization    │ ⚠️  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ ⚠️   │ ⚠️    │ N/A  │
+│  Hardcoded Secrets           │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ ✅   │ ✅    │ ✅   │
+│  Weak Cryptography           │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ N/A │ ⚠️   │ ✅    │ ⚠️   │
+│  Vulnerable Dependencies     │ ✅  │ ✅  │ ✅  │ ✅   │ ✅   │ ✅  │ ⚠️   │ N/A   │ N/A  │
+│  Mass Assignment             │ ⚠️  │ ⚠️  │ ✅  │ ⚠️   │ ✅   │ ✅  │ ⚠️   │ N/A   │ N/A  │
+│  API Injection               │ N/A │ ✅  │ ✅  │ ✅   │ N/A  │ ✅  │ N/A  │ N/A   │ N/A  │
+│  Insecure Storage            │ N/A │ N/A │ N/A │ N/A  │ N/A  │ N/A │ ✅   │ ✅    │ N/A  │
+│  Reentrancy                  │ N/A │ N/A │ N/A │ N/A  │ N/A  │ N/A │ N/A  │ N/A   │ ✅   │
+│  Access Control (Sol)        │ N/A │ N/A │ N/A │ N/A  │ N/A  │ N/A │ N/A  │ N/A   │ ✅   │
+│  Unchecked Returns           │ ⚠️  │ ⚠️  │ ⚠️  │ ⚠️   │ ⚠️   │ N/A │ ⚠️   │ ⚠️    │ ✅   │
+├──────────────────────────────┼─────┼─────┼─────┼──────┼──────┼─────┼──────┼───────┼──────┤
+│  LEGEND: ✅ Verified │ ⚠️ Partial │ ❌ Not Detected │ N/A = Not Applicable          │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### What We DON'T Detect (Requires DAST/Manual)
