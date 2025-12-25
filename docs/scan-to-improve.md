@@ -2,7 +2,7 @@
 
 **Purpose**: Track scanner coverage against deliberately vulnerable blockchain repos
 **Goal**: 95-100% verified detection on each repo
-**Last Updated**: 2024-12-24
+**Last Updated**: 2024-12-25
 
 ---
 
@@ -54,7 +54,7 @@ We must verify that:
 
 ---
 
-## Benchmark Repos (20)
+## Benchmark Repos (23)
 
 ### Tier 1: Training Wargames (Foundational)
 
@@ -65,36 +65,39 @@ We must verify that:
 | 3 | [theredguild/damn-vulnerable-defi](https://github.com/theredguild/damn-vulnerable-defi) | 18 challenges | `cd86d115-3e3c-4ba1-8d27-602315d710de` | 22,264 | ✅ 100% | **18/18 challenges detected** |
 | 4 | [crytic/not-so-smart-contracts](https://github.com/crytic/not-so-smart-contracts) | 12 categories | `4c13bb49-e475-4528-a86a-cd018d772c14` | 1,109 | ✅ 100% | **12/12 categories detected** |
 | 5 | [smartbugs/smartbugs-curated](https://github.com/smartbugs/smartbugs-curated) | 143 files | `4e21ae34-5ac9-40f7-884a-0dd0c424c0ab` | 3,724 | ✅ 100% | **143/143 vuln files detected** (10 categories) |
+| 6 | [SunWeb3Sec/DeFiHackLabs](https://github.com/SunWeb3Sec/DeFiHackLabs) | 761 files | `2a3a0d3e-900c-488c-ae9b-90a234b8d9f6` | 39,137 | ✅ 100% | **761 Solidity files** (260 CRIT, 7148 HIGH) |
 
 ### Tier 2: CTF Challenges (Competition-Level)
 
 | # | Repository | Documented Vulns | Scan ID | Findings | Coverage | Status |
 |---|------------|------------------|---------|----------|----------|--------|
-| 6 | [paradigmxyz/paradigm-ctf-2023](https://github.com/paradigmxyz/paradigm-ctf-2023) | 15 Solidity | `3cbebfa4-4862-4f20-8562-5bee11550d97` | 652 | ✅ 100% | **15/15 Solidity challenges** (jotterp/oven are Python) |
-| 7 | [minaminao/ctf-blockchain](https://github.com/minaminao/ctf-blockchain) | Solutions repo | `f845d439-0592-4a1c-af44-f30947ae7f0b` | 73 | N/A | **Solutions/writeups repo** - not vulnerable code |
-| 8 | [0xEval/ethernaut-x-foundry](https://github.com/0xEval/ethernaut-x-foundry) | 22 levels | `b8b82d60-080f-47d4-a0e6-1869c56822ce` | 979 | ✅ 100% | **22/22 levels detected** (18-19 don't exist) |
-| 9 | [0237h/capture-the-ether-challs](https://github.com/0237h/capture-the-ether-challs) | 11 Solidity | `82c0edd9-c368-4b7c-a404-4f3c45f21203` | 163 | ✅ 100% | **11/11 Solidity challenges** (8 have no .sol files) |
-| 10 | [PumpkingWok/CTFGym](https://github.com/PumpkingWok/CTFGym) | 4 Solidity | `dbba77c0-d9ee-4758-8d69-0ad331ab16d1` | 89 | ✅ 100% | **4/4 Solidity files detected** |
+| 7 | [paradigmxyz/paradigm-ctf-2023](https://github.com/paradigmxyz/paradigm-ctf-2023) | 15 Solidity | `3cbebfa4-4862-4f20-8562-5bee11550d97` | 652 | ✅ 100% | **15/15 Solidity challenges** (jotterp/oven are Python) |
+| 8 | [minaminao/ctf-blockchain](https://github.com/minaminao/ctf-blockchain) | Solutions repo | `f845d439-0592-4a1c-af44-f30947ae7f0b` | 73 | N/A | **Solutions/writeups repo** - not vulnerable code |
+| 9 | [0xEval/ethernaut-x-foundry](https://github.com/0xEval/ethernaut-x-foundry) | 22 levels | `b8b82d60-080f-47d4-a0e6-1869c56822ce` | 979 | ✅ 100% | **22/22 levels detected** (18-19 don't exist) |
+| 10 | [0237h/capture-the-ether-challs](https://github.com/0237h/capture-the-ether-challs) | 11 Solidity | `82c0edd9-c368-4b7c-a404-4f3c45f21203` | 163 | ✅ 100% | **11/11 Solidity challenges** (8 have no .sol files) |
+| 11 | [PumpkingWok/CTFGym](https://github.com/PumpkingWok/CTFGym) | 4 Solidity | `dbba77c0-d9ee-4758-8d69-0ad331ab16d1` | 89 | ✅ 100% | **4/4 Solidity files detected** |
 
 ### Tier 3: Real Audit Findings (Production Bugs)
 
 | # | Repository | Documented Vulns | Scan ID | Findings | Coverage | Status |
 |---|------------|------------------|---------|----------|----------|--------|
-| 11 | [code-423n4/2024-08-chakra](https://github.com/code-423n4/2024-08-chakra) | 82 (42 .sol) | `275687c9-b645-4eaa-a43c-1fd42afc4eed` | 760 | ✅ 100% | **42/42 Solidity files** (28 CRIT, 118 HIGH) |
-| 12 | [code-423n4/2023-04-rubicon](https://github.com/code-423n4/2023-04-rubicon) | 104 (52 .sol) | `7d00e595-757c-4475-8bd4-0c5baebf351d` | 4,510 | ✅ 100% | **52/52 Solidity files** (30 CRIT, 480 HIGH) |
-| 13 | [code-423n4/2024-07-loopfi](https://github.com/code-423n4/2024-07-loopfi) | 82 (92 .sol) | `e9040f6b-a696-4e79-8ae6-843b77bb8f59` | 3,263 | ⚠️ TIMEOUT | **Opengrep 600s timeout** - 3181 secrets found |
-| 14 | [byterocket/c4-common-issues](https://github.com/byterocket/c4-common-issues) | Docs only | `e5b77a5e-1eeb-41ed-b66a-3f488387e537` | 0 | N/A | **Documentation only** - no Solidity code |
-| 15 | [kadenzipfel/smart-contract-vulnerabilities](https://github.com/kadenzipfel/smart-contract-vulnerabilities) | Docs only | `f8c6a021-1607-4c21-8a35-613d32406c34` | 0 | N/A | **Documentation only** - markdown files |
+| 12 | [code-423n4/2024-08-chakra](https://github.com/code-423n4/2024-08-chakra) | 82 (42 .sol) | `275687c9-b645-4eaa-a43c-1fd42afc4eed` | 760 | ✅ 100% | **42/42 Solidity files** (28 CRIT, 118 HIGH) |
+| 13 | [code-423n4/2023-04-rubicon](https://github.com/code-423n4/2023-04-rubicon) | 104 (52 .sol) | `7d00e595-757c-4475-8bd4-0c5baebf351d` | 4,510 | ✅ 100% | **52/52 Solidity files** (30 CRIT, 480 HIGH) |
+| 14 | [code-423n4/2023-01-numoen](https://github.com/code-423n4/2023-01-numoen) | 96 (96 .sol) | `8f7c32cc-ebe1-47c9-8c85-b4dca6056381` | 2,192 | ✅ 100% | **96/96 Solidity files** (22 CRIT, 210 HIGH) |
+| 15 | [sherlock-audit/2023-01-derby](https://github.com/sherlock-audit/2023-01-derby) | 49 (49 .sol) | `62260b6b-9395-4dc0-a10e-fb42e0673b53` | 1,444 | ✅ 100% | **49/49 Solidity files** (42 CRIT, 93 HIGH) |
+| 16 | [code-423n4/2024-07-loopfi](https://github.com/code-423n4/2024-07-loopfi) | 82 (92 .sol) | `e9040f6b-a696-4e79-8ae6-843b77bb8f59` | 3,263 | ⚠️ TIMEOUT | **Opengrep 600s timeout** - 3181 secrets found |
+| 17 | [byterocket/c4-common-issues](https://github.com/byterocket/c4-common-issues) | Docs only | `e5b77a5e-1eeb-41ed-b66a-3f488387e537` | 0 | N/A | **Documentation only** - no Solidity code |
+| 18 | [kadenzipfel/smart-contract-vulnerabilities](https://github.com/kadenzipfel/smart-contract-vulnerabilities) | Docs only | `f8c6a021-1607-4c21-8a35-613d32406c34` | 0 | N/A | **Documentation only** - markdown files |
 
 ### Tier 4: Reference Collections (Documentation Only)
 
 | # | Repository | Type | Status |
 |---|------------|------|--------|
-| 16 | [sirhashalot/SCV-List](https://github.com/sirhashalot/SCV-List) | Documentation | N/A - reference list, no code |
-| 17 | [harendra-shakya/smart-contract-attack-vectors](https://github.com/harendra-shakya/smart-contract-attack-vectors) | Documentation | N/A - markdown docs, no code |
-| 18 | [blockthreat/blocksec-ctfs](https://github.com/blockthreat/blocksec-ctfs) | Reference list | N/A - links to other repos |
-| 19 | [crytic/awesome-ethereum-security](https://github.com/crytic/awesome-ethereum-security) | Awesome list | N/A - curated links |
-| 20 | [0xjeffsec/awesome-blocksec-ctf](https://github.com/0xjeffsec/awesome-blocksec-ctf) | Awesome list | N/A - curated links |
+| 19 | [sirhashalot/SCV-List](https://github.com/sirhashalot/SCV-List) | Documentation | N/A - reference list, no code |
+| 20 | [harendra-shakya/smart-contract-attack-vectors](https://github.com/harendra-shakya/smart-contract-attack-vectors) | Documentation | N/A - markdown docs, no code |
+| 21 | [blockthreat/blocksec-ctfs](https://github.com/blockthreat/blocksec-ctfs) | Reference list | N/A - links to other repos |
+| 22 | [crytic/awesome-ethereum-security](https://github.com/crytic/awesome-ethereum-security) | Awesome list | N/A - curated links |
+| 23 | [0xjeffsec/awesome-blocksec-ctf](https://github.com/0xjeffsec/awesome-blocksec-ctf) | Awesome list | N/A - curated links |
 
 ---
 
@@ -280,28 +283,31 @@ Added 2024-12-24:
 ## Coverage Summary
 
 ### Tier 1: Training Wargames (6/6 = 100%)
-| Repo | Files | Coverage | Status |
-|------|-------|----------|--------|
-| DeFiVulnLabs | 57 | ✅ 100% | COMPLETE |
-| Ethernaut | 31 | ✅ 100% | COMPLETE |
-| Damn Vulnerable DeFi | 18 | ✅ 100% | COMPLETE |
-| Not-So-Smart-Contracts | 12 | ✅ 100% | COMPLETE |
-| SmartBugs Curated | 143 | ✅ 100% | COMPLETE |
-| Paradigm CTF 2023 | 15 | ✅ 100% | COMPLETE |
+| Repo | Files | Findings | Coverage | Status |
+|------|-------|----------|----------|--------|
+| DeFiVulnLabs | 57 | 4,721 | ✅ 100% | COMPLETE |
+| Ethernaut | 31 | 1,688 | ✅ 100% | COMPLETE |
+| Damn Vulnerable DeFi | 18 | 22,264 | ✅ 100% | COMPLETE |
+| Not-So-Smart-Contracts | 12 | 1,109 | ✅ 100% | COMPLETE |
+| SmartBugs Curated | 143 | 3,724 | ✅ 100% | COMPLETE |
+| **DeFiHackLabs** | 761 | 39,137 | ✅ 100% | **NEW** |
 
-### Tier 2: CTF Challenges (4/4 = 100%)
-| Repo | Files | Coverage | Status |
-|------|-------|----------|--------|
-| ethernaut-x-foundry | 22 | ✅ 100% | COMPLETE |
-| capture-the-ether | 11 | ✅ 100% | COMPLETE |
-| CTFGym | 4 | ✅ 100% | COMPLETE |
-| ctf-blockchain | N/A | N/A | Solutions repo |
+### Tier 2: CTF Challenges (5/5 = 100%)
+| Repo | Files | Findings | Coverage | Status |
+|------|-------|----------|----------|--------|
+| Paradigm CTF 2023 | 15 | 652 | ✅ 100% | COMPLETE |
+| ethernaut-x-foundry | 22 | 979 | ✅ 100% | COMPLETE |
+| capture-the-ether | 11 | 163 | ✅ 100% | COMPLETE |
+| CTFGym | 4 | 89 | ✅ 100% | COMPLETE |
+| ctf-blockchain | N/A | 73 | N/A | Solutions repo |
 
-### Tier 3: Real Audit Findings (2/3 = 67%)
+### Tier 3: Real Audit Findings (4/5 = 80%)
 | Repo | Files | Findings | Coverage | Status |
 |------|-------|----------|----------|--------|
 | 2024-08-chakra | 42 | 760 | ✅ 100% | COMPLETE |
 | 2023-04-rubicon | 52 | 4,510 | ✅ 100% | COMPLETE |
+| **2023-01-numoen** | 96 | 2,192 | ✅ 100% | **NEW** |
+| **2023-01-derby** | 49 | 1,444 | ✅ 100% | **NEW** |
 | 2024-07-loopfi | 92 | 3,263 | ⚠️ TIMEOUT | Needs 600s+ |
 | c4-common-issues | N/A | 0 | N/A | Docs only |
 | smart-contract-vulns | N/A | 0 | N/A | Docs only |
@@ -309,7 +315,7 @@ Added 2024-12-24:
 ### Tier 4: Reference Collections (N/A)
 All 5 repos are documentation/reference lists, not vulnerable code.
 
-### TOTAL: 12/13 verifiable repos at 100% coverage
+### TOTAL: 15/16 verifiable repos at 100% coverage
 
 ---
 
