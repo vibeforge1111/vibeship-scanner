@@ -48,6 +48,12 @@ This project uses Mind for persistent memory across sessions.
 ## Stack
 sveltekit, typescript, supabase
 
+## Supabase Configuration (IMPORTANT)
+**Current Supabase Project**: `kgxjubeaddrocooklyib`
+- **URL**: `https://kgxjubeaddrocooklyib.supabase.co`
+- **API Key**: See `.env` file for `VITE_SUPABASE_ANON_KEY`
+- **Note**: Old project `jryabrpfzwtdqvnemqgj` is defunct - DO NOT USE
+
 ## Gotchas
 (None yet - add to .mind/MEMORY.md Gotchas section)
 
@@ -62,6 +68,74 @@ Vibeship Scanner is a security scanning tool that analyzes GitHub repositories f
 - **Opengrep** - Static Application Security Testing (SAST) - open-source Semgrep fork
 - **Trivy** - Dependency vulnerability scanning
 - **Gitleaks** - Secret detection
+
+---
+
+## 🚨 ULTIMATE RULE: VERIFICATION-FIRST METHODOLOGY 🚨
+
+**THIS IS THE PRIMARY, NON-NEGOTIABLE RULE FOR ALL SCANNER WORK**
+
+### The Golden Rule
+
+> **Coverage = What our SCAN RESULTS actually detect vs What the REPO DOCUMENTS it contains**
+>
+> NOT: "We have rules for X" → We must PROVE we detect X with actual scan evidence
+
+### Verification Protocol (MANDATORY)
+
+For EVERY benchmark repo, verification requires THREE sources of truth:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  1. REPO'S OWN DOCUMENTATION                                                │
+│     └─ What vulns does the repo's README/wiki/docs claim to contain?        │
+│     └─ This is the GROUND TRUTH - what we're trying to detect               │
+│                                                                             │
+│  2. OUR ACTUAL SCAN RESULTS                                                 │
+│     └─ Query findings from Supabase for the scan ID                         │
+│     └─ Real findings with file paths, line numbers, rule IDs                │
+│                                                                             │
+│  3. COMPARISON TABLE                                                        │
+│     └─ Map each documented vuln to actual scan findings                     │
+│     └─ Calculate: detected / SAST-detectable = coverage %                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### What Counts as "Verified Detected"
+
+A vulnerability is ✅ ONLY if ALL of these are true:
+1. The repo documents it exists (README, wiki, or challenge description)
+2. Our scan has a finding for that vuln type
+3. The finding is in the correct file that implements the vuln
+4. We can cite: `rule_id`, `file:line`, `scan_id`
+
+### What Does NOT Count
+
+❌ "We have rules for SQL injection" - MUST show actual finding
+❌ "The scan found 500 findings" - MUST map to documented vulns
+❌ "Previous session said 90%" - MUST re-verify with current scan
+❌ Estimates, assumptions, or "should detect"
+
+### Improvement Workflow
+
+```
+SCAN → COMPARE TO REPO DOCS → IDENTIFY GAPS → ADD RULES → RESCAN → VERIFY
+         ↑                                                           │
+         └───────────────── Iterate until 100% ─────────────────────┘
+```
+
+### Session Checklist
+
+Before claiming any coverage percentage:
+- [ ] Fetched repo's README/docs for documented vulns
+- [ ] Ran scan and have scan ID
+- [ ] Queried actual findings from Supabase
+- [ ] Created comparison table with evidence
+- [ ] Calculated coverage from ACTUAL data
+
+**If you cannot cite scan_id + rule_id + file:line, you have NOT verified.**
+
+---
 
 ## IMPORTANT: How to Trigger Scans
 
@@ -519,6 +593,60 @@ When presenting scan results or comparing scans, ALWAYS use this visual format:
 - Highlight gaps with ⚠️ or ❌ symbols
 - End with actionable recommendations
 
+### 7. Repo Verification Table (PREFERRED FORMAT)
+
+Use this format when verifying coverage against a repo's documented vulnerabilities:
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  [REPO NAME] COVERAGE VERIFICATION                                           ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Scan ID: [scan-id]                                                          ║
+║  Total Findings: XX | Rules Matched: XX unique                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  DOCUMENTED VULNERABILITIES vs DETECTIONS                                   │
+├───┬─────────────────────────────────┬───────────────┬───────────┬───────────┤
+│ # │ Vulnerability                   │ SAST-Detect?  │ Detected? │ Rule IDs  │
+├───┼─────────────────────────────────┼───────────────┼───────────┼───────────┤
+│ 1 │ SQL Injection                   │ YES           │ [OK]      │ py-sql-*  │
+│ 2 │ XSS Reflected                   │ YES           │ [OK]      │ xss-*     │
+│ 3 │ Command Injection               │ YES           │ [OK]      │ cmd-*     │
+│ 4 │ CSRF                            │ NO (runtime)  │ N/A       │ -         │
+│ 5 │ Missing Vulnerability           │ YES           │ [MISS]    │ -         │
+│ 6 │ Partial Detection               │ YES           │ [PART]    │ some-rule │
+├───┴─────────────────────────────────┴───────────────┴───────────┴───────────┤
+│  BONUS DETECTIONS (not documented but found):                               │
+│  - Extra Finding 1: rule-id-here                                            │
+│  - Extra Finding 2: rule-id-here                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+SAST-Detectable: X/Y vulnerabilities
+Detected: X/Y = XX%
+Missing: [List gaps that need rules]
+```
+
+**Detection Status Tags:**
+- `[OK]` = Fully detected with evidence
+- `[PART]` = Partially detected (some instances missed)
+- `[MISS]` = Should be detectable but not found
+- `N/A` = Not SAST-detectable (runtime/DAST only)
+
+**Color Enhancement (when supported):**
+- 🟢 `[OK]` - Green for detected
+- 🟡 `[PART]` - Yellow for partial
+- 🔴 `[MISS]` - Red for missing (needs rule)
+- ⚪ `N/A` - Gray for not applicable
+
+This format provides:
+1. Clear header with scan metadata
+2. Line-by-line vulnerability verification
+3. SAST-detectability classification
+4. Rule ID evidence for detections
+5. Bonus findings not in documentation
+6. Summary with exact coverage percentage
+
 ---
 
 ## CRITICAL: Benchmark Methodology (MUST FOLLOW)
@@ -630,5 +758,93 @@ Overall Coverage = Weighted average across all tiers
 ❌ **NEVER mark ✅ without a specific finding/rule ID**
 ❌ **NEVER skip verification for "obvious" detections**
 ❌ **NEVER copy coverage claims from previous sessions without re-verifying**
+
+---
+
+## 100% COVERAGE METHODOLOGY (MANDATORY)
+
+**Goal: 100% SAST coverage for every benchmark repo**
+
+### Step 1: List ALL Documented Vulnerabilities
+- Read repo's README, wiki, and source comments
+- Extract every vulnerability the repo claims to contain
+- Number them 1 through N
+
+### Step 2: Classify Each Vulnerability
+For each vulnerability, determine:
+
+**SAST-Detectable (code patterns we CAN detect):**
+- SQL Injection, XSS (server-side), Command Injection
+- Path Traversal, SSRF, XXE, Deserialization
+- Hardcoded secrets, Dangerous function calls
+- SSTI, Open Redirect, Header Injection
+
+**NOT SAST-Detectable (requires DAST/manual/runtime):**
+- CSRF (token validation is runtime)
+- DOM XSS (client-side JS execution)
+- HTTP Parameter Pollution (server behavior)
+- Clickjacking (missing header = config, not code)
+- DoS (resource exhaustion is runtime)
+- Session Management (runtime state)
+- Business Logic Flaws (semantic)
+- Race Conditions (parallel execution)
+
+### Step 3: Iterate Until 100%
+
+```
+FOR each SAST-detectable vulnerability:
+  IF not detected:
+    1. Examine the EXACT source code pattern
+    2. Write a Semgrep rule matching that pattern
+    3. Deploy and rescan
+    4. Verify detection with rule_id + line number
+  UNTIL detected
+```
+
+### Step 4: Document Gaps Honestly
+
+For any vulnerability we cannot detect, document WHY:
+
+| Gap Type | Example | Can We Fix? | How? |
+|----------|---------|-------------|------|
+| Runtime behavior | CSRF token check | NO | Needs DAST |
+| Client-side JS | DOM XSS | PARTIAL | Add JS rules |
+| Config issue | Missing headers | PARTIAL | Header rules |
+| Semantic | Business logic | NO | Manual review |
+| Third-party | Use external tool | YES | Integrate tool |
+
+### Step 5: Calculate Coverage
+
+```
+SAST Coverage = (Detected SAST-detectable) / (Total SAST-detectable) x 100%
+
+Example (DSVW):
+- Total vulns: 26
+- SAST-detectable: 20
+- Detected: 20
+- Coverage: 20/20 = 100%
+```
+
+### Verified Benchmark Results
+
+| Repo | Total Vulns | SAST-Detectable | Detected | Coverage |
+|------|-------------|-----------------|----------|----------|
+| DVWA | 14 | 14 | 14 | 100% |
+| DSVW | 26 | 20 | 20 | 100% |
+
+### What's NOT Our Fault (Document These)
+
+When coverage < 100%, be specific about WHY:
+
+1. **Runtime-only**: CSRF, session management, rate limiting
+2. **Client-side**: DOM XSS, browser-specific attacks
+3. **Config-based**: Missing headers, CORS policies
+4. **Semantic**: Business logic, authorization flaws
+5. **External**: Needs DAST tool (Burp, ZAP, Nuclei)
+
+**NEVER say "we can't detect X" without explaining if it's:**
+- Impossible (runtime/semantic)
+- Possible with effort (new rule needed)
+- Possible with integration (external tool)
 
 ---
