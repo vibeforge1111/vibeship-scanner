@@ -175,9 +175,9 @@ Work through each repository systematically. After scanning, document findings a
 | 24 | [globocom/secDevLabs](https://github.com/globocom/secDevLabs) | Multi-lang | ✅ Done | 4,856 | Multi-lang vulns, largest repo |
 | 25 | [snyk-labs/nodejs-goof](https://github.com/snyk-labs/nodejs-goof) | Dependencies | ✅ Done | 364 | 172 Trivy deps + JS vulns |
 | 26 | [CSPF-Founder/JavaVulnerableLab](https://github.com/CSPF-Founder/JavaVulnerableLab) | Java | ✅ Done | 100 | Java-specific vulns |
-| 27 | [srini0x00/dvta](https://github.com/srini0x00/dvta) | .NET | ✅ Done | 52 | 46 critical secrets, 6 C# vulns |
+| 27 | [srini0x00/dvta](https://github.com/srini0x00/dvta) | .NET | ✅ Done | 57 | 46 critical secrets, 11 C# vulns (improved) |
 | 28 | [payatu/diva-android](https://github.com/payatu/diva-android) | Android | ✅ Done | 7 | Mobile security |
-| 29 | [OWASP/iGoat-Swift](https://github.com/OWASP/iGoat-Swift) | iOS/Swift | ✅ Done | 98 | Swift security patterns |
+| 29 | [OWASP/iGoat-Swift](https://github.com/OWASP/iGoat-Swift) | iOS/Swift | ✅ Done | 117 | 39 critical, 8 high, 30 medium, 62 Swift rules |
 | 30 | [commjoen/wrongsecrets-ctf-party](https://github.com/commjoen/wrongsecrets-ctf-party) | Kubernetes | ✅ Done | 327 | K8s secrets CTF party |
 
 ### Tier 5: Solidity/DeFi Security Audits
