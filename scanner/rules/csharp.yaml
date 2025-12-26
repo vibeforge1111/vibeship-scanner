@@ -451,3 +451,177 @@ rules:
     metadata:
       cwe: "CWE-918"
       tags: [ssrf]
+
+  # ============================================
+  # Insecure Logging (DVTA Gap)
+  # ============================================
+
+  - id: csharp-log-password
+    patterns:
+      - pattern: Console.WriteLine($FMT, ..., $PASSWORD, ...)
+      - pattern: Debug.WriteLine($FMT, ..., $PASSWORD, ...)
+      - pattern: Trace.WriteLine($MSG)
+      - pattern: '$LOGGER.Log(..., $MSG, ...)'
+    message: "C# logging may expose sensitive data - ensure passwords/secrets are not logged (CWE-532)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging]
+
+  - id: csharp-console-write-sensitive
+    pattern-either:
+      - pattern: 'Console.WriteLine($"...password...")'
+      - pattern: 'Console.WriteLine($"...secret...")'
+      - pattern: 'Console.WriteLine($"...token...")'
+      - pattern: 'Console.WriteLine($"...credential...")'
+    message: "C# Console.WriteLine may log sensitive data (CWE-532)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging]
+
+  - id: csharp-debug-write-sensitive
+    pattern-either:
+      - pattern: 'Debug.WriteLine($"...password...")'
+      - pattern: 'Debug.WriteLine($"...secret...")'
+      - pattern: 'Debug.WriteLine($"...token...")'
+    message: "C# Debug.WriteLine may log sensitive data (CWE-532)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging]
+
+  # ============================================
+  # CSV Injection (DVTA Gap)
+  # ============================================
+
+  - id: csharp-csv-injection
+    patterns:
+      - pattern: $WRITER.WriteLine($DATA)
+      - pattern: File.WriteAllText($PATH, $CSV)
+      - pattern: File.AppendAllText($PATH, $CSV)
+    message: "C# CSV output - sanitize data to prevent formula injection (CWE-1236)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1236"
+      tags: [csv-injection]
+
+  - id: csharp-csv-formula-chars
+    pattern-regex: '["=+\-@\|].*\.csv'
+    message: "C# CSV with formula characters - potential CSV injection (CWE-1236)"
+    languages: [csharp]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1236"
+      tags: [csv-injection]
+
+  # ============================================
+  # DLL Hijacking (DVTA Gap)
+  # ============================================
+
+  - id: csharp-dllimport-no-path
+    pattern: '[DllImport("$DLL")]'
+    message: "C# DllImport without full path - DLL hijacking risk (CWE-427)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-427"
+      tags: [dll-hijacking]
+
+  - id: csharp-loadlibrary
+    pattern: LoadLibrary($DLL)
+    message: "C# LoadLibrary - potential DLL hijacking if path not validated (CWE-427)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-427"
+      tags: [dll-hijacking]
+
+  - id: csharp-assembly-loadfrom
+    pattern: Assembly.LoadFrom($PATH)
+    message: "C# Assembly.LoadFrom - DLL hijacking risk, use LoadFile with full path (CWE-427)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-427"
+      tags: [dll-hijacking]
+
+  - id: csharp-assembly-load
+    pattern: Assembly.Load($NAME)
+    message: "C# Assembly.Load - verify assembly binding to prevent hijacking (CWE-427)"
+    languages: [csharp]
+    severity: INFO
+    metadata:
+      cwe: "CWE-427"
+      tags: [dll-hijacking]
+
+  # ============================================
+  # Cleartext Communication (DVTA Gap)
+  # ============================================
+
+  - id: csharp-http-url
+    pattern-regex: '"http://[^"]*"'
+    message: "C# HTTP URL detected - use HTTPS for secure communication (CWE-319)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-319"
+      tags: [cleartext]
+
+  - id: csharp-ftp-client
+    pattern: new FtpClient($HOST)
+    message: "C# FTP client - use SFTP/FTPS for secure file transfer (CWE-319)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-319"
+      tags: [cleartext]
+
+  - id: csharp-tcp-client-nossl
+    pattern: new TcpClient($HOST, $PORT)
+    message: "C# TcpClient - ensure SSL/TLS is used for sensitive data (CWE-319)"
+    languages: [csharp]
+    severity: INFO
+    metadata:
+      cwe: "CWE-319"
+      tags: [cleartext]
+
+  # ============================================
+  # Insecure Storage (DVTA Gap)
+  # ============================================
+
+  - id: csharp-registry-password
+    patterns:
+      - pattern: 'Registry.SetValue($KEY, "password", $VALUE)'
+      - pattern: 'Registry.SetValue($KEY, "secret", $VALUE)'
+      - pattern: '$REG.SetValue("password", $VALUE)'
+    message: "C# storing credentials in registry - use DPAPI or secure credential store (CWE-312)"
+    languages: [csharp]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]
+
+  - id: csharp-file-write-credentials
+    patterns:
+      - pattern: File.WriteAllText($PATH, $PASSWORD)
+      - pattern: '$WRITER.Write($PASSWORD)'
+    message: "C# writing credentials to file - encrypt sensitive data (CWE-312)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]
+
+  - id: csharp-settings-password
+    pattern: 'Properties.Settings.Default.$SETTING = $PASSWORD'
+    message: "C# storing sensitive data in Settings - use secure storage (CWE-312)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]

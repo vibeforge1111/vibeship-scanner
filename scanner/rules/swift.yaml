@@ -263,7 +263,7 @@ rules:
   # ============================================
 
   - id: swift-nskeyedunarchiver-unsafe
-    pattern: NSKeyedUnarchiver.unarchiveObject(with: $DATA)
+    pattern: 'NSKeyedUnarchiver.unarchiveObject(with: $DATA)'
     message: "Swift NSKeyedUnarchiver.unarchiveObject is insecure - use unarchivedObject with requiredSecureCoding (CWE-502)"
     languages: [swift]
     severity: ERROR
@@ -272,7 +272,7 @@ rules:
       tags: [deserialization]
 
   - id: swift-nskeyedunarchiver-unarchive-file
-    pattern: NSKeyedUnarchiver.unarchiveObject(withFile: $PATH)
+    pattern: 'NSKeyedUnarchiver.unarchiveObject(withFile: $PATH)'
     message: "Swift NSKeyedUnarchiver.unarchiveObject(withFile:) is insecure - use unarchivedObject with requiredSecureCoding (CWE-502)"
     languages: [swift]
     severity: ERROR
@@ -299,7 +299,7 @@ rules:
       tags: [deserialization]
 
   - id: swift-nscoder-decode-object
-    pattern: $CODER.decodeObject(forKey: $KEY)
+    pattern: '$CODER.decodeObject(forKey: $KEY)'
     message: "Swift NSCoder.decodeObject without type check - use decodeObject(of:forKey:) instead (CWE-502)"
     languages: [swift]
     severity: WARNING
@@ -308,7 +308,7 @@ rules:
       tags: [deserialization]
 
   - id: swift-propertylistdecoder
-    pattern: PropertyListDecoder().decode($TYPE, from: $DATA)
+    pattern: 'PropertyListDecoder().decode($TYPE, from: $DATA)'
     message: "Swift PropertyListDecoder - validate source of data before decoding (CWE-502)"
     languages: [swift]
     severity: INFO
@@ -317,7 +317,7 @@ rules:
       tags: [deserialization]
 
   - id: swift-jsondecoder-any
-    pattern: JSONDecoder().decode(Any.self, from: $DATA)
+    pattern: 'JSONDecoder().decode(Any.self, from: $DATA)'
     message: "Swift JSONDecoder with Any type - prefer explicit types (CWE-502)"
     languages: [swift]
     severity: WARNING
@@ -326,10 +326,285 @@ rules:
       tags: [deserialization]
 
   - id: swift-nskeyedarchiver-archived
-    pattern: NSKeyedArchiver.archivedData(withRootObject: $OBJ)
+    pattern: 'NSKeyedArchiver.archivedData(withRootObject: $OBJ)'
     message: "Swift deprecated archiving method - use archivedData(withRootObject:requiringSecureCoding:) (CWE-502)"
     languages: [swift]
     severity: WARNING
     metadata:
       cwe: "CWE-502"
       tags: [deserialization]
+
+  # ============================================
+  # Insecure Storage - Extended (iGoat-Swift Gap)
+  # ============================================
+
+  - id: swift-plist-sensitive
+    pattern: 'NSDictionary(contentsOfFile: $PATH)'
+    message: "Swift Plist file - not secure for sensitive data, use Keychain (CWE-312)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]
+
+  - id: swift-plist-write
+    pattern: '$DICT.write(toFile: $PATH, atomically: ...)'
+    message: "Swift Plist write - do not store sensitive data in plist files (CWE-312)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]
+
+  - id: swift-coredata-unencrypted
+    pattern: 'NSPersistentStoreCoordinator(...)'
+    message: "Swift CoreData - consider encryption for sensitive data (CWE-312)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]
+
+  - id: swift-realm-unencrypted
+    pattern: 'Realm()'
+    message: "Swift Realm database - use encryptionKey for sensitive data (CWE-312)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]
+
+  - id: swift-realm-config-no-encryption
+    pattern: 'Realm.Configuration()'
+    message: "Swift Realm configuration - add encryptionKey for sensitive data (CWE-312)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]
+
+  - id: swift-sqlite-open
+    pattern: 'sqlite3_open($PATH, ...)'
+    message: "Swift SQLite - use SQLCipher for encrypted database storage (CWE-312)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]
+
+  - id: swift-yap-database
+    pattern: 'YapDatabase(path: $PATH)'
+    message: "Swift YapDatabase - verify encryption for sensitive data (CWE-312)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]
+
+  - id: swift-couchbase-lite
+    pattern: 'Database(name: $NAME)'
+    message: "Swift Couchbase Lite - verify encryption for sensitive data (CWE-312)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-312"
+      tags: [insecure-storage]
+
+  # ============================================
+  # WebView Security - Extended (iGoat-Swift Gap)
+  # ============================================
+
+  - id: swift-wkwebview-evaluate-js
+    pattern: '$WEBVIEW.evaluateJavaScript($SCRIPT, ...)'
+    message: "Swift WKWebView evaluateJavaScript - XSS risk if script contains user input (CWE-79)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, webview]
+
+  - id: swift-wkwebview-load-html
+    pattern: '$WEBVIEW.loadHTMLString($HTML, baseURL: ...)'
+    message: "Swift WKWebView loadHTMLString - XSS risk if HTML contains user input (CWE-79)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, webview]
+
+  - id: swift-wkwebview-file-access
+    pattern: '$CONFIG.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")'
+    message: "Swift WKWebView file access enabled - security risk (CWE-200)"
+    languages: [swift]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-200"
+      tags: [webview]
+
+  # ============================================
+  # URL Scheme Security (iGoat-Swift Gap)
+  # ============================================
+
+  - id: swift-url-scheme-handler
+    pattern: 'func application($APP, open url: URL, ...)'
+    message: "Swift URL scheme handler - validate URL parameters to prevent injection (CWE-20)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-20"
+      tags: [url-scheme]
+
+  - id: swift-url-scheme-options
+    pattern: 'func application($APP, open url: URL, options: ...)'
+    message: "Swift URL scheme handler - validate URL parameters and source (CWE-20)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-20"
+      tags: [url-scheme]
+
+  - id: swift-url-query-items
+    pattern: 'URLComponents(url: $URL, ...)?.queryItems'
+    message: "Swift URL query parsing - sanitize query parameters before use (CWE-20)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-20"
+      tags: [url-scheme]
+
+  # ============================================
+  # Keychain Misuse (iGoat-Swift Gap)
+  # ============================================
+
+  - id: swift-keychain-accessible-always
+    pattern: 'kSecAttrAccessibleAlways'
+    message: "Swift Keychain kSecAttrAccessibleAlways - data accessible when device locked (CWE-312)"
+    languages: [swift]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-312"
+      tags: [keychain]
+
+  - id: swift-keychain-accessible-after-first-unlock
+    pattern: 'kSecAttrAccessibleAfterFirstUnlock'
+    message: "Swift Keychain kSecAttrAccessibleAfterFirstUnlock - consider more restrictive (CWE-312)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-312"
+      tags: [keychain]
+
+  - id: swift-keychain-no-acl
+    pattern: 'SecItemAdd($QUERY, ...)'
+    message: "Swift Keychain SecItemAdd - consider adding access control (CWE-312)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-312"
+      tags: [keychain]
+
+  # ============================================
+  # Weak Key Generation (iGoat-Swift Gap)
+  # ============================================
+
+  - id: swift-random-key
+    pattern: 'arc4random_uniform($MAX)'
+    message: "Swift arc4random_uniform not suitable for cryptographic keys - use SecRandomCopyBytes (CWE-338)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-338"
+      tags: [crypto]
+
+  - id: swift-uuid-as-key
+    pattern: 'UUID().uuidString'
+    message: "Swift UUID not suitable for cryptographic keys - use SecRandomCopyBytes (CWE-338)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-338"
+      tags: [crypto]
+
+  - id: swift-date-seed
+    pattern: 'srand48(Int(Date().timeIntervalSince1970))'
+    message: "Swift date-seeded random not cryptographically secure (CWE-338)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-338"
+      tags: [crypto]
+
+  # ============================================
+  # Cloud/Backend Security (iGoat-Swift Gap)
+  # ============================================
+
+  - id: swift-http-url
+    pattern-regex: '"http://[^"]*"'
+    message: "Swift HTTP URL detected - use HTTPS for secure communication (CWE-319)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-319"
+      tags: [cleartext]
+
+  - id: swift-hardcoded-endpoint
+    pattern: 'let $VAR = "https://$DOMAIN/$PATH"'
+    message: "Swift hardcoded backend URL - use configuration (CWE-798)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-798"
+      tags: [configuration]
+
+  - id: swift-firebase-config
+    pattern: 'FirebaseApp.configure()'
+    message: "Swift Firebase - ensure google-services.plist is not exposed in repo (CWE-200)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [cloud]
+
+  # ============================================
+  # Clipboard Security (iGoat-Swift Gap)
+  # ============================================
+
+  - id: swift-pasteboard-general
+    pattern: 'UIPasteboard.general'
+    message: "Swift general pasteboard - accessible by other apps, avoid for sensitive data (CWE-200)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      tags: [clipboard]
+
+  - id: swift-pasteboard-items
+    pattern: 'UIPasteboard.general.items = $ITEMS'
+    message: "Swift pasteboard items - sensitive data may be accessible to other apps (CWE-200)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      tags: [clipboard]
+
+  # ============================================
+  # Logging Security (iGoat-Swift Gap)
+  # ============================================
+
+  - id: swift-os-log-sensitive
+    pattern: 'os_log($FORMAT, ..., $VALUE, ...)'
+    message: "Swift os_log - use .private for sensitive data (CWE-532)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging]
+
+  - id: swift-logger-sensitive
+    pattern: 'Logger().log($MSG)'
+    message: "Swift Logger - ensure sensitive data uses .private (CWE-532)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-532"
+      tags: [logging]
