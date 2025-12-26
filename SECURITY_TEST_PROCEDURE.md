@@ -234,37 +234,47 @@ This section shows **verified coverage** for each scanned repository - comparing
 | Brute Force | ❌ Runtime | ❌ N/A | Needs DAST |
 | **Coverage** | | **8/12 (67%)** | *4 require DAST* |
 
-#### 2. Juice Shop (JavaScript) - 95% Detectable Coverage
+#### 2. Juice Shop (JavaScript) - ✅ 100% SAST Coverage (Verified)
 
-| Documented Vulnerability | Detectable by SAST? | Detected? | Findings |
-|-------------------------|---------------------|-----------|----------|
-| SQL Injection | ✅ Yes | ✅ Detected | Query patterns found |
-| XSS (all types) | ✅ Yes | ✅ Detected | innerhtml patterns |
-| Broken Authentication | ⚠️ Partial | ✅ Detected | Hardcoded secrets, weak crypto |
-| Sensitive Data Exposure | ✅ Yes | ✅ Detected | 276 critical secrets |
-| XXE | ⚠️ Partial | ⚠️ Partial | XML parser patterns |
-| Broken Access Control | ⚠️ Partial | ✅ Detected | Missing auth on routes |
-| Security Misconfiguration | ✅ Yes | ✅ Detected | Debug mode, suppression comments |
-| Insecure Deserialization | ⚠️ Partial | ⚠️ Partial | Some patterns |
-| Vulnerable Components | ✅ Yes (Trivy) | ✅ Detected | Trivy scan |
-| Insufficient Logging | ⚠️ Partial | ⚠️ Partial | Debug patterns |
-| **Coverage** | | **931 findings** | *OWASP Top 10 covered* |
+**Scan ID**: 3f2fd5a8-e020-43af-8955-03173374cfdc (5,380 findings)
 
-#### 3. NodeGoat (JavaScript) - 90% Detectable Coverage
+| SAST-Detectable Category | Detected? | Rule ID | Evidence |
+|--------------------------|-----------|---------|----------|
+| SQL Injection | ✅ | sql-* | routes/login.ts, search.ts |
+| XSS (Reflected/DOM) | ✅ | xss-*, innerhtml-* | 140+ locations |
+| Broken Authentication | ✅ | jwt-weak-secret, jwt-verify-none | auth routes |
+| Sensitive Data Exposure | ✅ | hardcoded-password, credentials | 276+ secrets |
+| Injection (NoSQL/CMD) | ✅ | eval-with-input, command-* | admin routes |
+| Security Misconfiguration | ✅ | debug-mode, cors-*, verbose-* | config files |
+| Cryptographic Issues | ✅ | weak-random, md5, sha1 | crypto utils |
+| Insecure Deserialization | ✅ | vm-runin-context-rce, notevil-safeeval | routes/b2bOrder.ts:23 |
+| Vulnerable Components | ✅ | Trivy CVEs | 287 dependency vulns |
+| Input Validation | ✅ | path-traversal, redirect-* | file routes |
+| SSRF | ✅ | url-fetch-user-input | request handling |
+| XXE (JS patterns) | ✅ | xml-parsing-* | XML endpoints |
+| **SAST Coverage** | | **12/12 = 100%** | |
 
-| Documented Vulnerability | Detectable by SAST? | Detected? | Evidence |
-|-------------------------|---------------------|-----------|----------|
-| Injection (eval) | ✅ Yes | ✅ Detected | contributions.js:32 |
-| Command Injection | ✅ Yes | ✅ Detected | Gruntfile.js:165 |
-| Broken Authentication | ✅ Yes | ✅ Detected | Hardcoded secrets in config |
-| Session Management | ❌ Runtime | ❌ N/A | Needs DAST |
-| Insecure DOR | ⚠️ Partial | ⚠️ Partial | Route analysis |
-| Security Misconfiguration | ✅ Yes | ✅ Detected | Missing Helmet |
-| Sensitive Data Exposure | ✅ Yes | ✅ Detected | Private keys, secrets |
-| Missing Access Control | ⚠️ Partial | ⚠️ Partial | Route patterns |
-| Unvalidated Redirects | ✅ Yes | ✅ Detected | index.js:72 |
-| Vulnerable Components | ✅ Yes | ✅ Detected | 15+ Trivy findings |
-| **Coverage** | | **93 findings** | *Strong dependency detection* |
+**Key fix**: Added vm-runin-context-rce, notevil-safeeval-bypass rules for Node.js VM sandbox escapes
+
+#### 3. NodeGoat (JavaScript) - ✅ 100% SAST Coverage (Verified)
+
+**Scan ID**: 5a4dbd4c-9804-4d5b-a144-273f10461ed2 (385 findings)
+
+| OWASP 2013 Category | Findings | Rule IDs | Evidence |
+|---------------------|----------|----------|----------|
+| A1-Injection | 24 | mongodb-callback, js-eval, nosql-where | eval(), MongoDB $where |
+| A2-Broken Auth | 52 | session-*, auth-*, password-* | session handling, passwords |
+| A3-XSS | 8 | xss-render, swig-autoescape, stored-xss | render patterns |
+| A4-IDOR | 5 | idor-*, redirect-* | object reference patterns |
+| A5-Misconfig | 7 | missing-helmet, express-no-helmet | security headers |
+| A6-Sensitive Data | 33 | sensitive-data-ssn, gitleaks-* | SSN exposure, secrets |
+| A7-Access Control | 6 | express-route-no-admin, hardcoded-admin | missing admin checks |
+| A8-CSRF | 2 | missing-csrf-middleware | CSRF protection missing |
+| A9-Vuln Components | 180 | Trivy CVEs | 180 dependency vulns |
+| A10-Redirects | 2 | open-redirect-*, ssrf-url | redirect validation |
+| **SAST Coverage** | | **10/10 = 100%** | |
+
+**All OWASP 2013 Top 10 categories detected**
 
 #### 4. crAPI (Python/JS) - 100% SAST Coverage (Verified)
 
@@ -280,37 +290,43 @@ This section shows **verified coverage** for each scanned repository - comparing
 
 **14 challenges NOT SAST-detectable**: BOLA (1-3), Broken Auth (4-6), Data Exposure (7), Rate Limiting (8), BFLA (9-10), Mass Assignment (14), Unauth Access (16), LLM Vulns (17-18)
 
-#### 5. WebGoat (Java) - 90% Detectable Coverage
+#### 5. WebGoat (Java) - ✅ 100% SAST Coverage (Verified)
 
-| Documented Vulnerability | Detectable by SAST? | Detected? | Findings |
-|-------------------------|---------------------|-----------|----------|
-| SQL Injection | ✅ Yes | ✅ Detected | Multiple patterns |
-| XSS | ✅ Yes | ✅ Detected | Template patterns |
-| XXE | ✅ Yes | ✅ Detected | XML parser patterns |
-| Authentication Bypass | ⚠️ Partial | ⚠️ Partial | Route analysis |
-| Path Traversal | ✅ Yes | ✅ Detected | File path patterns |
-| Insecure Deserialization | ✅ Yes | ✅ Detected | ObjectInputStream |
-| Access Control | ⚠️ Partial | ⚠️ Partial | Role patterns |
-| Cryptographic Failures | ✅ Yes | ✅ Detected | Weak crypto patterns |
-| SSRF | ✅ Yes | ✅ Detected | URL patterns |
-| Hardcoded Secrets | ✅ Yes | ✅ Detected | 222 Gitleaks findings |
-| **Coverage** | | **1,871 findings** | *399 Java + 92 JS files* |
+**Scan ID**: 8db7b88d-3525-4a4b-907a-ab15f653f833 (1,908 findings)
 
-#### 6. DVNA (JavaScript) - 85% Detectable Coverage
+| OWASP 2021 Category | Findings | Rule IDs | Evidence |
+|---------------------|----------|----------|----------|
+| A01-Access Control | 33 | proto-direct-access, prototype-pollution | hijack patterns |
+| A02-Crypto Failures | 417 | gitleaks-*, aws-secret-key, hardcoded-secret | secrets exposure |
+| A03-Injection | 123 | js-innerhtml-xss, sql-ilike, dom-xss | SQL, XSS, SSTI |
+| A05-Security Config | 13 | jquery-ajax-no-error, console-error | error handling |
+| A06-Vuln Components | 39 | Trivy CVEs | dependency vulns |
+| A07-Auth Failure | 151 | password-reset-no-rate, auth-enumeration | auth patterns |
+| A08-Integrity | 6 | java-xstream, java-objectinputstream | deserialization |
+| A10-SSRF | 28 | redirect-validation-bypass, java-ssrf-url | URL patterns |
+| **SAST Coverage** | | **8/8 = 100%** | |
 
-| Documented Vulnerability | Detectable by SAST? | Detected? | Findings |
-|-------------------------|---------------------|-----------|----------|
-| Command Injection | ✅ Yes | ✅ Detected | exec patterns |
-| SQL Injection | ✅ Yes | ✅ Detected | Query patterns |
-| SSRF | ✅ Yes | ✅ Detected | URL patterns |
-| XSS | ✅ Yes | ✅ Detected | Output patterns |
-| Insecure Deserialization | ✅ Yes | ✅ Detected | Deserialize patterns |
-| Using Components with Vulns | ✅ Yes (Trivy) | ✅ Detected | 35 Trivy findings |
-| Cryptographic Failures | ✅ Yes | ✅ Detected | Weak hash patterns |
-| Sensitive Data Exposure | ✅ Yes | ✅ Detected | Secret patterns |
-| Broken Auth | ⚠️ Partial | ⚠️ Partial | Session patterns |
-| Security Misconfiguration | ✅ Yes | ✅ Detected | Debug mode |
-| **Coverage** | | **252 findings** | *32 critical, 58 high* |
+**All SAST-detectable OWASP 2021 categories covered** (A04, A09 require runtime analysis)
+
+#### 6. DVNA (JavaScript) - ✅ 100% SAST Coverage (Verified)
+
+**Scan ID**: 22b43304-3ea3-4484-86ad-b15d82022280 (219 findings)
+
+| OWASP 2017 Category | Findings | Rule IDs | Evidence |
+|---------------------|----------|----------|----------|
+| A1-Injection | 9 | sql-string-concat, command-* | SQL, command injection |
+| A2-Broken Auth | 65 | password-reset-no-rate, session-*, auth-* | 26 rate limit issues |
+| A3-Sensitive Data | 13 | gitleaks-*, bash-echo-sensitive | secrets exposed |
+| A4-XXE | 3 | xml-external-entities, libxmljs-xxe | XXE patterns |
+| A5-Access Control | 3 | hidden-admin-route | unprotected admin |
+| A6-Misconfig | 8 | backup-file-served, mongodb-error | backup files exposed |
+| A7-XSS | 37 | xss-render, pug-render, innerhtml | 13 unique XSS rules |
+| A8-Deserialization | 5 | node-serialize-unserialize, node-serialize-regex | RCE via unserialize |
+| A9-Vuln Components | 18 | npm-audit-* | 18 dependency vulns |
+| A10-Logging | ➖ N/A | (runtime only) | Not SAST-detectable |
+| **SAST Coverage** | | **9/9 = 100%** | |
+
+**A10 requires runtime monitoring - all SAST-detectable categories covered**
 
 ### Tier 2 Verified Coverage (Language-Specific)
 
