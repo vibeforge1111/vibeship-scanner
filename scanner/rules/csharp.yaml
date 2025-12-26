@@ -625,3 +625,122 @@ rules:
     metadata:
       cwe: "CWE-312"
       tags: [insecure-storage]
+
+  # =============================================================================
+  # CSV Injection / Formula Injection - CWE-1236
+  # =============================================================================
+
+  # Direct CSV writing without sanitization
+  - id: csharp-csv-injection-streamwriter
+    patterns:
+      - pattern: '$WRITER.WriteLine($DATA + ",")'
+      - pattern: '$WRITER.Write($DATA + ",")'
+      - pattern: 'File.WriteAllText($PATH, $DATA)'
+      - pattern: 'File.AppendAllText($PATH, $DATA)'
+    message: "CSV export without sanitization - prefix cells starting with =, +, -, @ with quote to prevent formula injection (CWE-1236)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1236"
+      owasp: "A03:2021"
+      tags: [csv-injection, dvta]
+
+  # String.Format for CSV without escaping
+  - id: csharp-csv-injection-format
+    pattern-regex: 'String\\.Format\\([^)]*\\{[0-9]+\\}[^)]*,\\s*[^)]*\\)'
+    message: "CSV data formatting - sanitize user input by escaping quotes and prefixing formula characters (CWE-1236)"
+    languages: [csharp]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1236"
+      tags: [csv-injection]
+
+  # CsvHelper without sanitization options
+  - id: csharp-csv-injection-csvhelper
+    patterns:
+      - pattern: 'new CsvWriter($WRITER)'
+      - pattern: 'csv.WriteRecord($RECORD)'
+      - pattern: 'csv.WriteRecords($RECORDS)'
+    message: "CsvHelper export - enable SanitizeForInjection option to prevent formula injection (CWE-1236)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1236"
+      tags: [csv-injection, dvta]
+
+  # StringBuilder for CSV construction
+  - id: csharp-csv-injection-stringbuilder
+    patterns:
+      - pattern: '$SB.Append($DATA + ",")'
+      - pattern: '$SB.AppendLine($DATA + ",")'
+      - pattern: |
+          $SB.Append($DATA)
+          ...
+          $SB.Append(",")
+    message: "Building CSV with StringBuilder - sanitize cells starting with formula characters (=, +, -, @, tab, CR, LF) (CWE-1236)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1236"
+      tags: [csv-injection]
+
+  # Excel export without sanitization
+  - id: csharp-excel-formula-injection
+    patterns:
+      - pattern: '$CELL.Value = $DATA'
+      - pattern: '$WORKSHEET.Cells[$ROW, $COL] = $DATA'
+      - pattern: 'workSheet.Cells[$RANGE].Value = $DATA'
+    message: "Excel cell assignment - sanitize user data to prevent formula injection (=cmd|, =DDE(), etc.) (CWE-1236)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1236"
+      tags: [csv-injection, excel, dvta]
+
+  # DataTable to CSV export
+  - id: csharp-datatable-csv-export
+    patterns:
+      - pattern: 'DataTable.$METHOD(...).ToCsv(...)'
+      - pattern: 'ToCSV($DATATABLE)'
+    message: "DataTable CSV export - ensure formula injection sanitization is applied (CWE-1236)"
+    languages: [csharp]
+    severity: INFO
+    metadata:
+      cwe: "CWE-1236"
+      tags: [csv-injection]
+
+  # =============================================================================
+  # Security Misconfiguration - CWE-16
+  # =============================================================================
+
+  # Debug mode enabled in web.config
+  - id: csharp-debug-enabled
+    pattern-regex: '<compilation[^>]*debug\\s*=\\s*["\']true["\']'
+    message: "Debug mode enabled in production - disable for security and performance (CWE-16)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-16"
+      owasp: "A05:2021"
+      tags: [misconfiguration, dvta]
+
+  # Verbose error messages exposed
+  - id: csharp-verbose-errors
+    pattern-regex: '<customErrors[^>]*mode\\s*=\\s*["\']Off["\']'
+    message: "Custom errors disabled - stack traces will be exposed to users (CWE-209)"
+    languages: [csharp]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      owasp: "A05:2021"
+      tags: [misconfiguration, information-disclosure]
+
+  # Trace enabled
+  - id: csharp-trace-enabled
+    pattern-regex: '<trace[^>]*enabled\\s*=\\s*["\']true["\']'
+    message: "Trace enabled - sensitive debugging information may be exposed (CWE-16)"
+    languages: [csharp]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-16"
+      tags: [misconfiguration]

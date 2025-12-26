@@ -608,3 +608,191 @@ rules:
     metadata:
       cwe: "CWE-532"
       tags: [logging]
+
+  # =============================================================================
+  # iOS App Transport Security (ATS) Bypass Detection
+  # =============================================================================
+
+  # URLSession allowing arbitrary HTTP loads
+  - id: swift-urlsession-allows-insecure
+    patterns:
+      - pattern: 'URLSessionConfiguration.default.urlCache'
+      - pattern: 'URLSession(configuration: $CONFIG)'
+    message: "URLSession - verify ATS is not bypassed in Info.plist (CWE-319)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-319"
+      tags: [ats, igoat-swift, network-security]
+
+  # Disabling certificate validation in URLSession
+  - id: swift-urlsession-disable-cert-validation
+    patterns:
+      - pattern: 'urlSession(_: $SESSION, didReceive challenge: $CHALLENGE, completionHandler: $HANDLER)'
+      - pattern: 'URLSession.shared.dataTask(with: $URL)'
+    message: "URLSession delegate - ensure proper certificate validation (CWE-295)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-295"
+      tags: [ats, certificate-validation, igoat-swift]
+
+  # HTTP URLs in code (not HTTPS)
+  - id: swift-http-url
+    pattern-regex: 'URL\\(string:\\s*"http://[^"]*"'
+    message: "HTTP URL in code - use HTTPS for secure transport (CWE-319)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-319"
+      owasp: "A02:2021"
+      tags: [ats, cleartext, igoat-swift]
+
+  # ServerTrustPolicy.disableEvaluation (Alamofire)
+  - id: swift-alamofire-disable-trust
+    patterns:
+      - pattern: 'ServerTrustPolicy.disableEvaluation'
+      - pattern: '.disableEvaluation'
+      - pattern: 'ServerTrustManager(evaluators: [$DOMAIN: DisabledEvaluator()])'
+    message: "Alamofire server trust disabled - enables MITM attacks (CWE-295)"
+    languages: [swift]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+      tags: [ats, certificate-validation, alamofire]
+
+  # Custom URLCredential without validation
+  - id: swift-urlcredential-server-trust
+    pattern: 'URLCredential(trust: $TRUST)'
+    message: "URLCredential with server trust - validate certificate before accepting (CWE-295)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-295"
+      tags: [ats, certificate-validation, igoat-swift]
+
+  # Accepting all certificates
+  - id: swift-accept-all-certs
+    patterns:
+      - pattern: 'completionHandler(.useCredential, $CREDENTIAL)'
+      - pattern: 'completionHandler(URLSession.AuthChallengeDisposition.useCredential, ...)'
+    message: "Accepting credential without validation - verify certificate chain (CWE-295)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-295"
+      tags: [ats, certificate-validation]
+
+  # SecTrustEvaluate bypass
+  - id: swift-sectrust-bypass
+    patterns:
+      - pattern: 'SecTrustEvaluate($TRUST, &$RESULT)'
+      - pattern: 'SecTrustEvaluateWithError($TRUST, nil)'
+    message: "SecTrust evaluation - ensure result is checked and certificate is validated (CWE-295)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-295"
+      tags: [ats, certificate-validation, igoat-swift]
+
+  # WKWebView allowing insecure content
+  - id: swift-wkwebview-insecure
+    patterns:
+      - pattern: 'WKWebViewConfiguration().preferences.javaScriptEnabled = true'
+      - pattern: 'webView.load(URLRequest(url: URL(string: "http://$URL")!))'
+    message: "WKWebView loading insecure content - use HTTPS URLs (CWE-319)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-319"
+      tags: [ats, webview, igoat-swift]
+
+  # CFStreamSSLLevel minimum TLS version
+  - id: swift-cfstream-ssl-level
+    pattern-regex: 'kCFStreamSSLLevel|CFStreamProperty.*SSL'
+    message: "CFStream SSL level - ensure TLS 1.2+ is enforced (CWE-326)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-326"
+      tags: [ats, tls]
+
+  # =============================================================================
+  # iOS Data Protection & Secure Storage
+  # =============================================================================
+
+  # FileProtectionType None
+  - id: swift-file-protection-none
+    patterns:
+      - pattern: '.noFileProtection'
+      - pattern: 'FileProtectionType.none'
+    message: "File protection disabled - use .complete or .completeUnlessOpen (CWE-311)"
+    languages: [swift]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-311"
+      tags: [data-protection, igoat-swift]
+
+  # UserDefaults for sensitive data
+  - id: swift-userdefaults-sensitive
+    patterns:
+      - pattern: 'UserDefaults.standard.set($VALUE, forKey: "password")'
+      - pattern: 'UserDefaults.standard.set($VALUE, forKey: "token")'
+      - pattern: 'UserDefaults.standard.set($VALUE, forKey: "secret")'
+      - pattern: 'UserDefaults.standard.set($VALUE, forKey: "apiKey")'
+    message: "Sensitive data in UserDefaults - use Keychain for secrets (CWE-312)"
+    languages: [swift]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-312"
+      owasp: "A02:2021"
+      tags: [data-protection, insecure-storage, igoat-swift]
+
+  # Keychain without accessibility attribute
+  - id: swift-keychain-accessibility
+    patterns:
+      - pattern: 'SecItemAdd($QUERY, nil)'
+      - pattern: 'SecItemUpdate($QUERY, $ATTRS)'
+    message: "Keychain operation - set kSecAttrAccessible to appropriate protection level (CWE-312)"
+    languages: [swift]
+    severity: INFO
+    metadata:
+      cwe: "CWE-312"
+      tags: [keychain, data-protection, igoat-swift]
+
+  # kSecAttrAccessibleAlways (deprecated, insecure)
+  - id: swift-keychain-accessible-always
+    pattern-regex: 'kSecAttrAccessibleAlways|kSecAttrAccessibleAlwaysThisDeviceOnly'
+    message: "kSecAttrAccessibleAlways is deprecated and insecure - use kSecAttrAccessibleWhenUnlockedThisDeviceOnly (CWE-312)"
+    languages: [swift]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-312"
+      tags: [keychain, data-protection, igoat-swift]
+
+  # =============================================================================
+  # iOS URL Scheme Hijacking
+  # =============================================================================
+
+  # Custom URL scheme handler
+  - id: swift-url-scheme-handler
+    patterns:
+      - pattern: 'application(_: $APP, open url: $URL, ...)'
+      - pattern: 'canOpenURL($URL)'
+      - pattern: 'open($URL, options: ...)'
+    message: "URL scheme handler - validate URL origin and parameters to prevent hijacking (CWE-939)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-939"
+      tags: [url-scheme, igoat-swift]
+
+  # Deep link validation
+  - id: swift-deeplink-validation
+    pattern: 'UIApplication.shared.open($URL)'
+    message: "Deep link handling - validate URL before processing (CWE-601)"
+    languages: [swift]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [url-scheme, deeplink, igoat-swift]

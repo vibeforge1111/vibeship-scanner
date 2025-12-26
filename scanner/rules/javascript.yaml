@@ -9868,3 +9868,100 @@ rules:
     metadata:
       cwe: "CWE-601"
       tags: [open-redirect, vulnerable-node]
+
+  # =============================================================================
+  # ReDoS (Regular Expression Denial of Service) - CWE-1333
+  # =============================================================================
+
+  # Nested quantifiers - classic ReDoS pattern (a+)+ or (a*)*
+  - id: js-redos-nested-quantifiers
+    pattern-regex: '(?:new\s+RegExp|/)\s*[^/]*\([^)]*[+*][^)]*\)[+*]'
+    message: "Regex with nested quantifiers is vulnerable to ReDoS - use atomic groups or limit input length (CWE-1333)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1333"
+      owasp: "A06:2021"
+      tags: [redos, dos, nodejs-goof]
+
+  # Overlapping alternation with quantifiers (a|a)+
+  - id: js-redos-overlapping-alternation
+    pattern-regex: '/[^/]*\([^|)]+\|[^)]+\)[+*][^/]*/'
+    message: "Regex with alternation and quantifier may be vulnerable to ReDoS - test with safe-regex (CWE-1333)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, dos]
+
+  # User input passed directly to RegExp constructor
+  - id: js-redos-user-regex
+    patterns:
+      - pattern: 'new RegExp(req.body.$FIELD)'
+      - pattern: 'new RegExp(req.query.$FIELD)'
+      - pattern: 'new RegExp(req.params.$FIELD)'
+      - pattern: 'new RegExp($INPUT, ...)'
+    message: "User input in RegExp constructor - attacker can craft ReDoS payload (CWE-1333)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-1333"
+      owasp: "A03:2021"
+      tags: [redos, injection, nodejs-goof]
+
+  # Known vulnerable email regex patterns
+  - id: js-redos-email-pattern
+    pattern-regex: '/\\^\\[\\^@\\]\\+@\\[\\^@\\]\\+\\$/'
+    message: "Email regex pattern prone to ReDoS - use validator library instead (CWE-1333)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, email-validation]
+
+  # Validator.js ReDoS (specific to nodejs-goof)
+  - id: js-validator-redos
+    patterns:
+      - pattern: 'validator.isURL($INPUT)'
+      - pattern: 'validator.isEmail($INPUT)'
+      - pattern: 'validator.isMobilePhone($INPUT)'
+    message: "Old validator.js versions have ReDoS vulnerabilities - ensure validator >= 13.7.0 (CWE-1333)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, nodejs-goof, dependency]
+
+  # Marked library ReDoS (CVE-2022-21680, CVE-2022-21681)
+  - id: js-marked-redos
+    patterns:
+      - pattern: 'marked($INPUT)'
+      - pattern: 'marked.parse($INPUT)'
+    message: "marked < 4.0.10 has ReDoS vulnerabilities - upgrade to >= 4.0.10 (CVE-2022-21680)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      cve: "CVE-2022-21680"
+      tags: [redos, nodejs-goof, dependency]
+
+  # ms package ReDoS (CVE-2017-20162)
+  - id: js-ms-package-redos
+    pattern: 'ms($INPUT)'
+    message: "ms package < 2.0.0 has ReDoS vulnerability - upgrade to >= 2.0.0 (CVE-2017-20162)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      cve: "CVE-2017-20162"
+      tags: [redos, nodejs-goof, dependency]
+
+  # Regex with exponential backtracking patterns
+  - id: js-redos-exponential-backtracking
+    pattern-regex: '/[^/]*\\([^)]*\\+\\)[^/]*\\+[^/]*/'
+    message: "Regex pattern may cause exponential backtracking - review for ReDoS (CWE-1333)"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-1333"
+      tags: [redos, dos]
