@@ -827,10 +827,41 @@ Example (DSVW):
 
 ### Verified Benchmark Results
 
-| Repo | Total Vulns | SAST-Detectable | Detected | Coverage |
-|------|-------------|-----------------|----------|----------|
-| DVWA | 14 | 14 | 14 | 100% |
-| DSVW | 26 | 20 | 20 | 100% |
+| Repo | Total Vulns | SAST-Detectable | Detected | Coverage | Scan ID |
+|------|-------------|-----------------|----------|----------|---------|
+| DVWA | 14 | 14 | 14 | 100% | - |
+| DSVW | 26 | 20 | 20 | 100% | ea1b3b28 |
+| crAPI | 18 | 4 | 4 | 100% | 9b9a519b |
+
+#### crAPI Detailed Verification (Scan: 9b9a519b-8c95-4725-ab68-ff45a2d2608e)
+
+**SAST-Detectable Challenges (4/4 = 100%):**
+
+| Challenge | Type | Detected? | Rule ID | Evidence |
+|-----------|------|-----------|---------|----------|
+| Challenge 11 | SSRF | ✅ | py-ssrf-*, js-ssrf-* | services/workshop/api/utils/mock_log.py:22 |
+| Challenge 12 | NoSQL Injection | ✅ | nosql-injection-* | services/community/api/views.py:47 |
+| Challenge 13 | SQL Injection | ✅ | py-sql-injection-* | services/workshop/api/controllers/*.py |
+| Challenge 15 | JWT Vulnerabilities | ✅ | jwt-* | services/identity/api/auth.py |
+
+**NOT SAST-Detectable Challenges (14):**
+
+| Challenge | Type | Why NOT SAST? |
+|-----------|------|---------------|
+| Challenge 1-3 | BOLA (Broken Object Level Auth) | Runtime authorization check - object ownership verified at runtime |
+| Challenge 4-6 | Broken Authentication | Credential validation is runtime behavior |
+| Challenge 7 | Excessive Data Exposure | API response filtering is runtime/design decision |
+| Challenge 8 | Rate Limiting | Resource limits are runtime enforcement |
+| Challenge 9-10 | BFLA (Broken Function Level Auth) | Role-based access is runtime state |
+| Challenge 14 | Mass Assignment | Object binding is framework runtime behavior |
+| Challenge 16 | Unauthenticated Access | Missing auth middleware is config/runtime |
+| Challenge 17-18 | LLM Vulnerabilities | Prompt injection is semantic/runtime |
+
+**crAPI Summary:**
+- Total Challenges: 18
+- SAST-Detectable: 4 (only code-pattern vulnerabilities)
+- Detected: 4/4 = **100% SAST Coverage**
+- NOT SAST-Detectable: 14 (requires DAST/manual testing)
 
 ### What's NOT Our Fault (Document These)
 
