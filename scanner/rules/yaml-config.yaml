@@ -842,3 +842,150 @@ rules:
       cwe: "CWE-200: Exposure of Sensitive Information"
     pattern-regex: "Publish-Docker-Github-Action|docker/build-push"
 
+  # ============================================
+  # Android Manifest/XML Security
+  # ============================================
+
+  - id: android-fileprovider-root-path
+    message: >-
+      FileProvider with root-path exposes the entire filesystem via content provider.
+      Use specific paths (files-path, cache-path) to limit access (CWE-552).
+    languages: [xml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-552: Files or Directories Accessible to External Parties"
+    pattern-regex: '<root-path\s+[^>]*path\s*=\s*["\'']\.["\'']\s*/>'
+
+  - id: android-fileprovider-external-path
+    message: >-
+      FileProvider with external-path exposes files on external storage.
+      External storage is world-readable - avoid sharing sensitive files (CWE-552).
+    languages: [xml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-552: Files or Directories Accessible to External Parties"
+    pattern-regex: '<external-path\s+[^>]*path\s*=\s*["\'']\.?["\'']'
+
+  - id: android-exported-true-no-permission
+    message: >-
+      Android component exported without permission requirement. Any app can access
+      this component. Add android:permission attribute or set exported=false (CWE-926).
+    languages: [xml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-926: Improper Export of Android Application Components"
+    pattern-regex: 'android:exported\s*=\s*["\'']true["\''](?!.*android:permission)'
+
+  - id: android-allowbackup-true
+    message: >-
+      android:allowBackup="true" allows data backup which may expose sensitive data.
+      Set to false or implement BackupAgent with encryption (CWE-312).
+    languages: [xml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-312: Cleartext Storage of Sensitive Information"
+    pattern-regex: 'android:allowBackup\s*=\s*["\'']true["\'']'
+
+  - id: android-debuggable-true
+    message: >-
+      android:debuggable="true" enables debugging in production. This exposes
+      sensitive data and allows attaching debuggers. Must be false in release (CWE-489).
+    languages: [xml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-489: Active Debug Code"
+    pattern-regex: 'android:debuggable\s*=\s*["\'']true["\'']'
+
+  - id: android-cleartexttraffic-true
+    message: >-
+      android:usesCleartextTraffic="true" allows HTTP connections. Use HTTPS only
+      and set to false to prevent cleartext network traffic (CWE-319).
+    languages: [xml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-319: Cleartext Transmission of Sensitive Information"
+    pattern-regex: 'android:usesCleartextTraffic\s*=\s*["\'']true["\'']'
+
+  - id: android-network-security-cleartext
+    message: >-
+      Network Security Config allows cleartext traffic. Only enable cleartext
+      for specific debug domains, never in production (CWE-319).
+    languages: [xml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-319: Cleartext Transmission of Sensitive Information"
+    pattern-regex: 'cleartextTrafficPermitted\s*=\s*["\'']true["\'']'
+
+  - id: android-intent-filter-exported
+    message: >-
+      Activity with intent-filter is implicitly exported on Android 12+.
+      Explicitly set android:exported="false" if not meant to be public (CWE-926).
+    languages: [xml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-926: Improper Export of Android Application Components"
+    pattern-regex: '<intent-filter>'
+
+  - id: android-provider-exported
+    message: >-
+      Content provider exported to other apps. Ensure proper URI permissions
+      and avoid exposing sensitive data via content provider (CWE-284).
+    languages: [xml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    pattern-regex: '<provider[^>]*android:exported\s*=\s*["\'']true["\'']'
+
+  - id: android-receiver-exported
+    message: >-
+      Broadcast receiver exported to other apps. Malicious apps can send
+      intents to this receiver. Add permission protection or set exported=false (CWE-926).
+    languages: [xml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-926: Improper Export of Android Application Components"
+    pattern-regex: '<receiver[^>]*android:exported\s*=\s*["\'']true["\'']'
+
+  - id: android-service-exported
+    message: >-
+      Service exported to other apps. Any app can bind to or start this service.
+      Add permission protection or set exported=false (CWE-926).
+    languages: [xml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-926: Improper Export of Android Application Components"
+    pattern-regex: '<service[^>]*android:exported\s*=\s*["\'']true["\'']'
+
+  - id: android-grantable-uri-permissions
+    message: >-
+      android:grantUriPermissions="true" allows temporary URI access grants.
+      Ensure content provider properly validates URI access (CWE-284).
+    languages: [xml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    pattern-regex: 'android:grantUriPermissions\s*=\s*["\'']true["\'']'
+
+  - id: android-taskaffinity-hijack
+    message: >-
+      Empty taskAffinity with allowTaskReparenting may allow task hijacking attacks.
+      Set explicit taskAffinity or remove allowTaskReparenting (CWE-923).
+    languages: [xml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-923: Improper Restriction of Communication Channel"
+    pattern-regex: 'android:taskAffinity\s*=\s*["\'']['\'"]'
+
