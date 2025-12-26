@@ -71,69 +71,172 @@ Vibeship Scanner is a security scanning tool that analyzes GitHub repositories f
 
 ---
 
-## 🚨 ULTIMATE RULE: VERIFICATION-FIRST METHODOLOGY 🚨
+## 🚨🚨🚨 CRITICAL: COVERAGE = SCAN RESULTS vs REPO DOCS 🚨🚨🚨
 
-**THIS IS THE PRIMARY, NON-NEGOTIABLE RULE FOR ALL SCANNER WORK**
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  THIS IS THE #1 RULE FOR ALL BENCHMARK WORK - READ THIS EVERY TIME            ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  COVERAGE IS NEVER ABOUT WHAT RULES WE HAVE                                   ║
+║  COVERAGE IS ALWAYS ABOUT WHAT THE SCAN ACTUALLY DETECTED                     ║
+║                                                                               ║
+║  ❌ WRONG: "We have rules for SQL injection, so we detect it"                 ║
+║  ❌ WRONG: "Our ruleset covers XSS patterns"                                  ║
+║  ❌ WRONG: "The scanner should catch this"                                    ║
+║                                                                               ║
+║  ✅ RIGHT: "Scan abc123 found SQL injection at file.py:42 (rule: py-sqli)"   ║
+║  ✅ RIGHT: "XSS detected in 3 files - views.py:15, app.py:89, util.py:7"     ║
+║  ✅ RIGHT: "Challenge 11 SSRF: detected at mock_log.py:22 by py-ssrf-*"      ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
 
-### The Golden Rule
+### The Verification Formula
 
-> **Coverage = What our SCAN RESULTS actually detect vs What the REPO DOCUMENTS it contains**
->
-> NOT: "We have rules for X" → We must PROVE we detect X with actual scan evidence
+```
+COVERAGE = (Vulnerabilities ACTUALLY DETECTED in scan results)
+           ─────────────────────────────────────────────────────
+           (Vulnerabilities DOCUMENTED in repo that ARE SAST-detectable)
+```
 
-### Verification Protocol (MANDATORY)
+### Step-by-Step Verification Process (MANDATORY)
 
-For EVERY benchmark repo, verification requires THREE sources of truth:
+**For EVERY benchmark repo, you MUST follow these exact steps:**
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  1. REPO'S OWN DOCUMENTATION                                                │
-│     └─ What vulns does the repo's README/wiki/docs claim to contain?        │
-│     └─ This is the GROUND TRUTH - what we're trying to detect               │
+│  STEP 1: GET REPO'S VULNERABILITY LIST                                      │
+│  ────────────────────────────────────────────────────────────────────────── │
+│  • Read the repo's README.md                                                │
+│  • Check wiki pages, challenge descriptions, or vuln documentation          │
+│  • List EVERY vulnerability the repo claims to contain                      │
+│  • Record the SOURCE (e.g., "README line 45", "challenges.md")              │
 │                                                                             │
-│  2. OUR ACTUAL SCAN RESULTS                                                 │
-│     └─ Query findings from Supabase for the scan ID                         │
-│     └─ Real findings with file paths, line numbers, rule IDs                │
+│  Example output:                                                            │
+│  1. SQL Injection (README)                                                  │
+│  2. XSS Reflected (README)                                                  │
+│  3. Command Injection (challenges.md)                                       │
+│  4. CSRF (README) ← mark as "NOT SAST-detectable"                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  STEP 2: CLASSIFY EACH VULNERABILITY                                        │
+│  ────────────────────────────────────────────────────────────────────────── │
+│  For each vuln, ask: "Can static analysis detect this?"                     │
 │                                                                             │
-│  3. COMPARISON TABLE                                                        │
-│     └─ Map each documented vuln to actual scan findings                     │
-│     └─ Calculate: detected / SAST-detectable = coverage %                   │
+│  SAST-DETECTABLE (code patterns):          NOT SAST-DETECTABLE (runtime):   │
+│  ✅ SQL Injection                          ❌ CSRF (token validation)        │
+│  ✅ XSS (server-side)                      ❌ Session Management             │
+│  ✅ Command Injection                      ❌ Rate Limiting                  │
+│  ✅ Path Traversal                         ❌ BOLA/BFLA (authorization)      │
+│  ✅ SSRF, XXE, SSTI                        ❌ Business Logic Flaws           │
+│  ✅ Hardcoded Secrets                      ❌ Race Conditions                │
+│  ✅ Insecure Deserialization               ❌ Brute Force Protection         │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  STEP 3: RUN SCAN AND GET RESULTS FROM SUPABASE                             │
+│  ────────────────────────────────────────────────────────────────────────── │
+│  • Trigger scan via API (get scan_id)                                       │
+│  • Wait for scan to complete                                                │
+│  • Query findings from Supabase:                                            │
+│                                                                             │
+│    SELECT rule_id, file_path, line_start, severity, message                 │
+│    FROM findings WHERE scan_id = 'your-scan-id'                             │
+│                                                                             │
+│  • These are the ONLY findings that count as "detected"                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  STEP 4: MAP FINDINGS TO DOCUMENTED VULNERABILITIES                         │
+│  ────────────────────────────────────────────────────────────────────────── │
+│  For each SAST-detectable vuln from Step 1:                                 │
+│  • Search scan results for findings that match                              │
+│  • Record: rule_id, file:line, scan_id                                      │
+│  • If no finding exists → mark as GAP (needs new rule)                      │
+│                                                                             │
+│  REQUIRED TABLE FORMAT:                                                     │
+│  ┌───┬──────────────────┬──────────┬─────────────┬──────────────────────┐   │
+│  │ # │ Documented Vuln  │ Detected │ Rule ID     │ Evidence (file:line) │   │
+│  ├───┼──────────────────┼──────────┼─────────────┼──────────────────────┤   │
+│  │ 1 │ SQL Injection    │ ✅       │ py-sqli-*   │ db.py:42             │   │
+│  │ 2 │ XSS              │ ✅       │ xss-reflect │ views.py:15          │   │
+│  │ 3 │ Command Inj      │ ❌ GAP   │ -           │ NEEDS RULE           │   │
+│  │ 4 │ CSRF             │ ➖ N/A   │ -           │ Runtime only         │   │
+│  └───┴──────────────────┴──────────┴─────────────┴──────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  STEP 5: CALCULATE COVERAGE AND ITERATE                                     │
+│  ────────────────────────────────────────────────────────────────────────── │
+│  Coverage = Detected / SAST-Detectable × 100%                               │
+│                                                                             │
+│  Example: 3 SAST-detectable, 2 detected → 2/3 = 67%                         │
+│                                                                             │
+│  IF coverage < 100%:                                                        │
+│    1. Write new rules for the GAPs                                          │
+│    2. Deploy rules (fly deploy)                                             │
+│    3. Re-scan the repo                                                      │
+│    4. Go back to Step 3                                                     │
+│    5. Repeat until 100%                                                     │
+│                                                                             │
+│  IF coverage = 100%:                                                        │
+│    • Document in CLAUDE.md and SECURITY_TEST_PROCEDURE.md                   │
+│    • Commit with scan evidence                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### What Counts as "Verified Detected"
+### STOP AND CHECK: Before Claiming Coverage
 
-A vulnerability is ✅ ONLY if ALL of these are true:
-1. The repo documents it exists (README, wiki, or challenge description)
-2. Our scan has a finding for that vuln type
-3. The finding is in the correct file that implements the vuln
-4. We can cite: `rule_id`, `file:line`, `scan_id`
+Ask yourself these questions. If ANY answer is "no", you have NOT verified:
 
-### What Does NOT Count
+| Question | Required Answer |
+|----------|-----------------|
+| Did I read the repo's README/docs? | YES - with specific vulns listed |
+| Do I have a scan ID? | YES - e.g., "ea1b3b28-e1f3-..." |
+| Did I query actual findings from Supabase? | YES - not just "scan found 500" |
+| Can I cite rule_id + file:line for each detection? | YES - for every ✅ |
+| Did I explain why each ➖ N/A is not SAST-detectable? | YES - specific reason |
 
-❌ "We have rules for SQL injection" - MUST show actual finding
-❌ "The scan found 500 findings" - MUST map to documented vulns
-❌ "Previous session said 90%" - MUST re-verify with current scan
-❌ Estimates, assumptions, or "should detect"
-
-### Improvement Workflow
+### Common Mistakes to AVOID
 
 ```
-SCAN → COMPARE TO REPO DOCS → IDENTIFY GAPS → ADD RULES → RESCAN → VERIFY
-         ↑                                                           │
-         └───────────────── Iterate until 100% ─────────────────────┘
+❌ MISTAKE: "We have Python rules for SSRF, so SSRF is covered"
+   WHY WRONG: Having rules ≠ detecting. Maybe the rule doesn't match this code pattern.
+
+❌ MISTAKE: "The scan found 1000 findings, so coverage is high"
+   WHY WRONG: 1000 findings could all be the same vuln type. Must map to EACH documented vuln.
+
+❌ MISTAKE: "Previous session said this repo is at 90%"
+   WHY WRONG: Rules change. Must re-verify with fresh scan.
+
+❌ MISTAKE: "SQL injection should be detected by our rules"
+   WHY WRONG: "Should" is not evidence. Show the actual finding.
+
+❌ MISTAKE: Marking ✅ without file:line evidence
+   WHY WRONG: No proof = no detection. Always cite the specific finding.
 ```
 
-### Session Checklist
+### Correct Verification Example (DSVW)
 
-Before claiming any coverage percentage:
-- [ ] Fetched repo's README/docs for documented vulns
-- [ ] Ran scan and have scan ID
-- [ ] Queried actual findings from Supabase
-- [ ] Created comparison table with evidence
-- [ ] Calculated coverage from ACTUAL data
+```
+Scan ID: ea1b3b28-e1f3-48e8-8a17-766040ecf1aa
+Repo docs: https://github.com/stamparm/DSVW (README lists 26 vulns)
 
-**If you cannot cite scan_id + rule_id + file:line, you have NOT verified.**
+| # | Documented Vuln | SAST? | Detected | Rule ID | Evidence |
+|---|-----------------|-------|----------|---------|----------|
+| 1 | Blind SQL Inj   | ✅    | ✅       | py-sql-injection-format | dsvw.py:85 |
+| 2 | XSS             | ✅    | ✅       | py-xss-format-html | dsvw.py:95 |
+| 3 | Command Inj     | ✅    | ✅       | py-command-injection | dsvw.py:112 |
+| 4 | CSRF            | ❌    | ➖ N/A   | - | Token validation is runtime |
+...
+| 20| Debug Mode      | ✅    | ✅       | py-flask-debug | dsvw.py:162 |
+
+SAST-Detectable: 20 | Detected: 20 | Coverage: 100%
+```
+
+**THIS is what verified coverage looks like. Scan ID + Rule ID + File:Line for every detection.**
 
 ---
 

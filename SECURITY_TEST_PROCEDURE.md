@@ -2,6 +2,80 @@
 
 This document outlines the testing procedure for validating Vibeship Scanner against intentionally vulnerable applications.
 
+---
+
+## 🚨🚨🚨 THE #1 RULE: COVERAGE = SCAN RESULTS vs REPO DOCS 🚨🚨🚨
+
+```
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  READ THIS BEFORE DOING ANY BENCHMARK WORK                                    ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║                                                                               ║
+║  COVERAGE IS NEVER: "We have rules for X"                                     ║
+║  COVERAGE IS ALWAYS: "Scan [ID] detected X at [file:line] with [rule_id]"    ║
+║                                                                               ║
+║  ❌ WRONG: "Our ruleset covers SQL injection patterns"                        ║
+║  ✅ RIGHT: "Scan ea1b3b28 found SQLi at dsvw.py:85 (py-sql-injection-format)" ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Verification Checklist (REQUIRED for every repo)
+
+Before claiming ANY coverage percentage, you MUST have:
+
+| # | Requirement | Example |
+|---|-------------|---------|
+| 1 | **Repo's documented vulns** | "README lists: SQLi, XSS, Command Inj, CSRF..." |
+| 2 | **SAST-detectability classification** | "SQLi=YES, CSRF=NO (runtime)" |
+| 3 | **Scan ID from Supabase** | `ea1b3b28-e1f3-48e8-8a17-766040ecf1aa` |
+| 4 | **Findings queried from scan** | Actual rule_id, file_path, line_start |
+| 5 | **Mapping table with evidence** | Each ✅ has rule_id + file:line |
+| 6 | **Coverage calculation** | `detected / SAST-detectable = X%` |
+
+### Verification Status Definitions
+
+| Status | Symbol | Meaning | Required Evidence |
+|--------|--------|---------|-------------------|
+| Verified 100% | ✅ | All SAST-detectable vulns detected | Scan ID + mapping table |
+| Verified <100% | ⚠️ | Some gaps remain | Scan ID + gap list |
+| Scanned Only | ⏳ | Has findings, not verified against repo docs | Scan ID only |
+| Not Scanned | ❌ | No scan performed | None |
+
+### The 5-Step Verification Process
+
+```
+STEP 1: Read repo README → List all documented vulnerabilities
+STEP 2: Classify each → SAST-detectable or Runtime-only?
+STEP 3: Run scan → Get scan_id, query findings from Supabase
+STEP 4: Map findings → Match each vuln to actual detection
+STEP 5: Calculate → detected / SAST-detectable = coverage %
+
+If < 100%: Add rules → Rescan → Repeat until 100%
+If = 100%: Document with full evidence → Commit
+```
+
+### Required Evidence Table Format
+
+For every verified repo, create this exact table:
+
+```markdown
+#### [Repo Name] - Verified [X]% SAST Coverage (Scan: [scan-id])
+
+| # | Documented Vuln | SAST-Detectable? | Detected? | Rule ID | Evidence |
+|---|-----------------|------------------|-----------|---------|----------|
+| 1 | SQL Injection   | ✅ YES           | ✅        | py-sqli | file.py:42 |
+| 2 | XSS Reflected   | ✅ YES           | ✅        | xss-*   | app.js:15 |
+| 3 | CSRF            | ❌ NO (runtime)  | ➖ N/A    | -       | Token validation |
+| 4 | Command Inj     | ✅ YES           | ❌ GAP    | -       | NEEDS RULE |
+
+**SAST Coverage: X/Y = Z%**
+**Gaps: [list what needs rules]**
+**Not SAST-Detectable: [list with reasons]**
+```
+
+---
+
 ## Purpose
 
 Ensure the scanner accurately detects known vulnerabilities in well-documented vulnerable applications. This helps:
