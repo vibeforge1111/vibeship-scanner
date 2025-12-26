@@ -515,3 +515,330 @@ rules:
       tags: [openapi, swagger, ratelimit]
     pattern-regex: "openapi:\\s*[\"']?3\\.[0-9]"
 
+  # ============================================
+  # GitHub Actions - Unpinned Actions (Supply Chain)
+  # ============================================
+
+  - id: gha-unpinned-action-main
+    message: >-
+      GitHub Action using @main or @master branch. Pin to a specific commit SHA for security.
+      Unpinned actions can be modified by attackers to inject malicious code.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      owasp: "A08:2021 Software and Data Integrity Failures"
+      references:
+        - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
+    pattern-regex: "uses:\\s*[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+@(main|master)\\b"
+
+  - id: gha-unpinned-action-tag
+    message: >-
+      GitHub Action using version tag (v1, v2, etc.) instead of commit SHA.
+      Tags can be moved to point to different code. Pin to full commit SHA.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+    pattern-regex: "uses:\\s*[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+@v[0-9]+"
+
+  - id: gha-unpinned-action-latest
+    message: >-
+      GitHub Action using @latest which always fetches the newest version.
+      This creates unpredictable builds and supply chain risk. Pin to SHA.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+    pattern-regex: "uses:\\s*[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+@latest"
+
+  # ============================================
+  # GitHub Actions - Excessive Permissions
+  # ============================================
+
+  - id: gha-permissions-write-all
+    message: >-
+      Workflow has write-all permissions granting full access to repository.
+      Use minimal required permissions (principle of least privilege).
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+      references:
+        - https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token
+    pattern-regex: "permissions:\\s*write-all"
+
+  - id: gha-pull-request-target
+    message: >-
+      CRITICAL: pull_request_target trigger runs with write permissions and secrets access.
+      Code from fork PRs runs in privileged context. Never checkout untrusted PR code.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-863: Incorrect Authorization"
+      references:
+        - https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+    pattern-regex: "pull_request_target:"
+
+  - id: gha-contents-write
+    message: >-
+      Workflow has contents: write permission allowing code modification.
+      Ensure this is necessary and the workflow is not vulnerable to injection.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+    pattern-regex: "contents:\\s*write"
+
+  # ============================================
+  # GitHub Actions - Script Injection (Extended)
+  # ============================================
+
+  - id: gha-commit-message-injection
+    message: >-
+      Using github.event.commits[].message in run: step allows injection via commit message.
+      Store in environment variable first.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+    pattern-regex: 'run:.*\$\{\{\s*github\.event\.commits\[.*\]\.message'
+
+  - id: gha-author-injection
+    message: >-
+      Using github.event author data (name/email) in run: step allows injection.
+      Attacker can set malicious git config values. Use env: variable.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+    pattern-regex: 'run:.*\$\{\{\s*github\.event\.(commits\[.*\]\.)?(author|committer)\.(name|email)'
+
+  - id: gha-label-injection
+    message: >-
+      Using github.event.*.labels[].name in run: step allows injection via PR/issue labels.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+    pattern-regex: 'run:.*\$\{\{\s*github\.event\.(issue|pull_request)\.labels\['
+
+  # ============================================
+  # GitHub Actions - Self-Hosted Runner Risks
+  # ============================================
+
+  - id: gha-self-hosted-runner
+    message: >-
+      Workflow uses self-hosted runner. Ensure runner is properly secured.
+      Self-hosted runners persist state between jobs - avoid for public repos.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-912: Hidden Functionality"
+      references:
+        - https://docs.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners#self-hosted-runner-security
+    pattern-regex: "runs-on:.*self-hosted"
+
+  - id: gha-public-repo-self-hosted
+    message: >-
+      Self-hosted runner on potentially public workflow. Never use self-hosted runners
+      for public repos as any fork can run malicious code on your infrastructure.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-912: Hidden Functionality"
+    patterns:
+      - pattern-regex: "runs-on:.*self-hosted"
+      - pattern-regex: "pull_request:"
+
+  # ============================================
+  # GitHub Actions - OIDC and Credential Security
+  # ============================================
+
+  - id: gha-long-lived-credentials
+    message: >-
+      Long-lived credentials detected (AWS keys, GCP service account, Azure creds).
+      Use OIDC federation for cloud provider authentication instead.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      references:
+        - https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect
+    pattern-regex: "(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|GOOGLE_APPLICATION_CREDENTIALS|AZURE_CREDENTIALS):"
+
+  - id: gha-expose-secrets-in-logs
+    message: >-
+      Pattern may expose secrets in workflow logs. GitHub masks secrets but
+      derived values or base64 encoded secrets may leak.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+    pattern-regex: "echo.*\\$\\{\\{\\s*secrets\\."
+
+  # ============================================
+  # GitHub Actions - Workflow Run Risks
+  # ============================================
+
+  - id: gha-workflow-run-untrusted
+    message: >-
+      workflow_run event triggered by external workflow. The triggering workflow
+      could be from a fork. Validate the source before using artifacts.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+    pattern-regex: "on:\\s*\\n\\s*workflow_run:"
+
+  - id: gha-artifact-download-untrusted
+    message: >-
+      Downloading artifacts from workflow_run. Artifacts from fork PRs can contain
+      malicious code. Validate artifact contents before use.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+    patterns:
+      - pattern-regex: "workflow_run:"
+      - pattern-regex: "actions/download-artifact"
+
+  # ============================================
+  # GitHub Actions - Environment Security
+  # ============================================
+
+  - id: gha-environment-no-protection
+    message: >-
+      Deployment to environment without protection rules may expose secrets.
+      Configure required reviewers and wait timer for production environments.
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+    pattern-regex: "environment:\\s*production"
+
+  - id: gha-github-token-permissions
+    message: >-
+      Explicit GITHUB_TOKEN usage detected. Ensure token has minimal permissions
+      defined at workflow level for security.
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+    pattern-regex: "\\$\\{\\{\\s*secrets\\.GITHUB_TOKEN\\s*\\}\\}"
+
+  # ============================================
+  # GitHub Actions - Code Execution Risks
+  # ============================================
+
+  - id: gha-npm-publish-untrusted
+    message: >-
+      NPM publish step detected. Ensure provenance attestation is enabled
+      and package is not built from untrusted fork code.
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+    pattern-regex: "npm publish"
+
+  - id: gha-docker-build-push
+    message: >-
+      Docker build and push detected. Ensure base images are pinned by digest
+      and no secrets are included in the image.
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+    pattern-regex: "docker/build-push-action"
+
+  - id: gha-eval-expression
+    message: >-
+      Eval or dynamic code execution in workflow. User-controlled input
+      could lead to code injection.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-94: Code Injection"
+    pattern-regex: 'run:.*eval\s+.*\$\{\{'
+
+  # ============================================
+  # GitHub Actions - Step Output Injection
+  # ============================================
+
+  - id: gha-step-output-in-run
+    message: >-
+      Using step outputs directly in run command. Step outputs can contain untrusted
+      data that leads to script injection. Store in env variable first.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+      references:
+        - https://securitylab.github.com/research/github-actions-untrusted-input/
+    pattern-regex: 'for\s+.*\s+in\s+\$\{\{\s*steps\.[^}]+\.outputs\.'
+
+  - id: gha-changed-files-injection
+    message: >-
+      tj-actions/changed-files output used in run command. File names could contain
+      malicious characters leading to injection. Validate and sanitize inputs.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+    pattern-regex: "tj-actions/changed-files"
+
+  - id: gha-gcp-service-account
+    message: >-
+      GCP service account key used in workflow. Consider using Workload Identity
+      Federation with OIDC for keyless authentication.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+    pattern-regex: "GCP_SERVICE_ACCOUNT_KEY|GOOGLE_CREDENTIALS"
+
+  - id: gha-echo-secret-variable
+    message: >-
+      Echoing a variable that may contain secret data to logs. GitHub masks
+      direct secrets but derived values may leak.
+    languages: [yaml]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+    pattern-regex: 'echo\s+.*\$(PRIVATE_KEY|SECRET|TOKEN|PASSWORD|API_KEY)'
+
+  - id: gha-docker-registry-push
+    message: >-
+      Docker image push to registry detected. Ensure no secrets are baked into
+      image and use proper access controls on registry.
+    languages: [yaml]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-200: Exposure of Sensitive Information"
+    pattern-regex: "Publish-Docker-Github-Action|docker/build-push"
+

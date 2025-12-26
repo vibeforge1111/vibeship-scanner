@@ -484,14 +484,15 @@ def run_opengrep(repo_dir: str, detected_languages: List[str] = None) -> List[Di
         'rust.yaml': ['*.rs'],
         'bash.yaml': ['*.sh', '*.bash'],
         'dart.yaml': ['*.dart'],
+        'yaml-config.yaml': ['*.yaml', '*.yml'],  # CI/CD, K8s, Docker configs
     }
 
     # Chunking thresholds for large repos
     CHUNK_THRESHOLD = 30  # If more than this many files, chunk them
     CHUNK_SIZE = 15       # Number of files per chunk
 
-    # All file extensions for base scan
-    ALL_EXTENSIONS = ['*.sol', '*.py', '*.js', '*.ts', '*.go', '*.rb', '*.php', '*.java', '*.rs']
+    # All file extensions for base scan (including YAML for CI/CD, K8s, Docker configs)
+    ALL_EXTENSIONS = ['*.sol', '*.py', '*.js', '*.ts', '*.go', '*.rb', '*.php', '*.java', '*.rs', '*.yaml', '*.yml']
 
     # Directories to exclude from scanning (third-party code / dependencies)
     # IMPORTANT: Only exclude directories that are ALWAYS third-party code.
