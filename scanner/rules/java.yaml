@@ -676,6 +676,52 @@ rules:
       cwe: "CWE-601"
       tags: [open-redirect]
 
+  # VulnerableApp-style Open Redirect patterns (HttpHeaders.put/add)
+  - id: java-httpheaders-put-location
+    pattern: $HEADERS.put("Location", ...)
+    message: HttpHeaders Location put - open redirect risk (CWE-601)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect]
+
+  - id: java-httpheaders-location-add
+    pattern: $HEADERS.get("Location").add($URL)
+    message: HttpHeaders Location header with user-controlled URL - open redirect vulnerability (CWE-601)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect]
+
+  - id: java-responseentity-found-redirect
+    pattern-regex: 'new\s+ResponseEntity<>\s*\([^,]+,\s*HttpStatus\.FOUND\s*\)'
+    message: ResponseEntity with HTTP 302 FOUND - check for open redirect (CWE-601)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect]
+
+  - id: java-httpheaders-put-location-key
+    pattern-regex: '\.put\s*\(\s*LOCATION_HEADER_KEY'
+    message: Location header via constant - check for open redirect (CWE-601)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect]
+
+  - id: java-httpheaders-get-location-key
+    pattern-regex: '\.get\s*\(\s*LOCATION_HEADER_KEY\s*\)\s*\.add\s*\('
+    message: Adding URL to Location header - open redirect vulnerability (CWE-601)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect]
+
   # ============================================
   # Logging Sensitive Data
   # ============================================
