@@ -539,3 +539,67 @@ rules:
     metadata:
       cwe: "CWE-942"
 
+  # ============================================
+  # Data Exposure (OWASP API3, crAPI challenges 4-5)
+  # ============================================
+
+  # Spring ResponseEntity returning entity directly
+  - id: java-responseentity-return-entity
+    pattern: ResponseEntity.ok($ENTITY)
+    message: "ResponseEntity returning entity directly - consider using DTO to filter sensitive fields (CWE-200)"
+    languages: [java]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      owasp: "OWASP API Top 10 - Excessive Data Exposure"
+      tags: [spring, data-exposure, api]
+
+  # Returning User object directly
+  - id: java-return-user-entity
+    pattern-regex: 'return\s+(user|currentUser|userEntity|dbUser)\b'
+    message: "Returning User entity directly - ensure password and sensitive fields are excluded (CWE-200)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      owasp: "OWASP API Top 10 - Excessive Data Exposure"
+      tags: [data-exposure, pii, api]
+
+  # JPA findAll without projection
+  - id: java-jpa-findall-no-projection
+    pattern: $REPO.findAll()
+    message: "JPA findAll returns all entity fields - consider using projections to limit data exposure (CWE-200)"
+    languages: [java]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      owasp: "OWASP API Top 10 - Excessive Data Exposure"
+      tags: [jpa, data-exposure]
+
+  # Spring GetMapping returning entity
+  - id: java-getmapping-return-entity
+    pattern: |
+      @GetMapping(...)
+      public $TYPE $METHOD(...) {
+          ...
+          return $ENTITY;
+      }
+    message: "REST endpoint returning entity - use DTO pattern to prevent excessive data exposure (CWE-200)"
+    languages: [java]
+    severity: INFO
+    metadata:
+      cwe: "CWE-200"
+      owasp: "OWASP API Top 10 - Excessive Data Exposure"
+      tags: [spring, rest, data-exposure]
+
+  # Entity with sensitive field returned in response
+  - id: java-entity-sensitive-field-password
+    pattern-regex: '@(Entity|Document)[^}]*private\s+String\s+(password|passwordHash|secret|apiKey|token)'
+    message: "Entity with sensitive field - ensure field is excluded from JSON serialization (@JsonIgnore) (CWE-200)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+      owasp: "OWASP API Top 10 - Excessive Data Exposure"
+      tags: [entity, data-exposure, password]
+

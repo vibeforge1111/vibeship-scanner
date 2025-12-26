@@ -6379,6 +6379,37 @@ rules:
       cwe: "CWE-502"
       tags: [code-injection, rce]
 
+  # VM module code execution (Juice Shop deserialization pattern)
+  - id: vm-runin-context-rce
+    pattern-regex: "vm\\.run(?:InContext|InNewContext|InThisContext)\\s*\\("
+    message: "VM code execution - can lead to sandbox escape and RCE (CWE-94)"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      owasp: "A08:2021"
+      tags: [code-execution, sandbox-escape, deserialization, juice-shop]
+
+  # notevil/safeEval sandbox bypass
+  - id: notevil-safeeval-bypass
+    pattern-regex: "(?:safeEval|notevil)\\s*\\("
+    message: "notevil/safeEval has known sandbox bypass vulnerabilities - avoid for untrusted input"
+    languages: [javascript, typescript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+      tags: [sandbox-escape, code-execution]
+
+  # createContext + runInContext pattern
+  - id: vm-sandbox-creation
+    pattern-regex: "vm\\.createContext\\s*\\("
+    message: "VM sandbox creation - ensure proper isolation and avoid executing untrusted code"
+    languages: [javascript, typescript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-94"
+      tags: [sandbox, code-execution]
+
   # ============================================
   # SECURITY MISCONFIGURATION (OWASP A05:2021)
   # ============================================
