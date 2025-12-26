@@ -858,3 +858,193 @@ rules:
       owasp: "OWASP API Top 10 - Excessive Data Exposure"
       tags: [entity, data-exposure, password]
 
+  # ============================================
+  # Android Security (DIVA vulnerabilities)
+  # ============================================
+
+  # Insecure Logging - Logging sensitive data
+  - id: java-android-log-sensitive-data
+    pattern-regex: 'Log\.(e|d|i|w|v)\s*\([^,]+,\s*[^)]*\+[^)]*\.getText\(\)'
+    message: Android logging user input - sensitive data exposure via logcat (CWE-532)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-532"
+      owasp: "OWASP Mobile Top 10 - M1 Improper Platform Usage"
+
+  - id: java-android-log-credit-card
+    pattern-regex: 'Log\.(e|d|i|w|v)\s*\([^)]*credit[^)]*\)'
+    message: Logging credit card data - PCI DSS violation (CWE-532)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-532"
+
+  - id: java-android-log-password
+    pattern-regex: 'Log\.(e|d|i|w|v)\s*\([^)]*password[^)]*\)'
+    message: Logging password data - sensitive data exposure (CWE-532)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-532"
+
+  # Hardcoded Credentials
+  - id: java-android-hardcoded-equals
+    pattern-regex: '\.equals\s*\(\s*"[a-zA-Z0-9_]{6,}"\s*\)'
+    message: Hardcoded string comparison - potential embedded credential (CWE-798)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      owasp: "OWASP Mobile Top 10 - M9 Reverse Engineering"
+
+  - id: java-android-hardcoded-secret-key
+    pattern-regex: '(secretkey|apikey|password|token|secret)\s*=\s*"[^"]{6,}"'
+    message: Hardcoded secret value - store in Android Keystore (CWE-798)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+
+  # Insecure Data Storage - SharedPreferences
+  - id: java-android-sharedprefs-putstring-password
+    pattern-regex: 'putString\s*\(\s*"(password|pwd|passwd|secret|token|key)"'
+    message: Storing sensitive data in SharedPreferences - use EncryptedSharedPreferences (CWE-312)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-312"
+      owasp: "OWASP Mobile Top 10 - M2 Insecure Data Storage"
+
+  - id: java-android-sharedprefs-gettext
+    pattern-regex: 'putString\s*\([^,]+,\s*[^)]*\.getText\(\)'
+    message: Storing user input in SharedPreferences without encryption (CWE-312)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-312"
+
+  - id: java-android-sharedprefs-commit
+    pattern: $EDIT.commit()
+    message: SharedPreferences.commit() - consider apply() for async write or verify sensitive data handling
+    languages: [java]
+    severity: INFO
+    metadata:
+      cwe: "CWE-312"
+
+  # Insecure Data Storage - Files
+  - id: java-android-openfileoutput-world-readable
+    pattern-regex: 'openFileOutput\s*\([^,]+,\s*MODE_WORLD_READABLE'
+    message: World-readable file - anyone can read stored data (CWE-732)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-732"
+
+  - id: java-android-openfileoutput-world-writable
+    pattern-regex: 'openFileOutput\s*\([^,]+,\s*MODE_WORLD_WRITEABLE'
+    message: World-writable file - anyone can modify stored data (CWE-732)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-732"
+
+  # Insecure Data Storage - SQLite
+  - id: java-android-sqlite-rawquery-concat
+    pattern-regex: 'rawQuery\s*\(\s*"[^"]*"\s*\+\s*[^,)]+'
+    message: SQL injection via string concatenation in rawQuery (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "OWASP Mobile Top 10 - M7 Client Code Quality"
+
+  - id: java-android-sqlite-execsql-concat
+    pattern-regex: 'execSQL\s*\(\s*"[^"]*"\s*\+\s*[^)]+'
+    message: SQL injection via string concatenation in execSQL (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # Input Validation
+  - id: java-android-webview-loadurl-gettext
+    pattern-regex: 'loadUrl\s*\([^)]*\.getText\(\)'
+    message: WebView loading URL from user input - validate/sanitize (CWE-79)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+
+  - id: java-android-webview-javascript-enabled
+    pattern: $SETTINGS.setJavaScriptEnabled(true)
+    message: WebView JavaScript enabled - XSS risk if loading untrusted content
+    languages: [java]
+    severity: WARNING
+
+  - id: java-android-webview-allow-file-access
+    pattern: $SETTINGS.setAllowFileAccess(true)
+    message: WebView file access enabled - local file access risk (CWE-200)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-200"
+
+  # Access Control - Content Providers
+  - id: java-android-contentprovider-exported
+    pattern-regex: 'android:exported\s*=\s*"true"'
+    message: Content Provider exported - verify access control (CWE-926)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-926"
+
+  - id: java-android-contentprovider-query-projection
+    pattern-regex: 'query\s*\([^)]*null\s*,\s*null'
+    message: Content Provider query with null projection/selection - data exposure risk
+    languages: [java]
+    severity: INFO
+
+  # Access Control - Intents
+  - id: java-android-intent-getextra-unchecked
+    pattern-regex: 'getIntent\(\)\.get\w*Extra\s*\('
+    message: Intent extra accessed without validation - verify caller (CWE-926)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-926"
+
+  - id: java-android-sendbroadcast-unprotected
+    pattern: sendBroadcast($INTENT)
+    message: Unprotected broadcast - use LocalBroadcastManager or permissions (CWE-927)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-927"
+
+  # JNI/Native Security
+  - id: java-android-jni-loadlibrary
+    pattern: System.loadLibrary($LIB)
+    message: Native library loaded - verify library integrity and source
+    languages: [java]
+    severity: INFO
+
+  - id: java-android-native-method
+    pattern-regex: 'private\s+native\s+\w+\s+\w+\s*\('
+    message: Native method declaration - review for hardcoded secrets in native code
+    languages: [java]
+    severity: INFO
+
+  # Debug/Development
+  - id: java-android-debug-buildconfig
+    pattern-regex: 'BuildConfig\.DEBUG'
+    message: Debug check in code - ensure debug features disabled in production
+    languages: [java]
+    severity: INFO
+
+  - id: java-android-strictmode-enabled
+    pattern-regex: 'StrictMode\.(setThreadPolicy|setVmPolicy)'
+    message: StrictMode enabled - remove or conditionally enable in debug only
+    languages: [java]
+    severity: INFO
+

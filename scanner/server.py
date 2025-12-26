@@ -57,7 +57,7 @@ def update_progress(supabase: Client, scan_id: str, step: str, message: str, per
 def update_scan(supabase: Client, scan_id: str, data: dict):
     supabase.table('scans').update(data).eq('id', scan_id).execute()
 
-def save_findings_in_batches(supabase: Client, scan_id: str, findings: list, batch_size: int = 5000) -> bool:
+def save_findings_in_batches(supabase: Client, scan_id: str, findings: list, batch_size: int = 500) -> bool:
     """
     Save findings in batches to handle large result sets.
     For repos like LoopFi with 55,000+ findings, saving all at once can fail.
@@ -66,19 +66,33 @@ def save_findings_in_batches(supabase: Client, scan_id: str, findings: list, bat
     1. If findings < batch_size, save normally
     2. If larger, save in batches with retries
     3. Each batch updates the findings array incrementally
+
+    Tuned for Supabase reliability:
+    - batch_size=500 (reduced from 5000 to avoid timeouts)
+    - 5 retries with exponential backoff + jitter
+    - Inter-batch delay to avoid overwhelming the database
     """
     import time
+    import random
 
     total = len(findings)
+    max_retries = 5
+    base_delay = 2  # seconds
+    inter_batch_delay = 0.5  # seconds between successful batches
 
     if total <= batch_size:
         # Small enough to save in one go
-        try:
-            supabase.table('scans').update({'findings': findings}).eq('id', scan_id).execute()
-            return True
-        except Exception as e:
-            print(f"[Scan] Failed to save {total} findings in one batch: {e}", flush=True)
-            # Fall through to batched approach
+        for retry in range(max_retries):
+            try:
+                supabase.table('scans').update({'findings': findings}).eq('id', scan_id).execute()
+                return True
+            except Exception as e:
+                wait_time = base_delay * (2 ** retry) + random.uniform(0, 1)
+                print(f"[Scan] Failed to save {total} findings (attempt {retry + 1}/{max_retries}): {e}", flush=True)
+                if retry < max_retries - 1:
+                    print(f"[Scan] Retrying in {wait_time:.1f}s...", flush=True)
+                    time.sleep(wait_time)
+        # Fall through to batched approach after all retries failed
 
     print(f"[Scan] Large finding set ({total}), saving in batches of {batch_size}...", flush=True)
 
@@ -88,7 +102,7 @@ def save_findings_in_batches(supabase: Client, scan_id: str, findings: list, bat
 
     saved_count = 0
     batch_num = 0
-    max_retries = 3
+    total_batches = (total + batch_size - 1) // batch_size
 
     # Save in batches
     for i in range(0, total, batch_size):
@@ -103,13 +117,20 @@ def save_findings_in_batches(supabase: Client, scan_id: str, findings: list, bat
                 supabase.table('scans').update({'findings': cumulative_findings}).eq('id', scan_id).execute()
 
                 saved_count += len(batch)
-                print(f"[Scan] Saved batch {batch_num}: {saved_count}/{total} findings", flush=True)
+                print(f"[Scan] Saved batch {batch_num}/{total_batches}: {saved_count}/{total} findings", flush=True)
+
+                # Inter-batch delay to avoid overwhelming Supabase
+                if i + batch_size < total:
+                    time.sleep(inter_batch_delay)
                 break  # Success, move to next batch
 
             except Exception as e:
-                print(f"[Scan] Batch {batch_num} attempt {retry + 1} failed: {e}", flush=True)
+                # Exponential backoff with jitter
+                wait_time = base_delay * (2 ** retry) + random.uniform(0, 2)
+                print(f"[Scan] Batch {batch_num} attempt {retry + 1}/{max_retries} failed: {e}", flush=True)
                 if retry < max_retries - 1:
-                    time.sleep(2 ** retry)  # Exponential backoff
+                    print(f"[Scan] Retrying in {wait_time:.1f}s...", flush=True)
+                    time.sleep(wait_time)
                 else:
                     print(f"[Scan] Failed to save batch {batch_num} after {max_retries} retries", flush=True)
                     # Continue with remaining batches
@@ -229,7 +250,8 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
             })
 
             # Save findings in batches (handles large result sets like LoopFi)
-            save_findings_in_batches(supabase, scan_id, all_findings, batch_size=5000)
+            # Uses batch_size=500 by default with exponential backoff for Supabase reliability
+            save_findings_in_batches(supabase, scan_id, all_findings)
 
             # Mark as complete
             update_scan(supabase, scan_id, {'status': 'complete'})
