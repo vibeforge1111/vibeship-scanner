@@ -516,3 +516,79 @@ rules:
     message: BroadcastReceiver - ensure proper permission protection if exported
     languages: [kotlin]
     severity: INFO
+
+  # ============================================
+  # Android - Arbitrary Code Execution (ACE)
+  # Third-party Package Context Abuse
+  # ============================================
+
+  - id: kotlin-android-createpackagecontext-include-code
+    pattern-regex: 'createPackageContext\s*\([^)]*CONTEXT_INCLUDE_CODE'
+    message: createPackageContext with CONTEXT_INCLUDE_CODE enables code execution from external packages - ACE risk (CWE-94)
+    languages: [kotlin]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  - id: kotlin-android-createpackagecontext-ignore-security
+    pattern-regex: 'createPackageContext\s*\([^)]*CONTEXT_IGNORE_SECURITY'
+    message: createPackageContext with CONTEXT_IGNORE_SECURITY bypasses security checks - ACE risk (CWE-94)
+    languages: [kotlin]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  - id: kotlin-android-createpackagecontext
+    pattern: createPackageContext($PKG, $FLAGS)
+    message: createPackageContext may load code from external apps - verify signature validation (CWE-94)
+    languages: [kotlin]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-94"
+
+  - id: kotlin-android-classloader-loadclass
+    pattern: $CTX.classLoader.loadClass($CLASS)
+    message: Dynamic class loading from external package - potential ACE if package is untrusted (CWE-94)
+    languages: [kotlin]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-94"
+
+  - id: kotlin-android-reflection-getmethod-invoke
+    pattern: |
+      $OBJ.getMethod($METHOD, ...)
+      ...
+      $X.invoke(...)
+    message: Reflection-based method invocation - verify class source is trusted (CWE-470)
+    languages: [kotlin]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-470"
+
+  - id: kotlin-android-dexclassloader
+    pattern: DexClassLoader($DEX, ...)
+    message: DexClassLoader loads external code - ensure dex source is trusted and verified (CWE-94)
+    languages: [kotlin]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+
+  - id: kotlin-android-pathclassloader
+    pattern: PathClassLoader($PATH, ...)
+    message: PathClassLoader loads external code - ensure path source is trusted (CWE-94)
+    languages: [kotlin]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-94"
+
+  - id: kotlin-android-getinstalledpackages
+    pattern: $PM.getInstalledPackages(...)
+    message: Enumerating installed packages - if combined with createPackageContext may enable ACE
+    languages: [kotlin]
+    severity: INFO
+
+  - id: kotlin-android-package-prefix-check
+    pattern-regex: 'packageName\s*\.\s*startsWith\s*\('
+    message: Package name prefix check - weak validation for module loading, verify signature instead
+    languages: [kotlin]
+    severity: WARNING
