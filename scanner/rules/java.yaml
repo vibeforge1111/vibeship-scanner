@@ -16,6 +16,33 @@ rules:
     languages: [java]
     severity: WARNING
 
+  - id: java-processbuilder-array-concat
+    pattern-regex: 'new\s+ProcessBuilder\s*\(\s*new\s+String\s*\[\s*\]\s*\{[^}]*\+\s*[a-zA-Z_]\w*'
+    message: ProcessBuilder with string concatenation in command array - command injection vulnerability (CWE-78)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection, rce]
+
+  - id: java-processbuilder-shell-exec
+    pattern-regex: 'ProcessBuilder\s*\([^)]*"(sh|bash|cmd)"\s*,\s*"-c"[^)]*\+\s*[a-zA-Z_]\w*'
+    message: ProcessBuilder executing shell command with user input - command injection vulnerability (CWE-78)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection, rce]
+
+  - id: java-runtime-exec-concat
+    pattern-regex: 'Runtime\.getRuntime\(\)\.exec\s*\([^)]*\+\s*[a-zA-Z_]\w*'
+    message: Runtime.exec with string concatenation - command injection vulnerability (CWE-78)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      tags: [command-injection, rce]
+
   # ============================================
   # SQL Injection
   # ============================================
@@ -37,6 +64,107 @@ rules:
     message: Java SQL concatenation - SQL injection risk
     languages: [java]
     severity: ERROR
+
+  - id: java-sql-concat-where
+    pattern: '"... WHERE " + $VAR'
+    message: Java SQL WHERE concatenation - SQL injection risk (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: java-sql-string-format
+    pattern: String.format("SELECT $...", $VAR)
+    message: Java SQL string format - SQL injection risk (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: java-createquery-concat
+    pattern: $EM.createQuery("..." + $VAR)
+    message: Java JPA createQuery with concatenation - SQL injection risk (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: java-nativequery-concat
+    pattern: $EM.createNativeQuery("..." + $VAR)
+    message: Java JPA native query with concatenation - SQL injection risk (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: java-jdbctemplate-query-concat
+    pattern: $JDBC.query("..." + $VAR, ...)
+    message: Spring JdbcTemplate query with concatenation - SQL injection risk (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: java-jdbctemplate-update-concat
+    pattern: $JDBC.update("..." + $VAR)
+    message: Spring JdbcTemplate update with concatenation - SQL injection risk (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: java-hibernate-createquery-concat
+    pattern: $SESSION.createQuery("..." + $VAR)
+    message: Hibernate createQuery with concatenation - SQL injection risk (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  - id: java-sql-injectable-query
+    pattern-regex: '(createQuery|createNativeQuery|executeQuery)\s*\(\s*[^")]*\+\s*'
+    message: Java dynamic SQL query - SQL injection risk (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+
+  # VulnerableApp-style SQL injection patterns (lowercase SQL)
+  - id: java-sql-select-concat-lowercase
+    pattern-regex: '"select\s+\*?\s*from\s+\w+\s+where\s+\w+\s*=\s*"\s*\+\s*\w+'
+    message: SQL query string concatenation - SQL injection vulnerability (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sqli, injection]
+
+  - id: java-sql-select-concat-quoted
+    pattern-regex: '"select\s+[^"]*where\s+\w+\s*=\s*''"\s*\+\s*\w+\s*\+\s*"''"'
+    message: SQL query with quoted string concatenation - SQL injection vulnerability (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sqli, injection]
+
+  - id: java-sql-generic-concat
+    pattern-regex: '"\s*(SELECT|INSERT|UPDATE|DELETE|select|insert|update|delete)\s+[^"]*"\s*\+\s*[a-zA-Z_]\w*'
+    message: Dynamic SQL query with variable concatenation - SQL injection risk (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sqli, injection]
+
+  - id: java-preparedstatement-concat
+    pattern-regex: 'prepareStatement\s*\(\s*"[^"]*"\s*\+\s*[a-zA-Z_]\w*'
+    message: PreparedStatement with string concatenation - misuse negates SQL injection protection (CWE-89)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      tags: [sqli, injection]
 
   # ============================================
   # XPath Injection
@@ -457,15 +585,96 @@ rules:
 
   - id: java-servlet-redirect
     pattern: $RESPONSE.sendRedirect($USER_INPUT)
-    message: Java servlet redirect with user input - open redirect risk
+    message: Java servlet redirect with user input - open redirect risk (CWE-601)
     languages: [java]
     severity: WARNING
+    metadata:
+      cwe: "CWE-601"
 
   - id: java-spring-redirect
     pattern: '"redirect:" + $USER_INPUT'
-    message: Spring redirect with user input - open redirect risk
+    message: Spring redirect with user input - open redirect risk (CWE-601)
     languages: [java]
     severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+
+  - id: java-redirect-header
+    pattern: $RESPONSE.setHeader("Location", $URL)
+    message: Java Location header with variable - open redirect risk (CWE-601)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+
+  - id: java-redirect-getparameter
+    pattern: $RESPONSE.sendRedirect($REQUEST.getParameter(...))
+    message: Java redirect from request parameter - open redirect vulnerability (CWE-601)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+
+  - id: java-spring-redirect-param
+    pattern: return "redirect:" + $REQUEST.getParameter(...)
+    message: Spring redirect from request parameter - open redirect vulnerability (CWE-601)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+
+  - id: java-redirect-url-pattern
+    pattern-regex: 'sendRedirect\s*\(\s*(url|redirectUrl|redirect|returnUrl|next|target|goto|redir)'
+    message: Java redirect with URL parameter - validate against whitelist (CWE-601)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+
+  - id: java-spring-modelview-redirect
+    pattern: new ModelAndView("redirect:" + $URL)
+    message: Spring ModelAndView redirect with variable - open redirect risk (CWE-601)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+
+  # Spring ResponseEntity open redirect patterns
+  - id: java-spring-responseentity-location-header
+    pattern-regex: 'ResponseEntity[^;]*\.header\s*\(\s*"?Location"?\s*,\s*[a-zA-Z_]\w*'
+    message: Spring ResponseEntity with Location header from variable - open redirect risk (CWE-601)
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect, spring]
+
+  - id: java-spring-responseentity-302-location
+    pattern-regex: 'ResponseEntity[^;]*(FOUND|MOVED_PERMANENTLY|SEE_OTHER|TEMPORARY_REDIRECT)[^;]*header\s*\(\s*"?Location"?'
+    message: Spring ResponseEntity 3xx with Location header - validate redirect URL (CWE-601)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect, spring]
+
+  - id: java-http-headers-location
+    pattern: $HEADERS.set("Location", $URL)
+    message: HTTP Location header with variable - open redirect risk (CWE-601)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect]
+
+  - id: java-httpservlet-location
+    pattern: $RESPONSE.addHeader("Location", $URL)
+    message: HttpServletResponse Location header - open redirect risk (CWE-601)
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+      tags: [open-redirect]
 
   # ============================================
   # Logging Sensitive Data

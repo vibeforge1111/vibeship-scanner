@@ -8135,3 +8135,112 @@ rules:
       cwe: "CWE-79"
       tags: [jsonp, xss, user-input]
 
+  # ============================================
+  # Django XSS (CWE-79)
+  # ============================================
+
+  - id: py-django-mark-safe
+    pattern: mark_safe($X)
+    message: "Django mark_safe() bypasses HTML escaping - XSS risk if input is user-controlled (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      tags: [django, xss]
+
+  - id: py-django-mark-safe-format
+    pattern: mark_safe($FMT.format(...))
+    message: "Django mark_safe() with format string - XSS risk (CWE-79)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [django, xss]
+
+  - id: py-django-mark-safe-percent
+    pattern: mark_safe($FMT % $VAR)
+    message: "Django mark_safe() with % formatting - XSS risk (CWE-79)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [django, xss]
+
+  - id: py-django-safestring
+    pattern: SafeString($X)
+    message: "Django SafeString bypasses HTML escaping - XSS risk if user-controlled (CWE-79)"
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [django, xss]
+
+  - id: py-django-format-html-unsafe
+    pattern: format_html($FMT, $X)
+    message: "Django format_html - ensure variables are properly escaped (CWE-79)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-79"
+      tags: [django, xss]
+
+  # ============================================
+  # Django Open Redirect (CWE-601)
+  # ============================================
+
+  - id: py-django-redirect-request
+    pattern: redirect(request.$ATTR[$X])
+    message: "Django redirect from request parameter - open redirect vulnerability (CWE-601)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      owasp: "A01:2021 Broken Access Control"
+      tags: [django, redirect]
+
+  - id: py-django-redirect-get
+    pattern: redirect(request.GET.get(...))
+    message: "Django redirect from GET parameter - open redirect vulnerability (CWE-601)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [django, redirect]
+
+  - id: py-django-redirect-post
+    pattern: redirect(request.POST.get(...))
+    message: "Django redirect from POST parameter - open redirect vulnerability (CWE-601)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [django, redirect]
+
+  - id: py-django-httpresponseredirect-get
+    pattern: HttpResponseRedirect(request.GET.get(...))
+    message: "Django HttpResponseRedirect from GET - open redirect vulnerability (CWE-601)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-601"
+      tags: [django, redirect]
+
+  - id: py-django-redirect-var
+    pattern: redirect($URL)
+    message: "Django redirect - validate URL against whitelist if user-controlled (CWE-601)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-601"
+      tags: [django, redirect]
+
+  - id: py-django-httpresponseredirect-var
+    pattern: HttpResponseRedirect($URL)
+    message: "Django HttpResponseRedirect - validate URL if user-controlled (CWE-601)"
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-601"
+      tags: [django, redirect]
+

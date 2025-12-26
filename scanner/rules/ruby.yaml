@@ -1,49 +1,49 @@
-# Ruby Security Rules
+# Ruby Security Rules (using generic mode for better detection)
 rules:
   # ============================================
   # Command Injection
   # ============================================
 
   - id: ruby-system-call
-    pattern: system($CMD)
+    pattern-regex: '\bsystem\s*\('
     message: Ruby system() - command injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-exec-call
-    pattern: exec($CMD)
+    pattern-regex: '\bexec\s*\('
     message: Ruby exec() - command injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-backtick
-    pattern: '`$CMD`'
+    pattern-regex: '`[^`]+`'
     message: Ruby backtick execution - command injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-spawn
-    pattern: spawn($CMD)
+    pattern-regex: '\bspawn\s*\('
     message: Ruby spawn() - command injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   - id: ruby-io-popen
-    pattern: IO.popen($CMD)
+    pattern-regex: 'IO\.popen\s*\('
     message: Ruby IO.popen() - command injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-open3
-    pattern: Open3.capture2($CMD)
+    pattern-regex: 'Open3\.capture2\s*\('
     message: Ruby Open3 - command injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   - id: ruby-open3-capture3
-    pattern: Open3.capture3($CMD)
+    pattern-regex: 'Open3\.capture3\s*\('
     message: Ruby Open3 - command injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   # ============================================
@@ -51,45 +51,45 @@ rules:
   # ============================================
 
   - id: ruby-eval
-    pattern: eval($CODE)
+    pattern-regex: '\beval\s*\('
     message: Ruby eval() - code injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-instance-eval
-    pattern: instance_eval($CODE)
+    pattern-regex: '\binstance_eval\s*[\(\{]'
     message: Ruby instance_eval() - code injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-class-eval
-    pattern: class_eval($CODE)
+    pattern-regex: '\bclass_eval\s*[\(\{]'
     message: Ruby class_eval() - code injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-module-eval
-    pattern: module_eval($CODE)
+    pattern-regex: '\bmodule_eval\s*[\(\{]'
     message: Ruby module_eval() - code injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-send-dynamic
-    pattern: $OBJ.send(params[$X], ...)
+    pattern-regex: '\.send\s*\(\s*params\s*\['
     message: Ruby dynamic send - code injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-constantize
-    pattern: params[$X].constantize
+    pattern-regex: 'params\s*\[.*\]\.constantize'
     message: Ruby constantize - arbitrary class instantiation risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-constantize-safe
-    pattern: $X.constantize
+    pattern-regex: '\.constantize\b'
     message: Ruby constantize - ensure input is validated
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   # ============================================
@@ -97,21 +97,21 @@ rules:
   # ============================================
 
   - id: ruby-yaml-load
-    pattern: YAML.load($DATA)
+    pattern-regex: 'YAML\.load\s*\('
     message: Ruby YAML.load - insecure deserialization (use safe_load)
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-marshal-load
-    pattern: Marshal.load($DATA)
+    pattern-regex: 'Marshal\.load\s*\('
     message: Ruby Marshal.load - insecure deserialization
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-marshal-restore
-    pattern: Marshal.restore($DATA)
+    pattern-regex: 'Marshal\.restore\s*\('
     message: Ruby Marshal.restore - insecure deserialization
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   # ============================================
@@ -119,27 +119,27 @@ rules:
   # ============================================
 
   - id: ruby-erb-render
-    pattern: ERB.new(params[$X]).result
+    pattern-regex: 'ERB\.new\s*\(\s*params\s*\['
     message: Ruby ERB template injection
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-erb-new-user
-    pattern: ERB.new($USER_INPUT)
+    pattern-regex: 'ERB\.new\s*\('
     message: Ruby ERB with user input - template injection risk
-    languages: [ruby]
-    severity: ERROR
+    languages: [generic]
+    severity: WARNING
 
   - id: ruby-render-inline
-    pattern: 'render inline: params[$X]'
+    pattern-regex: 'render\s+inline:\s*params\s*\['
     message: Ruby Rails inline render - template injection
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-render-inline-var
-    pattern: 'render inline: $VAR'
+    pattern-regex: 'render\s+inline:\s*[^,\n]+'
     message: Ruby Rails inline render - potential template injection
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   # ============================================
@@ -147,21 +147,21 @@ rules:
   # ============================================
 
   - id: ruby-open-uri
-    pattern: open(params[$X])
+    pattern-regex: '\bopen\s*\(\s*params\s*\['
     message: Ruby open() with user input - SSRF/command injection risk
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
 
   - id: ruby-open-uri-var
-    pattern: open($URL)
+    pattern-regex: '\bopen\s*\(\s*[a-z_]'
     message: Ruby open() - potential SSRF if URL is user-controlled
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   - id: ruby-uri-open
-    pattern: URI.open($URL)
+    pattern-regex: 'URI\.open\s*\('
     message: Ruby URI.open() - potential SSRF
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   # ============================================
@@ -169,15 +169,15 @@ rules:
   # ============================================
 
   - id: ruby-redirect-to-params
-    pattern: redirect_to params[$X]
+    pattern-regex: 'redirect_to\s+params\s*\['
     message: Ruby open redirect risk
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   - id: ruby-redirect-to-var
-    pattern: redirect_to $URL
+    pattern-regex: 'redirect_to\s+[a-z_]+'
     message: Ruby redirect - ensure URL is validated
-    languages: [ruby]
+    languages: [generic]
     severity: INFO
 
   # ============================================
@@ -185,316 +185,781 @@ rules:
   # ============================================
 
   - id: ruby-find-by-sql
-    pattern: $MODEL.find_by_sql($QUERY)
+    pattern-regex: '\.find_by_sql\s*\('
     message: Ruby find_by_sql - ensure parameterized queries
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   - id: ruby-where-string
-    pattern: $MODEL.where($STRING)
+    pattern-regex: \.where\s*\(\s*"
     message: Ruby where with string - use hash or array syntax
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   - id: ruby-execute-sql
-    pattern: $CONN.execute($QUERY)
+    pattern-regex: '\.execute\s*\('
     message: Ruby raw SQL execution - ensure parameterized
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
 
   - id: ruby-exec-query
-    pattern: ActiveRecord::Base.connection.execute($QUERY)
+    pattern-regex: 'ActiveRecord::Base\.connection\.execute\s*\('
     message: Ruby raw SQL execution - SQL injection risk
-    languages: [ruby]
-    severity: WARNING
+    languages: [generic]
+    severity: ERROR
 
   # ============================================
   # Mass Assignment
   # ============================================
 
   - id: ruby-permit-all
-    pattern: params.permit!
-    message: Ruby mass assignment - all parameters permitted
-    languages: [ruby]
+    pattern-regex: 'params\.permit!\s*$'
+    message: Ruby mass assignment - all parameters permitted (CWE-915)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-915"
 
   - id: ruby-update-attributes
-    pattern: $MODEL.update_attributes(params[$X])
-    message: Ruby mass assignment - use strong parameters
-    languages: [ruby]
+    pattern-regex: '\.update_attributes\s*\(\s*params\s*\['
+    message: Ruby mass assignment - use strong parameters (CWE-915)
+    languages: [generic]
     severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+
+  - id: ruby-permit-bang
+    pattern-regex: '\.permit!\s*$'
+    message: Ruby permit! allows all parameters - mass assignment vulnerability (CWE-915)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+
+  - id: ruby-require-permit-bang
+    pattern-regex: 'params\.require\([^)]+\)\.permit!'
+    message: Ruby permit! on required params - all parameters allowed (CWE-915)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+
+  - id: ruby-attr-accessible-all
+    pattern-regex: 'attr_accessible\s*:.*:all|attr_accessible\s+\*'
+    message: Ruby attr_accessible with all - mass assignment vulnerability (CWE-915)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+
+  - id: ruby-update-all-params
+    pattern-regex: '\.\s*update\s*\(\s*params\s*\)'
+    message: Ruby model update with raw params - mass assignment risk (CWE-915)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+
+  - id: ruby-create-all-params
+    pattern-regex: '\.\s*create\s*\(\s*params\s*\)'
+    message: Ruby model create with raw params - mass assignment risk (CWE-915)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-915"
+
+  - id: ruby-new-all-params
+    pattern-regex: '\.\s*new\s*\(\s*params\s*\['
+    message: Ruby model new with params - use strong parameters (CWE-915)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-915"
+
+  - id: ruby-skip-protection
+    pattern-regex: 'skip_before_action\s*:\s*verify_authenticity_token'
+    message: Ruby CSRF protection disabled - mass assignment/CSRF risk (CWE-352)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-352"
+
+  - id: ruby-protect-from-forgery-except
+    pattern-regex: 'protect_from_forgery\s+except:'
+    message: Ruby CSRF protection partially disabled (CWE-352)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-352"
 
   # ============================================
-  # Session Security
+  # Session Security / Hardcoded Secrets
   # ============================================
 
   - id: ruby-session-secret-hardcoded
-    pattern: 'secret_key_base = "..."'
+    pattern-regex: "secret_key_base\\s*=\\s*[\"\\'][^\"\\']+[\"\\']"
     message: Ruby hardcoded secret key - use environment variables
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-cookie-store-secret
-    pattern: 'config.secret_key = "..."'
+    pattern-regex: "config\\.secret_key\\s*=\\s*[\"\\'][^\"\\']+[\"\\']"
     message: Ruby hardcoded secret key
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-secret-key-base-string
+    pattern-regex: "secret_key_base\\s*[:=]\\s*[\"\\'][a-f0-9]{30,}[\"\\']"
+    message: "Ruby hardcoded secret_key_base - use ENV variable (CWE-798)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-password-hardcoded
+    pattern-regex: "(?:password|passwd|pwd)\\s*[:=]\\s*[\"\\'][^\"\\']{4,}[\"\\']"
+    message: "Ruby hardcoded password detected (CWE-798)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-api-key-hardcoded
+    pattern-regex: "(?:api_key|apikey|api_secret|secret_key)\\s*[:=]\\s*[\"\\'][^\"\\']{8,}[\"\\']"
+    message: "Ruby hardcoded API key/secret detected (CWE-798)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-token-hardcoded
+    pattern-regex: "(?:token|auth_token|access_token|bearer)\\s*[:=]\\s*[\"\\'][^\"\\']{10,}[\"\\']"
+    message: "Ruby hardcoded token detected (CWE-798)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-database-password
+    pattern-regex: "(?:database|db|mysql|postgres|mongo).*password\\s*[:=]\\s*[\"\\'][^\"\\']+[\"\\']"
+    message: "Ruby hardcoded database password (CWE-798)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-aws-credentials
+    pattern-regex: "(?:aws_access_key_id|aws_secret_access_key)\\s*[:=]\\s*[\"\\'][A-Za-z0-9+/=]{16,}[\"\\']"
+    message: "Ruby hardcoded AWS credentials (CWE-798)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-encryption-key-hardcoded
+    pattern-regex: "(?:encryption_key|cipher_key|aes_key)\\s*[:=]\\s*[\"\\'][^\"\\']{8,}[\"\\']"
+    message: "Ruby hardcoded encryption key (CWE-798)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-devise-secret
+    pattern-regex: "config\\.secret_key\\s*=\\s*[\"\\'][a-f0-9]{30,}[\"\\']"
+    message: "Ruby Devise hardcoded secret key - use ENV (CWE-798)"
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+    paths:
+      include:
+        - "*.rb"
 
   # ============================================
   # Weak Cryptography
   # ============================================
 
   - id: ruby-md5-digest
-    pattern: Digest::MD5.hexdigest($X)
+    pattern-regex: 'Digest::MD5\.(hexdigest|digest|base64digest)\s*\('
     message: Ruby MD5 is weak - use SHA-256 or better
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-sha1-digest
-    pattern: Digest::SHA1.hexdigest($X)
+    pattern-regex: 'Digest::SHA1\.(hexdigest|digest|base64digest)\s*\('
     message: Ruby SHA1 is weak - use SHA-256 or better
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-random-security
-    pattern: rand()
+    pattern-regex: '\brand\s*\('
     message: Ruby rand() not cryptographically secure - use SecureRandom
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-des-cipher
+    pattern-regex: "OpenSSL::Cipher\\.(new\\s*\\(\\s*[\"\\']DES|des)"
+    message: Ruby DES encryption is weak - use AES-256 (CWE-327)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-rc4-cipher
+    pattern-regex: "OpenSSL::Cipher\\.(new\\s*\\(\\s*[\"\\']RC4|rc4)"
+    message: Ruby RC4 encryption is weak - use AES-256 (CWE-327)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-ecb-mode
+    pattern-regex: "OpenSSL::Cipher\\.new\\s*\\([\"\\'][^\"\\']*-ECB"
+    message: Ruby ECB mode is insecure - use CBC or GCM (CWE-327)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-327"
+    paths:
+      include:
+        - "*.rb"
 
   # ============================================
-  # File Operations
+  # File Operations / Path Traversal
   # ============================================
 
   - id: ruby-file-read-user
-    pattern: File.read(params[$X])
-    message: Ruby file read with user input - path traversal risk
-    languages: [ruby]
+    pattern-regex: 'File\.read\s*\(\s*params\s*\['
+    message: Ruby file read with user input - path traversal risk (CWE-22)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-file-open-user
-    pattern: File.open(params[$X])
-    message: Ruby file open with user input - path traversal risk
-    languages: [ruby]
+    pattern-regex: 'File\.open\s*\(\s*params\s*\['
+    message: Ruby file open with user input - path traversal risk (CWE-22)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-send-file-user
-    pattern: send_file(params[$X])
-    message: Ruby send_file with user input - path traversal risk
-    languages: [ruby]
+    pattern-regex: 'send_file\s*\(\s*params\s*\['
+    message: Ruby send_file with user input - path traversal risk (CWE-22)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-file-delete-user
+    pattern-regex: 'File\.delete\s*\(\s*params\s*\['
+    message: Ruby file delete with user input - path traversal risk (CWE-22)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-io-read-user
+    pattern-regex: 'IO\.read\s*\(\s*params\s*\['
+    message: Ruby IO.read with user input - path traversal risk (CWE-22)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-pathname-user
+    pattern-regex: 'Pathname\.new\s*\(\s*params\s*\['
+    message: Ruby Pathname with user input - path traversal risk (CWE-22)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-file-expand-path
+    pattern-regex: 'File\.expand_path\s*\(\s*params\s*\['
+    message: Ruby expand_path with user input - path traversal risk (CWE-22)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-22"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-send-data-user
+    pattern-regex: 'send_data\s*\(\s*File\.(read|binread)\s*\(\s*params'
+    message: Ruby send_data with file read from user input (CWE-22)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+    paths:
+      include:
+        - "*.rb"
 
   # ============================================
   # XSS
   # ============================================
 
   - id: ruby-raw-output
-    pattern: raw($INPUT)
-    message: Ruby raw() bypasses HTML escaping - XSS risk
-    languages: [ruby]
+    pattern-regex: '\braw\s*\('
+    message: Ruby raw() bypasses HTML escaping - XSS risk (CWE-79)
+    languages: [generic]
     severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+        - "*.erb"
 
   - id: ruby-html-safe
-    pattern: $X.html_safe
-    message: Ruby html_safe bypasses HTML escaping - XSS risk
-    languages: [ruby]
+    pattern-regex: '\.html_safe\b'
+    message: Ruby html_safe bypasses HTML escaping - XSS risk (CWE-79)
+    languages: [generic]
     severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+        - "*.erb"
+
+  - id: ruby-content-tag-unsafe
+    pattern-regex: 'content_tag\s*\([^)]+,\s*params\s*\['
+    message: Ruby content_tag with user input - XSS risk (CWE-79)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+        - "*.erb"
+
+  - id: ruby-link-to-unsafe
+    pattern-regex: 'link_to\s*\([^)]*params\s*\['
+    message: Ruby link_to with user input - potential XSS (CWE-79)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+        - "*.erb"
+
+  - id: ruby-safe-concat
+    pattern-regex: '\.safe_concat\s*\('
+    message: Ruby safe_concat bypasses escaping - XSS risk (CWE-79)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+        - "*.erb"
 
   # ============================================
   # Direct User Input Patterns (replaces taint mode)
   # ============================================
 
   - id: ruby-params-in-where
-    pattern: $MODEL.where(params[$X])
-    message: Ruby SQL injection - direct params in where clause
-    languages: [ruby]
+    pattern-regex: '\.where\s*\(\s*params\s*\['
+    message: Ruby SQL injection - direct params in where clause (CWE-89)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-params-in-find-by-sql
-    pattern: $MODEL.find_by_sql(params[$X])
-    message: Ruby SQL injection - direct params in find_by_sql
-    languages: [ruby]
+    pattern-regex: '\.find_by_sql\s*\(\s*params\s*\['
+    message: Ruby SQL injection - direct params in find_by_sql (CWE-89)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-params-in-system
-    pattern: system(params[$X])
-    message: Ruby command injection - direct params in system
-    languages: [ruby]
+    pattern-regex: 'system\s*\(\s*params\s*\['
+    message: Ruby command injection - direct params in system (CWE-78)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-params-in-exec
-    pattern: exec(params[$X])
-    message: Ruby command injection - direct params in exec
-    languages: [ruby]
+    pattern-regex: 'exec\s*\(\s*params\s*\['
+    message: Ruby command injection - direct params in exec (CWE-78)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-params-in-redirect
-    pattern: redirect_to(params[$X])
-    message: Ruby open redirect - direct params in redirect_to
-    languages: [ruby]
+    pattern-regex: 'redirect_to\s*\(\s*params\s*\['
+    message: Ruby open redirect - direct params in redirect_to (CWE-601)
+    languages: [generic]
     severity: WARNING
+    metadata:
+      cwe: "CWE-601"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-params-in-render-inline
-    pattern: 'render inline: params[$X]'
-    message: Ruby XSS - direct params in render inline
-    languages: [ruby]
+    pattern-regex: 'render\s+inline:\s*params\s*\['
+    message: Ruby XSS - direct params in render inline (CWE-79)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-params-in-eval
+    pattern-regex: 'eval\s*\(\s*params\s*\['
+    message: Ruby code injection - direct params in eval (CWE-94)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-params-in-send
+    pattern-regex: '\.\s*send\s*\(\s*params\s*\['
+    message: Ruby method injection - direct params in send (CWE-94)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-94"
+    paths:
+      include:
+        - "*.rb"
 
   # ============================================
   # String Interpolation SQL Injection
   # ============================================
 
-  - id: ruby-sql-interpolation
-    pattern: '"SELECT $...WHERE $... = #{$VAR}"'
-    message: Ruby SQL injection via string interpolation - use parameterized queries
-    languages: [ruby]
+  - id: ruby-sql-interpolation-select
+    pattern-regex: '"SELECT[^"]*#\{[^}]+\}[^"]*"'
+    message: Ruby SQL injection via string interpolation in SELECT (CWE-89)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-sql-interpolation-insert
-    pattern: '"INSERT INTO $... VALUES (#{$VAR}"'
-    message: Ruby SQL injection via string interpolation in INSERT
-    languages: [ruby]
+    pattern-regex: '"INSERT[^"]*#\{[^}]+\}[^"]*"'
+    message: Ruby SQL injection via string interpolation in INSERT (CWE-89)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-sql-interpolation-update
-    pattern: '"UPDATE $... SET $... = #{$VAR}"'
-    message: Ruby SQL injection via string interpolation in UPDATE
-    languages: [ruby]
+    pattern-regex: '"UPDATE[^"]*#\{[^}]+\}[^"]*"'
+    message: Ruby SQL injection via string interpolation in UPDATE (CWE-89)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-sql-interpolation-delete
-    pattern: '"DELETE FROM $... WHERE $... = #{$VAR}"'
-    message: Ruby SQL injection via string interpolation in DELETE
-    languages: [ruby]
+    pattern-regex: '"DELETE[^"]*#\{[^}]+\}[^"]*"'
+    message: Ruby SQL injection via string interpolation in DELETE (CWE-89)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-execute-interpolation
-    pattern: |
-      $DB.execute("... #{$VAR} ...")
-    message: Ruby SQL injection - string interpolation in execute
-    languages: [ruby]
+    pattern-regex: '\.execute\s*\([^)]*#\{[^}]+\}'
+    message: Ruby SQL injection - string interpolation in execute (CWE-89)
+    languages: [generic]
     severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+    paths:
+      include:
+        - "*.rb"
+
+  - id: ruby-where-interpolation
+    pattern-regex: '\.where\s*\("[^"]*#\{[^}]+\}'
+    message: Ruby SQL injection - string interpolation in where (CWE-89)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+    paths:
+      include:
+        - "*.rb"
 
   # ============================================
   # String Interpolation XSS
   # ============================================
 
   - id: ruby-html-interpolation
-    pattern: '"<$TAG>#{$VAR}</$TAG>"'
-    message: Ruby XSS via HTML string interpolation - escape user data
-    languages: [ruby]
+    pattern-regex: '"<[a-z]+[^>]*>#\{[^}]+\}</[a-z]+>"'
+    message: Ruby XSS via HTML string interpolation - escape user data (CWE-79)
+    languages: [generic]
     severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+        - "*.erb"
 
-  - id: ruby-html-h1-interpolation
-    pattern: '"<h1>$...#{$VAR}$...</h1>"'
-    message: Ruby XSS via HTML interpolation in heading
-    languages: [ruby]
-    severity: WARNING
+  - id: ruby-script-interpolation
+    pattern-regex: '"<script[^>]*>#\{[^}]+\}'
+    message: Ruby XSS - script tag with string interpolation (CWE-79)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+        - "*.erb"
 
-  - id: ruby-html-div-interpolation
-    pattern: '"<div>$...#{$VAR}$...</div>"'
-    message: Ruby XSS via HTML interpolation in div
-    languages: [ruby]
-    severity: WARNING
+  - id: ruby-onclick-interpolation
+    pattern-regex: "on\\w+\\s*=\\s*[\"\\'][^\"\\']*#\\{[^}]+\\}"
+    message: Ruby XSS - event handler with string interpolation (CWE-79)
+    languages: [generic]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+        - "*.erb"
 
-  - id: ruby-html-span-interpolation
-    pattern: '"<span>$...#{$VAR}$...</span>"'
-    message: Ruby XSS via HTML interpolation in span
-    languages: [ruby]
+  - id: ruby-href-interpolation
+    pattern-regex: "href\\s*=\\s*[\"\\']#\\{[^}]+\\}"
+    message: Ruby XSS/Open redirect - href with string interpolation (CWE-79)
+    languages: [generic]
     severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+        - "*.erb"
+
+  - id: ruby-src-interpolation
+    pattern-regex: "src\\s*=\\s*[\"\\']#\\{[^}]+\\}"
+    message: Ruby XSS - src attribute with string interpolation (CWE-79)
+    languages: [generic]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+    paths:
+      include:
+        - "*.rb"
+        - "*.erb"
 
   # ============================================
   # XXE (XML External Entity) - CWE-611
   # ============================================
 
   - id: ruby-xxe-nokogiri-xml
-    pattern: Nokogiri::XML($INPUT)
+    pattern-regex: 'Nokogiri::XML\s*\('
     message: "Ruby Nokogiri XML parsing - ensure external entities are disabled (CWE-611)"
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
     metadata:
       cwe: "CWE-611"
       owasp: "A05:2017 XXE"
-      tags: [xxe, xml]
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-xxe-nokogiri-huge
-    pattern: Nokogiri::XML($INPUT, ..., Nokogiri::XML::ParseOptions::HUGE)
+    pattern-regex: 'Nokogiri::XML::ParseOptions::HUGE'
     message: "Ruby Nokogiri HUGE option enables large entity expansion - XXE vulnerability (CWE-611)"
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
     metadata:
       cwe: "CWE-611"
-      tags: [xxe, xml]
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-xxe-nokogiri-dtdload
-    pattern: Nokogiri::XML($INPUT, ..., Nokogiri::XML::ParseOptions::DTDLOAD)
+    pattern-regex: 'Nokogiri::XML::ParseOptions::DTDLOAD'
     message: "Ruby Nokogiri DTDLOAD option enables external DTD loading - XXE vulnerability (CWE-611)"
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
     metadata:
       cwe: "CWE-611"
-      tags: [xxe, xml]
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-xxe-nokogiri-noent
-    pattern: Nokogiri::XML($INPUT, ..., Nokogiri::XML::ParseOptions::NOENT)
+    pattern-regex: 'Nokogiri::XML::ParseOptions::NOENT'
     message: "Ruby Nokogiri NOENT option substitutes entities - XXE vulnerability (CWE-611)"
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
     metadata:
       cwe: "CWE-611"
-      tags: [xxe, xml]
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-xxe-rexml-document
-    pattern: REXML::Document.new($INPUT)
+    pattern-regex: 'REXML::Document\.new\s*\('
     message: "Ruby REXML XML parsing - disable external entities to prevent XXE (CWE-611)"
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
     metadata:
       cwe: "CWE-611"
       owasp: "A05:2017 XXE"
-      tags: [xxe, xml]
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-xxe-rexml-source
-    pattern: REXML::Source.new($INPUT)
+    pattern-regex: 'REXML::Source\.new\s*\('
     message: "Ruby REXML Source - potential XXE vulnerability (CWE-611)"
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
     metadata:
       cwe: "CWE-611"
-      tags: [xxe, xml]
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-xxe-libxml-parse
-    pattern: LibXML::XML::Parser.string($INPUT)
+    pattern-regex: 'LibXML::XML::Parser\.(string|io|file)\s*\('
     message: "Ruby LibXML parsing - disable external entities to prevent XXE (CWE-611)"
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
     metadata:
       cwe: "CWE-611"
-      tags: [xxe, xml]
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-xxe-libxml-document
-    pattern: LibXML::XML::Document.string($INPUT)
+    pattern-regex: 'LibXML::XML::Document\.(string|io|file)\s*\('
     message: "Ruby LibXML document parsing - XXE vulnerability risk (CWE-611)"
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
     metadata:
       cwe: "CWE-611"
-      tags: [xxe, xml]
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-xxe-ox-parse
-    pattern: Ox.parse($INPUT)
+    pattern-regex: 'Ox\.(parse|load)\s*\('
     message: "Ruby Ox XML parsing - verify external entities are disabled (CWE-611)"
-    languages: [ruby]
+    languages: [generic]
     severity: WARNING
     metadata:
       cwe: "CWE-611"
-      tags: [xxe, xml]
+    paths:
+      include:
+        - "*.rb"
 
   - id: ruby-xxe-xpath-user-input
-    pattern: $DOC.xpath(params[$X])
+    pattern-regex: '\.xpath\s*\(\s*params\s*\['
     message: "Ruby XPath with user input - XPath injection vulnerability (CWE-643)"
-    languages: [ruby]
+    languages: [generic]
     severity: ERROR
     metadata:
       cwe: "CWE-643"
-      tags: [xpath, injection]
+    paths:
+      include:
+        - "*.rb"
