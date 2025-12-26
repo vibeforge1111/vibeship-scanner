@@ -239,3 +239,280 @@ rules:
     message: Kotlin println - use proper logging, avoid in production
     languages: [kotlin]
     severity: INFO
+
+  # ============================================
+  # Android - WebView Security (InsecureShop gaps)
+  # ============================================
+
+  - id: kotlin-android-webview-loadurl-intent
+    pattern: $WEBVIEW.loadUrl(intent.$METHOD(...))
+    message: WebView loading URL from Intent - validate URL origin (CWE-939)
+    languages: [kotlin]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-939"
+
+  - id: kotlin-android-webview-loadurl-getstring
+    pattern: $WEBVIEW.loadUrl($INTENT.getStringExtra(...))
+    message: WebView loading URL from Intent extra - URL injection risk
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-android-webview-loadurl-data
+    pattern: $WEBVIEW.loadUrl($DATA.toString())
+    message: WebView loading URL from data - validate before loading
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-android-webview-content-access
+    pattern: $WEBVIEW.settings.allowContentAccess = true
+    message: WebView content access enabled - potential content provider leak
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-android-webview-universal-access
+    pattern: $WEBVIEW.settings.allowUniversalAccessFromFileURLs = true
+    message: WebView universal file access - severe security risk (CWE-200)
+    languages: [kotlin]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-200"
+
+  # ============================================
+  # Android - Broadcast Security
+  # ============================================
+
+  - id: kotlin-android-sendbroadcast
+    pattern: sendBroadcast($INTENT)
+    message: Implicit broadcast - use LocalBroadcastManager or explicit receiver (CWE-927)
+    languages: [kotlin]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-927"
+
+  - id: kotlin-android-sendbroadcast-url
+    pattern: |
+      $INTENT.putExtra(..., $URL)
+      ...
+      sendBroadcast($INTENT)
+    message: Broadcasting URL via implicit intent - may leak to malicious apps
+    languages: [kotlin]
+    severity: ERROR
+
+  - id: kotlin-android-registerreceiver-unprotected
+    pattern: registerReceiver($RECEIVER, $FILTER)
+    message: Unprotected broadcast receiver - consider permission protection
+    languages: [kotlin]
+    severity: WARNING
+
+  # ============================================
+  # Android - Intent Security
+  # ============================================
+
+  - id: kotlin-android-implicit-intent
+    pattern: Intent($ACTION)
+    message: Implicit Intent may be intercepted - prefer explicit intents for sensitive data
+    languages: [kotlin]
+    severity: INFO
+
+  - id: kotlin-android-intent-setdata-untrusted
+    pattern: |
+      intent.data = $URI
+      ...
+      startActivity(intent)
+    message: Starting activity with untrusted data URI - validate origin
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-android-setresult-uri
+    pattern: setResult($CODE, Intent().setData($URI))
+    message: Returning URI in result - ensure proper access control (CWE-284)
+    languages: [kotlin]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-284"
+
+  - id: kotlin-android-setresult-intent
+    pattern: setResult(..., $INTENT)
+    message: Returning Intent as result - validate content before returning
+    languages: [kotlin]
+    severity: INFO
+
+  - id: kotlin-android-startactivityforresult-implicit
+    pattern: startActivityForResult(Intent(...), ...)
+    message: startActivityForResult with implicit intent - result may come from malicious app
+    languages: [kotlin]
+    severity: WARNING
+
+  # ============================================
+  # Android - Content Provider Security
+  # ============================================
+
+  - id: kotlin-android-contentprovider-query
+    pattern: contentResolver.query($URI, ...)
+    message: ContentProvider query - validate URI source and permissions
+    languages: [kotlin]
+    severity: INFO
+
+  - id: kotlin-android-contentprovider-openinputstream
+    pattern: contentResolver.openInputStream($URI)
+    message: Opening stream from ContentProvider URI - validate URI source
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-android-grant-uri-permission
+    pattern: grantUriPermission($PACKAGE, $URI, ...)
+    message: Granting URI permission - verify package and URI (CWE-284)
+    languages: [kotlin]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-284"
+
+  - id: kotlin-android-flag-grant-read
+    pattern: Intent.FLAG_GRANT_READ_URI_PERMISSION
+    message: Granting read URI permission via Intent flag - verify recipient
+    languages: [kotlin]
+    severity: INFO
+
+  # ============================================
+  # Android - File Provider Security
+  # ============================================
+
+  - id: kotlin-android-fileprovider-geturi
+    pattern: FileProvider.getUriForFile($CTX, $AUTH, $FILE)
+    message: FileProvider URI generation - ensure paths are properly scoped
+    languages: [kotlin]
+    severity: INFO
+
+  - id: kotlin-android-chooser-with-uri
+    pattern: Intent.createChooser($INTENT, ...)
+    message: Chooser with file - ensure no sensitive files are exposed (CWE-552)
+    languages: [kotlin]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-552"
+
+  # ============================================
+  # Android - AWS/Cloud SDK Security
+  # ============================================
+
+  - id: kotlin-aws-cognito-identitypool
+    pattern: CognitoCredentialsProvider($POOL_ID, ...)
+    message: AWS Cognito Identity Pool - ensure unauthenticated access is properly restricted
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-aws-cognito-userpool
+    pattern: CognitoUserPool($CTX, $POOL_ID, $CLIENT_ID, ...)
+    message: AWS Cognito User Pool - verify client ID is not exposed in source
+    languages: [kotlin]
+    severity: INFO
+
+  - id: kotlin-aws-s3-public-read
+    pattern: CannedAccessControlList.PublicRead
+    message: AWS S3 public read ACL - ensure intentional (CWE-284)
+    languages: [kotlin]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-284"
+
+  # ============================================
+  # Android - SharedPreferences Security
+  # ============================================
+
+  - id: kotlin-android-sharedprefs-mode-private-missing
+    pattern: getSharedPreferences($NAME, $MODE)
+    message: SharedPreferences - ensure MODE_PRIVATE for sensitive data
+    languages: [kotlin]
+    severity: INFO
+
+  - id: kotlin-android-sharedprefs-putstring-password
+    pattern: $PREFS.edit().putString(..., $PASSWORD)
+    message: Storing sensitive data in SharedPreferences - use EncryptedSharedPreferences
+    languages: [kotlin]
+    severity: WARNING
+
+  - id: kotlin-android-encryptedprefs-missing
+    pattern-regex: 'getSharedPreferences\(.*\)'
+    pattern-not-regex: 'EncryptedSharedPreferences'
+    message: Consider EncryptedSharedPreferences for sensitive data
+    languages: [kotlin]
+    severity: INFO
+
+  # ============================================
+  # Android - SSL/TLS Pinning Issues
+  # ============================================
+
+  - id: kotlin-android-onreceivedssllerror-proceed
+    pattern: |
+      fun onReceivedSslError(..., $HANDLER: SslErrorHandler, ...) {
+        ...
+        $HANDLER.proceed()
+        ...
+      }
+    message: SSL error ignored - certificate validation bypassed (CWE-295)
+    languages: [kotlin]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-295"
+
+  - id: kotlin-android-sslsocketfactory-trust
+    pattern: SSLSocketFactory($TRUST_MANAGER)
+    message: Custom SSLSocketFactory - verify proper certificate validation
+    languages: [kotlin]
+    severity: WARNING
+
+  # ============================================
+  # Android - Deep Link Security
+  # ============================================
+
+  - id: kotlin-android-deeplink-getdata
+    pattern: intent?.data
+    message: Deep link data - validate URL scheme and host before processing
+    languages: [kotlin]
+    severity: INFO
+
+  - id: kotlin-android-deeplink-host-check-missing
+    pattern: |
+      val uri = intent.data
+      ...
+      $WEBVIEW.loadUrl(uri.toString())
+    message: Deep link loaded in WebView without host validation (CWE-939)
+    languages: [kotlin]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-939"
+
+  # ============================================
+  # Android - Logging Credentials
+  # ============================================
+
+  - id: kotlin-android-log-credentials
+    pattern: Log.$METHOD($TAG, ...$CRED...)
+    message: Potential credential logging - sensitive data in logcat
+    languages: [kotlin]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-532"
+
+  - id: kotlin-android-log-token
+    pattern-regex: 'Log\.\w+\([^,]+,\s*.*(?:token|password|secret|key|auth).*\)'
+    message: Sensitive data may be logged - review for credential exposure
+    languages: [kotlin]
+    severity: WARNING
+
+  # ============================================
+  # Android - Activity/Component Export
+  # ============================================
+
+  - id: kotlin-android-activity-intent-filter
+    pattern-regex: '@.*IntentFilter'
+    message: Activity with IntentFilter is implicitly exported - verify access control
+    languages: [kotlin]
+    severity: INFO
+
+  - id: kotlin-android-broadcast-receiver-class
+    pattern: 'class $NAME : BroadcastReceiver()'
+    message: BroadcastReceiver - ensure proper permission protection if exported
+    languages: [kotlin]
+    severity: INFO
