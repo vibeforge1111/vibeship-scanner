@@ -5,42 +5,16 @@ This project uses Mind for persistent memory across sessions.
 
 ### Required Protocol
 
-1. **Session Start**: ALWAYS call `mind_recall()` before responding to the first message. This loads context from previous sessions.
+1. **Session Start**: ALWAYS call `mind_recall()` before responding to the first message.
 
 2. **During Work**: Use `mind_log(message, type)` to capture what happens:
-   - `mind_log("chose X over Y - simpler", type="decision")` -> MEMORY.md
-   - `mind_log("API returns 500 on large payloads", type="problem")` -> MEMORY.md
-   - `mind_log("Safari needs vendor prefix for X", type="learning")` -> MEMORY.md
-   - `mind_log("resolved by increasing timeout", type="progress")` -> MEMORY.md
-   - `mind_log("working on auth flow", type="experience")` -> SESSION.md
-   - `mind_log("build keeps failing", type="blocker")` -> SESSION.md
-   - `mind_log("tried Redis - too complex", type="rejected")` -> SESSION.md
-   - `mind_log("assuming user has stable internet", type="assumption")` -> SESSION.md
+   - `decision`, `learning`, `problem`, `progress` → MEMORY.md (permanent)
+   - `experience`, `blocker`, `rejected`, `assumption` → SESSION.md (ephemeral)
 
 3. **Session End**: Summarize with `## DATE | what happened | mood: X`
 
-### Two-Layer Memory
-
-**MEMORY.md** (permanent, cross-session):
-- Decisions, learnings, problems, progress
-- Use types: `decision`, `learning`, `problem`, `progress`
-
-**SESSION.md** (ephemeral, within-session):
-- Raw experience, blockers, rejected approaches, assumptions
-- Use types: `experience`, `blocker`, `rejected`, `assumption`
-- Valuable items get promoted to MEMORY.md on session gap (>30 min)
-
 ### Tools Available
-
-- `mind_recall()` - Load session context (CALL FIRST!)
-- `mind_log(msg, type)` - Log to session or memory (routes by type)
-- `mind_session()` - Get current session state
-- `mind_blocker(description)` - Log blocker + auto-search memory for solutions
-- `mind_search(query)` - Find specific memories
-- `mind_remind(msg, when)` - Set time or context reminder
-- `mind_checkpoint()` - Force process pending memories
-- `mind_edges(intent)` - Check for gotchas before coding
-- `mind_status()` - Check memory health
+`mind_recall()` | `mind_log(msg, type)` | `mind_session()` | `mind_blocker(desc)` | `mind_search(query)` | `mind_remind(msg, when)` | `mind_checkpoint()` | `mind_edges(intent)` | `mind_status()`
 
 ---
 
@@ -49,251 +23,58 @@ This project uses Mind for persistent memory across sessions.
 sveltekit, typescript, supabase
 
 ## Supabase Configuration (IMPORTANT)
-**Current Supabase Project**: `kgxjubeaddrocooklyib`
+**Current Project**: `kgxjubeaddrocooklyib`
 - **URL**: `https://kgxjubeaddrocooklyib.supabase.co`
 - **API Key**: See `.env` file for `VITE_SUPABASE_ANON_KEY`
 - **Note**: Old project `jryabrpfzwtdqvnemqgj` is defunct - DO NOT USE
 
-## Gotchas
-(None yet - add to .mind/MEMORY.md Gotchas section)
+---
 
+# Vibeship Scanner Development Guide
 
-# CLAUDE.md - Vibeship Scanner Development Guide
+Security scanning tool analyzing GitHub repos using **Opengrep** (SAST), **Trivy** (dependencies), **Gitleaks** (secrets).
 
-This file provides guidance to Claude Code when working with this repository.
+## THE #1 RULE: COVERAGE = DETECTED vs DOCUMENTED
 
-## Project Overview
+```
+COVERAGE IS NEVER: "We have rules for X"
+COVERAGE IS ALWAYS: "Scan [ID] detected X at [file:line] with [rule_id]"
 
-Vibeship Scanner is a security scanning tool that analyzes GitHub repositories for vulnerabilities using:
-- **Opengrep** - Static Application Security Testing (SAST) - open-source Semgrep fork
-- **Trivy** - Dependency vulnerability scanning
-- **Gitleaks** - Secret detection
+For full verification methodology, see: SECURITY_TEST_PROCEDURE.md
+```
 
 ---
 
-## 🚨🚨🚨 CRITICAL: COVERAGE = SCAN RESULTS vs REPO DOCS 🚨🚨🚨
+## How to Trigger Scans
 
-```
-╔═══════════════════════════════════════════════════════════════════════════════╗
-║  THIS IS THE #1 RULE FOR ALL BENCHMARK WORK - READ THIS EVERY TIME            ║
-╠═══════════════════════════════════════════════════════════════════════════════╣
-║                                                                               ║
-║  COVERAGE IS NEVER ABOUT WHAT RULES WE HAVE                                   ║
-║  COVERAGE IS ALWAYS ABOUT WHAT THE SCAN ACTUALLY DETECTED                     ║
-║                                                                               ║
-║  ❌ WRONG: "We have rules for SQL injection, so we detect it"                 ║
-║  ❌ WRONG: "Our ruleset covers XSS patterns"                                  ║
-║  ❌ WRONG: "The scanner should catch this"                                    ║
-║                                                                               ║
-║  ✅ RIGHT: "Scan abc123 found SQL injection at file.py:42 (rule: py-sqli)"   ║
-║  ✅ RIGHT: "XSS detected in 3 files - views.py:15, app.py:89, util.py:7"     ║
-║  ✅ RIGHT: "Challenge 11 SSRF: detected at mock_log.py:22 by py-ssrf-*"      ║
-║                                                                               ║
-╚═══════════════════════════════════════════════════════════════════════════════╝
-```
+**ALWAYS use the deployed API** - never run local opengrep commands directly.
 
-### The Verification Formula
-
-```
-COVERAGE = (Vulnerabilities ACTUALLY DETECTED in scan results)
-           ─────────────────────────────────────────────────────
-           (Vulnerabilities DOCUMENTED in repo that ARE SAST-detectable)
-```
-
-### Step-by-Step Verification Process (MANDATORY)
-
-**For EVERY benchmark repo, you MUST follow these exact steps:**
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 1: GET REPO'S VULNERABILITY LIST                                      │
-│  ────────────────────────────────────────────────────────────────────────── │
-│  • Read the repo's README.md                                                │
-│  • Check wiki pages, challenge descriptions, or vuln documentation          │
-│  • List EVERY vulnerability the repo claims to contain                      │
-│  • Record the SOURCE (e.g., "README line 45", "challenges.md")              │
-│                                                                             │
-│  Example output:                                                            │
-│  1. SQL Injection (README)                                                  │
-│  2. XSS Reflected (README)                                                  │
-│  3. Command Injection (challenges.md)                                       │
-│  4. CSRF (README) ← mark as "NOT SAST-detectable"                           │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 2: CLASSIFY EACH VULNERABILITY                                        │
-│  ────────────────────────────────────────────────────────────────────────── │
-│  For each vuln, ask: "Can static analysis detect this?"                     │
-│                                                                             │
-│  SAST-DETECTABLE (code patterns):          NOT SAST-DETECTABLE (runtime):   │
-│  ✅ SQL Injection                          ❌ CSRF (token validation)        │
-│  ✅ XSS (server-side)                      ❌ Session Management             │
-│  ✅ Command Injection                      ❌ Rate Limiting                  │
-│  ✅ Path Traversal                         ❌ BOLA/BFLA (authorization)      │
-│  ✅ SSRF, XXE, SSTI                        ❌ Business Logic Flaws           │
-│  ✅ Hardcoded Secrets                      ❌ Race Conditions                │
-│  ✅ Insecure Deserialization               ❌ Brute Force Protection         │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 3: RUN SCAN AND GET RESULTS FROM SUPABASE                             │
-│  ────────────────────────────────────────────────────────────────────────── │
-│  • Trigger scan via API (get scan_id)                                       │
-│  • Wait for scan to complete                                                │
-│  • Query findings from Supabase:                                            │
-│                                                                             │
-│    SELECT rule_id, file_path, line_start, severity, message                 │
-│    FROM findings WHERE scan_id = 'your-scan-id'                             │
-│                                                                             │
-│  • These are the ONLY findings that count as "detected"                     │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 4: MAP FINDINGS TO DOCUMENTED VULNERABILITIES                         │
-│  ────────────────────────────────────────────────────────────────────────── │
-│  For each SAST-detectable vuln from Step 1:                                 │
-│  • Search scan results for findings that match                              │
-│  • Record: rule_id, file:line, scan_id                                      │
-│  • If no finding exists → mark as GAP (needs new rule)                      │
-│                                                                             │
-│  REQUIRED TABLE FORMAT:                                                     │
-│  ┌───┬──────────────────┬──────────┬─────────────┬──────────────────────┐   │
-│  │ # │ Documented Vuln  │ Detected │ Rule ID     │ Evidence (file:line) │   │
-│  ├───┼──────────────────┼──────────┼─────────────┼──────────────────────┤   │
-│  │ 1 │ SQL Injection    │ ✅       │ py-sqli-*   │ db.py:42             │   │
-│  │ 2 │ XSS              │ ✅       │ xss-reflect │ views.py:15          │   │
-│  │ 3 │ Command Inj      │ ❌ GAP   │ -           │ NEEDS RULE           │   │
-│  │ 4 │ CSRF             │ ➖ N/A   │ -           │ Runtime only         │   │
-│  └───┴──────────────────┴──────────┴─────────────┴──────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 5: CALCULATE COVERAGE AND ITERATE                                     │
-│  ────────────────────────────────────────────────────────────────────────── │
-│  Coverage = Detected / SAST-Detectable × 100%                               │
-│                                                                             │
-│  Example: 3 SAST-detectable, 2 detected → 2/3 = 67%                         │
-│                                                                             │
-│  IF coverage < 100%:                                                        │
-│    1. Write new rules for the GAPs                                          │
-│    2. Deploy rules (fly deploy)                                             │
-│    3. Re-scan the repo                                                      │
-│    4. Go back to Step 3                                                     │
-│    5. Repeat until 100%                                                     │
-│                                                                             │
-│  IF coverage = 100%:                                                        │
-│    • Document in CLAUDE.md and SECURITY_TEST_PROCEDURE.md                   │
-│    • Commit with scan evidence                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### STOP AND CHECK: Before Claiming Coverage
-
-Ask yourself these questions. If ANY answer is "no", you have NOT verified:
-
-| Question | Required Answer |
-|----------|-----------------|
-| Did I read the repo's README/docs? | YES - with specific vulns listed |
-| Do I have a scan ID? | YES - e.g., "ea1b3b28-e1f3-..." |
-| Did I query actual findings from Supabase? | YES - not just "scan found 500" |
-| Can I cite rule_id + file:line for each detection? | YES - for every ✅ |
-| Did I explain why each ➖ N/A is not SAST-detectable? | YES - specific reason |
-
-### Common Mistakes to AVOID
-
-```
-❌ MISTAKE: "We have Python rules for SSRF, so SSRF is covered"
-   WHY WRONG: Having rules ≠ detecting. Maybe the rule doesn't match this code pattern.
-
-❌ MISTAKE: "The scan found 1000 findings, so coverage is high"
-   WHY WRONG: 1000 findings could all be the same vuln type. Must map to EACH documented vuln.
-
-❌ MISTAKE: "Previous session said this repo is at 90%"
-   WHY WRONG: Rules change. Must re-verify with fresh scan.
-
-❌ MISTAKE: "SQL injection should be detected by our rules"
-   WHY WRONG: "Should" is not evidence. Show the actual finding.
-
-❌ MISTAKE: Marking ✅ without file:line evidence
-   WHY WRONG: No proof = no detection. Always cite the specific finding.
-```
-
-### Correct Verification Example (DSVW)
-
-```
-Scan ID: ea1b3b28-e1f3-48e8-8a17-766040ecf1aa
-Repo docs: https://github.com/stamparm/DSVW (README lists 26 vulns)
-
-| # | Documented Vuln | SAST? | Detected | Rule ID | Evidence |
-|---|-----------------|-------|----------|---------|----------|
-| 1 | Blind SQL Inj   | ✅    | ✅       | py-sql-injection-format | dsvw.py:85 |
-| 2 | XSS             | ✅    | ✅       | py-xss-format-html | dsvw.py:95 |
-| 3 | Command Inj     | ✅    | ✅       | py-command-injection | dsvw.py:112 |
-| 4 | CSRF            | ❌    | ➖ N/A   | - | Token validation is runtime |
-...
-| 20| Debug Mode      | ✅    | ✅       | py-flask-debug | dsvw.py:162 |
-
-SAST-Detectable: 20 | Detected: 20 | Coverage: 100%
-```
-
-**THIS is what verified coverage looks like. Scan ID + Rule ID + File:Line for every detection.**
-
----
-
-## IMPORTANT: How to Trigger Scans
-
-**ALWAYS use the deployed Vibeship Scanner API for scans** - never run local semgrep/opengrep commands directly.
-
-### Scan Procedure (MUST FOLLOW)
-
-```bash
-# 1. Generate a UUID for the scan
-SCAN_ID=$(python -c "import uuid; print(uuid.uuid4())")
-
-# 2. Trigger the scan via curl
-curl -X POST https://scanner-empty-field-5676.fly.dev/scan \
-  -H "Content-Type: application/json" \
-  -d "{\"scanId\": \"$SCAN_ID\", \"repoUrl\": \"https://github.com/OWNER/REPO\"}"
-
-# 3. Provide the scan URLs to the user
-echo "View at: http://localhost:5173/scan/$SCAN_ID"
-echo "View at: https://scanner.vibeship.co/scan/$SCAN_ID"
-```
-
-### Quick One-Liner Template
+### Quick Scan Command
 ```bash
 SCAN_ID=$(python -c "import uuid; print(uuid.uuid4())") && \
 echo "Scan ID: $SCAN_ID" && \
-echo "View at: http://localhost:5173/scan/$SCAN_ID" && \
 echo "View at: https://scanner.vibeship.co/scan/$SCAN_ID" && \
 curl -X POST https://scanner-empty-field-5676.fly.dev/scan \
   -H "Content-Type: application/json" \
   -d "{\"scanId\": \"$SCAN_ID\", \"repoUrl\": \"https://github.com/OWNER/REPO\"}"
 ```
 
-### View Results At
-- **Local dev**: `http://localhost:5173/scan/<scanId>`
+### View Results
 - **Production**: `https://scanner.vibeship.co/scan/<scanId>`
+- **Local dev**: `http://localhost:5173/scan/<scanId>`
 
-### Why This Matters
-1. Results are saved to Supabase and viewable in the web UI
-2. All four scanners run (Opengrep + Trivy + Gitleaks + npm audit)
-3. Consistent rule versions from deployed scanner
-4. Scan progress is tracked in real-time
-
-### Monitoring Scans
+### Monitor Scans
 ```bash
-# Watch scanner logs in real-time
-fly logs -a scanner-empty-field-5676
-
-# Get recent logs (no streaming)
-fly logs -a scanner-empty-field-5676 --no-tail | tail -100
+fly logs -a scanner-empty-field-5676           # Real-time
+fly logs -a scanner-empty-field-5676 --no-tail # Recent logs
 ```
 
 ### Common Issues
-- **Scan stuck in "scanning"**: Check Fly.io logs for errors
-- **Database errors**: Ensure scan row is created with proper schema (target_url, target_url_hash, target_branch)
-- **Deployment kills running scans**: Fly.io restarts terminate in-progress scans - wait for completion before deploying
+- **Scan stuck**: Check Fly.io logs for errors
+- **DB errors**: Ensure scan row has proper schema (target_url, target_url_hash, target_branch)
+- **Deploy kills scans**: Wait for completion before deploying
+
+---
 
 ## Architecture
 
@@ -301,263 +82,108 @@ fly logs -a scanner-empty-field-5676 --no-tail | tail -100
 vibeship-scanner/
 ├── src/                    # SvelteKit frontend
 │   ├── routes/             # Pages and API routes
-│   ├── lib/                # Shared utilities
-│   └── app.html            # HTML template
+│   └── lib/                # Shared utilities
 ├── scanner/                # Python scanner service (Fly.io)
-│   ├── scan.py             # Main scanning orchestrator
-│   ├── server.py           # Flask API server
-│   ├── rules/              # Semgrep rule files
-│   │   ├── core.yaml       # Core security rules
-│   │   └── vibeship.yaml   # Extended rules
-│   └── Dockerfile          # Scanner container
+│   ├── scan.py             # Main orchestrator
+│   ├── server.py           # Flask API
+│   └── rules/              # Opengrep rule files
 └── docs/                   # Documentation
 ```
+
+### Key Files
+- `scanner/rules/*.yaml` - Security detection rules
+- `scanner/scan.py` - Main scanning logic
+- `src/routes/scan/[id]/+page.svelte` - Scan results page
+
+---
 
 ## Development Commands
 
 ```bash
-# Start frontend dev server
-npm run dev
-
-# Build for production
-npm run build
-
-# Deploy scanner to Fly.io
-cd scanner && fly deploy --remote-only
-
-# Validate Semgrep rules
-semgrep --validate --config scanner/rules/
+npm run dev                              # Start frontend
+npm run build                            # Build production
+cd scanner && fly deploy --remote-only   # Deploy scanner
+semgrep --validate --config scanner/rules/  # Validate rules
 ```
 
-## Key Files
+---
 
-- `scanner/rules/core.yaml` - Core Semgrep security rules
-- `scanner/rules/vibeship.yaml` - Extended Semgrep rules
-- `scanner/scan.py` - Main scanning logic
-- `src/routes/api/scan/+server.ts` - Scan API endpoint
-- `src/routes/scan/[id]/+page.svelte` - Scan results page
+## Benchmark Testing Workflow
 
-## Security Knowledge Base
-
-### IMPORTANT: Maintaining SECURITY_COMMONS.md
-
-The `SECURITY_COMMONS.md` file is our **living security vulnerability database**. It must be continuously updated with:
-
-1. **New vulnerability patterns** discovered during:
-   - Research on vulnerable applications (DVWA, Juice Shop, etc.)
-   - Analysis of GitHub security advisories
-   - Review of scan results from real repositories
-   - CVE database monitoring
-
-2. **For each vulnerability, document**:
-   - CWE ID and name
-   - Risk level (Critical/High/Medium/Low)
-   - Vulnerable code examples
-   - Secure code examples
-   - Key prevention points
-
-3. **Use this database to**:
-   - Improve Semgrep rules in `scanner/rules/`
-   - Enhance scanner explanations
-   - Provide accurate fix recommendations
-   - Train and validate scanner accuracy
-
-4. **After finding new vulnerabilities**:
-   - Add to SECURITY_COMMONS.md with examples
-   - Consider adding new Semgrep rules if detectable
-   - Update SECURITY_TEST_PROCEDURE.md if needed
-
-### Testing Against Vulnerable Apps
-
-**IMPORTANT**: Follow `SECURITY_TEST_PROCEDURE.md` for systematic scanner improvement.
-
-The test procedure contains **30 vulnerable repositories** organized by priority:
-- **Tier 1 (Critical)**: DVWA, Juice Shop, crAPI, NodeGoat, WebGoat, DVNA
-- **Tier 2 (Language-Specific)**: RailsGoat, Django.nV, Flask, DSVW, PHP, Java apps
-- **Tier 3 (Specialized)**: API security, SSRF, XXE, GraphQL, CI/CD, secrets
-- **Tier 4 (Additional)**: Mobile, .NET, Kubernetes, CTF tools
-
-**Iterative Improvement Workflow (MUST FOLLOW)**:
-
-For each vulnerable repository, iterate until all key vulnerabilities are detected:
+For each vulnerable repo, iterate until 100% SAST coverage:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  1. INITIAL SCAN                                            │
-│     - Trigger scan using the scan procedure above           │
-│     - Save scan ID for comparison                           │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│  2. GAP ANALYSIS                                            │
-│     - Review the repo's README/docs for known vulns         │
-│     - Check what OWASP Top 10 vulns the repo claims to have │
-│     - Compare against our scan findings                     │
-│     - List missing detections (gaps)                        │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│  3. RULESET UPGRADE                                         │
-│     - Create new Opengrep rules for gaps                    │
-│     - Validate rules: opengrep --validate -f rule.yaml      │
-│     - Deploy: cd scanner && fly deploy --remote-only        │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│  4. RE-SCAN & DIFF                                          │
-│     - Trigger new scan on same repo (new scan ID)           │
-│     - Use the diff tool to compare old vs new findings      │
-│     - Verify new rules caught the gaps                      │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│  5. ITERATE OR COMPLETE                                     │
-│     - If gaps remain → go back to step 2                    │
-│     - If all key vulns detected → document and commit       │
-│     - Update SECURITY_TEST_PROCEDURE.md with results        │
-└─────────────────────────────────────────────────────────────┘
+1. SCAN → Trigger via API, save scan_id
+2. GAP ANALYSIS → Compare findings vs repo's documented vulns
+3. WRITE RULES → Create Opengrep rules for gaps
+4. DEPLOY → fly deploy --remote-only
+5. RESCAN → Verify new detections
+6. ITERATE → Repeat until all SAST-detectable vulns are caught
 ```
 
-**Gap Analysis Checklist**:
-- [ ] SQL Injection (if repo has database)
-- [ ] XSS (if repo has web UI)
-- [ ] Command Injection (if repo runs shell commands)
-- [ ] Path Traversal (if repo handles file paths)
-- [ ] SSRF (if repo makes HTTP requests)
-- [ ] Insecure Deserialization (if repo deserializes data)
-- [ ] Hardcoded Secrets (API keys, passwords)
-- [ ] Broken Authentication (weak session handling)
-- [ ] Security Misconfiguration (debug mode, CORS)
-- [ ] Vulnerable Dependencies (outdated packages)
+### SAST-Detectable vs Runtime-Only
 
-**Current Verified Benchmark Coverage** (as of Dec 2024):
+| SAST-Detectable | NOT SAST-Detectable |
+|-----------------|---------------------|
+| SQL/Command/Code Injection | CSRF (token validation) |
+| XSS (server-side), SSTI | Session Management |
+| Path Traversal, SSRF, XXE | Rate Limiting, DoS |
+| Hardcoded Secrets | BOLA/BFLA (authorization) |
+| Insecure Deserialization | Business Logic Flaws |
+| Dangerous function calls | Race Conditions |
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  VIBESHIP SCANNER - VERIFIED BENCHMARK (32 repos, 60,000+ findings)         │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  TIER 1 (Critical - 6 repos):                                               │
-│  ├─ DVWA (PHP)            151 findings   SQL, XSS, Command Inj, LFI        │
-│  ├─ Juice Shop (JS)       931 findings   OWASP Top 10 coverage             │
-│  ├─ crAPI (Python/JS)     137 findings   OWASP API Top 10                  │
-│  ├─ NodeGoat (JS)          93 findings   Node.js security patterns         │
-│  ├─ WebGoat (Java)      1,871 findings   399 Java files, 222 secrets       │
-│  └─ DVNA (JS)             252 findings   32 critical, 58 high              │
-│                                                                             │
-│  TIER 2 (Language-Specific - 6 repos):                                      │
-│  ├─ RailsGoat (Ruby)      507 findings   First Ruby repo tested            │
-│  ├─ Django.nV (Python)    646 findings   25 critical, 63 high              │
-│  ├─ Flask App (Python)    393 findings   SSTI, Flask debug mode            │
-│  ├─ DSVW (Python)          65 findings   Minimal app, high signal          │
-│  ├─ OWASPWebGoatPHP     3,400 findings   211 critical, 1582 high           │
-│  └─ VulnerableApp (Java)  289 findings   Java security patterns            │
-│                                                                             │
-│  TIER 3 (Specialized - 8 repos):                                            │
-│  ├─ VAmPI (REST API)      213 findings   OWASP API Top 10                  │
-│  ├─ SSRF Lab               23 findings   Server-side request forgery       │
-│  ├─ xxelab (Java)         187 findings   XML External Entity               │
-│  ├─ wrongsecrets          498 findings   Secret management                 │
-│  ├─ github-actions-goat    14 findings   CI/CD security                    │
-│  ├─ DVGA (GraphQL)      1,268 findings   GraphQL vulns                     │
-│  ├─ Tiredful-API          397 findings   REST API security                 │
-│  └─ InsecureShop           10 findings   Android/Kotlin                    │
-│                                                                             │
-│  TIER 4 (Additional - 5 repos):                                             │
-│  ├─ Hackazon (PHP)      3,341 findings   PHP e-commerce                    │
-│  ├─ secDevLabs          4,856 findings   Multi-lang, largest repo          │
-│  ├─ nodejs-goof           364 findings   172 Trivy dependency vulns        │
-│  ├─ DVTA (.NET)            52 findings   46 critical secrets               │
-│  └─ iGoat-Swift            98 findings   iOS/Swift patterns                │
-│                                                                             │
-│  TIER 5 (Solidity/DeFi - 7 repos):                                          │
-│  ├─ DeFiHackLabs       37,590 findings   674 real hacks (2017-2025)        │
-│  ├─ sherlock-derby      1,444 findings   100% match with audit docs        │
-│  ├─ numoen/pmmp         1,168 findings   AMM protocol                      │
-│  ├─ Ethernaut           1,187 findings   Solidity CTF                      │
-│  ├─ damn-vulnerable-defi  502 findings   18 DeFi challenges                │
-│  ├─ dvd-foundry           349 findings   Foundry version                   │
-│  └─ code4rena-numoen    1,106 findings   7 crit, 78 high, 292 med          │
-└─────────────────────────────────────────────────────────────────────────────┘
+**Full benchmark data**: See `SECURITY_TEST_PROCEDURE.md` for:
+- 32 verified benchmark repos with scan IDs
+- Detection coverage matrix by language
+- crAPI, DSVW, and other detailed verifications
+
+---
+
+## DON'T DO THIS (Anti-Patterns)
+
+| Mistake | Why It's Wrong |
+|---------|----------------|
+| "We have rules for X, so X is covered" | Having rules ≠ detecting. Verify with actual scan. |
+| "Scan found 1000 findings, coverage is high" | Must map to EACH documented vuln, not total count. |
+| "Previous session said 90%" | Rules change. Re-verify with fresh scan. |
+| Marking ✅ without file:line evidence | No proof = no detection. |
+| Claiming detection without scan ID | Always cite: `scan_id + rule_id + file:line` |
+| Estimating coverage | Calculate from actual data only. |
+
+---
+
+## Semgrep/Opengrep Rule Guidelines
+
+```yaml
+# GOOD - Quote patterns with colons
+pattern: 'subprocess.call($CMD, shell=True)'
+
+# BAD - Will fail validation
+pattern: subprocess.call($CMD, shell=True)
 ```
 
-**Detection Coverage by Vulnerability Type**:
-| Vulnerability | PHP | JS | Python | Java | Ruby | Solidity |
-|--------------|-----|----|---------|----|------|----------|
-| SQL Injection | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
-| XSS | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
-| Command Injection | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
-| SSTI | ✅ | ✅ | ✅ | ⚠️ | ✅ | N/A |
-| Path Traversal | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
-| SSRF | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
-| XXE | ⚠️ | ⚠️ | ✅ | ✅ | ⚠️ | N/A |
-| Hardcoded Secrets | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Vulnerable Deps | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
-| Reentrancy | N/A | N/A | N/A | N/A | N/A | ✅ |
-| Access Control | N/A | N/A | N/A | N/A | N/A | ✅ |
+**Always validate**: `semgrep --validate --config scanner/rules/`
 
-**What We DON'T Detect (Requires DAST/Manual)**:
-- CSRF, Session Management, Brute Force (runtime behavior)
-- Business Logic flaws (semantic understanding)
-- Race Conditions (parallel execution)
-- CSP/CORS policies (configuration testing)
+**Include**: Unique rule ID, clear message, severity (ERROR/WARNING/INFO), target languages
 
-## Semgrep Rule Guidelines
-
-When adding rules to `scanner/rules/`:
-
-1. **YAML syntax**: Quote patterns containing colons
-   ```yaml
-   # GOOD
-   pattern: 'subprocess.call($CMD, shell=True)'
-
-   # BAD - will fail validation
-   pattern: subprocess.call($CMD, shell=True)
-   ```
-
-2. **Always validate** before deploying:
-   ```bash
-   semgrep --validate --config scanner/rules/core.yaml
-   ```
-
-3. **Include**:
-   - Unique rule ID
-   - Clear message
-   - Severity (ERROR/WARNING/INFO)
-   - Target languages
-
-## Environment Variables
-
-Frontend (.env):
-- `PUBLIC_SUPABASE_URL`
-- `PUBLIC_SUPABASE_ANON_KEY`
-- `SCANNER_API_URL`
-
-Scanner (Fly.io secrets):
-- Set via `fly secrets set KEY=value`
+---
 
 ## Deployment
 
 **Frontend**: Auto-deploys via Vercel on push to main
 
-**Scanner**: Manual deploy to Fly.io
+**Scanner**: Manual deploy
 ```bash
-cd scanner
-fly deploy --remote-only --no-cache
+cd scanner && fly deploy --remote-only --no-cache
 ```
 
-## Code Style
+---
 
-- TypeScript for frontend
-- Python for scanner
-- No comments unless explaining complex logic
-- Use existing patterns and utilities
+## MCP Servers
 
-## MCP Servers Configuration
+### Public Endpoint
+**URL**: `https://scanner.vibeship.co/mcp`
 
-### Public MCP Endpoint (No Install Required)
-**URL:** `https://scanner.vibeship.co/mcp`
-
-Add to Claude Desktop config (`claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
@@ -569,416 +195,48 @@ Add to Claude Desktop config (`claude_desktop_config.json`):
 }
 ```
 
-**Available Tools:**
-- `scanner_scan` - Start a security scan on a GitHub repo
-- `scanner_status` - Get scan status and results
-- `scanner_lookup_cve` - Look up CVE details from NVD
-- `scanner_lookup_cwe` - Look up CWE weakness details
-- `scanner_get_fix` - Get fix guide for a specific finding
-- `scanner_master_prompt` - Get comprehensive fix guide for all findings
+**Tools**: `scanner_scan`, `scanner_status`, `scanner_lookup_cve`, `scanner_lookup_cwe`, `scanner_get_fix`, `scanner_master_prompt`
 
-### Local Development MCP
-**Location:** `~/.claude/mcp-servers/vibeship-scanner/`
+---
 
-Additional tools for rule development:
-- `validate_opengrep_rule` - Validate rule YAML before deployment
+## Visual Reporting Format
 
-### Other MCP Servers
-- **fetch** - HTTP requests for custom API queries
-- **github** - Repository operations, PR creation (requires GITHUB_TOKEN)
-
-## Security Rule Development Skill
-
-Use the `security-rule-development` skill when:
-- Creating new Opengrep detection rules
-- Benchmarking against vulnerable repos
-- Researching CVEs/CWEs for rule metadata
-- Improving scanner coverage
-
-Skill location: `~/.claude/skills/security-rule-development/`
-
-## Visual Scan Reporting Format
-
-When presenting scan results or comparing scans, ALWAYS use this visual format:
-
-### 1. Scan Comparison Header
-```
-╔══════════════════════════════════════════════════════════════════╗
-║  SCAN COMPARISON: [Repo Name]                                    ║
-╠══════════════════════════════════════════════════════════════════╣
-║  Before: [scan-id-1]  →  After: [scan-id-2]                      ║
-╚══════════════════════════════════════════════════════════════════╝
-```
-
-### 2. Severity Distribution Chart
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  SEVERITY DISTRIBUTION                                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  CRITICAL  ████████████████████  25  (+3)                       │
-│  HIGH      ████████████████████████████████████████  75  (+5)   │
-│  MEDIUM    ██████████████████████████  49  (=)                  │
-│  LOW       ███  5  (-1)                                         │
-│  INFO      ████████████████████  38  (+2)                       │
-│                                                                 │
-│  TOTAL: 192 findings  (was: 189, Δ +3)                          │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 3. Scanner Breakdown
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  SCANNER BREAKDOWN                                              │
-├──────────────┬─────────┬─────────┬──────────────────────────────┤
-│  Scanner     │  Before │  After  │  Change                      │
-├──────────────┼─────────┼─────────┼──────────────────────────────┤
-│  Opengrep    │   100   │   103   │  +3 (new rules working)      │
-│  Trivy       │    77   │    77   │   = (no change)              │
-│  Gitleaks    │    19   │    19   │   = (no change)              │
-│  npm audit   │     0   │     0   │   = (no package.json)        │
-├──────────────┼─────────┼─────────┼──────────────────────────────┤
-│  TOTAL       │   189   │   192   │  +3                          │
-└──────────────┴─────────┴─────────┴──────────────────────────────┘
-```
-
-### 4. Coverage Gap Analysis
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  VULNERABILITY COVERAGE                                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ✅ SQL Injection        [████████████████████] 100%  (15/15)   │
-│  ✅ XSS                   [████████████████████]  95%  (19/20)   │
-│  ✅ Command Injection     [████████████████████] 100%  (8/8)     │
-│  ⚠️  Path Traversal       [████████████░░░░░░░░]  60%  (3/5)     │
-│  ✅ Hardcoded Secrets     [████████████████████] 100%  (19/19)   │
-│  ⚠️  SSRF                 [████████░░░░░░░░░░░░]  40%  (2/5)     │
-│  ❌ XXE                   [░░░░░░░░░░░░░░░░░░░░]   0%  (0/2)     │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 5. Missing Detections & Recommendations
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  RECOMMENDED NEW RULES                                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. [PRIORITY: HIGH] XXE Detection                              │
-│     └─ Languages: Java, PHP, Python                             │
-│     └─ Pattern: XML parser without disabling external entities  │
-│                                                                 │
-│  2. [PRIORITY: MEDIUM] SSRF via URL parsing                     │
-│     └─ Languages: Python, JavaScript, Go                        │
-│     └─ Pattern: User input in URL/HTTP request construction     │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 6. Rule Health Status
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  RULE HEALTH                                                    │
-├─────────────────────────────────────────────────────────────────┤
-│  Total Rules:     2204                                          │
-│  Rules Applied:   2108                                          │
-│  Parse Errors:    0  ✅ (was: 20)                               │
-│  Files Scanned:   36                                            │
-│  Scan Duration:   105s                                          │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Usage
-- Use this format after EVERY scan comparison
-- Update the bar charts proportionally (1 block ≈ 2-5 findings)
-- Always show delta (+/-) when comparing scans
-- Highlight gaps with ⚠️ or ❌ symbols
-- End with actionable recommendations
-
-### 7. Repo Verification Table (PREFERRED FORMAT)
-
-Use this format when verifying coverage against a repo's documented vulnerabilities:
+Use this format for scan comparisons:
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  [REPO NAME] COVERAGE VERIFICATION                                           ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  Scan ID: [scan-id]                                                          ║
-║  Total Findings: XX | Rules Matched: XX unique                               ║
+║  Scan ID: [scan-id] | Total Findings: XX                                     ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  DOCUMENTED VULNERABILITIES vs DETECTIONS                                   │
-├───┬─────────────────────────────────┬───────────────┬───────────┬───────────┤
-│ # │ Vulnerability                   │ SAST-Detect?  │ Detected? │ Rule IDs  │
-├───┼─────────────────────────────────┼───────────────┼───────────┼───────────┤
-│ 1 │ SQL Injection                   │ YES           │ [OK]      │ py-sql-*  │
-│ 2 │ XSS Reflected                   │ YES           │ [OK]      │ xss-*     │
-│ 3 │ Command Injection               │ YES           │ [OK]      │ cmd-*     │
-│ 4 │ CSRF                            │ NO (runtime)  │ N/A       │ -         │
-│ 5 │ Missing Vulnerability           │ YES           │ [MISS]    │ -         │
-│ 6 │ Partial Detection               │ YES           │ [PART]    │ some-rule │
-├───┴─────────────────────────────────┴───────────────┴───────────┴───────────┤
-│  BONUS DETECTIONS (not documented but found):                               │
-│  - Extra Finding 1: rule-id-here                                            │
-│  - Extra Finding 2: rule-id-here                                            │
-└─────────────────────────────────────────────────────────────────────────────┘
+| # | Documented Vuln | SAST? | Detected | Rule ID | Evidence |
+|---|-----------------|-------|----------|---------|----------|
+| 1 | SQL Injection   | YES   | ✅       | py-sqli | file.py:42 |
+| 2 | XSS             | YES   | ✅       | xss-*   | app.js:15 |
+| 3 | CSRF            | NO    | ➖ N/A   | -       | Runtime only |
+| 4 | Command Inj     | YES   | ❌ GAP   | -       | NEEDS RULE |
 
-SAST-Detectable: X/Y vulnerabilities
-Detected: X/Y = XX%
-Missing: [List gaps that need rules]
+SAST Coverage: X/Y = Z%
 ```
 
-**Detection Status Tags:**
-- `[OK]` = Fully detected with evidence
-- `[PART]` = Partially detected (some instances missed)
-- `[MISS]` = Should be detectable but not found
-- `N/A` = Not SAST-detectable (runtime/DAST only)
-
-**Color Enhancement (when supported):**
-- 🟢 `[OK]` - Green for detected
-- 🟡 `[PART]` - Yellow for partial
-- 🔴 `[MISS]` - Red for missing (needs rule)
-- ⚪ `N/A` - Gray for not applicable
-
-This format provides:
-1. Clear header with scan metadata
-2. Line-by-line vulnerability verification
-3. SAST-detectability classification
-4. Rule ID evidence for detections
-5. Bonus findings not in documentation
-6. Summary with exact coverage percentage
+**Status symbols**: ✅ Detected | ⚠️ Partial | ❌ Gap | ➖ N/A (runtime)
 
 ---
 
-## CRITICAL: Benchmark Methodology (MUST FOLLOW)
+## Environment Variables
 
-**NO HALLUCINATIONS ALLOWED** - Only document what is actually detected vs what repos claim.
+**Frontend (.env)**:
+- `PUBLIC_SUPABASE_URL`
+- `PUBLIC_SUPABASE_ANON_KEY`
+- `SCANNER_API_URL`
 
-### Benchmark Verification Protocol
-
-For EVERY vulnerable repository scanned, you MUST:
-
-1. **Research Documented Vulnerabilities**
-   - Read the repo's README, wiki, and documentation
-   - List EVERY vulnerability type the repo claims to contain
-   - Record the SOURCE of each claim (README line, wiki page, etc.)
-
-2. **Compare Against Scan Results**
-   - Query actual findings from Supabase
-   - Map each finding to a documented vulnerability
-   - Calculate ACTUAL detection rate: `(detected / documented) × 100%`
-
-3. **Document with Evidence**
-   - Use the Verified Coverage Table format below
-   - Mark status based on ACTUAL detection, not assumptions
-   - Include specific rule IDs that detected each vuln
-
-4. **Update SECURITY_TEST_PROCEDURE.md**
-   - Add verified coverage table for each repo
-   - Include the tier summary graph
-   - Calculate aggregate coverage per tier
-
-### Verified Coverage Table Template (REQUIRED)
-
-For each repo, create this exact table format:
-
-```markdown
-#### [Repo Name] ([Language]) - Verified Coverage
-
-| # | Documented Vuln | Source | SAST-Detectable? | Detected? | Rule ID | Evidence |
-|---|-----------------|--------|------------------|-----------|---------|----------|
-| 1 | SQL Injection | README | ✅ Yes | ✅ | php-sqli-* | file.php:42 |
-| 2 | XSS | README | ✅ Yes | ✅ | xss-* | app.js:15 |
-| 3 | CSRF | Wiki | ❌ Runtime | ➖ N/A | - | Needs DAST |
-| 4 | XXE | README | ✅ Yes | ❌ | - | MISSING |
-
-**Coverage: 2/3 SAST-detectable = 67%**
-**Gaps: XXE (needs rule)**
-```
-
-### Tier Coverage Graph Template (REQUIRED)
-
-After each tier is complete, create this graph:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  TIER [N] COVERAGE - [Category Name]                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. DVWA         [████████████████░░░░]  80% (8/10 detectable)  │
-│  2. Juice Shop   [██████████████████░░]  90% (18/20)            │
-│  3. NodeGoat     [████████████████████] 100% (12/12)            │
-│  4. crAPI        [████████████░░░░░░░░]  60% (6/10)             │
-│                                                                 │
-│  TIER AVERAGE: 82.5%                                            │
-│  GAPS: CSRF (all), DOM XSS (partial), SSRF (1 repo)             │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Status Symbols (STANDARDIZED)
-
-| Symbol | Meaning | Use When |
-|--------|---------|----------|
-| ✅ | Verified Detected | Finding exists in scan with evidence |
-| ⚠️ | Partial | Some instances detected, others missed |
-| ❌ | Not Detected | Vuln exists but no finding |
-| ➖ | N/A | Not detectable by SAST (runtime/DAST) |
-| ⏳ | Pending | Not yet verified |
-
-### What Counts as "Detected"
-
-A vulnerability is ONLY marked ✅ if:
-1. The scan contains a finding for that vulnerability type
-2. The finding is in a file that implements the vulnerability
-3. The rule ID matches the vulnerability category
-
-A vulnerability is ❌ if:
-1. The repo documents it exists
-2. It IS detectable by static analysis
-3. Our scan did NOT find it
-
-### Aggregate Coverage Calculation
-
-```
-Per-Repo Coverage = (SAST-detected vulns / SAST-detectable vulns) × 100%
-Tier Coverage = Average of all per-repo coverages
-Overall Coverage = Weighted average across all tiers
-```
-
-### When to Update Benchmark
-
-- After EVERY scan of a benchmark repo
-- After adding/modifying Opengrep rules
-- Before claiming any coverage percentage
-- When preparing release notes
-
-### Forbidden Practices
-
-❌ **NEVER claim detection without evidence from scan results**
-❌ **NEVER estimate coverage - calculate from actual data**
-❌ **NEVER mark ✅ without a specific finding/rule ID**
-❌ **NEVER skip verification for "obvious" detections**
-❌ **NEVER copy coverage claims from previous sessions without re-verifying**
+**Scanner**: Set via `fly secrets set KEY=value`
 
 ---
 
-## 100% COVERAGE METHODOLOGY (MANDATORY)
+## Related Documents
 
-**Goal: 100% SAST coverage for every benchmark repo**
-
-### Step 1: List ALL Documented Vulnerabilities
-- Read repo's README, wiki, and source comments
-- Extract every vulnerability the repo claims to contain
-- Number them 1 through N
-
-### Step 2: Classify Each Vulnerability
-For each vulnerability, determine:
-
-**SAST-Detectable (code patterns we CAN detect):**
-- SQL Injection, XSS (server-side), Command Injection
-- Path Traversal, SSRF, XXE, Deserialization
-- Hardcoded secrets, Dangerous function calls
-- SSTI, Open Redirect, Header Injection
-
-**NOT SAST-Detectable (requires DAST/manual/runtime):**
-- CSRF (token validation is runtime)
-- DOM XSS (client-side JS execution)
-- HTTP Parameter Pollution (server behavior)
-- Clickjacking (missing header = config, not code)
-- DoS (resource exhaustion is runtime)
-- Session Management (runtime state)
-- Business Logic Flaws (semantic)
-- Race Conditions (parallel execution)
-
-### Step 3: Iterate Until 100%
-
-```
-FOR each SAST-detectable vulnerability:
-  IF not detected:
-    1. Examine the EXACT source code pattern
-    2. Write a Semgrep rule matching that pattern
-    3. Deploy and rescan
-    4. Verify detection with rule_id + line number
-  UNTIL detected
-```
-
-### Step 4: Document Gaps Honestly
-
-For any vulnerability we cannot detect, document WHY:
-
-| Gap Type | Example | Can We Fix? | How? |
-|----------|---------|-------------|------|
-| Runtime behavior | CSRF token check | NO | Needs DAST |
-| Client-side JS | DOM XSS | PARTIAL | Add JS rules |
-| Config issue | Missing headers | PARTIAL | Header rules |
-| Semantic | Business logic | NO | Manual review |
-| Third-party | Use external tool | YES | Integrate tool |
-
-### Step 5: Calculate Coverage
-
-```
-SAST Coverage = (Detected SAST-detectable) / (Total SAST-detectable) x 100%
-
-Example (DSVW):
-- Total vulns: 26
-- SAST-detectable: 20
-- Detected: 20
-- Coverage: 20/20 = 100%
-```
-
-### Verified Benchmark Results
-
-| Repo | Total Vulns | SAST-Detectable | Detected | Coverage | Scan ID |
-|------|-------------|-----------------|----------|----------|---------|
-| DVWA | 14 | 14 | 14 | 100% | - |
-| DSVW | 26 | 20 | 20 | 100% | ea1b3b28 |
-| crAPI | 18 | 4 | 4 | 100% | 9b9a519b |
-
-#### crAPI Detailed Verification (Scan: 9b9a519b-8c95-4725-ab68-ff45a2d2608e)
-
-**SAST-Detectable Challenges (4/4 = 100%):**
-
-| Challenge | Type | Detected? | Rule ID | Evidence |
-|-----------|------|-----------|---------|----------|
-| Challenge 11 | SSRF | ✅ | py-ssrf-*, js-ssrf-* | services/workshop/api/utils/mock_log.py:22 |
-| Challenge 12 | NoSQL Injection | ✅ | nosql-injection-* | services/community/api/views.py:47 |
-| Challenge 13 | SQL Injection | ✅ | py-sql-injection-* | services/workshop/api/controllers/*.py |
-| Challenge 15 | JWT Vulnerabilities | ✅ | jwt-* | services/identity/api/auth.py |
-
-**NOT SAST-Detectable Challenges (14):**
-
-| Challenge | Type | Why NOT SAST? |
-|-----------|------|---------------|
-| Challenge 1-3 | BOLA (Broken Object Level Auth) | Runtime authorization check - object ownership verified at runtime |
-| Challenge 4-6 | Broken Authentication | Credential validation is runtime behavior |
-| Challenge 7 | Excessive Data Exposure | API response filtering is runtime/design decision |
-| Challenge 8 | Rate Limiting | Resource limits are runtime enforcement |
-| Challenge 9-10 | BFLA (Broken Function Level Auth) | Role-based access is runtime state |
-| Challenge 14 | Mass Assignment | Object binding is framework runtime behavior |
-| Challenge 16 | Unauthenticated Access | Missing auth middleware is config/runtime |
-| Challenge 17-18 | LLM Vulnerabilities | Prompt injection is semantic/runtime |
-
-**crAPI Summary:**
-- Total Challenges: 18
-- SAST-Detectable: 4 (only code-pattern vulnerabilities)
-- Detected: 4/4 = **100% SAST Coverage**
-- NOT SAST-Detectable: 14 (requires DAST/manual testing)
-
-### What's NOT Our Fault (Document These)
-
-When coverage < 100%, be specific about WHY:
-
-1. **Runtime-only**: CSRF, session management, rate limiting
-2. **Client-side**: DOM XSS, browser-specific attacks
-3. **Config-based**: Missing headers, CORS policies
-4. **Semantic**: Business logic, authorization flaws
-5. **External**: Needs DAST tool (Burp, ZAP, Nuclei)
-
-**NEVER say "we can't detect X" without explaining if it's:**
-- Impossible (runtime/semantic)
-- Possible with effort (new rule needed)
-- Possible with integration (external tool)
-
----
+- `SECURITY_TEST_PROCEDURE.md` - Full benchmark methodology and verified repo data
+- `SECURITY_COMMONS.md` - Vulnerability database with code examples
+- `scanner/rules/` - All detection rules
