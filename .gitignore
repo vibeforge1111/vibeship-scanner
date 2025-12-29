@@ -44,3 +44,12 @@ vite.config.ts.timestamp-*
 vibeship-ref/
 scanner/semgrep-rules-reference/
 scanner/rules/opengrep/
+
+# Local utility scripts
+query_scans.py
+
+# Scan result dumps (local testing)
+*_scan.json
+*_findings.json
+*_rescan.json
+*_report.json
