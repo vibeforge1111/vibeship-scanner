@@ -1549,21 +1549,32 @@ def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
     """
     findings = []
 
-    # Check for Solidity files
-    has_solidity = False
+    # Check for Solidity files - don't exclude 'lib' for file detection
+    # (it may contain relevant contracts in non-Foundry repos)
+    sol_files = []
     for root, dirs, files in os.walk(repo_dir):
-        dirs[:] = [d for d in dirs if d not in ['node_modules', 'lib', '.git']]
-        if any(f.endswith('.sol') for f in files):
-            has_solidity = True
-            break
+        # Only exclude node_modules and .git, keep lib for now
+        dirs[:] = [d for d in dirs if d not in ['node_modules', '.git']]
+        for f in files:
+            if f.endswith('.sol'):
+                sol_files.append(os.path.join(root, f))
 
-    if not has_solidity:
+    if not sol_files:
         print("No Solidity files found, skipping Slither", file=sys.stderr)
         return findings
 
-    # Check if this is a Foundry project and compile if so
-    foundry_toml = os.path.join(repo_dir, 'foundry.toml')
-    if os.path.exists(foundry_toml):
+    print(f"Found {len(sol_files)} Solidity files", file=sys.stderr)
+
+    # Detect project type
+    is_foundry = os.path.exists(os.path.join(repo_dir, 'foundry.toml'))
+    is_hardhat = os.path.exists(os.path.join(repo_dir, 'hardhat.config.js')) or \
+                 os.path.exists(os.path.join(repo_dir, 'hardhat.config.ts'))
+    is_truffle = os.path.exists(os.path.join(repo_dir, 'truffle-config.js')) or \
+                 os.path.exists(os.path.join(repo_dir, 'truffle.js'))
+    is_standalone = not (is_foundry or is_hardhat or is_truffle)
+
+    # Compile if needed
+    if is_foundry:
         try:
             print("Foundry project detected, running forge build...", file=sys.stderr)
             build_result = subprocess.run(
@@ -1578,13 +1589,12 @@ def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
             else:
                 print(f"Forge build warning (code {build_result.returncode}): {build_result.stderr[:300]}", file=sys.stderr)
         except FileNotFoundError:
-            print("Forge not available, Slither may fail on Foundry projects", file=sys.stderr)
+            print("Forge not available, will try standalone analysis", file=sys.stderr)
+            is_standalone = True
         except Exception as e:
             print(f"Forge build error: {e}", file=sys.stderr)
 
-    # Check for Hardhat project
-    hardhat_config = os.path.join(repo_dir, 'hardhat.config.js') or os.path.join(repo_dir, 'hardhat.config.ts')
-    if os.path.exists(os.path.join(repo_dir, 'hardhat.config.js')) or os.path.exists(os.path.join(repo_dir, 'hardhat.config.ts')):
+    if is_hardhat:
         try:
             print("Hardhat project detected, installing deps and compiling...", file=sys.stderr)
             subprocess.run(['npm', 'install'], cwd=repo_dir, capture_output=True, timeout=120)
@@ -1592,14 +1602,30 @@ def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
         except Exception as e:
             print(f"Hardhat setup warning: {e}", file=sys.stderr)
 
-    cmd = [
-        'slither',
-        repo_dir,
-        '--json', '-',
-        '--exclude-informational',
-        '--exclude-low',  # Focus on medium+ severity
-        '--exclude-optimization'
-    ]
+    # Build Slither command based on project type
+    if is_standalone:
+        # For standalone .sol files, analyze each file individually
+        # Use solc directly with permissive settings
+        print(f"Standalone Solidity files detected, analyzing individually...", file=sys.stderr)
+        cmd = [
+            'slither',
+            repo_dir,
+            '--json', '-',
+            '--exclude-informational',
+            '--exclude-low',
+            '--exclude-optimization',
+            '--solc-disable-warnings',  # Don't fail on warnings
+            '--skip-clean'  # Don't clean temp files (faster)
+        ]
+    else:
+        cmd = [
+            'slither',
+            repo_dir,
+            '--json', '-',
+            '--exclude-informational',
+            '--exclude-low',  # Focus on medium+ severity
+            '--exclude-optimization'
+        ]
 
     try:
         print(f"Running Slither on {repo_dir}", file=sys.stderr)
