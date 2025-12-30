@@ -15,6 +15,7 @@
 	import FindingCard from '$lib/components/FindingCard.svelte';
 	import FindingGroupCard from '$lib/components/FindingGroupCard.svelte';
 	import VibeSummary from '$lib/components/VibeSummary.svelte';
+	import ScannerMetadata from '$lib/components/ScannerMetadata.svelte';
 
 	// View mode: 'grouped' shows by category, 'flat' shows all findings
 	let viewMode = $state<'grouped' | 'flat'>('grouped');
@@ -916,6 +917,11 @@
 						{/if}
 					</div>
 				</div>
+			{/if}
+
+			<!-- Scanner Metadata - shows which scanners ran, timing, detected languages -->
+			{#if results.stack?.scanners_run}
+				<ScannerMetadata stack={results.stack} duration={scanDuration} />
 			{/if}
 
 			{#if results.findings?.length > 0}

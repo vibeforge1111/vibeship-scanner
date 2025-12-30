@@ -201,6 +201,15 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
             print(f"[Scan] Counts: {counts}", flush=True)
             print(f"[Scan] Updating database with final results...", flush=True)
 
+            # Enrich stack info with scanner metadata
+            enriched_stack = {
+                **stack,
+                'scanners_run': scan_result.get('scanners_run', []),
+                'scanners_skipped': scan_result.get('scanners_skipped', []),
+                'raw_findings_count': scan_result.get('raw_count', len(all_findings)),
+                'deduplicated_count': len(all_findings)
+            }
+
             # First save metadata (without findings)
             update_scan(supabase, scan_id, {
                 'status': 'scanning',  # Keep as scanning while saving findings
@@ -208,7 +217,7 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
                 'grade': grade,
                 'ship_status': ship_status,
                 'finding_counts': counts,
-                'detected_stack': stack,
+                'detected_stack': enriched_stack,
                 'stack_signature': stack.get('signature', ''),
                 'duration_ms': duration_ms,
                 'completed_at': end_time.isoformat()
