@@ -22,7 +22,12 @@ RUN pip install bandit
 # ============================================
 # TOOL #6: Gosec - Go Security Checker
 # Inspects Go source code for security problems
+# Requires Go to be installed for module resolution
 # ============================================
+RUN wget -qO- https://go.dev/dl/go1.22.0.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOPATH="/root/go"
+ENV PATH="${GOPATH}/bin:${PATH}"
 RUN curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b /usr/local/bin v2.21.4
 
 # ============================================
@@ -51,6 +56,14 @@ RUN apt-get update && apt-get install -y ruby ruby-dev build-essential \
 # Smart contract vulnerabilities, reentrancy, etc.
 # ============================================
 RUN pip install slither-analyzer
+
+# ============================================
+# Foundry - For compiling Solidity projects before Slither
+# ============================================
+RUN curl -L https://foundry.paradigm.xyz | bash \
+    && ~/.foundry/bin/foundryup \
+    && ln -s ~/.foundry/bin/forge /usr/local/bin/forge \
+    && ln -s ~/.foundry/bin/cast /usr/local/bin/cast
 
 # Install Opengrep (LGPL fork of Semgrep - avoids commercial licensing issues)
 RUN curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash \

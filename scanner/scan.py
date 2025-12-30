@@ -1127,10 +1127,25 @@ def run_gosec(repo_dir: str) -> List[Dict[str, Any]]:
         print("No Go files found, skipping Gosec", file=sys.stderr)
         return findings
 
+    # Check if there's a go.mod file and resolve dependencies if so
+    go_mod_path = os.path.join(repo_dir, 'go.mod')
+    if os.path.exists(go_mod_path):
+        try:
+            print("Resolving Go modules for Gosec...", file=sys.stderr)
+            subprocess.run(
+                ['go', 'mod', 'download'],
+                cwd=repo_dir,
+                capture_output=True,
+                timeout=120
+            )
+        except Exception as e:
+            print(f"Go mod download warning: {e}", file=sys.stderr)
+
     cmd = [
         'gosec',
         '-fmt', 'json',
         '-quiet',
+        '-exclude-generated',  # Skip generated files
         './...'
     ]
 
@@ -1146,6 +1161,10 @@ def run_gosec(repo_dir: str) -> List[Dict[str, Any]]:
 
         # Gosec exits with 1 if issues found
         print(f"Gosec exit code: {result.returncode}", file=sys.stderr)
+
+        # Log any stderr for debugging
+        if result.stderr:
+            print(f"Gosec stderr: {result.stderr[:500]}", file=sys.stderr)
 
         if result.stdout:
             try:
@@ -1542,6 +1561,37 @@ def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
         print("No Solidity files found, skipping Slither", file=sys.stderr)
         return findings
 
+    # Check if this is a Foundry project and compile if so
+    foundry_toml = os.path.join(repo_dir, 'foundry.toml')
+    if os.path.exists(foundry_toml):
+        try:
+            print("Foundry project detected, running forge build...", file=sys.stderr)
+            build_result = subprocess.run(
+                ['forge', 'build'],
+                cwd=repo_dir,
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            if build_result.returncode == 0:
+                print("Forge build successful", file=sys.stderr)
+            else:
+                print(f"Forge build warning (code {build_result.returncode}): {build_result.stderr[:300]}", file=sys.stderr)
+        except FileNotFoundError:
+            print("Forge not available, Slither may fail on Foundry projects", file=sys.stderr)
+        except Exception as e:
+            print(f"Forge build error: {e}", file=sys.stderr)
+
+    # Check for Hardhat project
+    hardhat_config = os.path.join(repo_dir, 'hardhat.config.js') or os.path.join(repo_dir, 'hardhat.config.ts')
+    if os.path.exists(os.path.join(repo_dir, 'hardhat.config.js')) or os.path.exists(os.path.join(repo_dir, 'hardhat.config.ts')):
+        try:
+            print("Hardhat project detected, installing deps and compiling...", file=sys.stderr)
+            subprocess.run(['npm', 'install'], cwd=repo_dir, capture_output=True, timeout=120)
+            subprocess.run(['npx', 'hardhat', 'compile'], cwd=repo_dir, capture_output=True, timeout=120)
+        except Exception as e:
+            print(f"Hardhat setup warning: {e}", file=sys.stderr)
+
     cmd = [
         'slither',
         repo_dir,
@@ -1562,6 +1612,10 @@ def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
 
         # Slither exits with 1 if issues found
         print(f"Slither exit code: {result.returncode}", file=sys.stderr)
+
+        # Always log stderr for debugging
+        if result.stderr:
+            print(f"Slither stderr: {result.stderr[:500]}", file=sys.stderr)
 
         if result.stdout:
             try:
