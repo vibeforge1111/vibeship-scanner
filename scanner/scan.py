@@ -11,6 +11,8 @@ import subprocess
 import tempfile
 import shutil
 import hashlib
+import re
+from collections import Counter
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
@@ -1604,9 +1606,59 @@ def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
 
     # Build Slither command based on project type
     if is_standalone:
-        # For standalone .sol files, analyze each file individually
-        # Use solc directly with permissive settings
-        print(f"Standalone Solidity files detected, analyzing individually...", file=sys.stderr)
+        # For standalone .sol files, detect pragma and select appropriate solc
+        print(f"Standalone Solidity files detected, checking pragma versions...", file=sys.stderr)
+
+        # Detect the most common pragma version in the repo
+        pragma_versions = []
+        pragma_pattern = re.compile(r'pragma\s+solidity\s+[\^>=<]*\s*(\d+\.\d+\.\d+|\d+\.\d+)')
+
+        for sol_file in sol_files[:20]:  # Check first 20 files to avoid slowdown
+            try:
+                with open(sol_file, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read(2000)  # First 2KB should have pragma
+                    match = pragma_pattern.search(content)
+                    if match:
+                        version = match.group(1)
+                        # Normalize to major.minor format
+                        parts = version.split('.')
+                        if len(parts) >= 2:
+                            pragma_versions.append(f"{parts[0]}.{parts[1]}")
+            except Exception as e:
+                print(f"Error reading {sol_file}: {e}", file=sys.stderr)
+
+        # Pick the most common version, fallback to 0.8
+        if pragma_versions:
+            most_common = Counter(pragma_versions).most_common(1)[0][0]
+            print(f"Detected pragma version: {most_common}", file=sys.stderr)
+
+            # Map to installed solc versions
+            version_map = {
+                '0.4': '0.4.26',
+                '0.5': '0.5.17',
+                '0.6': '0.6.12',
+                '0.7': '0.7.6',
+                '0.8': '0.8.24'
+            }
+            solc_version = version_map.get(most_common, '0.8.24')
+
+            # Use solc-select to switch to appropriate version
+            try:
+                select_result = subprocess.run(
+                    ['solc-select', 'use', solc_version],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if select_result.returncode == 0:
+                    print(f"Selected solc version: {solc_version}", file=sys.stderr)
+                else:
+                    print(f"solc-select warning: {select_result.stderr}", file=sys.stderr)
+            except Exception as e:
+                print(f"solc-select error: {e}", file=sys.stderr)
+        else:
+            print("No pragma version detected, using default solc 0.8.24", file=sys.stderr)
+
         cmd = [
             'slither',
             repo_dir,

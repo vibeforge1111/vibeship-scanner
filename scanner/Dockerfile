@@ -58,6 +58,19 @@ RUN apt-get update && apt-get install -y ruby ruby-dev build-essential \
 RUN pip install slither-analyzer
 
 # ============================================
+# solc-select - Multiple Solidity Compiler Versions
+# Required for analyzing old Solidity contracts (0.4.x, 0.5.x, etc.)
+# ============================================
+RUN pip install solc-select \
+    && solc-select install 0.4.26 \
+    && solc-select install 0.5.17 \
+    && solc-select install 0.6.12 \
+    && solc-select install 0.7.6 \
+    && solc-select install 0.8.19 \
+    && solc-select install 0.8.24 \
+    && solc-select use 0.8.24
+
+# ============================================
 # Foundry - For compiling Solidity projects before Slither
 # ============================================
 RUN curl -L https://foundry.paradigm.xyz | bash \
