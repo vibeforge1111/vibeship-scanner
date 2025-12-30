@@ -1567,13 +1567,22 @@ def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
 
     print(f"Found {len(sol_files)} Solidity files", file=sys.stderr)
 
-    # Detect project type
-    is_foundry = os.path.exists(os.path.join(repo_dir, 'foundry.toml'))
-    is_hardhat = os.path.exists(os.path.join(repo_dir, 'hardhat.config.js')) or \
-                 os.path.exists(os.path.join(repo_dir, 'hardhat.config.ts'))
-    is_truffle = os.path.exists(os.path.join(repo_dir, 'truffle-config.js')) or \
-                 os.path.exists(os.path.join(repo_dir, 'truffle.js'))
+    # Detect project type (check root and common subdirectories)
+    def find_config(filename):
+        if os.path.exists(os.path.join(repo_dir, filename)):
+            return True
+        # Check common monorepo subdirs
+        for subdir in ['contracts', 'packages/contracts', 'client']:
+            if os.path.exists(os.path.join(repo_dir, subdir, filename)):
+                return True
+        return False
+
+    is_foundry = find_config('foundry.toml')
+    is_hardhat = find_config('hardhat.config.js') or find_config('hardhat.config.ts')
+    is_truffle = find_config('truffle-config.js') or find_config('truffle.js')
     is_standalone = not (is_foundry or is_hardhat or is_truffle)
+
+    print(f"Project detection: foundry={is_foundry}, hardhat={is_hardhat}, truffle={is_truffle}, standalone={is_standalone}", file=sys.stderr)
 
     # Compile if needed
     if is_foundry:
@@ -1659,24 +1668,28 @@ def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
         else:
             print("No pragma version detected, using default solc 0.8.24", file=sys.stderr)
 
+        # For standalone files (likely benchmark/test repos), include low severity
+        # as many intentional vulnerabilities are classified as low
         cmd = [
             'slither',
             repo_dir,
             '--json', '-',
             '--exclude-informational',
-            '--exclude-low',
             '--exclude-optimization',
             '--solc-disable-warnings',  # Don't fail on warnings
-            '--skip-clean'  # Don't clean temp files (faster)
+            '--skip-clean',  # Don't clean temp files (faster)
+            '--filter-paths', 'node_modules,test,tests,mock,mocks'
         ]
     else:
+        # For proper projects (Foundry/Hardhat/Truffle), filter more strictly
         cmd = [
             'slither',
             repo_dir,
             '--json', '-',
             '--exclude-informational',
             '--exclude-low',  # Focus on medium+ severity
-            '--exclude-optimization'
+            '--exclude-optimization',
+            '--filter-paths', 'node_modules,test,tests,mock,mocks,lib/forge-std'
         ]
 
     try:
