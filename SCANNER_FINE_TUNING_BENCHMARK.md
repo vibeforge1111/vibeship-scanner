@@ -315,7 +315,7 @@ Focus: Cross-cutting concerns, realistic applications
 ### Per-Scanner Coverage Tracking
 
 ```
-Scanner Coverage Progress (Target: 80%)
+Scanner Coverage Progress (Target: 95%)
 
 Opengrep    [████████████████░░░░] 80% (32/40 vulns)
 Trivy       [██████████████░░░░░░] 70% (14/20 vulns)
@@ -444,7 +444,7 @@ Use this template for each repo verification:
 - [ ] Deploy updated rules
 - [ ] Re-scan all repos
 - [ ] Update coverage metrics
-- [ ] Target: 80%+ coverage per scanner
+- [ ] Target: 95%+ coverage per scanner
 
 ---
 
