@@ -32,7 +32,68 @@ sveltekit, typescript, supabase
 
 # Vibeship Scanner Development Guide
 
-Security scanning tool analyzing GitHub repos using **Opengrep** (SAST), **Trivy** (dependencies), **Gitleaks** (secrets).
+Security scanning tool analyzing GitHub repos with **10 parallel scanners**.
+
+## Current Scanners (10 total)
+
+### Universal Scanners (always run)
+| Scanner | Purpose |
+|---------|---------|
+| **Opengrep** | SAST patterns across all languages |
+| **Trivy** | Dependency vulnerabilities + secrets |
+| **Gitleaks** | Hardcoded secrets detection |
+
+### Stack-Specific Scanners (run when relevant files detected)
+| Scanner | Trigger | Purpose |
+|---------|---------|---------|
+| **Retire.js** | `package.json` | npm package vulnerabilities |
+| **Bandit** | `.py` files | Python security (SQLi, command injection, secrets) |
+| **Gosec** | `.go` files | Go security (SQLi, path traversal, weak crypto) |
+| **Hadolint** | `Dockerfile` | Dockerfile best practices |
+| **Checkov** | `.tf`, `.yaml`, k8s | IaC security (Terraform, K8s, Docker) |
+| **Brakeman** | Rails app | Ruby/Rails (XSS, SQLi, mass assignment) |
+| **Slither** | `.sol` files | Solidity (reentrancy, access control) |
+
+## Future Scanners (TODO)
+
+| Scanner | Language/Purpose | Priority |
+|---------|------------------|----------|
+| **OSV-Scanner** | Google's dependency scanner | High |
+| **Aderyn** | Solidity security (Cyfrin) | Medium |
+| **Mythril** | Solidity symbolic execution | Medium |
+| **Nuclei** | Web vulnerability templates | Medium |
+| **Echidna** | Solidity fuzzing | Low |
+| **Halmos** | Solidity formal verification | Low |
+
+## Adding a New Scanner
+
+1. **Create function** in `scanner/scan.py`:
+```python
+def run_newscanner(repo_dir: str) -> List[Dict[str, Any]]:
+    # Check for relevant files first (for stack-specific scanners)
+    if not has_relevant_files:
+        print("No X files found, skipping newscanner", file=sys.stderr)
+        return []
+    # Run tool, parse JSON output, return findings
+```
+
+2. **Add to SCANNERS registry** in `run_all_scanners()`:
+```python
+{
+    'name': 'newscanner',
+    'func': run_newscanner,
+    'args': (repo_dir,),
+    'category': SCANNER_CATEGORY_STACK,  # or UNIVERSAL
+    'targets': 'What it scans',
+    'trigger': 'When it runs'
+}
+```
+
+3. **Add tool to Dockerfile** (if not a Python package)
+
+4. **Deploy**: `cd scanner && fly deploy --remote-only`
+
+---
 
 ## THE #1 RULE: COVERAGE = DETECTED vs DOCUMENTED
 
