@@ -62,6 +62,15 @@ export interface VibeOutput {
 	originalFinding: any;
 }
 
+export interface FindingGroup {
+	category: string;
+	categoryLabel: string;
+	categoryEmoji: string;
+	findings: VibeOutput[];
+	highestSeverity: VibeUrgency;
+	locationCount: number;
+}
+
 export interface TransformedResults {
 	summary: {
 		totalFindings: number;
@@ -72,6 +81,7 @@ export interface TransformedResults {
 		fyi: number;
 	};
 	findings: VibeOutput[];
+	grouped: FindingGroup[];
 	masterPrompt: string;
 }
 
@@ -239,6 +249,113 @@ const consequenceTemplates: Record<string, string[]> = {
 		'Review and fix recommended'
 	]
 };
+
+// ============================================================================
+// Category Normalization (matches backend deduplication)
+// ============================================================================
+
+const categoryMeta: Record<string, { label: string; emoji: string }> = {
+	secret: { label: 'Hardcoded Secrets', emoji: '🔑' },
+	sqli: { label: 'SQL Injection', emoji: '💉' },
+	xss: { label: 'Cross-Site Scripting', emoji: '📜' },
+	cmdi: { label: 'Command Injection', emoji: '⚡' },
+	'path-traversal': { label: 'Path Traversal', emoji: '📁' },
+	ssrf: { label: 'Server-Side Request Forgery', emoji: '🌐' },
+	redirect: { label: 'Open Redirect', emoji: '↪️' },
+	xxe: { label: 'XML External Entity', emoji: '📄' },
+	deserialization: { label: 'Insecure Deserialization', emoji: '📦' },
+	auth: { label: 'Authentication Issues', emoji: '🔐' },
+	crypto: { label: 'Weak Cryptography', emoji: '🔒' },
+	injection: { label: 'Code Injection', emoji: '💉' },
+	nosql: { label: 'NoSQL Injection', emoji: '🗄️' },
+	cors: { label: 'CORS Misconfiguration', emoji: '🌍' },
+	cookie: { label: 'Insecure Cookie', emoji: '🍪' },
+	csrf: { label: 'Cross-Site Request Forgery', emoji: '🎭' },
+	info: { label: 'Information Disclosure', emoji: 'ℹ️' },
+	dependency: { label: 'Vulnerable Dependencies', emoji: '📦' },
+	dockerfile: { label: 'Docker Security', emoji: '🐳' },
+	iac: { label: 'Infrastructure as Code', emoji: '🏗️' },
+	config: { label: 'Security Misconfiguration', emoji: '⚙️' },
+	unknown: { label: 'Other Issues', emoji: '⚠️' }
+};
+
+function normalizeIssueCategory(finding: any): string {
+	const ruleId = (finding.ruleId || '').toLowerCase();
+	const title = (finding.title || '').toLowerCase();
+	const category = (finding.category || '').toLowerCase();
+	const combined = `${ruleId} ${title} ${category}`;
+
+	// Map to canonical categories (matches backend normalize_issue_type)
+	if (/secret|api[-_]?key|password|credential|token|private[-_]?key/.test(combined)) {
+		return 'secret';
+	}
+	if (/sql[-_]?injection|sqli/.test(combined)) {
+		return 'sqli';
+	}
+	if (/xss|cross[-_]?site[-_]?script|innerhtml|dangerously/.test(combined)) {
+		return 'xss';
+	}
+	if (/command[-_]?injection|cmdi|shell[-_]?injection|exec\(/.test(combined)) {
+		return 'cmdi';
+	}
+	if (/path[-_]?traversal|directory[-_]?traversal|lfi|rfi/.test(combined)) {
+		return 'path-traversal';
+	}
+	if (/ssrf|server[-_]?side[-_]?request/.test(combined)) {
+		return 'ssrf';
+	}
+	if (/redirect|url[-_]?redirect/.test(combined)) {
+		return 'redirect';
+	}
+	if (/xxe|xml[-_]?external/.test(combined)) {
+		return 'xxe';
+	}
+	if (/deserialization|pickle|yaml[-_]?load|unsafe[-_]?deserialize/.test(combined)) {
+		return 'deserialization';
+	}
+	if (/auth|authentication|missing[-_]?auth|no[-_]?auth/.test(combined)) {
+		return 'auth';
+	}
+	if (/weak[-_]?crypto|weak[-_]?hash|md5|sha1|des|rc4/.test(combined)) {
+		return 'crypto';
+	}
+	if (/eval|code[-_]?injection|new[-_]?function/.test(combined)) {
+		return 'injection';
+	}
+	if (/nosql|mongodb|mongo[-_]?injection/.test(combined)) {
+		return 'nosql';
+	}
+	if (/cors/.test(combined)) {
+		return 'cors';
+	}
+	if (/cookie|session/.test(combined)) {
+		return 'cookie';
+	}
+	if (/csrf/.test(combined)) {
+		return 'csrf';
+	}
+	if (/info|disclosure|sensitive[-_]?data|stack[-_]?trace/.test(combined)) {
+		return 'info';
+	}
+	if (/vulnerab|cve-|ghsa-|dependency|outdated/.test(combined)) {
+		return 'dependency';
+	}
+	if (/docker|container|hadolint/.test(combined)) {
+		return 'dockerfile';
+	}
+	if (/terraform|kubernetes|cloudformation|iac|checkov/.test(combined)) {
+		return 'iac';
+	}
+	if (/config|misconfiguration|setting/.test(combined)) {
+		return 'config';
+	}
+
+	return 'unknown';
+}
+
+function getCategoryMeta(category: string): { label: string; emoji: string } {
+	return categoryMeta[category] || categoryMeta.unknown;
+}
 
 // ============================================================================
 // Helper Functions
@@ -421,6 +538,38 @@ export function transformResults(findings: any[]): TransformedResults {
 
 	transformed.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]);
 
+	// Group findings by category
+	const categoryGroups: Record<string, VibeOutput[]> = {};
+	for (const finding of transformed) {
+		const category = normalizeIssueCategory(finding.originalFinding);
+		if (!categoryGroups[category]) {
+			categoryGroups[category] = [];
+		}
+		categoryGroups[category].push(finding);
+	}
+
+	// Create grouped array sorted by highest severity in each group
+	const grouped: FindingGroup[] = Object.entries(categoryGroups)
+		.map(([category, groupFindings]) => {
+			const meta = getCategoryMeta(category);
+			// Find highest severity in group
+			let highestSeverity: VibeUrgency = 'fyi';
+			for (const f of groupFindings) {
+				if (urgencyOrder[f.urgency] < urgencyOrder[highestSeverity]) {
+					highestSeverity = f.urgency;
+				}
+			}
+			return {
+				category,
+				categoryLabel: meta.label,
+				categoryEmoji: meta.emoji,
+				findings: groupFindings,
+				highestSeverity,
+				locationCount: groupFindings.length
+			};
+		})
+		.sort((a, b) => urgencyOrder[a.highestSeverity] - urgencyOrder[b.highestSeverity]);
+
 	const summary = {
 		totalFindings: transformed.length,
 		shipBlockers: transformed.filter((f) => f.urgency === 'ship-blocker').length,
@@ -433,6 +582,7 @@ export function transformResults(findings: any[]): TransformedResults {
 	return {
 		summary,
 		findings: transformed,
+		grouped,
 		masterPrompt: generateMasterFixPrompt(findings)
 	};
 }

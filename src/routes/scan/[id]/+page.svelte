@@ -13,7 +13,11 @@
 	// Vibe-coder friendly components
 	import { transformResults, type TransformedResults } from '$lib/vibeTransformer';
 	import FindingCard from '$lib/components/FindingCard.svelte';
+	import FindingGroupCard from '$lib/components/FindingGroupCard.svelte';
 	import VibeSummary from '$lib/components/VibeSummary.svelte';
+
+	// View mode: 'grouped' shows by category, 'flat' shows all findings
+	let viewMode = $state<'grouped' | 'flat'>('grouped');
 
 	let scanId = $derived($page.params.id);
 	let status = $state<'queued' | 'scanning' | 'complete' | 'failed'>('queued');
@@ -919,6 +923,33 @@
 					<div class="findings-header">
 						<h2>Findings ({results.findings.length})</h2>
 						<div class="findings-actions">
+							<div class="view-toggle">
+								<button
+									class="toggle-btn"
+									class:active={viewMode === 'grouped'}
+									onclick={() => viewMode = 'grouped'}
+								>
+									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<rect x="3" y="3" width="7" height="7"/>
+										<rect x="14" y="3" width="7" height="7"/>
+										<rect x="3" y="14" width="7" height="7"/>
+										<rect x="14" y="14" width="7" height="7"/>
+									</svg>
+									Grouped
+								</button>
+								<button
+									class="toggle-btn"
+									class:active={viewMode === 'flat'}
+									onclick={() => viewMode = 'flat'}
+								>
+									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<line x1="3" y1="6" x2="21" y2="6"/>
+										<line x1="3" y1="12" x2="21" y2="12"/>
+										<line x1="3" y1="18" x2="21" y2="18"/>
+									</svg>
+									All
+								</button>
+							</div>
 							<button class="export-btn" onclick={downloadPdf} disabled={generatingPdf}>
 								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -941,11 +972,22 @@
 					<!-- AI-Friendly Finding Cards -->
 					{#if vibeResults}
 						<VibeSummary results={vibeResults} />
-						<div class="findings-list vibe-list">
-							{#each vibeResults.findings as finding, i}
-								<FindingCard {finding} index={i} />
-							{/each}
-						</div>
+
+						{#if viewMode === 'grouped'}
+							<!-- Grouped View: Categories with expandable findings -->
+							<div class="findings-grouped">
+								{#each vibeResults.grouped as group}
+									<FindingGroupCard {group} />
+								{/each}
+							</div>
+						{:else}
+							<!-- Flat View: All findings in a list -->
+							<div class="findings-list vibe-list">
+								{#each vibeResults.findings as finding, i}
+									<FindingCard {finding} index={i} />
+								{/each}
+							</div>
+						{/if}
 					{/if}
 				</div>
 			{:else}
@@ -1263,6 +1305,53 @@
 		margin-bottom: 1.5rem;
 		flex-wrap: wrap;
 		gap: 1rem;
+	}
+
+	.view-toggle {
+		display: flex;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		padding: 2px;
+	}
+
+	.toggle-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.4rem 0.75rem;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		background: transparent;
+		border: none;
+		color: var(--text-tertiary);
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.toggle-btn:hover {
+		color: var(--text-secondary);
+	}
+
+	.toggle-btn.active {
+		background: var(--bg-secondary);
+		color: var(--text-primary);
+		border: 1px solid var(--border);
+	}
+
+	.toggle-btn svg {
+		opacity: 0.7;
+	}
+
+	.toggle-btn.active svg {
+		opacity: 1;
+	}
+
+	.findings-grouped {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
 	}
 
 	.findings-actions {

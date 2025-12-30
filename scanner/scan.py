@@ -1883,28 +1883,118 @@ def run_all_scanners(repo_dir: str, stack: Dict[str, Any] = None) -> Dict[str, A
     }
 
 
+def normalize_issue_type(finding: Dict[str, Any]) -> str:
+    """
+    Normalize finding to a canonical issue type.
+    This helps deduplicate similar issues from different scanners.
+    E.g., "hardcoded-api-key", "generic-api-key", "api_key_exposed" all become "secret"
+    """
+    rule_id = finding.get('ruleId', '').lower()
+    title = finding.get('title', '').lower()
+    category = finding.get('category', '').lower()
+    combined = f"{rule_id} {title} {category}"
+
+    # Map to canonical types
+    if any(x in combined for x in ['secret', 'api-key', 'api_key', 'apikey', 'password', 'credential', 'token', 'private-key', 'private_key']):
+        return 'secret'
+    if any(x in combined for x in ['sql-injection', 'sql_injection', 'sqli']):
+        return 'sqli'
+    if any(x in combined for x in ['xss', 'cross-site', 'innerhtml', 'dangerously']):
+        return 'xss'
+    if any(x in combined for x in ['command-injection', 'command_injection', 'os-command', 'shell-injection']):
+        return 'cmdi'
+    if any(x in combined for x in ['path-traversal', 'path_traversal', 'directory-traversal', 'lfi']):
+        return 'path-traversal'
+    if any(x in combined for x in ['ssrf', 'server-side-request']):
+        return 'ssrf'
+    if any(x in combined for x in ['open-redirect', 'open_redirect', 'unvalidated-redirect']):
+        return 'redirect'
+    if any(x in combined for x in ['xxe', 'xml-external']):
+        return 'xxe'
+    if any(x in combined for x in ['deserialization', 'deserialize', 'pickle', 'yaml.load']):
+        return 'deserialization'
+    if any(x in combined for x in ['prototype-pollution', 'prototype_pollution']):
+        return 'prototype-pollution'
+    if any(x in combined for x in ['nosql', 'mongodb-injection']):
+        return 'nosqli'
+    if any(x in combined for x in ['weak-crypto', 'weak-hash', 'md5', 'sha1', 'des', 'rc4']):
+        return 'weak-crypto'
+    if any(x in combined for x in ['insecure-cookie', 'cookie', 'session']):
+        return 'cookie'
+    if any(x in combined for x in ['cors', 'cross-origin']):
+        return 'cors'
+    if any(x in combined for x in ['csrf', 'cross-site-request']):
+        return 'csrf'
+    if any(x in combined for x in ['eval', 'code-injection', 'code_injection']):
+        return 'code-injection'
+    if any(x in combined for x in ['missing-auth', 'no-auth', 'authentication']):
+        return 'auth'
+    if any(x in combined for x in ['vulnerable', 'cve-', 'dependency', 'outdated']):
+        return 'dependency'
+
+    # Default: use simplified rule_id
+    return rule_id.split('-')[0] if rule_id else 'unknown'
+
+
+def get_severity_priority(severity: str) -> int:
+    """Higher number = higher priority (keep this one)"""
+    priorities = {
+        'critical': 5,
+        'high': 4,
+        'medium': 3,
+        'low': 2,
+        'info': 1
+    }
+    return priorities.get(severity.lower(), 0)
+
+
 def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Remove duplicates - same issue at same file:line.
-    Strategy: Normalize title (strip, lowercase) + file + line
-    This catches both exact duplicates and near-duplicates from similar rules.
+    Remove duplicates - same issue type at same file:line.
+
+    Strategy:
+    1. Group by file + line + normalized issue type
+    2. Keep the highest severity finding from each group
+    3. Merge scanner sources for better attribution
+
+    This catches:
+    - Exact duplicates (same rule, same location)
+    - Near-duplicates (different scanners reporting same issue at same location)
+    - Similar rules (e.g., "hardcoded-api-key" vs "generic-secret" at same line)
     """
-    seen = set()
-    deduplicated = []
+    # Group findings by location + issue type
+    location_groups: Dict[str, List[Dict[str, Any]]] = {}
 
     for finding in findings:
         loc = finding.get('location', {})
-        # Normalize title: strip whitespace and lowercase for comparison
-        title = finding.get('title', '').strip().lower()
         file_path = loc.get('file', '')
         line = loc.get('line', 0)
+        issue_type = normalize_issue_type(finding)
 
-        # Key is: normalized_title + file + line
-        key = f"{title}:{file_path}:{line}"
+        # Key is: file + line + issue_type
+        key = f"{file_path}:{line}:{issue_type}"
 
-        if key not in seen:
-            seen.add(key)
-            deduplicated.append(finding)
+        if key not in location_groups:
+            location_groups[key] = []
+        location_groups[key].append(finding)
+
+    # For each group, keep the best finding (highest severity)
+    deduplicated = []
+    for key, group in location_groups.items():
+        if len(group) == 1:
+            deduplicated.append(group[0])
+        else:
+            # Sort by severity priority (highest first)
+            sorted_group = sorted(group, key=lambda f: get_severity_priority(f.get('severity', 'info')), reverse=True)
+            best = sorted_group[0].copy()
+
+            # Add metadata about merged findings
+            if len(group) > 1:
+                other_rules = [f.get('ruleId', 'unknown') for f in sorted_group[1:]]
+                best['mergedFrom'] = other_rules
+                best['mergedCount'] = len(group)
+
+            deduplicated.append(best)
 
     return deduplicated
 
