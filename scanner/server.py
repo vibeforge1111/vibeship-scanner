@@ -10,14 +10,13 @@ import tempfile
 import threading
 from datetime import datetime
 import hashlib
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from supabase import create_client, Client
 
 from scan import (
-    clone_repo, detect_stack, run_opengrep, run_trivy, run_gitleaks, run_retirejs,
-    calculate_score, calculate_grade, calculate_ship_status, deduplicate_findings
+    clone_repo, detect_stack, run_all_scanners,
+    calculate_score, calculate_grade, calculate_ship_status
 )
 
 from mcp_endpoint import mcp_bp
@@ -172,51 +171,17 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
             update_progress(supabase, scan_id, 'detect', 'Detecting stack...', 25)
             stack = detect_stack(repo_dir)
 
-            # Run all scanners in parallel for faster execution
+            # Run all scanners using consolidated function
             update_progress(supabase, scan_id, 'sast', 'Running security scanners in parallel...', 40)
 
-            opengrep_findings = []
-            trivy_findings = []
-            gitleaks_findings = []
-            retirejs_findings = []
+            scan_result = run_all_scanners(repo_dir, stack)
+            all_findings = scan_result['findings']
 
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                futures = {
-                    executor.submit(run_opengrep, repo_dir, stack.get('languages', [])): 'opengrep',
-                    executor.submit(run_trivy, repo_dir): 'trivy',
-                    executor.submit(run_gitleaks, repo_dir): 'gitleaks',
-                    executor.submit(run_retirejs, repo_dir): 'retirejs',
-                }
+            # Log scanner results
+            print(f"[Scan] All scanners complete: {scan_result['scanner_results']}", flush=True)
+            print(f"[Scan] Total findings after dedup: {len(all_findings)}", flush=True)
 
-                completed = 0
-                for future in as_completed(futures):
-                    scanner_name = futures[future]
-                    completed += 1
-                    try:
-                        results = future.result()
-                        if scanner_name == 'opengrep':
-                            opengrep_findings = results
-                        elif scanner_name == 'trivy':
-                            trivy_findings = results
-                        elif scanner_name == 'gitleaks':
-                            gitleaks_findings = results
-                        elif scanner_name == 'retirejs':
-                            retirejs_findings = results
-
-                        # Update progress as each scanner completes
-                        percent = 40 + (completed * 12)  # 40, 52, 64, 76
-                        update_progress(supabase, scan_id, 'sast', f'{scanner_name} complete ({completed}/4)...', percent)
-                    except Exception as e:
-                        print(f"Scanner {scanner_name} error: {e}", flush=True)
-
-            print(f"[Scan] All scanners complete. Combining findings...", flush=True)
-            print(f"[Scan] Opengrep: {len(opengrep_findings)}, Trivy: {len(trivy_findings)}, Gitleaks: {len(gitleaks_findings)}, RetireJS: {len(retirejs_findings)}", flush=True)
-
-            all_findings = opengrep_findings + trivy_findings + gitleaks_findings + retirejs_findings
-            print(f"[Scan] Total raw findings: {len(all_findings)}", flush=True)
-
-            all_findings = deduplicate_findings(all_findings)
-            print(f"[Scan] After dedup: {len(all_findings)}", flush=True)
+            update_progress(supabase, scan_id, 'sast', 'All scanners complete', 85)
 
             update_progress(supabase, scan_id, 'score', 'Calculating score...', 95)
             print(f"[Scan] Calculating score...", flush=True)
@@ -330,37 +295,9 @@ def test_scan():
 
             stack = detect_stack(repo_dir)
 
-            # Run all scanners in parallel
-            opengrep_findings = []
-            trivy_findings = []
-            gitleaks_findings = []
-            retirejs_findings = []
-
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                futures = {
-                    executor.submit(run_opengrep, repo_dir, stack.get('languages', [])): 'opengrep',
-                    executor.submit(run_trivy, repo_dir): 'trivy',
-                    executor.submit(run_gitleaks, repo_dir): 'gitleaks',
-                    executor.submit(run_retirejs, repo_dir): 'retirejs',
-                }
-
-                for future in as_completed(futures):
-                    scanner_name = futures[future]
-                    try:
-                        results = future.result()
-                        if scanner_name == 'opengrep':
-                            opengrep_findings = results
-                        elif scanner_name == 'trivy':
-                            trivy_findings = results
-                        elif scanner_name == 'gitleaks':
-                            gitleaks_findings = results
-                        elif scanner_name == 'retirejs':
-                            retirejs_findings = results
-                    except Exception as e:
-                        print(f"Scanner {scanner_name} error: {e}")
-
-            all_findings = opengrep_findings + trivy_findings + gitleaks_findings + retirejs_findings
-            all_findings = deduplicate_findings(all_findings)
+            # Run all scanners using consolidated function
+            scan_result = run_all_scanners(repo_dir, stack)
+            all_findings = scan_result['findings']
 
             score = calculate_score(all_findings)
             grade = calculate_grade(score)

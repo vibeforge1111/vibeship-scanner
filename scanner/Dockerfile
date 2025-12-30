@@ -13,6 +13,45 @@ RUN apt-get update && apt-get install -y \
 # Install Retire.js for JavaScript library vulnerability scanning
 RUN npm install -g retire
 
+# ============================================
+# TOOL #5: Bandit - Python Security Linter
+# PyCQA - Hardcoded passwords, SQL injection, command injection
+# ============================================
+RUN pip install bandit
+
+# ============================================
+# TOOL #6: Gosec - Go Security Checker
+# Inspects Go source code for security problems
+# ============================================
+RUN curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b /usr/local/bin v2.21.4
+
+# ============================================
+# TOOL #7: Hadolint - Dockerfile Linter
+# Best practices and security for Dockerfiles
+# ============================================
+RUN wget -qO /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 \
+    && chmod +x /usr/local/bin/hadolint
+
+# ============================================
+# TOOL #8: Checkov - IaC Security Scanner
+# Terraform, Kubernetes, Docker, CloudFormation
+# ============================================
+RUN pip install checkov
+
+# ============================================
+# TOOL #9: Brakeman - Ruby/Rails Security Scanner
+# SQL injection, XSS, command injection in Rails
+# ============================================
+RUN apt-get update && apt-get install -y ruby ruby-dev build-essential \
+    && gem install brakeman --no-document \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ============================================
+# TOOL #10: Slither - Solidity Static Analyzer
+# Smart contract vulnerabilities, reentrancy, etc.
+# ============================================
+RUN pip install slither-analyzer
+
 # Install Opengrep (LGPL fork of Semgrep - avoids commercial licensing issues)
 RUN curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash \
     && ln -s ~/.opengrep/cli/latest/opengrep /usr/local/bin/opengrep

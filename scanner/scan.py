@@ -991,6 +991,898 @@ def run_retirejs(repo_dir: str) -> List[Dict[str, Any]]:
     return findings
 
 
+def run_bandit(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run Bandit Python security linter (PyCQA)
+
+    Bandit is a Python security linter that:
+    - Detects hardcoded passwords and secrets
+    - Finds SQL injection vulnerabilities
+    - Identifies command injection (subprocess, os.system)
+    - Detects insecure pickle usage
+    - Finds weak cryptography usage
+    - Identifies assert statements in production code
+    """
+    findings = []
+
+    # Check for Python files
+    has_python = False
+    for root, dirs, files in os.walk(repo_dir):
+        dirs[:] = [d for d in dirs if d not in ['node_modules', 'venv', '.venv', '__pycache__', '.git']]
+        if any(f.endswith('.py') for f in files):
+            has_python = True
+            break
+
+    if not has_python:
+        print("No Python files found, skipping Bandit", file=sys.stderr)
+        return findings
+
+    # Bandit severity mapping
+    bandit_severity = {
+        'HIGH': 'high',
+        'MEDIUM': 'medium',
+        'LOW': 'low',
+    }
+
+    cmd = [
+        'bandit',
+        '-r', repo_dir,
+        '-f', 'json',
+        '-ll',  # Only medium and high severity (skip LOW)
+        '--exclude', '.git,node_modules,venv,.venv,__pycache__,test,tests'
+    ]
+
+    try:
+        print(f"Running Bandit on {repo_dir}", file=sys.stderr)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        # Bandit exits with 1 if issues found, which is expected
+        print(f"Bandit exit code: {result.returncode}", file=sys.stderr)
+
+        if result.stdout:
+            try:
+                data = json.loads(result.stdout)
+
+                for issue in data.get('results', []):
+                    severity = bandit_severity.get(issue.get('issue_severity', 'MEDIUM'), 'medium')
+                    confidence = issue.get('issue_confidence', 'MEDIUM')
+
+                    # Get relative file path
+                    file_path = issue.get('filename', '')
+                    if file_path.startswith(repo_dir):
+                        file_path = file_path[len(repo_dir):].lstrip('/').lstrip('\\')
+
+                    line_number = issue.get('line_number', 0)
+                    test_id = issue.get('test_id', 'B000')
+                    test_name = issue.get('test_name', 'unknown')
+
+                    findings.append({
+                        'id': hashlib.md5(f"bandit-{test_id}-{file_path}:{line_number}".encode()).hexdigest()[:12],
+                        'ruleId': f"bandit-{test_id}",
+                        'severity': severity,
+                        'category': 'code',
+                        'title': f"[Bandit] {test_name}: {issue.get('issue_text', '')}",
+                        'description': f"{issue.get('issue_text', '')} (Confidence: {confidence})",
+                        'cwe': f"CWE-{issue.get('issue_cwe', {}).get('id', '0')}" if issue.get('issue_cwe') else None,
+                        'location': {
+                            'file': file_path,
+                            'line': line_number,
+                            'column': issue.get('col_offset', 0)
+                        },
+                        'fix': {
+                            'available': False,
+                            'template': None
+                        },
+                        'references': [f"https://bandit.readthedocs.io/en/latest/plugins/{test_id.lower()}_{test_name.lower().replace(' ', '_')}.html"],
+                        'code_snippet': issue.get('code', '')
+                    })
+
+                # Log metrics
+                metrics = data.get('metrics', {})
+                if metrics:
+                    print(f"Bandit scanned {metrics.get('_totals', {}).get('loc', 0)} lines of code", file=sys.stderr)
+
+            except json.JSONDecodeError as e:
+                print(f"Bandit JSON parse error: {e}", file=sys.stderr)
+                if result.stderr:
+                    print(f"Bandit stderr: {result.stderr[:500]}", file=sys.stderr)
+
+    except subprocess.TimeoutExpired:
+        print("Bandit timeout after 300s", file=sys.stderr)
+    except FileNotFoundError:
+        print("Bandit not installed, skipping", file=sys.stderr)
+    except Exception as e:
+        print(f"Bandit error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    print(f"Bandit found {len(findings)} findings", file=sys.stderr)
+    return findings
+
+
+def run_gosec(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run Gosec Go security checker
+
+    Gosec inspects Go source code for security problems:
+    - SQL injection
+    - Command injection
+    - Hardcoded credentials
+    - Weak crypto
+    - Path traversal
+    - Integer overflow
+    """
+    findings = []
+
+    # Check for Go files
+    has_go = False
+    for root, dirs, files in os.walk(repo_dir):
+        dirs[:] = [d for d in dirs if d not in ['node_modules', 'vendor', '.git']]
+        if any(f.endswith('.go') for f in files):
+            has_go = True
+            break
+
+    if not has_go:
+        print("No Go files found, skipping Gosec", file=sys.stderr)
+        return findings
+
+    cmd = [
+        'gosec',
+        '-fmt', 'json',
+        '-quiet',
+        './...'
+    ]
+
+    try:
+        print(f"Running Gosec on {repo_dir}", file=sys.stderr)
+        result = subprocess.run(
+            cmd,
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        # Gosec exits with 1 if issues found
+        print(f"Gosec exit code: {result.returncode}", file=sys.stderr)
+
+        if result.stdout:
+            try:
+                data = json.loads(result.stdout)
+
+                for issue in data.get('Issues', []):
+                    severity_map = {'HIGH': 'high', 'MEDIUM': 'medium', 'LOW': 'low'}
+                    severity = severity_map.get(issue.get('severity', 'MEDIUM'), 'medium')
+
+                    file_path = issue.get('file', '')
+                    if file_path.startswith(repo_dir):
+                        file_path = file_path[len(repo_dir):].lstrip('/').lstrip('\\')
+
+                    findings.append({
+                        'id': hashlib.md5(f"gosec-{issue.get('rule_id', '')}-{file_path}:{issue.get('line', 0)}".encode()).hexdigest()[:12],
+                        'ruleId': f"gosec-{issue.get('rule_id', 'G000')}",
+                        'severity': severity,
+                        'category': 'code',
+                        'title': f"[Gosec] {issue.get('details', 'Security Issue')}",
+                        'description': issue.get('details', ''),
+                        'cwe': issue.get('cwe', {}).get('id') if issue.get('cwe') else None,
+                        'location': {
+                            'file': file_path,
+                            'line': int(issue.get('line', 0)),
+                            'column': int(issue.get('column', 0))
+                        },
+                        'snippet': {
+                            'code': issue.get('code', ''),
+                            'highlightLines': [int(issue.get('line', 0))]
+                        },
+                        'fix': {
+                            'available': False,
+                            'template': None
+                        },
+                        'references': [f"https://securego.io/docs/rules/{issue.get('rule_id', '').lower()}.html"]
+                    })
+
+            except json.JSONDecodeError as e:
+                print(f"Gosec JSON parse error: {e}", file=sys.stderr)
+
+    except subprocess.TimeoutExpired:
+        print("Gosec timeout after 300s", file=sys.stderr)
+    except FileNotFoundError:
+        print("Gosec not installed, skipping", file=sys.stderr)
+    except Exception as e:
+        print(f"Gosec error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    print(f"Gosec found {len(findings)} findings", file=sys.stderr)
+    return findings
+
+
+def run_hadolint(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run Hadolint Dockerfile linter
+
+    Hadolint checks Dockerfiles for:
+    - Best practices violations
+    - Security issues (running as root, etc.)
+    - Shell script issues (via ShellCheck)
+    """
+    findings = []
+
+    # Find all Dockerfiles
+    dockerfiles = []
+    for root, dirs, files in os.walk(repo_dir):
+        dirs[:] = [d for d in dirs if d not in ['node_modules', 'vendor', '.git']]
+        for f in files:
+            if f == 'Dockerfile' or f.startswith('Dockerfile.') or f.endswith('.dockerfile'):
+                dockerfiles.append(os.path.join(root, f))
+
+    if not dockerfiles:
+        print("No Dockerfiles found, skipping Hadolint", file=sys.stderr)
+        return findings
+
+    print(f"Running Hadolint on {len(dockerfiles)} Dockerfile(s)", file=sys.stderr)
+
+    # Severity mapping for Hadolint
+    severity_map = {
+        'error': 'high',
+        'warning': 'medium',
+        'info': 'low',
+        'style': 'info'
+    }
+
+    for dockerfile in dockerfiles:
+        cmd = ['hadolint', '-f', 'json', dockerfile]
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+
+            if result.stdout:
+                try:
+                    issues = json.loads(result.stdout)
+
+                    for issue in issues:
+                        file_path = dockerfile
+                        if file_path.startswith(repo_dir):
+                            file_path = file_path[len(repo_dir):].lstrip('/').lstrip('\\')
+
+                        severity = severity_map.get(issue.get('level', 'warning'), 'medium')
+
+                        findings.append({
+                            'id': hashlib.md5(f"hadolint-{issue.get('code', '')}-{file_path}:{issue.get('line', 0)}".encode()).hexdigest()[:12],
+                            'ruleId': f"hadolint-{issue.get('code', 'DL0000')}",
+                            'severity': severity,
+                            'category': 'code',
+                            'title': f"[Hadolint] {issue.get('code', '')}: {issue.get('message', '')}",
+                            'description': issue.get('message', ''),
+                            'location': {
+                                'file': file_path,
+                                'line': issue.get('line', 0),
+                                'column': issue.get('column', 0)
+                            },
+                            'fix': {
+                                'available': False,
+                                'template': None
+                            },
+                            'references': [f"https://github.com/hadolint/hadolint/wiki/{issue.get('code', '')}"]
+                        })
+
+                except json.JSONDecodeError as e:
+                    print(f"Hadolint JSON parse error for {dockerfile}: {e}", file=sys.stderr)
+
+        except subprocess.TimeoutExpired:
+            print(f"Hadolint timeout for {dockerfile}", file=sys.stderr)
+        except Exception as e:
+            print(f"Hadolint error for {dockerfile}: {e}", file=sys.stderr)
+
+    print(f"Hadolint found {len(findings)} findings", file=sys.stderr)
+    return findings
+
+
+def run_checkov(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run Checkov IaC security scanner
+
+    Checkov scans infrastructure-as-code for security issues:
+    - Terraform configurations
+    - Kubernetes manifests
+    - Docker compose files
+    - CloudFormation templates
+    - Helm charts
+    """
+    findings = []
+
+    # Check for IaC files
+    iac_extensions = ['.tf', '.yaml', '.yml', '.json']
+    iac_files = ['docker-compose', 'kubernetes', 'k8s', 'terraform', 'cloudformation', 'helm']
+
+    has_iac = False
+    for root, dirs, files in os.walk(repo_dir):
+        dirs[:] = [d for d in dirs if d not in ['node_modules', 'vendor', '.git', 'venv']]
+        for f in files:
+            # Check by extension
+            if any(f.endswith(ext) for ext in iac_extensions):
+                # Skip package.json and other non-IaC JSON/YAML
+                if f in ['package.json', 'package-lock.json', 'tsconfig.json']:
+                    continue
+                has_iac = True
+                break
+            # Check for specific IaC files
+            if any(iac in f.lower() for iac in iac_files):
+                has_iac = True
+                break
+        if has_iac:
+            break
+
+    if not has_iac:
+        print("No IaC files found, skipping Checkov", file=sys.stderr)
+        return findings
+
+    cmd = [
+        'checkov',
+        '-d', repo_dir,
+        '-o', 'json',
+        '--quiet',
+        '--compact',
+        '--skip-download'  # Don't download external modules
+    ]
+
+    try:
+        print(f"Running Checkov on {repo_dir}", file=sys.stderr)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        print(f"Checkov exit code: {result.returncode}", file=sys.stderr)
+
+        if result.stdout:
+            try:
+                # Checkov outputs an array of check results
+                data = json.loads(result.stdout)
+
+                # Handle both single and multiple framework results
+                if isinstance(data, list):
+                    all_results = data
+                else:
+                    all_results = [data]
+
+                for framework_result in all_results:
+                    if not isinstance(framework_result, dict):
+                        continue
+
+                    failed_checks = framework_result.get('results', {}).get('failed_checks', [])
+
+                    for check in failed_checks:
+                        severity_map = {
+                            'CRITICAL': 'critical',
+                            'HIGH': 'high',
+                            'MEDIUM': 'medium',
+                            'LOW': 'low'
+                        }
+                        severity = severity_map.get(check.get('severity', 'MEDIUM'), 'medium')
+
+                        file_path = check.get('file_path', '')
+                        if file_path.startswith(repo_dir):
+                            file_path = file_path[len(repo_dir):].lstrip('/').lstrip('\\')
+                        if file_path.startswith('/'):
+                            file_path = file_path[1:]
+
+                        check_id = check.get('check_id', 'CKV_UNKNOWN')
+
+                        findings.append({
+                            'id': hashlib.md5(f"checkov-{check_id}-{file_path}".encode()).hexdigest()[:12],
+                            'ruleId': f"checkov-{check_id}",
+                            'severity': severity,
+                            'category': 'code',
+                            'title': f"[Checkov] {check.get('check_name', 'IaC Security Issue')}",
+                            'description': check.get('guideline', check.get('check_name', '')),
+                            'location': {
+                                'file': file_path,
+                                'line': check.get('file_line_range', [0, 0])[0],
+                                'column': 0
+                            },
+                            'fix': {
+                                'available': False,
+                                'template': None
+                            },
+                            'references': [check.get('guideline', f"https://docs.prismacloud.io/en/enterprise-edition/policy-reference/check-id-{check_id.lower()}")]
+                        })
+
+            except json.JSONDecodeError as e:
+                print(f"Checkov JSON parse error: {e}", file=sys.stderr)
+                if result.stderr:
+                    print(f"Checkov stderr: {result.stderr[:500]}", file=sys.stderr)
+
+    except subprocess.TimeoutExpired:
+        print("Checkov timeout after 300s", file=sys.stderr)
+    except FileNotFoundError:
+        print("Checkov not installed, skipping", file=sys.stderr)
+    except Exception as e:
+        print(f"Checkov error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    print(f"Checkov found {len(findings)} findings", file=sys.stderr)
+    return findings
+
+
+def run_brakeman(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run Brakeman Ruby/Rails security scanner
+
+    Brakeman scans Ruby on Rails applications for:
+    - SQL injection
+    - Cross-site scripting (XSS)
+    - Command injection
+    - Mass assignment
+    - Insecure redirects
+    - Session manipulation
+    """
+    findings = []
+
+    # Check for Rails app (Gemfile with rails, or config/routes.rb)
+    gemfile = os.path.join(repo_dir, 'Gemfile')
+    routes = os.path.join(repo_dir, 'config', 'routes.rb')
+
+    is_rails = False
+    if os.path.exists(routes):
+        is_rails = True
+    elif os.path.exists(gemfile):
+        try:
+            with open(gemfile, 'r') as f:
+                content = f.read().lower()
+                if 'rails' in content:
+                    is_rails = True
+        except:
+            pass
+
+    if not is_rails:
+        print("No Rails app found, skipping Brakeman", file=sys.stderr)
+        return findings
+
+    cmd = [
+        'brakeman',
+        '-f', 'json',
+        '-q',  # Quiet mode
+        '--no-pager',
+        repo_dir
+    ]
+
+    try:
+        print(f"Running Brakeman on {repo_dir}", file=sys.stderr)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        # Brakeman exits with various codes based on findings
+        print(f"Brakeman exit code: {result.returncode}", file=sys.stderr)
+
+        if result.stdout:
+            try:
+                data = json.loads(result.stdout)
+
+                for warning in data.get('warnings', []):
+                    severity_map = {
+                        'High': 'high',
+                        'Medium': 'medium',
+                        'Weak': 'low'
+                    }
+                    confidence = warning.get('confidence', 'Medium')
+                    severity = severity_map.get(confidence, 'medium')
+
+                    file_path = warning.get('file', '')
+                    if file_path.startswith(repo_dir):
+                        file_path = file_path[len(repo_dir):].lstrip('/').lstrip('\\')
+
+                    findings.append({
+                        'id': hashlib.md5(f"brakeman-{warning.get('warning_type', '')}-{file_path}:{warning.get('line', 0)}".encode()).hexdigest()[:12],
+                        'ruleId': f"brakeman-{warning.get('warning_code', 0)}",
+                        'severity': severity,
+                        'category': 'code',
+                        'title': f"[Brakeman] {warning.get('warning_type', 'Security Issue')}: {warning.get('message', '')}",
+                        'description': warning.get('message', ''),
+                        'cwe': warning.get('cwe_id', [None])[0] if warning.get('cwe_id') else None,
+                        'location': {
+                            'file': file_path,
+                            'line': warning.get('line', 0),
+                            'column': 0
+                        },
+                        'snippet': {
+                            'code': warning.get('code', ''),
+                            'highlightLines': [warning.get('line', 0)]
+                        },
+                        'fix': {
+                            'available': False,
+                            'template': None
+                        },
+                        'references': [warning.get('link', f"https://brakemanscanner.org/docs/warning_types/{warning.get('warning_type', '').replace(' ', '_')}/")]
+                    })
+
+            except json.JSONDecodeError as e:
+                print(f"Brakeman JSON parse error: {e}", file=sys.stderr)
+
+    except subprocess.TimeoutExpired:
+        print("Brakeman timeout after 300s", file=sys.stderr)
+    except FileNotFoundError:
+        print("Brakeman not installed, skipping", file=sys.stderr)
+    except Exception as e:
+        print(f"Brakeman error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    print(f"Brakeman found {len(findings)} findings", file=sys.stderr)
+    return findings
+
+
+def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run Slither Solidity static analyzer
+
+    Slither detects smart contract vulnerabilities:
+    - Reentrancy
+    - Unchecked external calls
+    - Integer overflow/underflow
+    - Access control issues
+    - State variable shadowing
+    - Uninitialized storage
+    """
+    findings = []
+
+    # Check for Solidity files
+    has_solidity = False
+    for root, dirs, files in os.walk(repo_dir):
+        dirs[:] = [d for d in dirs if d not in ['node_modules', 'lib', '.git']]
+        if any(f.endswith('.sol') for f in files):
+            has_solidity = True
+            break
+
+    if not has_solidity:
+        print("No Solidity files found, skipping Slither", file=sys.stderr)
+        return findings
+
+    cmd = [
+        'slither',
+        repo_dir,
+        '--json', '-',
+        '--exclude-informational',
+        '--exclude-low',  # Focus on medium+ severity
+        '--exclude-optimization'
+    ]
+
+    try:
+        print(f"Running Slither on {repo_dir}", file=sys.stderr)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=600  # Slither can be slow on large contracts
+        )
+
+        # Slither exits with 1 if issues found
+        print(f"Slither exit code: {result.returncode}", file=sys.stderr)
+
+        if result.stdout:
+            try:
+                data = json.loads(result.stdout)
+
+                for detector in data.get('results', {}).get('detectors', []):
+                    severity_map = {
+                        'High': 'high',
+                        'Medium': 'medium',
+                        'Low': 'low',
+                        'Informational': 'info'
+                    }
+                    impact = detector.get('impact', 'Medium')
+                    severity = severity_map.get(impact, 'medium')
+
+                    # Get first element location
+                    elements = detector.get('elements', [])
+                    file_path = ''
+                    line = 0
+                    if elements:
+                        first_elem = elements[0]
+                        source_mapping = first_elem.get('source_mapping', {})
+                        file_path = source_mapping.get('filename_relative', '')
+                        lines = source_mapping.get('lines', [0])
+                        line = lines[0] if lines else 0
+
+                    findings.append({
+                        'id': hashlib.md5(f"slither-{detector.get('check', '')}-{file_path}:{line}".encode()).hexdigest()[:12],
+                        'ruleId': f"slither-{detector.get('check', 'unknown')}",
+                        'severity': severity,
+                        'category': 'code',
+                        'title': f"[Slither] {detector.get('check', 'Issue')}: {detector.get('description', '')[:100]}",
+                        'description': detector.get('description', ''),
+                        'location': {
+                            'file': file_path,
+                            'line': line,
+                            'column': 0
+                        },
+                        'fix': {
+                            'available': False,
+                            'template': None
+                        },
+                        'references': [f"https://github.com/crytic/slither/wiki/Detector-Documentation#{detector.get('check', '')}"]
+                    })
+
+            except json.JSONDecodeError as e:
+                print(f"Slither JSON parse error: {e}", file=sys.stderr)
+                if result.stderr:
+                    print(f"Slither stderr: {result.stderr[:500]}", file=sys.stderr)
+
+    except subprocess.TimeoutExpired:
+        print("Slither timeout after 600s", file=sys.stderr)
+    except FileNotFoundError:
+        print("Slither not installed, skipping", file=sys.stderr)
+    except Exception as e:
+        print(f"Slither error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    print(f"Slither found {len(findings)} findings", file=sys.stderr)
+    return findings
+
+
+# ============================================
+# CONSOLIDATED SCANNER ORCHESTRATION
+# All scanner execution goes through here
+# Adding a new scanner? Just add it to SCANNERS list below!
+# ============================================
+
+# Scanner categories for visibility
+SCANNER_CATEGORY_UNIVERSAL = 'universal'      # Always runs
+SCANNER_CATEGORY_STACK = 'stack-specific'     # Only runs when relevant files detected
+
+def run_all_scanners(repo_dir: str, stack: Dict[str, Any] = None) -> Dict[str, Any]:
+    """
+    Run all security scanners in parallel and return combined results.
+
+    This is the SINGLE SOURCE OF TRUTH for scanner execution.
+    server.py and scan.py main() both call this function.
+
+    To add a new scanner:
+    1. Create run_newscanner() function above
+    2. Add entry to SCANNERS list below with metadata
+    3. That's it! No other changes needed.
+
+    Args:
+        repo_dir: Path to the cloned repository
+        stack: Detected stack info (from detect_stack). If None, will be auto-detected.
+
+    Returns:
+        Dict with keys:
+        - findings: List of all deduplicated findings
+        - raw_count: Count before deduplication
+        - scanner_results: Dict of {scanner_name: finding_count}
+        - timing: Dict of {scanner_name: duration_ms}
+        - scanners_run: List of scanners that actually executed
+        - scanners_skipped: List of scanners skipped (no relevant files)
+        - detected_stack: The detected languages/frameworks
+    """
+    from datetime import datetime
+
+    if stack is None:
+        stack = detect_stack(repo_dir)
+
+    languages = stack.get('languages', [])
+    frameworks = stack.get('frameworks', [])
+
+    # ============================================
+    # SCANNER REGISTRY - Add new scanners here!
+    # Format: {
+    #   'name': scanner name,
+    #   'func': scanner function,
+    #   'args': args tuple,
+    #   'category': universal or stack-specific,
+    #   'targets': what it scans (for display),
+    #   'trigger': what causes it to run (for stack-specific)
+    # }
+    # ============================================
+    SCANNERS = [
+        {
+            'name': 'opengrep',
+            'func': run_opengrep,
+            'args': (repo_dir, languages),
+            'category': SCANNER_CATEGORY_UNIVERSAL,
+            'targets': 'SAST patterns across all languages',
+            'trigger': 'always'
+        },
+        {
+            'name': 'trivy',
+            'func': run_trivy,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_UNIVERSAL,
+            'targets': 'Dependencies & secrets',
+            'trigger': 'always'
+        },
+        {
+            'name': 'gitleaks',
+            'func': run_gitleaks,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_UNIVERSAL,
+            'targets': 'Hardcoded secrets',
+            'trigger': 'always'
+        },
+        {
+            'name': 'retirejs',
+            'func': run_retirejs,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_STACK,
+            'targets': 'npm package vulnerabilities',
+            'trigger': 'package.json'
+        },
+        {
+            'name': 'bandit',
+            'func': run_bandit,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_STACK,
+            'targets': 'Python security issues',
+            'trigger': '.py files'
+        },
+        {
+            'name': 'gosec',
+            'func': run_gosec,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_STACK,
+            'targets': 'Go security issues',
+            'trigger': '.go files'
+        },
+        {
+            'name': 'hadolint',
+            'func': run_hadolint,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_STACK,
+            'targets': 'Dockerfile best practices',
+            'trigger': 'Dockerfile'
+        },
+        {
+            'name': 'checkov',
+            'func': run_checkov,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_STACK,
+            'targets': 'IaC security (Terraform, K8s, Docker)',
+            'trigger': '.tf, .yaml, k8s manifests'
+        },
+        {
+            'name': 'brakeman',
+            'func': run_brakeman,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_STACK,
+            'targets': 'Ruby on Rails vulnerabilities',
+            'trigger': 'Rails app (Gemfile + routes.rb)'
+        },
+        {
+            'name': 'slither',
+            'func': run_slither,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_STACK,
+            'targets': 'Solidity smart contract issues',
+            'trigger': '.sol files'
+        },
+    ]
+
+    # Results storage
+    scanner_findings = {s['name']: [] for s in SCANNERS}
+    scanner_times = {}
+    scanner_start_times = {}
+    scanners_run = []
+    scanners_skipped = []
+
+    # Log what we detected
+    print(f"[Stack] Detected languages: {', '.join(languages) if languages else 'none'}", file=sys.stderr)
+    print(f"[Stack] Detected frameworks: {', '.join(frameworks) if frameworks else 'none'}", file=sys.stderr)
+
+    # Show scanner plan
+    universal_count = len([s for s in SCANNERS if s['category'] == SCANNER_CATEGORY_UNIVERSAL])
+    stack_count = len([s for s in SCANNERS if s['category'] == SCANNER_CATEGORY_STACK])
+    print(f"[Scanners] Launching {len(SCANNERS)} scanners in parallel ({universal_count} universal + {stack_count} stack-specific)...", file=sys.stderr)
+
+    with ThreadPoolExecutor(max_workers=len(SCANNERS)) as executor:
+        # Submit all scanner jobs
+        futures = {}
+        for scanner in SCANNERS:
+            name = scanner['name']
+            scanner_start_times[name] = datetime.now()
+            future = executor.submit(scanner['func'], *scanner['args'])
+            futures[future] = scanner
+
+        # Collect results as they complete
+        for future in as_completed(futures):
+            scanner = futures[future]
+            name = scanner['name']
+            scanner_end = datetime.now()
+            scanner_times[name] = int((scanner_end - scanner_start_times[name]).total_seconds() * 1000)
+
+            try:
+                result = future.result()
+                scanner_findings[name] = result
+
+                # Track if scanner actually ran (found files) or was skipped
+                # Scanners return [] for both "no findings" and "skipped"
+                # We check the log messages to determine if it ran
+                if result or scanner['category'] == SCANNER_CATEGORY_UNIVERSAL:
+                    scanners_run.append({
+                        'name': name,
+                        'category': scanner['category'],
+                        'targets': scanner['targets'],
+                        'findings': len(result),
+                        'duration_ms': scanner_times[name]
+                    })
+                    status = f"✓ {len(result)} findings"
+                else:
+                    # Stack-specific scanner with 0 findings could be skipped or just clean
+                    # For now, track all stack-specific as "run" if they completed without error
+                    scanners_run.append({
+                        'name': name,
+                        'category': scanner['category'],
+                        'targets': scanner['targets'],
+                        'findings': 0,
+                        'duration_ms': scanner_times[name]
+                    })
+                    status = "✓ clean"
+
+                print(f"[Scanners] {name} ({scanner_times[name]}ms) → {status}", file=sys.stderr)
+            except Exception as e:
+                print(f"[Scanners] {name} ({scanner_times[name]}ms) → ✗ error: {e}", file=sys.stderr)
+                scanners_skipped.append({
+                    'name': name,
+                    'reason': str(e)
+                })
+
+    # Build visual summary
+    print(f"\n[Scanners] ══════════════════════════════════════", file=sys.stderr)
+    print(f"[Scanners] SCAN SUMMARY", file=sys.stderr)
+    print(f"[Scanners] ──────────────────────────────────────", file=sys.stderr)
+
+    # Group by category
+    universal_scanners = [s for s in scanners_run if s['category'] == SCANNER_CATEGORY_UNIVERSAL]
+    stack_scanners = [s for s in scanners_run if s['category'] == SCANNER_CATEGORY_STACK]
+
+    print(f"[Scanners] Universal ({len(universal_scanners)}):", file=sys.stderr)
+    for s in universal_scanners:
+        print(f"[Scanners]   • {s['name']}: {s['findings']} findings ({s['duration_ms']}ms)", file=sys.stderr)
+
+    if stack_scanners:
+        active_stack = [s for s in stack_scanners if s['findings'] > 0]
+        inactive_stack = [s for s in stack_scanners if s['findings'] == 0]
+
+        if active_stack:
+            print(f"[Scanners] Stack-specific (active):", file=sys.stderr)
+            for s in active_stack:
+                print(f"[Scanners]   • {s['name']}: {s['findings']} findings ({s['duration_ms']}ms)", file=sys.stderr)
+
+        if inactive_stack:
+            skipped_names = ', '.join([s['name'] for s in inactive_stack])
+            print(f"[Scanners] Stack-specific (no relevant files): {skipped_names}", file=sys.stderr)
+
+    print(f"[Scanners] ══════════════════════════════════════\n", file=sys.stderr)
+
+    # Combine all findings
+    all_findings = []
+    for scanner in SCANNERS:
+        all_findings.extend(scanner_findings[scanner['name']])
+
+    raw_count = len(all_findings)
+    print(f"[Scanners] Total raw findings: {raw_count}", file=sys.stderr)
+
+    # Deduplicate
+    all_findings = deduplicate_findings(all_findings)
+    print(f"[Scanners] After deduplication: {len(all_findings)}", file=sys.stderr)
+
+    return {
+        'findings': all_findings,
+        'raw_count': raw_count,
+        'scanner_results': {s['name']: len(scanner_findings[s['name']]) for s in SCANNERS},
+        'timing': scanner_times,
+        'scanners_run': scanners_run,
+        'scanners_skipped': scanners_skipped,
+        'detected_stack': {
+            'languages': languages,
+            'frameworks': frameworks
+        }
+    }
+
+
 def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Remove duplicates - same issue at same file:line.
@@ -1097,60 +1989,16 @@ def main():
         timing['detect'] = int((datetime.now() - detect_start).total_seconds() * 1000)
         print(f"Detected stack: {stack} in {timing['detect']}ms", file=sys.stderr)
 
-        # Run all scanners in PARALLEL for speed optimization
+        # Run all scanners using consolidated function
         scan_start = datetime.now()
         print(json.dumps({'step': 'scan', 'message': 'Running security scans in parallel...'}), flush=True)
 
-        opengrep_findings = []
-        trivy_findings = []
-        gitleaks_findings = []
-        retirejs_findings = []
-        scanner_times = {}  # Track individual scanner times
-
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            # Submit all scanner jobs with their start times
-            scanner_start_times = {}
-            futures = {}
-
-            for scanner_name, scanner_func, args in [
-                ('opengrep', run_opengrep, (repo_dir, stack.get('languages', []))),
-                ('trivy', run_trivy, (repo_dir,)),
-                ('gitleaks', run_gitleaks, (repo_dir,)),
-                ('retirejs', run_retirejs, (repo_dir,)),
-            ]:
-                scanner_start_times[scanner_name] = datetime.now()
-                future = executor.submit(scanner_func, *args)
-                futures[future] = scanner_name
-
-            # Collect results as they complete
-            for future in as_completed(futures):
-                scanner_name = futures[future]
-                scanner_end = datetime.now()
-                scanner_times[scanner_name] = int((scanner_end - scanner_start_times[scanner_name]).total_seconds() * 1000)
-                try:
-                    result = future.result()
-                    if scanner_name == 'opengrep':
-                        opengrep_findings = result
-                    elif scanner_name == 'trivy':
-                        trivy_findings = result
-                    elif scanner_name == 'gitleaks':
-                        gitleaks_findings = result
-                    elif scanner_name == 'retirejs':
-                        retirejs_findings = result
-                    print(f"{scanner_name} completed in {scanner_times[scanner_name]}ms with {len(result)} findings", file=sys.stderr)
-                except Exception as e:
-                    print(f"{scanner_name} failed in {scanner_times[scanner_name]}ms: {e}", file=sys.stderr)
+        scan_result = run_all_scanners(repo_dir, stack)
+        all_findings = scan_result['findings']
 
         timing['scan'] = int((datetime.now() - scan_start).total_seconds() * 1000)
-        timing['scanners'] = scanner_times
+        timing['scanners'] = scan_result['timing']
         print(f"All scans completed in {timing['scan']}ms (parallel)", file=sys.stderr)
-
-        all_findings = opengrep_findings + trivy_findings + gitleaks_findings + retirejs_findings
-        print(f"Total raw findings: {len(all_findings)}", file=sys.stderr)
-
-        # Deduplicate findings (multiple rules can flag same line)
-        all_findings = deduplicate_findings(all_findings)
-        print(f"After deduplication: {len(all_findings)}", file=sys.stderr)
 
         print(json.dumps({'step': 'score', 'message': 'Calculating score...'}), flush=True)
         score = calculate_score(all_findings)
