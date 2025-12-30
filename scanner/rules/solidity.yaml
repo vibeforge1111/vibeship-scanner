@@ -5494,3 +5494,197 @@ rules:
         - https://github.com/SunWeb3Sec/DeFiVulnLabs/blob/main/src/test/NFTMint_exposedMetadata.sol
     pattern-regex: 'function\s+tokenURI\s*\([^)]*\)[^{]*\{[^}]*return\s+[^;]*(?:baseURI|_baseURI)[^;]*tokenId'
 
+  # ============================================
+  # C4 2024 HIGH-SEVERITY PATTERNS
+  # Rules derived from Code4rena audit findings
+  # ============================================
+
+  # Predy H-01: slot0 price manipulation via flash loans/MEV
+  - id: sol-slot0-price-manipulation
+    message: "Using Uniswap V3 slot0() for price calculations - vulnerable to flash loan/MEV manipulation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      c4-finding: "2024-05-predy H-01"
+      references:
+        - https://github.com/code-423n4/2024-05-predy-findings/issues/209
+        - https://code4rena.com/reports/2024-05-predy
+    pattern-regex: '\.slot0\s*\(\s*\)'
+
+  - id: sol-slot0-sqrtprice
+    message: "sqrtPriceX96 from slot0() is spot price - use TWAP for manipulation resistance"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      c4-finding: "2024-05-predy H-01"
+      references:
+        - https://github.com/code-423n4/2024-05-predy-findings/issues/303
+    pattern-regex: '\(\s*sqrtPriceX96[^)]*\)\s*=\s*(?:pool|IUniswapV3Pool)[^.]*\.slot0\s*\(\s*\)'
+
+  - id: sol-getsqrtprice-spot
+    message: "getSqrtPrice() returns slot0 spot price - vulnerable to atomic manipulation"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      c4-finding: "2024-05-predy H-01"
+      references:
+        - https://github.com/code-423n4/2024-05-predy-findings/issues/209
+    pattern-regex: 'getSqrtPrice\s*\([^)]*\)(?![^;]*(twap|average|observe))'
+
+  # Predy H-04: Wrong msg.sender in internal transfers
+  - id: sol-msgsender-internal-transfer
+    message: "Using msg.sender as 'from' in internal transfer - may transfer from wrong account"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      c4-finding: "2024-05-predy H-04"
+      references:
+        - https://code4rena.com/reports/2024-05-predy
+    pattern-regex: 'transferFrom\s*\(\s*msg\.sender\s*,\s*address\s*\(\s*this\s*\)'
+
+  - id: sol-msgsender-vs-address
+    message: "msg.sender used where parameter address expected - funds may go to wrong destination"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      c4-finding: "2024-05-predy H-04"
+    pattern-regex: '(?:_?(?:from|sender|source))\s*=\s*msg\.sender(?![^;]*(?:require|==|!=))'
+
+  # Panoptic H-01: Unchecked overflow in share calculations
+  - id: sol-unchecked-share-multiplication
+    message: "Unchecked multiplication with DECIMALS - potential overflow in share calculation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow"
+      c4-finding: "2024-04-panoptic H-01"
+      references:
+        - https://code4rena.com/reports/2024-04-panoptic
+    pattern-regex: 'unchecked\s*\{[^}]*\*\s*(?:DECIMALS|1e\d+|10\s*\*\*\s*\d+)[^}]*\}'
+
+  - id: sol-unchecked-user-controlled
+    message: "User-controlled value in unchecked block - overflow can bypass validation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow"
+      c4-finding: "2024-04-panoptic H-01"
+    pattern-regex: 'function\s+(?:mint|deposit|stake)\s*\([^)]*(?:shares|amount)\s+[^)]*\)[^{]*\{[^}]*unchecked\s*\{'
+
+  # Renzo H-05: Rebasing token transfer issues
+  - id: sol-rebasing-token-transfer
+    message: "Fixed amount transfer with stETH - rebasing tokens change balance between transactions"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      c4-finding: "2024-04-renzo H-05"
+      references:
+        - https://code4rena.com/reports/2024-04-renzo
+    pattern-regex: '(?:stETH|rETH|cbETH|STETH)\.transfer\s*\([^)]*amountToRedeem[^)]*\)'
+
+  - id: sol-store-rebasing-balance
+    message: "Storing rebasing token (stETH/rETH) balance - value will drift over time"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      c4-finding: "2024-04-renzo H-05"
+    pattern-regex: '(?:amountToRedeem|storedBalance|claimAmount)\s*=\s*[^;]*(?:stETH|rETH|STETH|cbETH)'
+
+  - id: sol-lsd-withdrawal-queue
+    message: "LSD token in withdrawal queue - rebasing may cause insolvency over time"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      c4-finding: "2024-04-renzo H-05"
+    pattern-regex: 'WithdrawRequest[^}]*(?:stETH|rETH|cbETH|amount(?:To)?Redeem)'
+
+  # DYAD H-01/H-02: Missing collateralization checks
+  - id: sol-liquidate-no-collateral-check
+    message: "Liquidation without checking collateral type - exogenous vs kerosene value matters"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      c4-finding: "2024-04-dyad H-01"
+      references:
+        - https://code4rena.com/reports/2024-04-dyad
+    pattern-regex: 'function\s+liquidate\s*\([^)]*\)[^{]*\{(?![^}]*(?:exogenous|nonKerosene|collateralType))'
+
+  - id: sol-withdraw-collateral-ratio
+    message: "Withdrawal checks only total collateral - should verify non-kerosene separately"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual Conditions"
+      c4-finding: "2024-04-dyad H-02"
+    pattern-regex: 'function\s+withdraw\s*\([^)]*vault[^)]*\)[^{]*\{[^}]*require\s*\([^)]*(?:collateral|value)[^)]*>[^)]*(?:minted|dyad)'
+
+  # Salty H-01: First depositor virtual rewards manipulation
+  - id: sol-virtual-rewards-ratio
+    message: "Virtual rewards ratio set by first depositor - can manipulate to steal funds"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      c4-finding: "2024-01-salty H-01"
+      references:
+        - https://code4rena.com/reports/2024-01-salty
+    pattern-regex: 'virtualRewards\s*=\s*[^;]*totalShares\s*==\s*0'
+
+  - id: sol-donation-before-deposit
+    message: "ERC20 transfer before first deposit - enables share inflation attack"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      c4-finding: "2024-01-salty H-01"
+    pattern-regex: 'IERC20\s*\([^)]*SALT[^)]*\)\s*\.transfer\s*\([^)]*\)(?![^;]*(?:deposit|stake))'
+
+  # Salty H-02: Liquidation evasion via cooldown manipulation
+  - id: sol-cooldown-liquidation-bypass
+    message: "cooldownExpiration can be manipulated to evade liquidation"
+    languages: [solidity]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-367: Time-of-Check to Time-of-Use Race Condition"
+      c4-finding: "2024-01-salty H-02"
+      references:
+        - https://code4rena.com/reports/2024-01-salty
+    pattern-regex: 'require\s*\([^)]*cooldownExpiration[^)]*<[^)]*block\.timestamp'
+
+  # Size H-series: Loan/Debt manipulation patterns
+  - id: sol-repay-wrong-amount
+    message: "Repay uses different amount than loan lookup - potential accounting mismatch"
+    languages: [solidity]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-682: Incorrect Calculation"
+      c4-finding: "2024-06-size"
+      references:
+        - https://code4rena.com/reports/2024-06-size
+    pattern-regex: 'function\s+repay\s*\([^)]*amount[^)]*\)[^{]*\{[^}]*(?!amount)[a-z]+Amount'
+

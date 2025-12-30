@@ -192,6 +192,58 @@ Work through each repository systematically. After scanning, document findings a
 | 36 | [nicolasgarcia214/damn-vulnerable-defi-foundry](https://github.com/nicolasgarcia214/damn-vulnerable-defi-foundry) | DeFi CTF | ✅ Done | 349 | Foundry version |
 | 37 | [code-423n4/2023-01-numoen](https://github.com/code-423n4/2023-01-numoen) | C4 Audit | ✅ Done | 1,106 | 7 critical, 78 high, 292 medium |
 
+### Tier 5b: DeFi Lending/CDP Audits (LoopFi Alternatives) - VERIFIED
+
+These repos cover the same vulnerability types as LoopFi but are smaller and scannable:
+
+| # | Repository | Focus Area | Status | Findings | Critical | High | Medium |
+|---|------------|------------|--------|----------|----------|------|--------|
+| 38 | [code-423n4/2024-01-salty](https://github.com/code-423n4/2024-01-salty) | DEX/Lending | ✅ Done | 8,688 | 231 | 686 | 2,539 |
+| 39 | [code-423n4/2024-05-predy](https://github.com/code-423n4/2024-05-predy) | Perpetuals | ✅ Done | 3,007 | 282 | 233 | 583 |
+| 40 | [code-423n4/2024-03-revert-lend](https://github.com/code-423n4/2024-03-revert-lend) | Lending | ✅ Done | 1,967 | 54 | 76 | 537 |
+| 41 | [code-423n4/2024-04-dyad](https://github.com/code-423n4/2024-04-dyad) | CDP/Stablecoin | ✅ Done | 495 | 4 | 34 | 141 |
+| 42 | [code-423n4/2024-06-size](https://github.com/code-423n4/2024-06-size) | Lending | ✅ Done | 3,815 | 239 | 148 | 895 |
+| 43 | [code-423n4/2024-04-renzo](https://github.com/code-423n4/2024-04-renzo) | LRT/Staking | ✅ Done | 1,439 | 20 | 161 | 310 |
+| 44 | [code-423n4/2024-04-panoptic](https://github.com/code-423n4/2024-04-panoptic) | Options | ✅ Done | 7,827 | 30 | 474 | 2,266 |
+
+**Tier 5b Totals**: 27,238 findings (860 critical, 1,812 high, 7,271 medium)
+
+**Top HIGH Severity Rules Detected Across Tier 5b:**
+
+| Rule ID | Count | Description |
+|---------|-------|-------------|
+| sol-approval-scam-max-uint | 538 | Unlimited token approvals (dangerous) |
+| sol-constant-function-state | 486 | View/pure functions modifying state |
+| sol-state-variable-shadowing | 191 | Variable shadowing issues |
+| sol-cross-chain-replay | 95 | Cross-chain replay attack vectors |
+| sol-reentrancy-try-catch | 47 | Reentrancy in try-catch blocks |
+| sol-public-admin-function | 44 | Admin functions without access control |
+| sol-chainlink-stale-price | 22 | Stale oracle price data |
+| sol-initializer-not-protected | 24 | Unprotected initializer functions |
+
+**C4 Documented Vulnerabilities vs SAST Detection:**
+
+| Vulnerability Type | C4 Docs | SAST Detectable? | Detected? | Notes |
+|-------------------|---------|------------------|-----------|-------|
+| Unlimited Approvals | ✅ | ✅ Yes | ✅ 538 | sol-approval-scam-max-uint |
+| State Visibility | ✅ | ✅ Yes | ✅ 486 | sol-constant-function-state |
+| Variable Shadowing | ✅ | ✅ Yes | ✅ 191 | sol-state-variable-shadowing |
+| Cross-chain Replay | ✅ | ✅ Yes | ✅ 95 | sol-cross-chain-replay |
+| Reentrancy | ✅ | ✅ Yes | ✅ 47 | sol-reentrancy-try-catch |
+| Oracle Manipulation | ✅ | ⚠️ Partial | ✅ 22 | Stale price detection works |
+| Liquidation Logic | ✅ | ❌ Semantic | ❌ N/A | Business logic - not SAST-detectable |
+| Flash Loan Exploits | ✅ | ❌ Semantic | ❌ N/A | Economic attacks - not SAST-detectable |
+| MEV/Sandwich | ✅ | ❌ Semantic | ❌ N/A | Transaction ordering - not SAST-detectable |
+
+**Scan IDs for Verification:**
+- Salty: `7305abaa-155f-4185-b6ee-a4f89600ccd0`
+- Predy: `f4e7c84d-91b6-4032-9a16-a16f48733f5e`
+- Revert: `949cfdfb-7d43-434e-9a48-5185e554a4f1`
+- DYAD: `3615bb71-f683-498a-aad8-88911c1de681`
+- Size: `64ff3a65-ef12-4782-bfaa-69aacdfee73f`
+- Renzo: `e10a5ded-678c-4cbb-80bd-918dc5967897`
+- Panoptic: `4c6ec2cf-8661-4a41-b6e2-b8aebfd65965`
+
 ---
 
 ## Verified Coverage Summary
@@ -206,7 +258,7 @@ This section shows **verified coverage** for each scanned repository - comparing
 | JavaScript/Node | 4 (Juice Shop, NodeGoat, DVNA, vuln-node) | ✅ High | 93-931 findings per repo |
 | Python | 6 (crAPI, Flask, Django.nV, DSVW, VAmPI, Tiredful) | ✅ High | SSTI, SSRF, API security, Flask/Django |
 | Java | 3 (WebGoat, VulnerableApp, xxelab) | ✅ High | 2,347 combined, XXE/injection |
-| Solidity | 7 repos | ✅ High | 349-37,590 findings, strong DeFi coverage |
+| Solidity | 14 repos | ✅ High | 349-37,590 findings + 27,238 from Tier 5b C4 audits |
 | Ruby | 1 (RailsGoat) | ✅ High | 507 findings, Ruby-specific rules |
 | GraphQL | 1 (DVGA) | ✅ High | 1,268 findings, GraphQL patterns |
 | Android/Kotlin | 1 (InsecureShop) | ✅ High | 34 findings, 100% coverage (46 rules incl. ACE) |
@@ -1530,3 +1582,265 @@ The following repos have been removed from the benchmark due to being invalid fo
 2. **Priority order**: T1 → T2 → T3 → T4 → T5
 
 3. **After verification**: Update master coverage graph with real percentages
+
+---
+
+## Stack-Specific Scanner Benchmark Protocol
+
+This section covers benchmarking for the **NEW stack-specific scanners** (added Dec 2024):
+- **Bandit** - Python SAST
+- **Gosec** - Go security scanner
+- **Slither** - Solidity smart contract analyzer
+- **Brakeman** - Ruby on Rails scanner
+- **Checkov** - Infrastructure-as-Code scanner
+- **Hadolint** - Dockerfile linter
+- **Retire.js** - JavaScript dependency checker
+
+### The Protocol: Scan → Gap → Fix → Verify Loop
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  STACK-SPECIFIC SCANNER BENCHMARK METHODOLOGY                                ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  For each benchmark repo:                                                    ║
+║                                                                              ║
+║  1. DOCUMENT: Read repo → List ALL documented vulnerabilities                ║
+║  2. CLASSIFY: For each vuln → Is it detectable by this specific scanner?    ║
+║  3. SCAN: Trigger scan → Record scan_id                                      ║
+║  4. ANALYZE: Query findings → Map scanner output to documented vulns         ║
+║  5. GAP ANALYSIS: What's missing? Why?                                       ║
+║  6. FIX: For each gap → Is it a scanner issue or rule issue?                ║
+║     - Scanner issue: Document for investigation                              ║
+║     - Rule issue: Add/improve Opengrep rules                                 ║
+║  7. ITERATE: Deploy fixes → Rescan → Repeat until 100%                       ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Scanner-to-Benchmark Repo Mapping
+
+| Scanner | Language/Target | Primary Benchmark Repo | Secondary Repo |
+|---------|-----------------|------------------------|----------------|
+| **Bandit** | Python | DSVW | PyGoat |
+| **Gosec** | Go | go-test-bench | GoVWA |
+| **Slither** | Solidity | not-so-smart-contracts | Damn Vulnerable DeFi |
+| **Brakeman** | Ruby on Rails | RailsGoat | - |
+| **Checkov** | IaC (Terraform) | TerraGoat | CfnGoat |
+| **Hadolint** | Dockerfiles | TerraGoat | - |
+| **Retire.js** | JavaScript deps | NodeGoat | Juice Shop |
+
+### Benchmark Status Tracking
+
+| Scanner | Repo | Scan ID | Scanner Findings | Expected Vulns | Coverage | Status |
+|---------|------|---------|------------------|----------------|----------|--------|
+| Bandit | PyGoat | `078f279f-406c-4146-ac5e-f1364b778ecb` | 0 | TBD | 0% | 🔴 PyGoat-specific issue |
+| Bandit | DSVW | `3d367f1e-4141-4eaa-9a76-ea65e265f0dd` | **10** | 10+ | TBD | 🟢 WORKING |
+| Gosec | go-test-bench | `dd2e1583-6945-458c-bc88-7b1895fe5aa7` | **17** | TBD | TBD | 🟢 WORKING |
+| Slither | DamnVulnDeFi | `c3b062a9-058d-456a-bbbb-97fd717c6777` | 0 (error) | 18+ | 0% | 🔴 INVESTIGATE |
+| Brakeman | RailsGoat | `e3c43296-4e70-40c8-800a-5050e81298d7` | 18 | TBD | TBD | 🟡 VERIFY |
+| Checkov | TerraGoat | `3a5c326c-f209-4627-a8d1-6bed9645419c` | 305 | TBD | TBD | 🟡 VERIFY |
+| Hadolint | TerraGoat | `3a5c326c-f209-4627-a8d1-6bed9645419c` | 8+ | TBD | TBD | 🟡 VERIFY |
+
+### Investigation Priority Order
+
+**Priority 1: Scanners Returning 0 Findings (BROKEN)**
+1. **Bandit on PyGoat** - Python scanner should find SQLi, Command Inj, SSTI
+2. **Gosec on go-test-bench** - Go scanner should find unsafe patterns
+3. **Slither on DeFi repos** - Exit code 1 indicates setup issue (Foundry?)
+
+**Priority 2: Scanners Working, Need Coverage Verification**
+4. **Brakeman on RailsGoat** - 18 findings, verify against Rails vuln list
+5. **Checkov on TerraGoat** - 305 findings, verify against IaC misconfig list
+
+**Priority 3: Additional Coverage Testing**
+6. **DSVW for Bandit** - Simpler Python test case
+7. **not-so-smart-contracts for Slither** - Simpler Solidity test case
+
+---
+
+### Benchmark #1: DSVW (Bandit Python Scanner)
+
+**Repository**: https://github.com/stamparm/DSVW
+**Why**: Single Python file, ~200 lines, clearly labeled vulnerabilities
+**Scanner Under Test**: Bandit
+
+#### DSVW Documented Vulnerabilities (from README)
+
+| # | Vulnerability | Line(s) | SAST-Detectable? | Bandit Should Detect? |
+|---|---------------|---------|------------------|----------------------|
+| 1 | Blind SQL Injection | 85 | ✅ YES | ✅ B608 (hardcoded_sql) |
+| 2 | Blind SQL (boolean-based) | 87 | ✅ YES | ✅ B608 |
+| 3 | Blind SQL (time-based) | 87 | ✅ YES | ✅ B608 |
+| 4 | UNION SQL Injection | 89 | ✅ YES | ✅ B608 |
+| 5 | Login SQL Injection | 91 | ✅ YES | ✅ B608 |
+| 6 | XSS (Reflected) | 95 | ⚠️ PARTIAL | ❌ Not Bandit's domain |
+| 7 | HTTP Header Injection | 132 | ⚠️ PARTIAL | ❌ Not Bandit's domain |
+| 8 | Open Redirect | 99 | ⚠️ PARTIAL | ❌ Not Bandit's domain |
+| 9 | Path Traversal | 107 | ✅ YES | ✅ B310 (urllib_urlopen) |
+| 10 | Command Injection | 112 | ✅ YES | ✅ B602 (subprocess_shell) |
+| 11 | Eval Injection | 114 | ✅ YES | ✅ B307 (eval) |
+| 12 | XPATH Injection | 116 | ✅ YES | ⚠️ May not detect |
+| 13 | XML Injection | 120 | ✅ YES | ✅ B405/B406 (xml_*) |
+| 14 | XXE | 120 | ✅ YES | ✅ B405/B406 |
+| 15 | LDAP Injection | 127 | ✅ YES | ⚠️ May not detect |
+| 16 | Pickle Deserialization | 136 | ✅ YES | ✅ B301 (pickle) |
+| 17 | Debug Mode | 162 | ✅ YES | ✅ B201 (flask_debug) |
+
+**Expected Bandit Findings**: At minimum 10+ (SQL, Command, Eval, Pickle, XML, Debug)
+
+---
+
+### Benchmark #2: go-test-bench (Gosec Go Scanner)
+
+**Repository**: https://github.com/Contrast-Security-OSS/go-test-bench
+**Why**: Industry-standard Go vulnerability benchmark
+**Scanner Under Test**: Gosec
+
+#### go-test-bench Documented Vulnerabilities
+
+| # | Vulnerability | SAST-Detectable? | Gosec Should Detect? |
+|---|---------------|------------------|----------------------|
+| 1 | Command Injection | ✅ YES | ✅ G204 (subprocess) |
+| 2 | SQL Injection | ✅ YES | ✅ G201/G202 |
+| 3 | Path Traversal | ✅ YES | ✅ G304 (file_permissions) |
+| 4 | XSS | ⚠️ PARTIAL | ⚠️ Template-dependent |
+| 5 | SSRF | ✅ YES | ⚠️ May not detect |
+| 6 | Reflected Input | ✅ YES | ⚠️ May not detect |
+
+**Expected Gosec Findings**: At minimum 5+ per framework (net/http, Gin, Echo, Chi)
+
+---
+
+### Benchmark #3: not-so-smart-contracts (Slither)
+
+**Repository**: https://github.com/crytic/not-so-smart-contracts
+**Why**: Created by Trail of Bits (Slither authors), perfect test cases
+**Scanner Under Test**: Slither
+
+#### not-so-smart-contracts Documented Vulnerabilities
+
+| # | Directory | Vulnerability | Slither Detector |
+|---|-----------|---------------|------------------|
+| 1 | bad_randomness/ | Weak randomness source | weak-prng |
+| 2 | denial_of_service/ | DoS via gas limit | unchecked-send |
+| 3 | forced_ether/ | Forced ether reception | locked-ether |
+| 4 | incorrect_interface/ | Interface mismatch | missing-inheritance |
+| 5 | integer_overflow/ | Integer overflow | - (deprecated w/ Solidity 0.8) |
+| 6 | race_condition/ | Race condition | reentrancy-* |
+| 7 | reentrancy/ | Classic reentrancy | reentrancy-eth |
+| 8 | unchecked_external_call/ | Unchecked low-level call | low-level-calls |
+| 9 | unprotected_function/ | Missing access control | unprotected-upgrade |
+| 10 | variable_shadowing/ | Variable shadowing | shadowing-* |
+
+**Expected Slither Findings**: 10+ distinct vulnerability classes
+
+---
+
+### Benchmark #4: TerraGoat (Checkov IaC Scanner)
+
+**Repository**: https://github.com/bridgecrewio/terragoat
+**Why**: Official Bridgecrew training project with 200+ misconfigurations
+**Scanner Under Test**: Checkov
+
+#### TerraGoat Known Misconfigurations (by category)
+
+| Category | Examples | Checkov Check IDs |
+|----------|----------|-------------------|
+| S3 Buckets | No encryption, public access | CKV_AWS_18, CKV_AWS_19 |
+| Security Groups | 0.0.0.0/0 ingress | CKV_AWS_23, CKV_AWS_24 |
+| IAM | Wildcard policies | CKV_AWS_40, CKV_AWS_62 |
+| RDS | Unencrypted, public | CKV_AWS_16, CKV_AWS_17 |
+| EC2 | Public instances | CKV_AWS_79, CKV_AWS_88 |
+| Logging | Missing CloudTrail | CKV_AWS_35, CKV_AWS_36 |
+
+**Expected Checkov Findings**: 200+ (TerraGoat claims 200+ intentional issues)
+**Current Results**: 305 findings - VERIFY against documented list
+
+---
+
+### Benchmark #5: RailsGoat (Brakeman Rails Scanner)
+
+**Repository**: https://github.com/OWASP/railsgoat
+**Why**: Official OWASP Rails vulnerable app
+**Scanner Under Test**: Brakeman
+
+#### RailsGoat Documented Vulnerabilities
+
+| # | Vulnerability | SAST-Detectable? | Brakeman Warning Type |
+|---|---------------|------------------|----------------------|
+| 1 | SQL Injection | ✅ YES | SQL Injection |
+| 2 | Command Injection | ✅ YES | Command Injection |
+| 3 | XSS (multiple) | ✅ YES | Cross-Site Scripting |
+| 4 | Mass Assignment | ✅ YES | Mass Assignment |
+| 5 | IDOR | ❌ NO (logic) | - |
+| 6 | Session Fixation | ⚠️ PARTIAL | Session Setting |
+| 7 | Remote Code Execution | ✅ YES | Dangerous Eval |
+| 8 | CSRF | ⚠️ PARTIAL | CSRF |
+| 9 | Insecure Direct Object Reference | ❌ NO (logic) | - |
+| 10 | Unvalidated Redirects | ✅ YES | Redirect |
+| 11 | Sensitive Data Exposure | ✅ YES | File Access |
+
+**Expected Brakeman Findings**: 15+ (7-8 SAST-detectable vulnerability classes)
+**Current Results**: 18 findings - VERIFY against documented list
+
+---
+
+### Gap Resolution Workflow
+
+When a gap is identified:
+
+```
+1. Identify the missing detection:
+   - What vulnerability is documented?
+   - What file:line contains it?
+   - What scanner should detect it?
+
+2. Diagnose the cause:
+   - Scanner not running? Check logs, exit codes
+   - Scanner running but no findings? Missing rules/patterns
+   - Wrong scanner scope? File extensions, paths
+
+3. Fix based on cause:
+   - Scanner issue: Fix Dockerfile, dependencies, invocation
+   - Rule issue: Add Opengrep rules as backup
+   - Scope issue: Update scanner configuration
+
+4. Validate the fix:
+   - Redeploy scanner service
+   - Re-scan the benchmark repo
+   - Confirm new detection in results
+
+5. Document:
+   - Update this file with new scan_id
+   - Record rule_id and evidence
+   - Mark benchmark as verified
+```
+
+---
+
+### Next Actions
+
+1. **Investigate Bandit failure on PyGoat**
+   - Check scanner logs for Python file detection
+   - Verify Bandit is installed and executable
+   - Test locally with `bandit -r .` on PyGoat clone
+
+2. **Investigate Gosec failure on go-test-bench**
+   - Check if Go files detected in stack analysis
+   - Verify Gosec invocation in scan.py
+   - Check for Go module/dependency issues
+
+3. **Investigate Slither failure on DeFi repos**
+   - Slither exit code 1 indicates error
+   - May need solc version matching
+   - May need Foundry/Forge dependencies
+
+4. **Verify Brakeman coverage on RailsGoat**
+   - Map 18 findings to documented vulns
+   - Calculate actual coverage %
+   - Identify any gaps
+
+5. **Verify Checkov coverage on TerraGoat**
+   - Map 305 findings to documented misconfigs
+   - Should be near 100% (official benchmark)
