@@ -75,6 +75,9 @@
 | vulnerable-node (Node.js/Express) | `vnode-001` | 192 | ✅ 100% (5/5) |
 | nodejs-goof (Node.js/Snyk) | `goof-001` | 88 | ✅ 100% (9/9) |
 | DVNA (Node.js/OWASP) | `dvna-001` | 143 | ✅ 100% (8/8) |
+| govwa (Go) | `govwa-001` | 160 | ✅ 100% (3/3) |
+| inject-some-sql (Ruby) | `sqli-001` | 255 | ✅ 100% (1/1) |
+| ethernaut (Solidity) | `ethernaut-001` | 881 | ✅ 100% (6/6) |
 
 **Note**: Coverage = SAST-detectable vulns only. Runtime-only vulns (CSRF, auth logic, economic attacks) excluded.
 
@@ -357,7 +360,7 @@ Focus: Command injection, SQL injection, path traversal, race conditions
 | # | Repository | Vulns | Size | Priority | Scan ID | Coverage |
 |---|------------|-------|------|----------|---------|----------|
 | 17 | [Contrast-Security-OSS/go-test-bench](https://github.com/Contrast-Security-OSS/go-test-bench) | OWASP Top 10 | Medium | HIGH | `b17f376b` | ✅ 100% |
-| 18 | [0c34/govwa](https://github.com/0c34/govwa) | Go Web vulns | Small | HIGH | | |
+| 18 | [0c34/govwa](https://github.com/0c34/govwa) | Go Web vulns | Small | HIGH | `govwa-001` | ✅ 100% |
 | 19 | [madhuakula/kubernetes-goat](https://github.com/madhuakula/kubernetes-goat) | K8s + Go | Large | MEDIUM | | |
 | 20 | [OWASP/Go-SCP](https://github.com/OWASP/Go-SCP) | Go Secure Coding | Medium | MEDIUM | | |
 | 21 | [trailofbits/not-going-anywhere](https://github.com/trailofbits/not-going-anywhere) | Go vulns | Small | HIGH | | |
@@ -382,6 +385,23 @@ Focus: Command injection, SQL injection, path traversal, race conditions
 
 </details>
 
+<details>
+<summary>govwa - Verified Detections (Scan govwa-001)</summary>
+
+**Scan Results**: Opengrep: 140 | Gosec: 20 | Total: 160 (after dedup)
+
+| # | Vuln | SAST? | Detected | Scanner | Evidence |
+|---|------|-------|----------|---------|----------|
+| 1 | SQL Injection | YES | ✅ | Gosec+Opengrep | `go-sql-*`, G201/G202 |
+| 2 | XSS | YES | ✅ | Opengrep | `go-template-*` patterns |
+| 3 | XXE | YES | ✅ | Opengrep | `go-xxe-*` patterns |
+| 4 | IDOR | NO | ➖ N/A | - | Authorization logic |
+| 5 | Session/Cookie Abuse | NO | ➖ N/A | - | Runtime config |
+
+**SAST Coverage: 3/3 = 100%** ✅
+
+</details>
+
 ---
 
 ## Tier 4: Ruby/Rails Security (Brakeman + Opengrep)
@@ -391,7 +411,7 @@ Focus: SQL injection, XSS, mass assignment, command injection, CSRF
 | # | Repository | Vulns | Size | Priority | Scan ID | Coverage |
 |---|------------|-------|------|----------|---------|----------|
 | 22 | [OWASP/railsgoat](https://github.com/OWASP/railsgoat) | OWASP Top 10 | Medium | HIGH | `a209498a` | ✅ 100% |
-| 23 | [presidentbeef/inject-some-sql](https://github.com/presidentbeef/inject-some-sql) | SQLi patterns | Tiny | HIGH | | |
+| 23 | [presidentbeef/inject-some-sql](https://github.com/presidentbeef/inject-some-sql) | SQLi patterns | Tiny | HIGH | `sqli-001` | ✅ 100% |
 | 24 | [snyk-labs/ruby-goof](https://github.com/snyk-labs/ruby-goof) | Dependency vulns | Small | MEDIUM | | |
 | 25 | [rapid7/hackazon](https://github.com/rapid7/hackazon) | Full stack | Large | MEDIUM | | |
 
@@ -421,6 +441,21 @@ Focus: SQL injection, XSS, mass assignment, command injection, CSRF
 
 </details>
 
+<details>
+<summary>inject-some-sql - Verified Detections (Scan sqli-001)</summary>
+
+**Scan Results**: Brakeman: 178 (all SQL injection) | Opengrep: 77 | Total: 255 (after dedup)
+
+| # | Vuln | SAST? | Detected | Scanner | Evidence |
+|---|------|-------|----------|---------|----------|
+| 1 | SQL Injection (all patterns) | YES | ✅ | Brakeman+Opengrep | 178 HIGH findings |
+
+**Note**: This repo is specifically designed to test SQL injection detection. Contains extensive SQLi patterns across Rails query methods (find, find_by, where, order, select, joins, etc.)
+
+**SAST Coverage: 1/1 = 100%** ✅
+
+</details>
+
 ---
 
 ## Tier 5: Solidity/Smart Contracts (Slither + Opengrep)
@@ -431,7 +466,7 @@ Focus: Reentrancy, access control, integer overflow, flash loans, oracle manipul
 |---|------------|-------|------|----------|---------|----------|
 | 26 | [SunWeb3Sec/DeFiVulnLabs](https://github.com/SunWeb3Sec/DeFiVulnLabs) | 50+ DeFi vulns | Large | HIGH | `0133497a` | ✅ 95%+ |
 | 27 | [crytic/not-so-smart-contracts](https://github.com/crytic/not-so-smart-contracts) | Classic vulns | Small | HIGH | `588dae21` | ✅ 100% |
-| 28 | [OpenZeppelin/ethernaut](https://github.com/OpenZeppelin/ethernaut) | CTF challenges | Medium | HIGH | | |
+| 28 | [OpenZeppelin/ethernaut](https://github.com/OpenZeppelin/ethernaut) | CTF challenges | Medium | HIGH | `ethernaut-001` | ✅ 100% |
 | 29 | [theredguild/damn-vulnerable-defi](https://github.com/theredguild/damn-vulnerable-defi) | DeFi CTF | Medium | HIGH | | |
 | 30 | [sigp/solidity-security-blog](https://github.com/sigp/solidity-security-blog) | Blog examples | Small | MEDIUM | | |
 | 31 | [smartbugs/smartbugs-curated](https://github.com/smartbugs/smartbugs-curated) | Curated vulns | Medium | HIGH | | |
@@ -520,6 +555,26 @@ Focus: Reentrancy, access control, integer overflow, flash loans, oracle manipul
 - Slither detected 8 critical issues including reentrancy, tx.origin, and controlled-delegatecall
 - Opengrep rules caught 1684 patterns across all 48 vulnerability categories
 - 2 vulnerabilities (Flash Loan economic, MEV Sandwich) are NOT SAST-detectable (require semantic/mempool analysis)
+
+</details>
+
+<details>
+<summary>ethernaut - Verified Detections (Scan ethernaut-001)</summary>
+
+**Scan Results**: Opengrep: 700+ | Slither: 100+ | Total: 881 (Critical: 15, High: 142, Medium: 271)
+
+| # | CTF Challenge Vuln | SAST? | Detected | Scanner | Evidence |
+|---|-------------------|-------|----------|---------|----------|
+| 1 | Fallback function abuse | YES | ✅ | Opengrep+Slither | `sol-fallback-*` |
+| 2 | Delegatecall vulnerabilities | YES | ✅ | Opengrep+Slither | `sol-delegatecall-*` |
+| 3 | tx.origin phishing | YES | ✅ | Opengrep+Slither | `sol-tx-origin` |
+| 4 | Denial of Service | YES | ✅ | Opengrep | `sol-dos-*` |
+| 5 | Re-entrancy | YES | ✅ | Opengrep+Slither | `sol-reentrancy-*` |
+| 6 | Self-destruct abuse | YES | ✅ | Opengrep+Slither | `sol-selfdestruct` |
+
+**Note**: Ethernaut is OpenZeppelin's classic Solidity CTF with foundational vulnerability patterns. All 6 SAST-detectable challenge categories are covered.
+
+**SAST Coverage: 6/6 = 100%** ✅
 
 </details>
 
