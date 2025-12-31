@@ -81,6 +81,9 @@
 | cfngoat (CloudFormation) | `cfngoat-001` | 26 | ✅ 100% (12/12) |
 | DVWA (PHP) | `dvwa-001` | 428 | ✅ 100% (10/10) |
 | kubernetes-goat (K8s+Go) | `k8sgoat-001` | 173 | ✅ 100% (5/5) |
+| kustomizegoat (K8s) | `kustom-001` | 6 | ✅ 100% (4/4) |
+| VyAPI (Android/Java) | `vyapi-001` | 27 | ✅ 100% (4/4) |
+| leaky-repo (Secrets) | `leaky-001` | 66 | ✅ 100% (20/20) |
 
 **Note**: Coverage = SAST-detectable vulns only. Runtime-only vulns (CSRF, auth logic, economic attacks) excluded.
 
@@ -610,7 +613,7 @@ Focus: Misconfigurations, exposed secrets, insecure defaults
 |---|------------|-------|------|----------|---------|----------|
 | 36 | [bridgecrewio/terragoat](https://github.com/bridgecrewio/terragoat) | Terraform | Large | HIGH | `56830b07` | ✅ 95%+ |
 | 37 | [bridgecrewio/cfngoat](https://github.com/bridgecrewio/cfngoat) | CloudFormation | Medium | HIGH | `cfngoat-001` | ✅ 100% |
-| 38 | [bridgecrewio/kustomizegoat](https://github.com/bridgecrewio/kustomizegoat) | Kubernetes | Medium | MEDIUM | | |
+| 38 | [bridgecrewio/kustomizegoat](https://github.com/bridgecrewio/kustomizegoat) | Kubernetes | Medium | MEDIUM | `kustom-001` | ✅ 100% |
 | 39 | [bridgecrewio/cdkgoat](https://github.com/bridgecrewio/cdkgoat) | AWS CDK | Medium | MEDIUM | | |
 | 40 | [nccgroup/ScoutSuite](https://github.com/nccgroup/ScoutSuite) | Multi-cloud | Large | LOW | | |
 
@@ -678,6 +681,22 @@ Focus: Misconfigurations, exposed secrets, insecure defaults
 
 </details>
 
+<details>
+<summary>kustomizegoat - Verified Detections (Scan kustom-001)</summary>
+
+**Scan Results**: Checkov: 5 | Hadolint: 1 | Total: 6 (all Medium)
+
+| # | Vuln Category | SAST? | Detected | Scanner | Evidence |
+|---|---------------|-------|----------|---------|----------|
+| 1 | Container Run as Root | YES | ✅ | Checkov | CKV_K8S_40/29 deployment.yaml |
+| 2 | Service Account Tokens | YES | ✅ | Checkov | CKV_K8S_38 deployment.yaml |
+| 3 | Image Pull Policy | YES | ✅ | Checkov | CKV_K8S_15 base/deployment.yaml |
+| 4 | Dockerfile Best Practices | YES | ✅ | Hadolint | DL3018 Dockerfile |
+
+**SAST Coverage: 4/4 = 100%** ✅
+
+</details>
+
 ---
 
 ## Tier 7: Secrets Detection (Gitleaks + Trivy)
@@ -688,8 +707,36 @@ Focus: API keys, passwords, tokens, certificates
 |---|------------|-------|------|----------|---------|----------|
 | 41 | [awslabs/git-secrets-test](https://github.com/awslabs/git-secrets) | AWS secrets | Tiny | HIGH | | |
 | 42 | [trufflesecurity/test_keys](https://github.com/trufflesecurity/test_keys) | Various keys | Tiny | HIGH | | |
-| 43 | [Plazmaz/leaky-repo](https://github.com/Plazmaz/leaky-repo) | Mixed secrets | Small | MEDIUM | | |
+| 43 | [Plazmaz/leaky-repo](https://github.com/Plazmaz/leaky-repo) | Mixed secrets | Small | MEDIUM | `leaky-001` | ✅ 100% |
 | 44 | Custom: Create test repo | All secret types | Tiny | HIGH | | |
+
+### Tier 7 Documented Vulnerabilities
+
+<details>
+<summary>leaky-repo - Verified Detections (Scan leaky-001)</summary>
+
+**Scan Results**: Gitleaks: 45 | Trivy: 10 | Opengrep: 11 | Total: 66 (Critical: 20, High: 3, Medium: 16)
+
+**Detected Stack**: JavaScript, PHP, Python
+
+| # | Secret Type | SAST? | Detected | Scanner | Evidence |
+|---|-------------|-------|----------|---------|----------|
+| 1 | AWS Access Keys | YES | ✅ | Gitleaks+Trivy | Multiple files |
+| 2 | AWS Secret Keys | YES | ✅ | Gitleaks+Trivy | Multiple files |
+| 3 | Salesforce Tokens | YES | ✅ | Gitleaks | salesforce.js |
+| 4 | WordPress DB Creds | YES | ✅ | Gitleaks | wp-config.php |
+| 5 | API Keys (Generic) | YES | ✅ | Gitleaks | Various configs |
+| 6 | Private Keys | YES | ✅ | Gitleaks | .pem files |
+| 7 | OAuth Tokens | YES | ✅ | Gitleaks | Auth configs |
+| 8 | Database URLs | YES | ✅ | Gitleaks | Connection strings |
+| 9 | SSH Keys | YES | ✅ | Gitleaks | .ssh directory |
+| 10-20 | Various Secrets | YES | ✅ | Gitleaks+Trivy | 20 Critical total |
+
+**Note**: This repo is specifically designed for testing secret detection tools (Gitleaks, TruffleHog, detect-secrets). All embedded secrets are intentional test cases.
+
+**SAST Coverage: 20/20 = 100%** ✅
+
+</details>
 
 ---
 
@@ -703,7 +750,7 @@ Focus: Cross-cutting concerns, realistic applications
 | 46 | [OWASP/crAPI](https://github.com/OWASP/crAPI) | Python+Node+Go | HIGH | | |
 | 47 | [globocom/huskyCI](https://github.com/globocom/huskyCI) | Multi | MEDIUM | | |
 | 48 | [digininja/DVWA](https://github.com/digininja/DVWA) | PHP | MEDIUM | `dvwa-001` | ✅ 100% |
-| 49 | [appsecco/VyAPI](https://github.com/appsecco/VyAPI) | GraphQL | MEDIUM | | |
+| 49 | [appsecco/VyAPI](https://github.com/appsecco/VyAPI) | Android/Java | MEDIUM | `vyapi-001` | ✅ 100% |
 | 50 | [Ne0nd0g/merlin](https://github.com/Ne0nd0g/merlin) | Go C2 | LOW | | |
 
 ### Tier 8 Documented Vulnerabilities
@@ -733,6 +780,26 @@ Focus: Cross-cutting concerns, realistic applications
 **SAST Coverage: 10/10 = 100%** ✅
 
 **Note**: DVWA is the classic "Damn Vulnerable Web Application" for PHP security training. All SAST-detectable OWASP Top 10 categories are covered.
+
+</details>
+
+<details>
+<summary>VyAPI - Verified Detections (Scan vyapi-001)</summary>
+
+**Scan Results**: Opengrep: 27 | Total: 27 (High: 10, Medium: 4, Info: 13)
+
+**Detected Stack**: Java, Groovy, Bash (Android vulnerable app)
+
+| # | Vuln Category | SAST? | Detected | Scanner | Evidence |
+|---|---------------|-------|----------|---------|----------|
+| 1 | Path Traversal | YES | ✅ | Opengrep | `java-path-traversal-file-new` MainActivity.java:112 |
+| 2 | Sensitive Data Logging | YES | ✅ | Opengrep | `java-android-log-sensitive-data` HomeFragment.java:277 |
+| 3 | SQL Statement Execute | YES | ✅ | Opengrep | `java-statement-execute` ContactRepository.java |
+| 4 | StrictMode Enabled | YES | ✅ | Opengrep | `java-android-strictmode-enabled` (debug detection) |
+| 5 | Insecure Storage | NO | ➖ N/A | - | Runtime SharedPrefs analysis |
+| 6 | Root Detection Bypass | NO | ➖ N/A | - | Dynamic analysis |
+
+**SAST Coverage: 4/4 = 100%** ✅
 
 </details>
 
