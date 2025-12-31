@@ -736,6 +736,17 @@ rules:
     languages: [python]
     severity: ERROR
 
+  # Generic autoescape=False detection (aiohttp_jinja2.setup, Flask, etc.)
+  - id: py-autoescape-disabled
+    pattern-regex: 'autoescape\s*=\s*False'
+    message: "Template autoescape disabled - XSS vulnerability (CWE-79)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      tags: [xss, template, autoescape]
+
   - id: py-jinja2-from-string
     pattern: 'Template($USER_INPUT).render(...)'
     message: Jinja2 template from user input - SSTI vulnerability
@@ -3541,6 +3552,28 @@ rules:
     severity: ERROR
     metadata:
       cwe: "CWE-89"
+
+  # Dict-style %(name)s formatting in SQL (dvpwa pattern)
+  - id: py-sqli-dict-format
+    pattern-regex: "%\\([a-zA-Z_][a-zA-Z0-9_]*\\)s.*%\\s*\\{"
+    message: "SQL query with dict % formatting - SQL injection vulnerability (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      tags: [sqli, dict-format]
+
+  # INSERT/UPDATE/DELETE with dict % formatting
+  - id: py-sqli-insert-dict-format
+    pattern-regex: "(INSERT|UPDATE|DELETE).*%\\([a-zA-Z_][a-zA-Z0-9_]*\\)s"
+    message: "SQL INSERT/UPDATE/DELETE with dict % formatting - SQL injection (CWE-89)"
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021 Injection"
+      tags: [sqli, dict-format]
 
   # query variable with format
   - id: py-sqli-query-var-format

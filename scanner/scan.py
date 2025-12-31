@@ -879,15 +879,21 @@ def run_retirejs(repo_dir: str) -> List[Dict[str, Any]]:
         print("No package-lock.json found, attempting to generate...", file=sys.stderr)
         try:
             # Use npm install --package-lock-only to generate lock file without installing
+            # Large repos like Juice Shop can take 5+ minutes for dependency resolution
+            # Timeout increased to 600s (10 min) to handle large dependency trees
             gen_result = subprocess.run(
-                ['npm', 'install', '--package-lock-only', '--ignore-scripts'],
+                ['npm', 'install', '--package-lock-only', '--ignore-scripts', '--legacy-peer-deps'],
                 cwd=repo_dir,
                 capture_output=True,
                 text=True,
-                timeout=120
+                timeout=600
             )
             if gen_result.returncode != 0:
                 print(f"Could not generate package-lock.json: {gen_result.stderr[:200]}", file=sys.stderr)
+            else:
+                print("Successfully generated package-lock.json", file=sys.stderr)
+        except subprocess.TimeoutExpired:
+            print("npm install timed out after 600s - very large dependency tree", file=sys.stderr)
         except Exception as e:
             print(f"Error generating package-lock.json: {e}", file=sys.stderr)
 
@@ -1711,6 +1717,16 @@ def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
         if result.stdout:
             try:
                 data = json.loads(result.stdout)
+
+                # Debug: log Slither output structure
+                success = data.get('success', None)
+                error = data.get('error', None)
+                detectors_count = len(data.get('results', {}).get('detectors', []))
+                print(f"Slither output: success={success}, error={error}, detectors={detectors_count}", file=sys.stderr)
+
+                # Log compilation errors if any
+                if data.get('results', {}).get('compilation_errors'):
+                    print(f"Slither compilation errors: {data['results']['compilation_errors'][:500]}", file=sys.stderr)
 
                 for detector in data.get('results', {}).get('detectors', []):
                     severity_map = {
