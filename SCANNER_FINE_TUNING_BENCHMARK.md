@@ -93,6 +93,7 @@
 | not-going-anywhere (Go) | `notgoing-001` | 99 | ✅ 100% (5/5) |
 | git-secrets (Secrets) | `gitsecrets-001` | 28 | ✅ 100% (4/4) |
 | merlin (Go/C#) | `merlin-001` | 258 | ✅ 100% (8/8) |
+| juice-shop-ctf (TypeScript) | `jsctf-001` | 70 | ✅ 100% (4/4) |
 
 **Note**: Coverage = SAST-detectable vulns only. Runtime-only vulns (CSRF, auth logic, economic attacks) excluded.
 
