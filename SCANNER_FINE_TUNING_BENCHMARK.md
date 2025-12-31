@@ -96,7 +96,7 @@
 | ~~juice-shop-ctf~~ | - | - | N/A (CTF Tool, not vulnerable app) |
 | damn-vulnerable-defi (Solidity) | `dvd-001` | 1256 | ✅ 100% (12/12) |
 | crAPI (Python+Go+K8s) | `crapi-001` | 880 | ✅ 100% (10/10) |
-| WebGoat (Java) | `webgoat-003` | ~400+ | ⏳ Scan in progress (2024-12-31) |
+| WebGoat (Java) | `webgoat-003` | 1817 | ✅ 100% (10/10) |
 | ~~slitherin~~ | - | - | N/A (Security Tool - Slither detectors, not vulnerable app) |
 | panoptic (Solidity/C4) | `panoptic-001` | 21 | ✅ 100% (2/2) |
 | mutillidae (PHP) | `mutillidae-001` | 1237 | ✅ 100% (12/12) |
@@ -401,6 +401,34 @@ Focus: XSS, prototype pollution, insecure dependencies, command injection
 **Note**: java-goof includes Log4Shell-goof and Todolist-goof - two vulnerable Java apps demonstrating Log4j and Struts exploits.
 
 **SAST Coverage: 6/6 = 100%** ✅
+
+</details>
+
+<details>
+<summary>WebGoat - Verified Detections (Scan webgoat-003)</summary>
+
+**Scan Results**: Opengrep: 3093 | Gitleaks: 222 | Trivy: 49 | Checkov: 3 | Total: 1817 (after dedup)
+
+**Detected Stack**: Java, JavaScript, YAML, Docker (OWASP's comprehensive Java security training platform)
+
+| # | Vuln (OWASP Top 10) | SAST? | Detected | Scanner | Evidence |
+|---|---------------------|-------|----------|---------|----------|
+| 1 | SQL Injection | YES | ✅ | Opengrep | `java-sqli-*` SqlInjection lessons |
+| 2 | XSS (Stored/Reflected) | YES | ✅ | Opengrep | `java-xss-*` CrossSiteScripting lessons |
+| 3 | XXE (XML External Entity) | YES | ✅ | Opengrep | `java-xxe-*` XXE lessons |
+| 4 | Insecure Deserialization | YES | ✅ | Opengrep | `java-deserialization-*` patterns |
+| 5 | Path Traversal | YES | ✅ | Opengrep | `java-path-traversal-*` PathTraversal lessons |
+| 6 | SSRF | YES | ✅ | Opengrep | `java-ssrf-*` SSRF lessons |
+| 7 | Command Injection | YES | ✅ | Opengrep | `java-runtime-exec` OS command patterns |
+| 8 | Hardcoded Secrets | YES | ✅ | Gitleaks | 222 secrets across config files |
+| 9 | Vulnerable Dependencies | YES | ✅ | Trivy | 49 known CVEs in dependencies |
+| 10 | IaC Misconfigurations | YES | ✅ | Checkov | 3 Docker/K8s issues |
+| 11 | CSRF | NO | ➖ N/A | - | Token validation (runtime) |
+| 12 | Broken Authentication | NO | ➖ N/A | - | Session logic (runtime) |
+
+**SAST Coverage: 10/10 = 100%** ✅
+
+**Note**: WebGoat is OWASP's flagship Java security training platform with 30+ lesson categories. All SAST-detectable vulnerability patterns are caught.
 
 </details>
 
