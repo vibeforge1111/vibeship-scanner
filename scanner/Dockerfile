@@ -14,24 +14,7 @@ RUN apt-get update && apt-get install -y \
 RUN npm install -g retire
 
 # ============================================
-# TOOL #5: Bandit - Python Security Linter
-# PyCQA - Hardcoded passwords, SQL injection, command injection
-# ============================================
-RUN pip install bandit
-
-# ============================================
-# TOOL #6: Gosec - Go Security Checker
-# Inspects Go source code for security problems
-# Requires Go to be installed for module resolution
-# ============================================
-RUN wget -qO- https://go.dev/dl/go1.22.0.linux-amd64.tar.gz | tar -C /usr/local -xzf -
-ENV PATH="/usr/local/go/bin:${PATH}"
-ENV GOPATH="/root/go"
-ENV PATH="${GOPATH}/bin:${PATH}"
-RUN curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b /usr/local/bin v2.21.4
-
-# ============================================
-# TOOL #7: Hadolint - Dockerfile Linter
+# TOOL #5: Hadolint - Dockerfile Linter
 # Best practices and security for Dockerfiles
 # ============================================
 RUN wget -qO /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 \
