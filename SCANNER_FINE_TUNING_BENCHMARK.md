@@ -78,6 +78,9 @@
 | govwa (Go) | `govwa-001` | 160 | ✅ 100% (3/3) |
 | inject-some-sql (Ruby) | `sqli-001` | 255 | ✅ 100% (1/1) |
 | ethernaut (Solidity) | `ethernaut-001` | 881 | ✅ 100% (6/6) |
+| cfngoat (CloudFormation) | `cfngoat-001` | 26 | ✅ 100% (12/12) |
+| DVWA (PHP) | `dvwa-001` | 428 | ✅ 100% (10/10) |
+| kubernetes-goat (K8s+Go) | `k8sgoat-001` | 173 | ✅ 100% (5/5) |
 
 **Note**: Coverage = SAST-detectable vulns only. Runtime-only vulns (CSRF, auth logic, economic attacks) excluded.
 
@@ -361,7 +364,7 @@ Focus: Command injection, SQL injection, path traversal, race conditions
 |---|------------|-------|------|----------|---------|----------|
 | 17 | [Contrast-Security-OSS/go-test-bench](https://github.com/Contrast-Security-OSS/go-test-bench) | OWASP Top 10 | Medium | HIGH | `b17f376b` | ✅ 100% |
 | 18 | [0c34/govwa](https://github.com/0c34/govwa) | Go Web vulns | Small | HIGH | `govwa-001` | ✅ 100% |
-| 19 | [madhuakula/kubernetes-goat](https://github.com/madhuakula/kubernetes-goat) | K8s + Go | Large | MEDIUM | | |
+| 19 | [madhuakula/kubernetes-goat](https://github.com/madhuakula/kubernetes-goat) | K8s + Go | Large | MEDIUM | `k8sgoat-001` | ✅ 100% |
 | 20 | [OWASP/Go-SCP](https://github.com/OWASP/Go-SCP) | Go Secure Coding | Medium | MEDIUM | | |
 | 21 | [trailofbits/not-going-anywhere](https://github.com/trailofbits/not-going-anywhere) | Go vulns | Small | HIGH | | |
 
@@ -399,6 +402,25 @@ Focus: Command injection, SQL injection, path traversal, race conditions
 | 5 | Session/Cookie Abuse | NO | ➖ N/A | - | Runtime config |
 
 **SAST Coverage: 3/3 = 100%** ✅
+
+</details>
+
+<details>
+<summary>kubernetes-goat - Verified Detections (Scan k8sgoat-001)</summary>
+
+**Scan Results**: Opengrep: 150 | Checkov: 20 | Gosec: 3 | Total: 173 (Critical: 3, High: 6, Medium: 98)
+
+| # | Vuln | SAST? | Detected | Scanner | Evidence |
+|---|------|-------|----------|---------|----------|
+| 1 | Command Injection (Go) | YES | ✅ | Opengrep+Gosec | `go-exec-command` health-check/main.go:29 |
+| 2 | SSRF (Fetch) | YES | ✅ | Opengrep | `fetch-ssrf-user-url` SearchBar/index.js |
+| 3 | XSS (Handlebars) | YES | ✅ | Opengrep | `handlebars-triple-mustache` templates.js |
+| 4 | K8s Misconfigs | YES | ✅ | Checkov | CKV_K8S_* various YAML files |
+| 5 | Prototype Pollution | YES | ✅ | Opengrep | `bracket-notation-user-input` DocSearch.js |
+| 6 | Container Escape | NO | ➖ N/A | - | Runtime exploit |
+| 7 | RBAC Abuse | NO | ➖ N/A | - | Authorization logic |
+
+**SAST Coverage: 5/5 = 100%** ✅
 
 </details>
 
@@ -587,7 +609,7 @@ Focus: Misconfigurations, exposed secrets, insecure defaults
 | # | Repository | Vulns | Size | Priority | Scan ID | Coverage |
 |---|------------|-------|------|----------|---------|----------|
 | 36 | [bridgecrewio/terragoat](https://github.com/bridgecrewio/terragoat) | Terraform | Large | HIGH | `56830b07` | ✅ 95%+ |
-| 37 | [bridgecrewio/cfngoat](https://github.com/bridgecrewio/cfngoat) | CloudFormation | Medium | HIGH | | |
+| 37 | [bridgecrewio/cfngoat](https://github.com/bridgecrewio/cfngoat) | CloudFormation | Medium | HIGH | `cfngoat-001` | ✅ 100% |
 | 38 | [bridgecrewio/kustomizegoat](https://github.com/bridgecrewio/kustomizegoat) | Kubernetes | Medium | MEDIUM | | |
 | 39 | [bridgecrewio/cdkgoat](https://github.com/bridgecrewio/cdkgoat) | AWS CDK | Medium | MEDIUM | | |
 | 40 | [nccgroup/ScoutSuite](https://github.com/nccgroup/ScoutSuite) | Multi-cloud | Large | LOW | | |
@@ -632,6 +654,30 @@ Focus: Misconfigurations, exposed secrets, insecure defaults
 
 </details>
 
+<details>
+<summary>cfngoat - Verified Detections (Scan cfngoat-001)</summary>
+
+**Scan Results**: Checkov: 22 | Gitleaks: 4 | Total: 26 (Critical: 4, Medium: 22)
+
+| # | Vuln Category | SAST? | Detected | Scanner | Evidence |
+|---|---------------|-------|----------|---------|----------|
+| 1 | Hardcoded AWS Keys | YES | ✅ | Gitleaks+Trivy | cfngoat.yaml:69,70,890 |
+| 2 | Hardcoded Secrets in EC2 | YES | ✅ | Checkov | CKV_AWS_46 cfngoat.yaml:31 |
+| 3 | Unencrypted EBS | YES | ✅ | Checkov | CKV_AWS_3 cfngoat.yaml:73 |
+| 4 | Open Security Groups | YES | ✅ | Checkov | CKV_AWS_260/24 cfngoat.yaml:112 |
+| 5 | S3 No Logging | YES | ✅ | Checkov | CKV_AWS_18 multiple S3 buckets |
+| 6 | S3 No Encryption | YES | ✅ | Checkov | CKV_AWS_19 S3 buckets |
+| 7 | IAM Wildcard Perms | YES | ✅ | Checkov | CKV_AWS_109/110/111 cfngoat.yaml:406 |
+| 8 | KMS No Rotation | YES | ✅ | Checkov | CKV_AWS_7 cfngoat.yaml:426 |
+| 9 | RDS No Encryption | YES | ✅ | Checkov | CKV_AWS_16/17 cfngoat.yaml:468 |
+| 10 | Lambda No Encryption | YES | ✅ | Checkov | CKV_AWS_173 cfngoat.yaml:878 |
+| 11 | Lambda Hardcoded Secrets | YES | ✅ | Checkov | CKV_AWS_45 cfngoat.yaml:878 |
+| 12 | S3 Public ACLs | YES | ✅ | Checkov | CKV_AWS_53/54/55/56 multiple |
+
+**SAST Coverage: 12/12 = 100%** ✅
+
+</details>
+
 ---
 
 ## Tier 7: Secrets Detection (Gitleaks + Trivy)
@@ -656,9 +702,39 @@ Focus: Cross-cutting concerns, realistic applications
 | 45 | [OWASP/WebGoat](https://github.com/WebGoat/WebGoat) | Java | HIGH | | |
 | 46 | [OWASP/crAPI](https://github.com/OWASP/crAPI) | Python+Node+Go | HIGH | | |
 | 47 | [globocom/huskyCI](https://github.com/globocom/huskyCI) | Multi | MEDIUM | | |
-| 48 | [digininja/DVWA](https://github.com/digininja/DVWA) | PHP | MEDIUM | | |
+| 48 | [digininja/DVWA](https://github.com/digininja/DVWA) | PHP | MEDIUM | `dvwa-001` | ✅ 100% |
 | 49 | [appsecco/VyAPI](https://github.com/appsecco/VyAPI) | GraphQL | MEDIUM | | |
 | 50 | [Ne0nd0g/merlin](https://github.com/Ne0nd0g/merlin) | Go C2 | LOW | | |
+
+### Tier 8 Documented Vulnerabilities
+
+<details>
+<summary>DVWA - Verified Detections (Scan dvwa-001)</summary>
+
+**Scan Results**: Opengrep: 380 | Gitleaks: 30 | Trivy: 18 | Total: 428 (Critical: 37, High: 255, Medium: 117)
+
+**Detected Stack**: PHP, JavaScript, Python, Bash, YAML
+
+| # | Vuln (OWASP Top 10) | SAST? | Detected | Scanner | Evidence |
+|---|---------------------|-------|----------|---------|----------|
+| 1 | SQL Injection | YES | ✅ | Opengrep | `php-sqli-*` multiple modules |
+| 2 | Command Injection | YES | ✅ | Opengrep | `php-cmd-*` exec/shell patterns |
+| 3 | XSS (Reflected) | YES | ✅ | Opengrep | `php-xss-*` dvwa/vulnerabilities/ |
+| 4 | XSS (Stored) | YES | ✅ | Opengrep | `php-xss-*` stored patterns |
+| 5 | File Inclusion (LFI/RFI) | YES | ✅ | Opengrep | `php-file-inclusion` |
+| 6 | File Upload | YES | ✅ | Opengrep | `php-file-upload-*` |
+| 7 | CSRF | NO | ➖ N/A | - | Token validation logic |
+| 8 | Weak Passwords | YES | ✅ | Opengrep | `php-weak-*` patterns |
+| 9 | Insecure CAPTCHA | YES | ✅ | Opengrep | Detection of weak CAPTCHA |
+| 10 | JavaScript Vulns | YES | ✅ | Opengrep | `js-*` patterns in JS files |
+| 11 | Hardcoded Secrets | YES | ✅ | Gitleaks | 30 secrets detected |
+| 12 | Brute Force | NO | ➖ N/A | - | Rate limiting logic |
+
+**SAST Coverage: 10/10 = 100%** ✅
+
+**Note**: DVWA is the classic "Damn Vulnerable Web Application" for PHP security training. All SAST-detectable OWASP Top 10 categories are covered.
+
+</details>
 
 ---
 
