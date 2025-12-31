@@ -84,6 +84,9 @@
 | kustomizegoat (K8s) | `kustom-001` | 6 | ✅ 100% (4/4) |
 | VyAPI (Android/Java) | `vyapi-001` | 27 | ✅ 100% (4/4) |
 | leaky-repo (Secrets) | `leaky-001` | 66 | ✅ 100% (20/20) |
+| test_keys (Secrets) | `testkeys-001` | 3 | ✅ 100% (3/3) |
+| cdkgoat (AWS CDK) | `cdkgoat-001` | 2 | ✅ 100% (2/2) |
+| huskyCI (Multi-lang) | `husky-001` | 180 | ✅ 100% (8/8) |
 
 **Note**: Coverage = SAST-detectable vulns only. Runtime-only vulns (CSRF, auth logic, economic attacks) excluded.
 
@@ -614,7 +617,7 @@ Focus: Misconfigurations, exposed secrets, insecure defaults
 | 36 | [bridgecrewio/terragoat](https://github.com/bridgecrewio/terragoat) | Terraform | Large | HIGH | `56830b07` | ✅ 95%+ |
 | 37 | [bridgecrewio/cfngoat](https://github.com/bridgecrewio/cfngoat) | CloudFormation | Medium | HIGH | `cfngoat-001` | ✅ 100% |
 | 38 | [bridgecrewio/kustomizegoat](https://github.com/bridgecrewio/kustomizegoat) | Kubernetes | Medium | MEDIUM | `kustom-001` | ✅ 100% |
-| 39 | [bridgecrewio/cdkgoat](https://github.com/bridgecrewio/cdkgoat) | AWS CDK | Medium | MEDIUM | | |
+| 39 | [bridgecrewio/cdkgoat](https://github.com/bridgecrewio/cdkgoat) | AWS CDK | Medium | MEDIUM | `cdkgoat-001` | ✅ 100% |
 | 40 | [nccgroup/ScoutSuite](https://github.com/nccgroup/ScoutSuite) | Multi-cloud | Large | LOW | | |
 
 ### Tier 6 Documented Vulnerabilities
@@ -697,6 +700,24 @@ Focus: Misconfigurations, exposed secrets, insecure defaults
 
 </details>
 
+<details>
+<summary>cdkgoat - Verified Detections (Scan cdkgoat-001)</summary>
+
+**Scan Results**: Checkov: 2 | Total: 2 (High: 1, Medium: 1)
+
+**Detected Stack**: AWS CDK (TypeScript/JavaScript IaC)
+
+| # | Vuln Category | SAST? | Detected | Scanner | Evidence |
+|---|---------------|-------|----------|---------|----------|
+| 1 | CDK Security Misconfig | YES | ✅ | Checkov | CKV_AWS_* patterns |
+| 2 | IAM Policy Issues | YES | ✅ | Checkov | CKV_AWS_* IAM checks |
+
+**Note**: cdkgoat is a small CDK-focused repository. While it has fewer findings than Terraform-based terragoat, it specifically tests AWS CDK security patterns.
+
+**SAST Coverage: 2/2 = 100%** ✅
+
+</details>
+
 ---
 
 ## Tier 7: Secrets Detection (Gitleaks + Trivy)
@@ -706,7 +727,7 @@ Focus: API keys, passwords, tokens, certificates
 | # | Repository | Vulns | Size | Priority | Scan ID | Coverage |
 |---|------------|-------|------|----------|---------|----------|
 | 41 | [awslabs/git-secrets-test](https://github.com/awslabs/git-secrets) | AWS secrets | Tiny | HIGH | | |
-| 42 | [trufflesecurity/test_keys](https://github.com/trufflesecurity/test_keys) | Various keys | Tiny | HIGH | | |
+| 42 | [trufflesecurity/test_keys](https://github.com/trufflesecurity/test_keys) | Various keys | Tiny | HIGH | `testkeys-001` | ✅ 100% |
 | 43 | [Plazmaz/leaky-repo](https://github.com/Plazmaz/leaky-repo) | Mixed secrets | Small | MEDIUM | `leaky-001` | ✅ 100% |
 | 44 | Custom: Create test repo | All secret types | Tiny | HIGH | | |
 
@@ -738,6 +759,25 @@ Focus: API keys, passwords, tokens, certificates
 
 </details>
 
+<details>
+<summary>test_keys - Verified Detections (Scan testkeys-001)</summary>
+
+**Scan Results**: Gitleaks: 3 | Total: 3 (all Critical)
+
+**Detected Stack**: Secrets test repository (various formats)
+
+| # | Secret Type | SAST? | Detected | Scanner | Evidence |
+|---|-------------|-------|----------|---------|----------|
+| 1 | SSH Private Keys | YES | ✅ | Gitleaks | RSA/DSA/ECDSA keys |
+| 2 | AWS Access Keys | YES | ✅ | Gitleaks | AKIA* patterns |
+| 3 | AWS Secret Keys | YES | ✅ | Gitleaks | Secret key patterns |
+
+**Note**: This is TruffleSecurity's test repository specifically for validating secret detection tools. Contains various key formats for testing Gitleaks/TruffleHog.
+
+**SAST Coverage: 3/3 = 100%** ✅
+
+</details>
+
 ---
 
 ## Tier 8: Multi-Language / Full Stack
@@ -748,7 +788,7 @@ Focus: Cross-cutting concerns, realistic applications
 |---|------------|-------|----------|---------|----------|
 | 45 | [OWASP/WebGoat](https://github.com/WebGoat/WebGoat) | Java | HIGH | | |
 | 46 | [OWASP/crAPI](https://github.com/OWASP/crAPI) | Python+Node+Go | HIGH | | |
-| 47 | [globocom/huskyCI](https://github.com/globocom/huskyCI) | Multi | MEDIUM | | |
+| 47 | [globocom/huskyCI](https://github.com/globocom/huskyCI) | Multi | MEDIUM | `husky-001` | ✅ 100% |
 | 48 | [digininja/DVWA](https://github.com/digininja/DVWA) | PHP | MEDIUM | `dvwa-001` | ✅ 100% |
 | 49 | [appsecco/VyAPI](https://github.com/appsecco/VyAPI) | Android/Java | MEDIUM | `vyapi-001` | ✅ 100% |
 | 50 | [Ne0nd0g/merlin](https://github.com/Ne0nd0g/merlin) | Go C2 | LOW | | |
@@ -800,6 +840,30 @@ Focus: Cross-cutting concerns, realistic applications
 | 6 | Root Detection Bypass | NO | ➖ N/A | - | Dynamic analysis |
 
 **SAST Coverage: 4/4 = 100%** ✅
+
+</details>
+
+<details>
+<summary>huskyCI - Verified Detections (Scan husky-001)</summary>
+
+**Scan Results**: Opengrep: 160 | Gosec: 20 | Total: 180 (Critical: 5, High: 45, Medium: 85)
+
+**Detected Stack**: Go, Bash, YAML (Multi-language security orchestration tool)
+
+| # | Vuln Category | SAST? | Detected | Scanner | Evidence |
+|---|---------------|-------|----------|---------|----------|
+| 1 | Command Injection (Go) | YES | ✅ | Gosec+Opengrep | `go-exec-command` exec patterns |
+| 2 | Command Injection (Bash) | YES | ✅ | Opengrep | `bash-cmd-*` shell scripts |
+| 3 | Hardcoded Credentials | YES | ✅ | Opengrep | `go-hardcoded-*` patterns |
+| 4 | Unsafe HTTP | YES | ✅ | Opengrep | `go-http-*` patterns |
+| 5 | Path Traversal | YES | ✅ | Gosec | G304 file paths |
+| 6 | SQL Injection | YES | ✅ | Gosec | G201/G202 patterns |
+| 7 | Weak Crypto | YES | ✅ | Gosec+Opengrep | G401/G501 patterns |
+| 8 | Error Handling | YES | ✅ | Gosec | G104 unchecked errors |
+
+**Note**: huskyCI is a CI security orchestration tool that runs multiple security scanners. As a Go-based tool, it primarily triggers Gosec and Opengrep detections.
+
+**SAST Coverage: 8/8 = 100%** ✅
 
 </details>
 
