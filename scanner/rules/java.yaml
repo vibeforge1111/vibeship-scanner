@@ -1048,3 +1048,280 @@ rules:
     languages: [java]
     severity: INFO
 
+  # ============================================
+  # XSS - Response Writing (WebGoat patterns)
+  # ============================================
+
+  - id: java-xss-printwriter-print
+    pattern: $RESPONSE.getWriter().print($VAR)
+    message: "Printing to response without encoding - XSS vulnerability (CWE-79)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, webgoat]
+
+  - id: java-xss-printwriter-println
+    pattern: $RESPONSE.getWriter().println($VAR)
+    message: "Printing to response without encoding - XSS vulnerability (CWE-79)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, webgoat]
+
+  - id: java-xss-printwriter-write
+    pattern: $WRITER.write($VAR)
+    message: "Writing to PrintWriter - ensure HTML encoding to prevent XSS (CWE-79)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss]
+
+  - id: java-xss-outputstream-write
+    pattern: $RESPONSE.getOutputStream().write($VAR)
+    message: "Writing to response OutputStream - verify content is encoded (CWE-79)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss]
+
+  - id: java-xss-string-concat-html
+    pattern-regex: '"<[^>]+>"\s*\+\s*[a-zA-Z_]\w*\s*\+\s*"</'
+    message: "HTML string concatenation with variable - XSS vulnerability (CWE-79)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, webgoat]
+
+  - id: java-xss-html-builder
+    pattern-regex: '(StringBuilder|StringBuffer)[^;]*append\s*\(\s*"<[^"]*"\s*\)[^;]*append\s*\(\s*[a-zA-Z_]\w*\s*\)'
+    message: "Building HTML with user input - XSS risk (CWE-79)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss]
+
+  # Request parameter to response (classic XSS)
+  - id: java-xss-request-to-response
+    pattern-regex: 'getParameter\s*\([^)]+\)[^;]*\.(print|println|write)\s*\('
+    message: "Request parameter written to response - reflected XSS (CWE-79)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, reflected]
+
+  - id: java-xss-getparameter-html
+    pattern: $OUT.print("<..." + $REQ.getParameter(...) + "...")
+    message: "Request parameter in HTML output - reflected XSS (CWE-79)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-79"
+      tags: [xss, reflected, webgoat]
+
+  # ============================================
+  # IDOR - Insecure Direct Object Reference
+  # ============================================
+
+  - id: java-idor-findbyid-param
+    pattern: $REPO.findById($REQUEST.getParameter(...))
+    message: "Direct object lookup by user parameter - IDOR vulnerability (CWE-639)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-639"
+      owasp: "OWASP Top 10 - Broken Access Control"
+      tags: [idor, webgoat]
+
+  - id: java-idor-getbyid-pathvar
+    pattern-regex: '@PathVariable[^)]*id[^)]*\)[^{]*\{[^}]*findById\s*\(\s*id\s*\)'
+    message: "Entity lookup by path ID without auth check - potential IDOR (CWE-639)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, spring]
+
+  - id: java-idor-delete-by-param
+    pattern: $REPO.deleteById($REQUEST.getParameter(...))
+    message: "Delete by user parameter without auth check - IDOR vulnerability (CWE-639)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor]
+
+  - id: java-idor-userid-parameter
+    pattern-regex: 'getParameter\s*\(\s*"(user_?[Ii]d|userId|uid|user)"\s*\)'
+    message: "User ID from parameter - verify authorization before use (CWE-639)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-639"
+      tags: [idor, webgoat]
+
+  # ============================================
+  # Authentication Bypass (WebGoat patterns)
+  # ============================================
+
+  - id: java-auth-bypass-equals-password
+    pattern-regex: '\.equals\s*\(\s*password\s*\)'
+    message: "Direct password comparison - use secure comparison and hashing (CWE-287)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-287"
+      tags: [auth, webgoat]
+
+  - id: java-auth-bypass-string-equals
+    pattern: $INPUT.equals($PASSWORD)
+    message: "String password comparison - vulnerable to timing attacks (CWE-208)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-208"
+      tags: [auth, timing]
+
+  - id: java-auth-hardcoded-admin
+    pattern-regex: '(username|user)\.equals\s*\(\s*"admin"\s*\)'
+    message: "Hardcoded admin check - use proper role-based access control (CWE-798)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-798"
+      tags: [auth, hardcoded]
+
+  # ============================================
+  # Insecure Session Management
+  # ============================================
+
+  - id: java-session-fixation
+    pattern: $REQUEST.getSession(true)
+    message: "Session creation - ensure session ID regeneration after auth (CWE-384)"
+    languages: [java]
+    severity: INFO
+    metadata:
+      cwe: "CWE-384"
+      tags: [session]
+
+  - id: java-session-setattribute-user
+    pattern: $SESSION.setAttribute("user", $VAR)
+    message: "Setting user in session - verify authentication occurred (CWE-306)"
+    languages: [java]
+    severity: INFO
+    metadata:
+      cwe: "CWE-306"
+      tags: [session, auth]
+
+  # ============================================
+  # Missing Input Validation
+  # ============================================
+
+  - id: java-missing-validation-integer-parse
+    pattern: Integer.parseInt($REQUEST.getParameter(...))
+    message: "Parsing request parameter to int - add try-catch and validation (CWE-20)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-20"
+      tags: [validation]
+
+  - id: java-missing-validation-long-parse
+    pattern: Long.parseLong($REQUEST.getParameter(...))
+    message: "Parsing request parameter to long - add try-catch and validation (CWE-20)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-20"
+      tags: [validation]
+
+  # ============================================
+  # Cryptography Issues (WebGoat)
+  # ============================================
+
+  - id: java-crypto-hardcoded-key
+    pattern-regex: 'SecretKeySpec\s*\(\s*"[^"]+"\s*\.getBytes'
+    message: "Hardcoded secret key - use secure key management (CWE-321)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-321"
+      tags: [crypto, webgoat]
+
+  - id: java-crypto-insecure-cipher
+    pattern: 'Cipher.getInstance("AES")'
+    message: "AES without mode/padding specified - defaults may be insecure (CWE-327)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327"
+      tags: [crypto]
+
+  - id: java-crypto-static-seed
+    pattern: $RANDOM.setSeed($LONG)
+    message: "Static seed for random - makes output predictable (CWE-330)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-330"
+      tags: [crypto, random]
+
+  # ============================================
+  # HTTP Response Splitting
+  # ============================================
+
+  - id: java-http-response-splitting
+    pattern: $RESPONSE.setHeader($NAME, $REQUEST.getParameter(...))
+    message: "User input in HTTP header - response splitting vulnerability (CWE-113)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-113"
+      tags: [injection]
+
+  - id: java-http-addheader-user
+    pattern: $RESPONSE.addHeader($NAME, $VAR)
+    message: "Variable in HTTP header - validate for CRLF injection (CWE-113)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-113"
+      tags: [injection]
+
+  # ============================================
+  # Information Disclosure
+  # ============================================
+
+  - id: java-stacktrace-print
+    pattern: $EX.printStackTrace()
+    message: "Stack trace printed - may expose sensitive info in logs (CWE-209)"
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      tags: [info-disclosure]
+
+  - id: java-exception-message-response
+    pattern: $RESPONSE.getWriter().print($EX.getMessage())
+    message: "Exception message in response - information disclosure (CWE-209)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      tags: [info-disclosure, webgoat]
+
+  - id: java-error-details-response
+    pattern-regex: '\.print(ln)?\s*\(\s*(e|ex|exception|error)\.(getMessage|toString|getStackTrace)'
+    message: "Error details sent to client - information disclosure (CWE-209)"
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-209"
+      tags: [info-disclosure]
+
