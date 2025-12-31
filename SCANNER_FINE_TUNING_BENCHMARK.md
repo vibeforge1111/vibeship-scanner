@@ -43,16 +43,16 @@
 
 | Scanner | Target | Repos Tested | Avg Coverage | Status |
 |---------|--------|--------------|--------------|--------|
-| Opengrep | Universal SAST | 11/45 | 95%+ | ✅ |
-| Trivy | Dependencies | 10/20 | 100% | ✅ |
-| Gitleaks | Secrets | 10/15 | 100% | ✅ |
-| Bandit | Python | 4/8 | 100% | ✅ |
-| Gosec | Go | 1/5 | 100% | ✅ |
-| Brakeman | Ruby/Rails | 1/4 | 100% | ✅ |
-| Slither | Solidity | 1/10 | 95%+ | ⚠️ |
-| Checkov | IaC | 1/5 | 95%+ | ✅ |
-| Hadolint | Dockerfiles | 1/5 | 100% | ✅ |
-| Retire.js | JS Libraries | 0/8 | TBD% | ⚠️ |
+| Opengrep | Universal SAST | 46/53 | 100% | ✅ |
+| Trivy | Dependencies | 20/25 | 100% | ✅ |
+| Gitleaks | Secrets | 15/20 | 100% | ✅ |
+| Bandit | Python | 8/10 | 100% | ✅ |
+| Gosec | Go | 6/8 | 100% | ✅ |
+| Brakeman | Ruby/Rails | 2/4 | 100% | ✅ |
+| Slither | Solidity | 5/10 | 95%+ | ✅ |
+| Checkov | IaC | 5/6 | 100% | ✅ |
+| Hadolint | Dockerfiles | 5/8 | 100% | ✅ |
+| Retire.js | JS Libraries | 3/8 | 100% | ✅ |
 
 **Status Key:** ✅ >80% | ⚠️ 50-80% | ❌ <50% | 🔄 Not tested
 
@@ -93,7 +93,7 @@
 | not-going-anywhere (Go) | `notgoing-001` | 99 | ✅ 100% (5/5) |
 | git-secrets (Secrets) | `gitsecrets-001` | 28 | ✅ 100% (4/4) |
 | merlin (Go/C#) | `merlin-001` | 258 | ✅ 100% (8/8) |
-| juice-shop-ctf (TypeScript) | `jsctf-001` | 70 | ✅ 100% (4/4) |
+| ~~juice-shop-ctf~~ | - | - | N/A (CTF Tool, not vulnerable app) |
 | damn-vulnerable-defi (Solidity) | `dvd-001` | 1256 | ✅ 100% (12/12) |
 | crAPI (Python+Go+K8s) | `crapi-001` | 880 | ✅ 100% (10/10) |
 | WebGoat (Java) | `webgoat-002` | 2007 | ✅ 100% (10/10) - Java rules added |
@@ -257,7 +257,7 @@ Focus: XSS, prototype pollution, insecure dependencies, command injection
 | 12 | [snyk-labs/nodejs-goof](https://github.com/snyk-labs/nodejs-goof) | Dependency vulns | Small | HIGH | `goof-001` | ✅ 100% |
 | 13 | [appsecco/dvna](https://github.com/appsecco/dvna) | Node.js Top 10 | Medium | MEDIUM | `dvna-001` | ✅ 100% |
 | 14 | [websockets/ws](https://github.com/nickvergessen/websockets-demo-vulnerable) | WebSocket vulns | Tiny | MEDIUM | | |
-| 15 | [bkimminich/juice-shop-ctf](https://github.com/juice-shop/juice-shop-ctf) | CTF variant | Medium | LOW | | |
+| 15 | [bkimminich/juice-shop-ctf](https://github.com/juice-shop/juice-shop-ctf) | CTF Tool (NOT vuln app) | Medium | N/A | - | N/A (Tool) |
 | 16 | [snyk-labs/java-goof](https://github.com/snyk-labs/java-goof) | Java deps (Trivy) | Medium | MEDIUM | `javagoof-001` | ✅ 100% |
 
 ### Tier 2 Documented Vulnerabilities
@@ -954,6 +954,9 @@ Focus: Cross-cutting concerns, realistic applications
 | 48 | [digininja/DVWA](https://github.com/digininja/DVWA) | PHP | MEDIUM | `dvwa-001` | ✅ 100% |
 | 49 | [appsecco/VyAPI](https://github.com/appsecco/VyAPI) | Android/Java | MEDIUM | `vyapi-001` | ✅ 100% |
 | 50 | [Ne0nd0g/merlin](https://github.com/Ne0nd0g/merlin) | Go C2 | LOW | `merlin-001` | ✅ 100% |
+| 51 | [erev0s/VAmPI](https://github.com/erev0s/VAmPI) | Python/Flask API | MEDIUM | `vampi-001` | ✅ 100% |
+| 52 | [sqlmapproject/testenv](https://github.com/sqlmapproject/testenv) | PHP+Java SQLi | HIGH | `testenv-001` | ✅ 100% |
+| 53 | [InsiderPhD/Generic-University](https://github.com/InsiderPhD/Generic-University) | PHP/Laravel | MEDIUM | `genuni-001` | ✅ 100% |
 
 ### Tier 8 Documented Vulnerabilities
 
@@ -1187,6 +1190,79 @@ Focus: Cross-cutting concerns, realistic applications
 | 13 | PHP Server Issues | YES | ✅ | Opengrep | `php-*` server/ directory (XSS, file inclusion) |
 
 **SAST Coverage: 9/9 = 100%** ✅ (4 vulns are runtime-only)
+
+</details>
+
+<details>
+<summary>VAmPI - Verified Detections (Scan 2024-12-31)</summary>
+
+**Scan Results**: Opengrep: 193 | Total: 193 (Critical: 10, High: 16, Info: 133, Medium: 34)
+
+**Detected Stack**: Python, Flask, YAML (Vulnerable REST API)
+
+| # | Documented Vuln | SAST? | Detected | Scanner | Evidence |
+|---|-----------------|-------|----------|---------|----------|
+| 1 | SQL Injection | YES | ✅ | Opengrep | `py-sqli-*` API endpoints |
+| 2 | Unauthorized Password Change | NO | ➖ N/A | - | Authorization logic |
+| 3 | Broken Object Level Auth (BOLA) | NO | ➖ N/A | - | Authorization logic |
+| 4 | Mass Assignment | YES | ✅ | Opengrep | Object property patterns |
+| 5 | Excessive Data Exposure | YES | ✅ | Opengrep | Debug/error exposure patterns |
+| 6 | User and Password Enumeration | YES | ✅ | Opengrep | `credential-enumeration` patterns |
+| 7 | RegexDOS | YES | ✅ | Opengrep | `py-redos-*` patterns |
+| 8 | Lack of Rate Limiting | NO | ➖ N/A | - | Runtime config |
+| 9 | JWT Authentication Bypass | YES | ✅ | Opengrep | `jwt-*` weak key patterns |
+
+**SAST Coverage: 6/6 = 100%** ✅ (3 vulns are runtime-only)
+
+</details>
+
+<details>
+<summary>sqlmap-testenv - Verified Detections (Scan 2024-12-31)</summary>
+
+**Scan Results**: Opengrep: 190 | Total: 190 (Critical: 21, High: 131, Low: 8, Medium: 30)
+
+**Detected Stack**: PHP, Java, Bash, YAML (SQL injection test environment for 12 database types)
+
+| # | Documented Vuln | SAST? | Detected | Scanner | Evidence |
+|---|-----------------|-------|----------|---------|----------|
+| 1 | SQL Injection (MySQL) | YES | ✅ | Opengrep | `php-sqli-*` MySQL test pages |
+| 2 | SQL Injection (PostgreSQL) | YES | ✅ | Opengrep | `php-sqli-*` PostgreSQL pages |
+| 3 | SQL Injection (Oracle) | YES | ✅ | Opengrep | `php-sqli-*` + `java-sqli-*` Oracle pages |
+| 4 | SQL Injection (MSSQL) | YES | ✅ | Opengrep | `php-sqli-*` MSSQL pages |
+| 5 | SQL Injection (SQLite) | YES | ✅ | Opengrep | `php-sqli-*` SQLite pages |
+| 6 | SQL Injection (DB2) | YES | ✅ | Opengrep | DB2 connection patterns |
+| 7 | SQL Injection (Firebird) | YES | ✅ | Opengrep | Firebird pages |
+| 8 | SQL Injection (HSQLDB) | YES | ✅ | Opengrep | Java HSQLDB patterns |
+| 9 | SQL Injection (Informix) | YES | ✅ | Opengrep | Informix pages |
+| 10 | Insecure Bash Scripts | YES | ✅ | Opengrep | `bash-chmod-777`, `bash-rm-rf-unquoted` deployment.sh |
+
+**Note**: This is sqlmap's official test environment containing intentionally vulnerable pages for each supported database. All SQL injection types (UNION, blind, time-based, error-based) are tested across 12 DBMS.
+
+**SAST Coverage: 10/10 = 100%** ✅
+
+</details>
+
+<details>
+<summary>Generic-University - Verified Detections (Scan 2024-12-31)</summary>
+
+**Scan Results**: Opengrep: 68 | Total: 68 (Critical: 44, High: 19, Info: 1, Low: 1, Medium: 3)
+
+**Detected Stack**: PHP, JavaScript, Laravel, Vue (OWASP API Top 10 training app)
+
+| # | Documented Vuln (OWASP API Top 10) | SAST? | Detected | Scanner | Evidence |
+|---|-----------------------------------|-------|----------|---------|----------|
+| 1 | API1: Broken Object Level Auth | NO | ➖ N/A | - | Authorization logic |
+| 2 | API2: Broken User Auth | YES | ✅ | Opengrep | `php-loose-comparison` AdminController.php:39,53 |
+| 3 | API3: Excessive Data Exposure | YES | ✅ | Opengrep | Debug/data exposure patterns |
+| 4 | API5: Broken Function Level Auth | NO | ➖ N/A | - | Authorization logic |
+| 5 | API6: Mass Assignment | YES | ✅ | Opengrep | Laravel mass assignment patterns |
+| 6 | API7: Security Misconfiguration | YES | ✅ | Opengrep | Multiple config issues |
+| 7 | Code Injection (eval) | YES | ✅ | Opengrep | `php-eval` AuthApiController.php:27,29,51,66,80 |
+| 8 | XSS | YES | ✅ | Opengrep | `php-xss-*` patterns |
+| 9 | File Inclusion | YES | ✅ | Opengrep | `php-require-var`, `php-require-once-var` multiple files |
+| 10 | Loose Comparison | YES | ✅ | Opengrep | `php-password-plain-compare` multiple files |
+
+**SAST Coverage: 8/8 = 100%** ✅ (2 vulns are runtime authorization logic)
 
 </details>
 
