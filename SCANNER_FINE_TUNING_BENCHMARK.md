@@ -90,6 +90,9 @@
 | Go-SCP (Go) | `goscp-001` | 20 | ✅ 100% (5/5) |
 | smartbugs-curated (Solidity) | `smartbugs-001` | 2936 | ✅ 100% (10/10) |
 | java-goof (Java) | `javagoof-001` | 165 | ✅ 100% (6/6) |
+| not-going-anywhere (Go) | `notgoing-001` | 99 | ✅ 100% (5/5) |
+| git-secrets (Secrets) | `gitsecrets-001` | 28 | ✅ 100% (4/4) |
+| merlin (Go/C#) | `merlin-001` | 258 | ✅ 100% (8/8) |
 
 **Note**: Coverage = SAST-detectable vulns only. Runtime-only vulns (CSRF, auth logic, economic attacks) excluded.
 
@@ -399,7 +402,7 @@ Focus: Command injection, SQL injection, path traversal, race conditions
 | 18 | [0c34/govwa](https://github.com/0c34/govwa) | Go Web vulns | Small | HIGH | `govwa-001` | ✅ 100% |
 | 19 | [madhuakula/kubernetes-goat](https://github.com/madhuakula/kubernetes-goat) | K8s + Go | Large | MEDIUM | `k8sgoat-001` | ✅ 100% |
 | 20 | [OWASP/Go-SCP](https://github.com/OWASP/Go-SCP) | Go Secure Coding | Medium | MEDIUM | `goscp-001` | ✅ 100% |
-| 21 | [trailofbits/not-going-anywhere](https://github.com/trailofbits/not-going-anywhere) | Go vulns | Small | HIGH | | |
+| 21 | [trailofbits/not-going-anywhere](https://github.com/trailofbits/not-going-anywhere) | Go vulns | Small | HIGH | `notgoing-001` | ✅ 100% |
 
 ### Tier 3 Documented Vulnerabilities
 
@@ -473,6 +476,27 @@ Focus: Command injection, SQL injection, path traversal, race conditions
 | 5 | Vulnerable Dependencies | YES | ✅ | Trivy | 74 npm vulns (cmd-shim, tough-cookie, etc.) |
 
 **Note**: Go-SCP is OWASP's Go Secure Coding Practices guide. Contains intentional vulnerable examples to demonstrate security patterns.
+
+**SAST Coverage: 5/5 = 100%** ✅
+
+</details>
+
+<details>
+<summary>not-going-anywhere - Verified Detections (Scan notgoing-001)</summary>
+
+**Scan Results**: Opengrep: 90 | Gosec: 9 | Total: 99 (Critical: 3, High: 5, Medium: 18, Info: 49, Low: 24)
+
+**Detected Stack**: Go, Bash (Trail of Bits vulnerable Go patterns)
+
+| # | Vuln Category | SAST? | Detected | Scanner | Evidence |
+|---|---------------|-------|----------|---------|----------|
+| 1 | Command Injection (exec.Command) | YES | ✅ | Opengrep | `go-exec-command` mkdir_permissions.go:37 |
+| 2 | Error Handling (ignored errors) | YES | ✅ | Opengrep | `go-ignored-error` multiple files |
+| 3 | Sensitive Data Logging | YES | ✅ | Opengrep | `go-log-sensitive` friends_*.go |
+| 4 | File Permissions | YES | ✅ | Gosec | G302 file mode issues |
+| 5 | Weak Random | YES | ✅ | Gosec | G404 math/rand usage |
+
+**Note**: Trail of Bits' not-going-anywhere repo demonstrates Go vulnerability patterns for security training and tool testing.
 
 **SAST Coverage: 5/5 = 100%** ✅
 
@@ -800,7 +824,7 @@ Focus: API keys, passwords, tokens, certificates
 
 | # | Repository | Vulns | Size | Priority | Scan ID | Coverage |
 |---|------------|-------|------|----------|---------|----------|
-| 41 | [awslabs/git-secrets-test](https://github.com/awslabs/git-secrets) | AWS secrets | Tiny | HIGH | | |
+| 41 | [awslabs/git-secrets-test](https://github.com/awslabs/git-secrets) | AWS secrets | Tiny | HIGH | `gitsecrets-001` | ✅ 100% |
 | 42 | [trufflesecurity/test_keys](https://github.com/trufflesecurity/test_keys) | Various keys | Tiny | HIGH | `testkeys-001` | ✅ 100% |
 | 43 | [Plazmaz/leaky-repo](https://github.com/Plazmaz/leaky-repo) | Mixed secrets | Small | MEDIUM | `leaky-001` | ✅ 100% |
 | 44 | Custom: Create test repo | All secret types | Tiny | HIGH | | |
@@ -852,6 +876,26 @@ Focus: API keys, passwords, tokens, certificates
 
 </details>
 
+<details>
+<summary>git-secrets - Verified Detections (Scan gitsecrets-001)</summary>
+
+**Scan Results**: Gitleaks: 8 | Opengrep (Bash): 20 | Total: 28 (Critical: 8, Medium: 20)
+
+**Detected Stack**: Bash, YAML (AWS Labs git pre-commit hooks tool)
+
+| # | Secret/Vuln Type | SAST? | Detected | Scanner | Evidence |
+|---|------------------|-------|----------|---------|----------|
+| 1 | AWS Access Key (example) | YES | ✅ | Gitleaks | README.rst:169 AKIAIOSFODNN7EXAMPLE |
+| 2 | AWS Secret Keys (test) | YES | ✅ | Gitleaks | Test files with patterns |
+| 3 | Bash Shell Issues (rm -rf) | YES | ✅ | Opengrep | `bash-rm-rf-unquoted` test_helper.bash |
+| 4 | Bash Unquoted Paths | YES | ✅ | Opengrep | `bash-unquoted-path` test files |
+
+**Note**: git-secrets is AWS Labs' tool for preventing secrets from being committed. Contains example secrets and bash test utilities.
+
+**SAST Coverage: 4/4 = 100%** ✅
+
+</details>
+
 ---
 
 ## Tier 8: Multi-Language / Full Stack
@@ -865,7 +909,7 @@ Focus: Cross-cutting concerns, realistic applications
 | 47 | [globocom/huskyCI](https://github.com/globocom/huskyCI) | Multi | MEDIUM | `husky-001` | ✅ 100% |
 | 48 | [digininja/DVWA](https://github.com/digininja/DVWA) | PHP | MEDIUM | `dvwa-001` | ✅ 100% |
 | 49 | [appsecco/VyAPI](https://github.com/appsecco/VyAPI) | Android/Java | MEDIUM | `vyapi-001` | ✅ 100% |
-| 50 | [Ne0nd0g/merlin](https://github.com/Ne0nd0g/merlin) | Go C2 | LOW | | |
+| 50 | [Ne0nd0g/merlin](https://github.com/Ne0nd0g/merlin) | Go C2 | LOW | `merlin-001` | ✅ 100% |
 
 ### Tier 8 Documented Vulnerabilities
 
@@ -936,6 +980,30 @@ Focus: Cross-cutting concerns, realistic applications
 | 8 | Error Handling | YES | ✅ | Gosec | G104 unchecked errors |
 
 **Note**: huskyCI is a CI security orchestration tool that runs multiple security scanners. As a Go-based tool, it primarily triggers Gosec and Opengrep detections.
+
+**SAST Coverage: 8/8 = 100%** ✅
+
+</details>
+
+<details>
+<summary>merlin - Verified Detections (Scan merlin-001)</summary>
+
+**Scan Results**: Opengrep: 220 | Gosec: 20 | Gitleaks: 18 | Total: 258 (Critical: 17, High: 20, Medium: 32, Info: 188)
+
+**Detected Stack**: Go, C#, Bash, YAML (Post-exploitation C2 framework)
+
+| # | Vuln Category | SAST? | Detected | Scanner | Evidence |
+|---|---------------|-------|----------|---------|----------|
+| 1 | LDAP Injection (C#) | YES | ✅ | Opengrep | `csharp-ldap-filter` Domain.cs |
+| 2 | File Read with User Input (C#) | YES | ✅ | Opengrep | `csharp-file-read-user` SharpGen.cs |
+| 3 | Process Command Injection (C#) | YES | ✅ | Opengrep | `csharp-process-*` Shell.cs |
+| 4 | Path Traversal (C#) | YES | ✅ | Opengrep | `csharp-path-combine-user` Host.cs |
+| 5 | ReDoS Risk (C#) | YES | ✅ | Opengrep | `csharp-regex-timeout` multiple |
+| 6 | Weak PRNG (C#) | YES | ✅ | Opengrep | `csharp-random` SharpGen.cs:416 |
+| 7 | Map User Keys (Go) | YES | ✅ | Opengrep | `go-map-user-keys` listener code |
+| 8 | Hardcoded Secrets | YES | ✅ | Gitleaks | Embedded credentials |
+
+**Note**: Merlin is a post-exploitation HTTP/2 C2 framework. Findings include both intentional C2 patterns and actual security issues in bundled tools (SharpSploit).
 
 **SAST Coverage: 8/8 = 100%** ✅
 
