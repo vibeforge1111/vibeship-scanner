@@ -96,8 +96,8 @@
 | ~~juice-shop-ctf~~ | - | - | N/A (CTF Tool, not vulnerable app) |
 | damn-vulnerable-defi (Solidity) | `dvd-001` | 1256 | ✅ 100% (12/12) |
 | crAPI (Python+Go+K8s) | `crapi-001` | 880 | ✅ 100% (10/10) |
-| WebGoat (Java) | `webgoat-002` | 2007 | ✅ 100% (10/10) - Java rules added |
-| slitherin (Python+Solidity) | `slitherin-001` | 820 | ✅ 100% (5/5) |
+| WebGoat (Java) | `webgoat-003` | ~400+ | ⏳ Scan in progress (2024-12-31) |
+| ~~slitherin~~ | - | - | N/A (Security Tool - Slither detectors, not vulnerable app) |
 | panoptic (Solidity/C4) | `panoptic-001` | 21 | ✅ 100% (2/2) |
 | mutillidae (PHP) | `mutillidae-001` | 1237 | ✅ 100% (12/12) |
 | DVWS-node (Node.js/MongoDB) | `dvws-001` | 535 | ✅ 100% (14/14) |
@@ -985,6 +985,34 @@ Focus: Cross-cutting concerns, realistic applications
 **SAST Coverage: 10/10 = 100%** ✅
 
 **Note**: DVWA is the classic "Damn Vulnerable Web Application" for PHP security training. All SAST-detectable OWASP Top 10 categories are covered.
+
+</details>
+
+<details>
+<summary>Mutillidae - Verified Detections (Scan mutillidae-001)</summary>
+
+**Scan Results**: Opengrep: 1100+ | Gitleaks: 50+ | Trivy: 40+ | Checkov: 30+ | Total: 1237 (Critical: 121, High: 731, Medium: 243, Info: 142)
+
+**Detected Stack**: PHP, JavaScript, HTML, YAML, Bash (Classic OWASP vulnerable web app)
+
+| # | Vuln (OWASP Top 10) | SAST? | Detected | Scanner | Evidence |
+|---|---------------------|-------|----------|---------|----------|
+| 1 | SQL Injection | YES | ✅ | Opengrep | `php-sqli-*` multiple user-inputs/ |
+| 2 | Command Injection | YES | ✅ | Opengrep | `php-cmd-*` os-command modules |
+| 3 | XSS (Reflected) | YES | ✅ | Opengrep | `php-xss-*` reflected patterns |
+| 4 | XSS (Stored) | YES | ✅ | Opengrep | `php-xss-*` stored/DOM patterns |
+| 5 | LFI/RFI (File Inclusion) | YES | ✅ | Opengrep | `php-file-inclusion-*` include/require |
+| 6 | LDAP Injection | YES | ✅ | Opengrep | `php-ldap-injection` ldap_search patterns |
+| 7 | XML/XXE Injection | YES | ✅ | Opengrep | `php-xxe-*` XML parsing |
+| 8 | Path Traversal | YES | ✅ | Opengrep | `php-path-traversal-*` file ops |
+| 9 | Hardcoded Secrets | YES | ✅ | Gitleaks | 50+ secrets in config files |
+| 10 | Weak Crypto | YES | ✅ | Opengrep | `php-weak-*` MD5/SHA1 usage |
+| 11 | CSRF | NO | ➖ N/A | - | Token validation (runtime) |
+| 12 | Authentication Bypass | NO | ➖ N/A | - | Logic flaw (runtime) |
+
+**SAST Coverage: 10/10 = 100%** ✅
+
+**Note**: Mutillidae covers OWASP Top 10 2007, 2010, 2013, and 2017. It has 40+ documented vulnerability categories. All SAST-detectable patterns are caught by our PHP rules.
 
 </details>
 
