@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     nodejs \
     npm \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Retire.js for JavaScript library vulnerability scanning
@@ -39,6 +40,30 @@ RUN apt-get update && apt-get install -y ruby ruby-dev build-essential \
 # Smart contract vulnerabilities, reentrancy, etc.
 # ============================================
 RUN pip install slither-analyzer
+
+# ============================================
+# TOOL #11: OSV-Scanner - Google's Dependency Vulnerability Scanner
+# Checks dependencies against Open Source Vulnerabilities database
+# ============================================
+RUN curl -fsSL https://github.com/google/osv-scanner/releases/download/v1.9.1/osv-scanner_linux_amd64 -o /usr/local/bin/osv-scanner \
+    && chmod +x /usr/local/bin/osv-scanner
+
+# ============================================
+# TOOL #12: Aderyn - Cyfrin's Solidity Security Analyzer
+# Rust-based, fast detection of smart contract vulnerabilities
+# ============================================
+RUN curl -fsSL https://github.com/Cyfrin/aderyn/releases/download/aderyn-v0.6.5/aderyn-x86_64-unknown-linux-gnu.tar.xz -o /tmp/aderyn.tar.xz \
+    && mkdir -p /tmp/aderyn \
+    && tar -xJf /tmp/aderyn.tar.xz -C /tmp/aderyn \
+    && find /tmp/aderyn -name "aderyn" -type f -exec mv {} /usr/local/bin/aderyn \; \
+    && chmod +x /usr/local/bin/aderyn \
+    && rm -rf /tmp/aderyn /tmp/aderyn.tar.xz
+
+# ============================================
+# TOOL #13: Mythril - Solidity Symbolic Execution Analyzer
+# Deep analysis using SMT solving for complex vulnerabilities
+# ============================================
+RUN pip install mythril
 
 # ============================================
 # solc-select - Multiple Solidity Compiler Versions

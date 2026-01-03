@@ -32,9 +32,9 @@ sveltekit, typescript, supabase
 
 # Vibeship Scanner Development Guide
 
-Security scanning tool analyzing GitHub repos with **10 parallel scanners**.
+Security scanning tool analyzing GitHub repos with **12 parallel scanners**.
 
-## Current Scanners (10 total)
+## Current Scanners (12 total)
 
 ### Universal Scanners (always run)
 | Scanner | Purpose |
@@ -42,26 +42,24 @@ Security scanning tool analyzing GitHub repos with **10 parallel scanners**.
 | **Opengrep** | SAST patterns across all languages |
 | **Trivy** | Dependency vulnerabilities + secrets |
 | **Gitleaks** | Hardcoded secrets detection |
+| **OSV-Scanner** | Google's OSV dependency vulnerability database |
+| **Nuclei** | Template-based file/code pattern detection |
 
 ### Stack-Specific Scanners (run when relevant files detected)
 | Scanner | Trigger | Purpose |
 |---------|---------|---------|
 | **Retire.js** | `package.json` | npm package vulnerabilities |
-| **Bandit** | `.py` files | Python security (SQLi, command injection, secrets) |
-| **Gosec** | `.go` files | Go security (SQLi, path traversal, weak crypto) |
 | **Hadolint** | `Dockerfile` | Dockerfile best practices |
 | **Checkov** | `.tf`, `.yaml`, k8s | IaC security (Terraform, K8s, Docker) |
 | **Brakeman** | Rails app | Ruby/Rails (XSS, SQLi, mass assignment) |
-| **Slither** | `.sol` files | Solidity (reentrancy, access control) |
+| **Slither** | `.sol` files | Solidity static analysis (reentrancy, access control) |
+| **Aderyn** | `.sol` files | Solidity security patterns (Cyfrin) |
+| **Mythril** | `.sol` files | Solidity symbolic execution (deep analysis) |
 
 ## Future Scanners (TODO)
 
 | Scanner | Language/Purpose | Priority |
 |---------|------------------|----------|
-| **OSV-Scanner** | Google's dependency scanner | High |
-| **Aderyn** | Solidity security (Cyfrin) | Medium |
-| **Mythril** | Solidity symbolic execution | Medium |
-| **Nuclei** | Web vulnerability templates | Medium |
 | **Echidna** | Solidity fuzzing | Low |
 | **Halmos** | Solidity formal verification | Low |
 

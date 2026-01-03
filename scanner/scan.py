@@ -1559,6 +1559,419 @@ def run_slither(repo_dir: str) -> List[Dict[str, Any]]:
     return findings
 
 
+def run_osv_scanner(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run Google's OSV-Scanner for dependency vulnerabilities
+
+    OSV-Scanner checks dependencies against the Open Source Vulnerabilities database:
+    - npm/yarn (package-lock.json, yarn.lock)
+    - pip (requirements.txt, Pipfile.lock, poetry.lock)
+    - Go (go.mod)
+    - Cargo (Cargo.lock)
+    - Maven/Gradle (pom.xml)
+    - And many more ecosystems
+
+    This complements Trivy by using Google's OSV database which has
+    excellent coverage of open source vulnerabilities.
+    """
+    findings = []
+
+    # Check for any dependency files
+    dep_files = [
+        'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',  # JS
+        'requirements.txt', 'Pipfile.lock', 'poetry.lock',   # Python
+        'go.mod', 'go.sum',                                   # Go
+        'Cargo.lock',                                         # Rust
+        'pom.xml', 'build.gradle', 'build.gradle.kts',       # Java
+        'Gemfile.lock',                                       # Ruby
+        'composer.lock',                                      # PHP
+    ]
+
+    has_deps = False
+    for root, dirs, files in os.walk(repo_dir):
+        dirs[:] = [d for d in dirs if d not in ['node_modules', 'vendor', '.git']]
+        for f in files:
+            if f in dep_files:
+                has_deps = True
+                break
+        if has_deps:
+            break
+
+    if not has_deps:
+        print("No dependency lock files found, skipping OSV-Scanner", file=sys.stderr)
+        return findings
+
+    cmd = [
+        'osv-scanner',
+        '--format', 'json',
+        '-r',  # Recursive scan
+        repo_dir
+    ]
+
+    try:
+        print(f"Running OSV-Scanner on {repo_dir}", file=sys.stderr)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=180
+        )
+
+        # OSV-Scanner exits with 1 if vulnerabilities found
+        print(f"OSV-Scanner exit code: {result.returncode}", file=sys.stderr)
+
+        if result.stdout:
+            try:
+                data = json.loads(result.stdout)
+
+                for result_entry in data.get('results', []):
+                    source_path = result_entry.get('source', {}).get('path', '')
+                    if source_path.startswith(repo_dir):
+                        source_path = source_path[len(repo_dir):].lstrip('/').lstrip('\\')
+
+                    for package in result_entry.get('packages', []):
+                        pkg_info = package.get('package', {})
+                        pkg_name = pkg_info.get('name', 'unknown')
+                        pkg_version = pkg_info.get('version', 'unknown')
+                        ecosystem = pkg_info.get('ecosystem', 'unknown')
+
+                        for vuln in package.get('vulnerabilities', []):
+                            vuln_id = vuln.get('id', 'OSV-UNKNOWN')
+
+                            # Determine severity from database_specific or severity array
+                            severity = 'medium'
+                            severity_data = vuln.get('severity', [])
+                            if severity_data:
+                                for sev in severity_data:
+                                    if sev.get('type') == 'CVSS_V3':
+                                        score = sev.get('score', '')
+                                        # Parse CVSS score to severity
+                                        try:
+                                            # Extract base score from CVSS string
+                                            if '/' in score:
+                                                base_score = float(score.split('/')[0].split(':')[-1])
+                                            else:
+                                                base_score = float(score)
+                                            if base_score >= 9.0:
+                                                severity = 'critical'
+                                            elif base_score >= 7.0:
+                                                severity = 'high'
+                                            elif base_score >= 4.0:
+                                                severity = 'medium'
+                                            else:
+                                                severity = 'low'
+                                        except:
+                                            pass
+
+                            # Get aliases (CVE IDs)
+                            aliases = vuln.get('aliases', [])
+                            cve_id = next((a for a in aliases if a.startswith('CVE-')), None)
+
+                            findings.append({
+                                'id': hashlib.md5(f"osv-{vuln_id}-{pkg_name}".encode()).hexdigest()[:12],
+                                'ruleId': f"osv-{vuln_id}",
+                                'severity': severity,
+                                'category': 'dependencies',
+                                'title': f"[OSV] {pkg_name}@{pkg_version}: {vuln.get('summary', vuln_id)[:80]}",
+                                'description': vuln.get('details', vuln.get('summary', '')),
+                                'cwe': None,
+                                'location': {
+                                    'file': source_path,
+                                    'line': 0
+                                },
+                                'fix': {
+                                    'available': bool(vuln.get('affected', [{}])[0].get('ranges', [{}])[0].get('events', [{}])[-1].get('fixed')),
+                                    'template': f"Update {pkg_name} to a patched version"
+                                },
+                                'references': [vuln.get('references', [{}])[0].get('url', f"https://osv.dev/vulnerability/{vuln_id}")] if vuln.get('references') else [f"https://osv.dev/vulnerability/{vuln_id}"]
+                            })
+
+            except json.JSONDecodeError as e:
+                print(f"OSV-Scanner JSON parse error: {e}", file=sys.stderr)
+
+    except subprocess.TimeoutExpired:
+        print("OSV-Scanner timeout after 180s", file=sys.stderr)
+    except FileNotFoundError:
+        print("OSV-Scanner not installed, skipping", file=sys.stderr)
+    except Exception as e:
+        print(f"OSV-Scanner error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    print(f"OSV-Scanner found {len(findings)} findings", file=sys.stderr)
+    return findings
+
+
+def run_aderyn(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run Aderyn Solidity static analyzer (by Cyfrin)
+
+    Aderyn is a Rust-based Solidity analyzer that detects:
+    - Reentrancy vulnerabilities
+    - Centralization risks
+    - Unsafe external calls
+    - Missing access controls
+    - Gas optimization issues
+    - And more security patterns
+
+    It's designed to be fast and complement Slither with different detection patterns.
+    """
+    findings = []
+
+    # Check for Solidity files
+    sol_files = []
+    for root, dirs, files in os.walk(repo_dir):
+        dirs[:] = [d for d in dirs if d not in ['node_modules', '.git', 'lib']]
+        for f in files:
+            if f.endswith('.sol'):
+                sol_files.append(os.path.join(root, f))
+
+    if not sol_files:
+        print("No Solidity files found, skipping Aderyn", file=sys.stderr)
+        return findings
+
+    print(f"Found {len(sol_files)} Solidity files for Aderyn", file=sys.stderr)
+
+    # Aderyn outputs JSON report
+    output_file = os.path.join(repo_dir, 'aderyn-report.json')
+
+    cmd = [
+        'aderyn',
+        repo_dir,
+        '--output', output_file
+    ]
+
+    try:
+        print(f"Running Aderyn on {repo_dir}", file=sys.stderr)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        print(f"Aderyn exit code: {result.returncode}", file=sys.stderr)
+
+        # Read the JSON report
+        if os.path.exists(output_file):
+            try:
+                with open(output_file, 'r') as f:
+                    data = json.load(f)
+
+                # Aderyn report structure
+                for issue in data.get('high_issues', {}).get('issues', []):
+                    findings.append(create_aderyn_finding(issue, 'high', repo_dir))
+
+                for issue in data.get('medium_issues', {}).get('issues', []):
+                    findings.append(create_aderyn_finding(issue, 'medium', repo_dir))
+
+                for issue in data.get('low_issues', {}).get('issues', []):
+                    findings.append(create_aderyn_finding(issue, 'low', repo_dir))
+
+                for issue in data.get('nc_issues', {}).get('issues', []):
+                    findings.append(create_aderyn_finding(issue, 'info', repo_dir))
+
+            except json.JSONDecodeError as e:
+                print(f"Aderyn JSON parse error: {e}", file=sys.stderr)
+            finally:
+                # Clean up report file
+                try:
+                    os.remove(output_file)
+                except:
+                    pass
+        else:
+            print(f"Aderyn report not found at {output_file}", file=sys.stderr)
+            if result.stderr:
+                print(f"Aderyn stderr: {result.stderr[:500]}", file=sys.stderr)
+
+    except subprocess.TimeoutExpired:
+        print("Aderyn timeout after 300s", file=sys.stderr)
+    except FileNotFoundError:
+        print("Aderyn not installed, skipping", file=sys.stderr)
+    except Exception as e:
+        print(f"Aderyn error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    print(f"Aderyn found {len(findings)} findings", file=sys.stderr)
+    return findings
+
+
+def create_aderyn_finding(issue: Dict, severity: str, repo_dir: str) -> Dict[str, Any]:
+    """Helper to create a finding from an Aderyn issue"""
+    title = issue.get('title', 'Security Issue')
+    description = issue.get('description', '')
+
+    # Get location from instances
+    instances = issue.get('instances', [])
+    file_path = ''
+    line = 0
+    if instances:
+        first = instances[0]
+        file_path = first.get('contract_path', '')
+        if file_path.startswith(repo_dir):
+            file_path = file_path[len(repo_dir):].lstrip('/').lstrip('\\')
+        line = first.get('line_no', 0)
+
+    return {
+        'id': hashlib.md5(f"aderyn-{title}-{file_path}:{line}".encode()).hexdigest()[:12],
+        'ruleId': f"aderyn-{title.lower().replace(' ', '-')[:30]}",
+        'severity': severity,
+        'category': 'code',
+        'title': f"[Aderyn] {title}",
+        'description': description,
+        'location': {
+            'file': file_path,
+            'line': line,
+            'column': 0
+        },
+        'fix': {
+            'available': False,
+            'template': None
+        },
+        'references': ['https://github.com/Cyfrin/aderyn']
+    }
+
+
+def run_mythril(repo_dir: str) -> List[Dict[str, Any]]:
+    """Run Mythril Solidity symbolic execution analyzer
+
+    Mythril uses symbolic execution and SMT solving to detect:
+    - Integer overflow/underflow
+    - Reentrancy
+    - Unprotected selfdestruct
+    - Unchecked external calls
+    - State variable manipulation
+    - Transaction ordering dependencies
+
+    Note: Mythril is slower than static analyzers but finds deeper bugs.
+    We run it with a timeout and limited execution depth for speed.
+    """
+    findings = []
+
+    # Check for Solidity files
+    sol_files = []
+    for root, dirs, files in os.walk(repo_dir):
+        dirs[:] = [d for d in dirs if d not in ['node_modules', '.git', 'lib', 'test', 'tests']]
+        for f in files:
+            if f.endswith('.sol'):
+                sol_files.append(os.path.join(root, f))
+
+    if not sol_files:
+        print("No Solidity files found, skipping Mythril", file=sys.stderr)
+        return findings
+
+    print(f"Found {len(sol_files)} Solidity files for Mythril", file=sys.stderr)
+
+    # Limit to first 5 files to avoid timeout (Mythril is very slow)
+    if len(sol_files) > 5:
+        print(f"Limiting Mythril to first 5 files (out of {len(sol_files)})", file=sys.stderr)
+        sol_files = sol_files[:5]
+
+    # Helper to detect pragma version from file
+    def detect_solc_version(file_path):
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                # Match pragma solidity ^0.8.0, >=0.8.0, =0.8.0, etc.
+                import re
+                match = re.search(r'pragma\s+solidity\s*[\^>=<]*\s*(\d+\.\d+\.\d+|\d+\.\d+)', content)
+                if match:
+                    version = match.group(1)
+                    # Add .0 if only major.minor
+                    if version.count('.') == 1:
+                        version += '.0'
+                    return version
+        except:
+            pass
+        return None
+
+    # Run Mythril on each file with limited depth
+    for sol_file in sol_files:
+        relative_path = sol_file
+        if relative_path.startswith(repo_dir):
+            relative_path = relative_path[len(repo_dir):].lstrip('/').lstrip('\\')
+
+        # Detect solc version for this file
+        solc_version = detect_solc_version(sol_file)
+
+        cmd = [
+            'myth', 'analyze',
+            sol_file,
+            '--execution-timeout', '30',  # 30s per file max (reduced for speed)
+            '--max-depth', '8',           # Limit search depth (reduced for speed)
+            '-o', 'json'
+        ]
+
+        # Add solc version if detected
+        if solc_version:
+            cmd.extend(['--solv', solc_version])
+            print(f"Running Mythril on {relative_path} (solc {solc_version})", file=sys.stderr)
+        else:
+            print(f"Running Mythril on {relative_path}", file=sys.stderr)
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60,  # 60s timeout per file (reduced from 120)
+                cwd=repo_dir  # Run from repo dir for better import resolution
+            )
+
+            # Debug: print stderr if no findings
+            if result.returncode != 0 and not result.stdout:
+                if result.stderr:
+                    # Only print first line of error for brevity
+                    err_line = result.stderr.strip().split('\n')[0][:200]
+                    print(f"Mythril stderr: {err_line}", file=sys.stderr)
+
+            if result.stdout:
+                try:
+                    data = json.loads(result.stdout)
+
+                    for issue in data.get('issues', []):
+                        severity_map = {
+                            'High': 'high',
+                            'Medium': 'medium',
+                            'Low': 'low'
+                        }
+                        severity = severity_map.get(issue.get('severity', 'Medium'), 'medium')
+
+                        findings.append({
+                            'id': hashlib.md5(f"mythril-{issue.get('swc-id', '')}-{relative_path}:{issue.get('lineno', 0)}".encode()).hexdigest()[:12],
+                            'ruleId': f"mythril-swc-{issue.get('swc-id', 'unknown')}",
+                            'severity': severity,
+                            'category': 'code',
+                            'title': f"[Mythril] {issue.get('title', 'Security Issue')}",
+                            'description': issue.get('description', ''),
+                            'location': {
+                                'file': relative_path,
+                                'line': issue.get('lineno', 0),
+                                'column': 0
+                            },
+                            'snippet': {
+                                'code': issue.get('code', ''),
+                                'highlightLines': [issue.get('lineno', 0)]
+                            },
+                            'fix': {
+                                'available': False,
+                                'template': None
+                            },
+                            'references': [f"https://swcregistry.io/docs/SWC-{issue.get('swc-id', '')}"]
+                        })
+
+                except json.JSONDecodeError:
+                    # Mythril may output non-JSON on errors
+                    pass
+
+        except subprocess.TimeoutExpired:
+            print(f"Mythril timeout for {relative_path}", file=sys.stderr)
+        except Exception as e:
+            print(f"Mythril error for {relative_path}: {e}", file=sys.stderr)
+
+    print(f"Mythril found {len(findings)} findings", file=sys.stderr)
+    return findings
+
+
+# Nuclei removed - it's a DAST tool for scanning live web apps, not source code.
+# Our SAST needs are covered by Opengrep + Gitleaks.
+
+
 # ============================================
 # CONSOLIDATED SCANNER ORCHESTRATION
 # All scanner execution goes through here
@@ -1677,6 +2090,30 @@ def run_all_scanners(repo_dir: str, stack: Dict[str, Any] = None) -> Dict[str, A
             'args': (repo_dir,),
             'category': SCANNER_CATEGORY_STACK,
             'targets': 'Solidity smart contract issues',
+            'trigger': '.sol files'
+        },
+        {
+            'name': 'osv-scanner',
+            'func': run_osv_scanner,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_UNIVERSAL,
+            'targets': 'Dependency vulnerabilities (OSV database)',
+            'trigger': 'always'
+        },
+        {
+            'name': 'aderyn',
+            'func': run_aderyn,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_STACK,
+            'targets': 'Solidity security patterns (Cyfrin)',
+            'trigger': '.sol files'
+        },
+        {
+            'name': 'mythril',
+            'func': run_mythril,
+            'args': (repo_dir,),
+            'category': SCANNER_CATEGORY_STACK,
+            'targets': 'Solidity symbolic execution',
             'trigger': '.sol files'
         },
     ]
