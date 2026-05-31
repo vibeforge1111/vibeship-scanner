@@ -9,6 +9,7 @@ import os
 import json
 import uuid
 import threading
+from url_validator import validate_repo_url
 import requests
 from flask import Blueprint, request, jsonify
 from supabase import create_client, Client
@@ -445,6 +446,11 @@ def execute_scan(args, github_token=None):
 
     if not repo_url:
         return {"error": "repo_url is required"}
+
+    # Validate URL to prevent SSRF
+    url_error = validate_repo_url(repo_url)
+    if url_error:
+        return {"error": f"Invalid repository URL: {url_error}"}
 
     # Generate scan ID
     scan_id = str(uuid.uuid4())

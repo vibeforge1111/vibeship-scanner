@@ -13,6 +13,7 @@ import shutil
 import hashlib
 import re
 from urllib.parse import quote, urlparse
+from url_validator import validate_repo_url
 from collections import Counter
 from datetime import datetime
 from typing import Dict, List, Any, Optional
@@ -3500,6 +3501,8 @@ def main():
         sys.exit(1)
 
     repo_url = sys.argv[1]
+
+    # Validate URL to prevent SSRF\n    url_error = validate_repo_url(repo_url)\n    if url_error:\n        print(f"Error: {url_error}", file=sys.stderr)\n        sys.exit(1)
     branch = sys.argv[2] if len(sys.argv) > 2 else 'main'
 
     start_time = datetime.now()
