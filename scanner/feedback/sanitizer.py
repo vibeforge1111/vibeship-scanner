@@ -156,6 +156,14 @@ class CodeSanitizer:
         (r'0x[a-fA-F0-9]{40}', '$ADDR'),
     ]
 
+    # Identity-revealing patterns such as URLs, file paths, emails, and IPs.
+    IDENTITY_PATTERNS = [
+        (r'https?://\S+', '[URL]'),
+        (r'[\w.-]+@[\w.-]+\.\w+', '[EMAIL]'),
+        (r'(?:/|\\\\)(?:[\w.-]+(?:/|\\\\))+[\w.-]+', '[PATH]'),
+        (r'\b(?:\d{1,3}\.){3}\d{1,3}\b', '[IP]'),
+    ]
+
     # Known safe framework patterns to detect (not to keep)
     FRAMEWORK_PATTERNS = {
         'OpenZeppelin': [r'@openzeppelin', r'\bOwnable\b', r'\bReentrancyGuard\b', r'\bSafeERC20\b', r'\bAccessControl\b'],
