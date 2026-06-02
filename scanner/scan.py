@@ -12,6 +12,9 @@ import tempfile
 import shutil
 import hashlib
 import re
+import ipaddress
+import time
+import socket
 from urllib.parse import quote, urlparse
 from collections import Counter
 from datetime import datetime
@@ -82,6 +85,54 @@ ALWAYS_LOAD_RULES = [
 ]
 
 
+def validate_repo_url(url: str) -> None:
+    """Validate a repo URL to prevent SSRF attacks.
+
+    Only allows standard Git hosting URL schemes, blocks private/reserved
+    IP addresses, cloud metadata endpoints, and loopback addresses.
+    Raises ValueError for invalid URLs.
+    """
+    parsed = urlparse(url)
+    scheme = (parsed.scheme or '').lower()
+    hostname = (parsed.hostname or '').lower()
+
+    if scheme not in ('https', 'http', 'git', 'ssh'):
+        raise ValueError(f"Unsupported URL scheme: {scheme}")
+
+    if not hostname:
+        raise ValueError("URL must have a hostname")
+
+    # Block localhost and common loopback names
+    blocked_names = {'localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1'}
+    if hostname in blocked_names:
+        raise ValueError("URL must not point to localhost")
+
+    # Block cloud metadata endpoints
+    metadata_ips = {'169.254.169.254', '100.100.100.200', 'fd00:ec2::254'}
+    if hostname in metadata_ips:
+        raise ValueError("URL must not point to cloud metadata endpoints")
+
+    # Resolve hostname and block private/reserved IPs
+    try:
+        infos = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        for _family, _type, _proto, _canonname, sockaddr in infos:
+            addr = ipaddress.ip_address(sockaddr[0])
+            if any([
+                addr.is_private,
+                addr.is_reserved,
+                addr.is_loopback,
+                addr.is_link_local,
+                addr.is_multicast,
+                addr.is_unspecified,
+            ]):
+                raise ValueError(f"URL resolves to private/reserved address: {addr}")
+    except (socket.gaierror, ValueError) as e:
+        if isinstance(e, ValueError):
+            raise
+        # If hostname doesn't resolve, let it through — the git clone
+        # will fail naturally.
+
+
 def build_github_auth_clone_url(url: str, github_token: str) -> Optional[str]:
     """
     Build a GitHub HTTPS clone URL authenticated with a token.
@@ -124,9 +175,12 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
     """Clone a git repository (shallow clone for speed)
 
     For private GitHub repos, uses token-authenticated HTTPS clone URL:
-    https://x-access-token:TOKEN@github.com/owner/repo.git
+    https://x-access-token:***@github.com/owner/repo.git
     """
     try:
+        # SSRF guard: validate repo URL before attempting to clone
+        validate_repo_url(url)
+
         clone_url = url
         print(f"[Clone] Starting clone: url={url}, hasToken={bool(github_token)}", file=sys.stderr, flush=True)
 
@@ -165,6 +219,11 @@ def clone_repo(url: str, target_dir: str, branch: str = 'main', github_token: st
             # Clean up partial clone directory before retry
             if os.path.exists(target_dir):
                 shutil.rmtree(target_dir, ignore_errors=True)
+                # Wait for rmtree to complete — it can be async on some filesystems
+                for _wait_attempt in range(20):
+                    if not os.path.exists(target_dir):
+                        break
+                    time.sleep(0.05)
                 print(f"[Clone] Cleaned up partial clone directory", file=sys.stderr, flush=True)
 
             print(f"[Clone] Retrying without branch specification...", file=sys.stderr, flush=True)
@@ -248,7 +307,7 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
 
     try:
         files = os.listdir(repo_dir)
-    except:
+    except Exception:
         files = []
 
     # Walk through repo to detect languages by file extensions
