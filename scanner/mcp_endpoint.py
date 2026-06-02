@@ -446,6 +446,13 @@ def execute_scan(args, github_token=None):
     if not repo_url:
         return {"error": "repo_url is required"}
 
+    # SSRF guard: validate repo URL before cloning
+    try:
+        # Import validation from server module
+        server_module.validate_repo_url(repo_url)
+    except ValueError as e:
+        return {"error": f"Invalid repo URL: {e}"}
+
     # Generate scan ID
     scan_id = str(uuid.uuid4())
 

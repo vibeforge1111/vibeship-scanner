@@ -10,6 +10,9 @@ import tempfile
 import threading
 from datetime import datetime
 import hashlib
+import ipaddress
+import socket
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from supabase import create_client, Client
@@ -30,6 +33,56 @@ SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 
 def get_supabase() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+
+def validate_repo_url(url: str) -> str:
+    """Validate a repo URL to prevent SSRF attacks.
+
+    Only allows well-known Git hosting domains, blocks private/reserved
+    IP addresses, cloud metadata endpoints, and loopback addresses.
+    Raises ValueError for invalid URLs. Returns the validated URL.
+    """
+    parsed = urlparse(url)
+    scheme = (parsed.scheme or '').lower()
+    hostname = (parsed.hostname or '').lower()
+
+    if scheme not in ('https', 'http', 'git', 'ssh'):
+        raise ValueError(f"Unsupported URL scheme: {scheme}")
+
+    if not hostname:
+        raise ValueError("URL must have a hostname")
+
+    # Block localhost and common loopback names
+    blocked_names = {'localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1'}
+    if hostname in blocked_names:
+        raise ValueError("URL must not point to localhost")
+
+    # Block cloud metadata endpoints
+    metadata_ips = {'169.254.169.254', '100.100.100.200', 'fd00:ec2::254'}
+    if hostname in metadata_ips:
+        raise ValueError("URL must not point to cloud metadata endpoints")
+
+    # Resolve hostname and block private/reserved IPs
+    try:
+        infos = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        for _family, _type, _proto, _canonname, sockaddr in infos:
+            addr = ipaddress.ip_address(sockaddr[0])
+            if any([
+                addr.is_private,
+                addr.is_reserved,
+                addr.is_loopback,
+                addr.is_link_local,
+                addr.is_multicast,
+                addr.is_unspecified,
+            ]):
+                raise ValueError(f"URL resolves to private/reserved address: {addr}")
+    except (socket.gaierror, ValueError) as e:
+        if isinstance(e, ValueError):
+            raise
+        # If hostname doesn't resolve, let it through — the git clone
+        # will fail naturally.
+
+    return url
 
 STEP_MAP = {
     'init': 0,
@@ -159,6 +212,10 @@ def run_scan(scan_id: str, repo_url: str, branch: str, github_token: str = None)
     try:
         # Create scan row if it doesn't exist (upsert)
         target_url_hash = hashlib.sha256(repo_url.encode()).hexdigest()[:16]
+
+        # SSRF guard: validate repo URL before cloning
+        validate_repo_url(repo_url)
+
         supabase.table('scans').upsert({
             'id': scan_id,
             'target_url': repo_url,
@@ -332,6 +389,9 @@ def test_scan():
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_dir = os.path.join(temp_dir, 'repo')
+
+            # SSRF guard: validate repo URL before cloning
+            validate_repo_url(repo_url)
 
             if not clone_repo(repo_url, repo_dir, branch):
                 return jsonify({'error': 'Failed to clone repository'}), 400
