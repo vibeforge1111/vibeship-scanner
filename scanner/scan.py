@@ -248,7 +248,7 @@ def detect_stack(repo_dir: str) -> Dict[str, Any]:
 
     try:
         files = os.listdir(repo_dir)
-    except:
+    except Exception:
         files = []
 
     # Walk through repo to detect languages by file extensions
