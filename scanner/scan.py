@@ -4,6 +4,7 @@ Vibeship Scanner - Security scanning orchestrator
 Runs Semgrep, Trivy, and Gitleaks on a repository
 """
 
+import logging
 import os
 import sys
 import json
@@ -18,6 +19,9 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger("vibeship-scanner")
 
 SEVERITY_MAP = {
     'CRITICAL': 'critical',
