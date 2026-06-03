@@ -126,3 +126,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+def _add_rules_dir_arg(p):
+    p.add_argument('--rules-dir', help='Alternative rules directory')
+    return p
