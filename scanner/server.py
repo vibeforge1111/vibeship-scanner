@@ -933,5 +933,9 @@ def feedback_stats():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+    import argparse
+    parser = argparse.ArgumentParser(description="Vibeship Scanner API Server")
+    parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
+    parser.add_argument('--port', type=int, default=int(os.environ.get('PORT', 8080)), help='Port to bind to')
+    args = parser.parse_args()
+    app.run(host=args.host, port=args.port)
