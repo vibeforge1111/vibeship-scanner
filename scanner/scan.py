@@ -3589,3 +3589,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+def _add_exclude_arg(p):
+    p.add_argument('--exclude', nargs='*', default=[], help='Scanners to exclude')
+    return p
