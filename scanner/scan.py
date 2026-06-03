@@ -3589,3 +3589,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+def _add_max_findings_arg(p):
+    p.add_argument('--max-findings', type=int, default=0, help='Max findings to return')
+    return p
