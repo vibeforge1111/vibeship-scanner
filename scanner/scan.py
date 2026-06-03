@@ -3589,3 +3589,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+def _add_output_arg(p):
+    p.add_argument('--output', choices=['json','summary','text'], default='text', help='Output format')
+    return p
