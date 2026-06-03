@@ -3494,13 +3494,21 @@ def calculate_ship_status(score: int) -> str:
     return 'danger'
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: scan.py <repo_url> [branch]", file=sys.stderr)
-        sys.exit(1)
+VERSION = "1.0.0"
 
-    repo_url = sys.argv[1]
-    branch = sys.argv[2] if len(sys.argv) > 2 else 'main'
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Vibeship Security Scanner")
+    parser.add_argument("--version", action="version", version=f"vibeship-scanner {VERSION}")
+    parser.add_argument("repo_url", nargs="?", help="Repository URL to scan")
+    parser.add_argument("branch", nargs="?", default="main", help="Branch to scan")
+    args = parser.parse_args()
+    if not args.repo_url:
+        parser.print_help()
+        sys.exit(1)
+    repo_url = args.repo_url
+    branch = args.branch
 
     start_time = datetime.now()
     timing = {}  # Track timing for each phase
