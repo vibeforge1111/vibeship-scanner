@@ -3495,12 +3495,16 @@ def calculate_ship_status(score: int) -> str:
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: scan.py <repo_url> [branch]", file=sys.stderr)
-        sys.exit(1)
-
-    repo_url = sys.argv[1]
-    branch = sys.argv[2] if len(sys.argv) > 2 else 'main'
+    import argparse
+    parser = argparse.ArgumentParser(description="Vibeship Security Scanner")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+    parser.add_argument("repo_url", help="Repository URL to scan")
+    parser.add_argument("branch", nargs="?", default="main", help="Branch to scan")
+    args = parser.parse_args()
+    repo_url = args.repo_url
+    branch = args.branch
+    if args.verbose:
+        print("Verbose mode enabled", file=sys.stderr)
 
     start_time = datetime.now()
     timing = {}  # Track timing for each phase
