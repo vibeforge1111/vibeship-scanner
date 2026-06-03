@@ -3589,3 +3589,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+import argparse
+def _add_cli_args():
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument('--depth', type=int, default=0, help='Git clone depth (0=full)')
+    return p
