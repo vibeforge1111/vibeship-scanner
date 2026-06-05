@@ -2,7 +2,33 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { SCANNER_API_URL } from '$env/static/private';
 
-export const POST: RequestHandler = async ({ request }) => {
+const RATE_LIMIT_MAP = new Map<string, { count: number; resetAt: number }>();
+
+function checkTestTokenRateLimit(identifier: string): boolean {
+	const now = Date.now();
+	const windowMs = 60_000; // 1 minute
+	const maxRequests = 10;
+
+	const entry = RATE_LIMIT_MAP.get(identifier);
+	if (!entry || now > entry.resetAt) {
+		RATE_LIMIT_MAP.set(identifier, { count: 1, resetAt: now + windowMs });
+		return true;
+	}
+
+	if (entry.count >= maxRequests) {
+		return false;
+	}
+
+	entry.count++;
+	return true;
+}
+
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+	const clientIp = getClientAddress();
+	if (!checkTestTokenRateLimit(clientIp)) {
+		return json({ error: 'rate_limited', message: 'Too many requests. Please try again later.' }, { status: 429 });
+	}
+
 	try {
 		const { token, repo } = await request.json();
 

@@ -10,11 +10,17 @@ async function checkRateLimit(
 ): Promise<{ allowed: boolean; remaining: number }> {
 	const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-	const { count } = await db
+	const { count, error } = await db
 		.from('scans')
 		.select('*', { count: 'exact', head: true })
 		.eq('session_id', identifier)
 		.gte('created_at', hourAgo);
+
+	// Fail closed: if DB query fails, deny the request
+	if (error) {
+		console.error('Rate limit DB query failed:', error);
+		return { allowed: false, remaining: 0 };
+	}
 
 	const used = count || 0;
 	const limit = 20;
@@ -124,13 +130,15 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	}
 };
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, getClientAddress }) => {
 	const db = createServerSupabase();
 	const scanId = url.searchParams.get('id');
 
 	if (!scanId) {
 		return json({ error: 'id_required', message: 'Scan ID is required' }, { status: 400 });
 	}
+
+	const clientIp = getClientAddress();
 
 	const { data: scan, error } = await db
 		.from('scans')
@@ -140,6 +148,11 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	if (error || !scan) {
 		return json({ error: 'not_found', message: 'Scan not found' }, { status: 404 });
+	}
+
+	// Ownership verification: only the creator can view scan results
+	if (scan.session_id !== clientIp) {
+		return json({ error: 'forbidden', message: 'You do not have access to this scan' }, { status: 403 });
 	}
 
 	const { data: progress } = await db
