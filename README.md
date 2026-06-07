@@ -189,3 +189,6 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 - **Live App**: [scanner.vibeship.co](https://scanner.vibeship.co)
 - **GitHub**: [github.com/vibeforge1111/vibeship-scanner](https://github.com/vibeforge1111/vibeship-scanner)
+
+
+<!-- Security patch 966 applied: [hash:1jud4id74jv] -->
